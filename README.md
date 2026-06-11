@@ -60,6 +60,8 @@ V13 asks:
 Given that completion state, should the next loop be run, held, capped, or blocked?
 ```
 
+V13 LoopKit assumes V12-style completion integrity: first make the completed work restartable, then decide whether the next loop should GO / HOLD / CAP / BLOCK.
+
 ## V13 Canon
 
 ```text
