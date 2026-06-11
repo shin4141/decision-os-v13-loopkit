@@ -29,14 +29,10 @@ Ask one user to run the prompt on one real completed AI task. Do not automate ou
 Next Loop Command:
 Run one real V13 review on an AI coding completion and record whether CAP felt useful.
 
-## Self-Application Example
+## Field Notes
 
-This repository uses V13 LoopKit on itself.
-
-See:
-
-- `field_notes/001_self_application_v13_loopkit.md`
-- `examples/cap.self_application_v13_loopkit.json`
+- `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
+- `field_notes/002_real_task_v13_announcement_post.md` — V13 LoopKit applied to a real public-posting decision.
 
 # Decision-OS V13 LoopKit
 

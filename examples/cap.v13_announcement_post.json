@@ -1,0 +1,27 @@
+{
+  "previous_loop": "V13 v0.2 was published, V13 LoopKit was created, practical use cases were added, README Start Here was added, and the first self-application field note was published.",
+  "v12_status": "PASS",
+  "residue": [
+    "V13 theory exists",
+    "GitHub prototype exists",
+    "Copy-paste prompt exists",
+    "Self-application field note exists",
+    "The first proof-of-use shows CAP, not GO",
+    "The operator identified that public announcement itself may consume Carrier capacity if framed incorrectly"
+  ],
+  "next_variable": "Public framing: present V13 as a bounded research experiment rather than a finished product or GitHub-first promotion.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "high",
+    "credibility": "high",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "Re-entry capacity is preserved if exposure is capped to one announcement post and no repeated follow-up posting occurs within 48 hours."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Publish at most one announcement post. Frame it as research progress and self-experimentation, not as a product launch. Do not post multiple follow-ups within 48 hours. Recheck after 48 hours or after one meaningful response.",
+  "next_loop_command": "Prepare one capped announcement post that leads with the automation-loop problem, then mentions V13, then explains the self-experiment using the GitHub kit."
+}
