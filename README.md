@@ -76,6 +76,49 @@ It asks whether the next loop should:
 - `CAP`: continue only within limits
 - `BLOCK`: stop because the next loop is unsafe or not useful
 
+## Before / After
+
+Without LoopKit, an agent may finish a task like this:
+
+```text
+Done. I updated the README.
+```
+
+That sounds complete, but it does not tell you whether the next loop should run.
+
+With V13 LoopKit, the report becomes:
+
+```text
+Done. I updated the README.
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+CAP
+
+Reason:
+The README edit is complete and restartable, but the next action should stay bounded.
+
+Allowed Next Action:
+Push this commit.
+
+Not Allowed:
+- Add new features
+- Start broad promotion
+- Draft v1.0
+
+Decision Packet Required:
+no
+
+Next Loop Command:
+Push the commit, then pause until the next concrete task or external feedback appears.
+```
+
+The difference is simple:
+
+> LoopKit turns “done” into a restartable decision about what should happen next.
+
 ## When should I use it?
 
 Use it after AI-assisted work such as:
