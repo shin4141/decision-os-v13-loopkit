@@ -2,26 +2,99 @@
 
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
 
-## What is this?
+## What this is
 
-V13 LoopKit is a copy-paste prompt kit for the moment after an AI agent says “done.”
+V13 LoopKit is a copy-paste reporting kit for AI coding agents.
 
-First action:
+After an agent says a task is done, LoopKit makes the agent report two things:
 
-Copy [`AGENTS.md`](AGENTS.md) into your AI coding project so your agent reports both completion status and the next-loop gate.
+1. whether the task is actually complete and restartable
+2. whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`
 
-It helps decide whether the next loop should:
+## First action
 
-- GO
-- HOLD
-- CAP
-- BLOCK
+Copy [`AGENTS.md`](AGENTS.md) into your AI coding project.
+
+Then ask your agent to follow it when reporting task completion.
+
+## What you get
+
+Instead of only receiving:
+
+```text
+Done. I updated the README.
+```
+
+you receive a bounded next-loop decision:
+
+```text
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+CAP
+
+Reason:
+The README edit is complete, but the next action should stay bounded.
+
+Allowed Next Action:
+Push this commit.
+
+Not Allowed:
+- Add new features
+- Start broad promotion
+- Draft v1.0
+
+Next Loop Command:
+Push the commit, then pause until the next concrete task or external feedback appears.
+```
+
+## Input → Decision → Output
+
+```text
+Input:
+An AI agent completed a task and proposes another follow-up.
+
+Decision:
+CAP
+
+Reason:
+The work is useful, but the next loop should run only within fixed limits.
+
+Output:
+The next loop may run only as a bounded action, with clear stop conditions.
+```
+
+## Before / After
+
+Without LoopKit, an agent may finish a task like this:
+
+```text
+Done. I updated the README.
+```
+
+That sounds complete, but it does not tell you whether the next loop should run.
+
+With LoopKit, the report adds the completion state, the next-loop gate, the allowed next action, the disallowed actions, and the next command.
+
+The difference is simple:
+
+> LoopKit turns “done” into a restartable decision about what should happen next.
+
+## Gate outcomes
+
+It asks whether the next loop should:
+
+- `GO`: continue
+- `HOLD`: wait for more evidence
+- `CAP`: continue only within limits
+- `BLOCK`: stop because the next loop is unsafe or not useful
 
 ## Quick Example
 
 Your agent says a task is done.
 
-Instead of immediately starting the next task, V13 LoopKit asks whether the next loop should run.
+Instead of immediately starting the next task, LoopKit asks whether the next loop should run.
 
 ### Input
 
@@ -38,19 +111,15 @@ Proposed next action:
 Add more examples and promote the repository.
 ```
 
-### V13 Output
+### Output
 
 ```text
-V12 State:
-PASS
-
-V13 Next Loop Gate:
 CAP
 
 Reason:
 The task is complete and restartable, but the proposed next action expands scope. Continue only with a bounded next step.
 
-Allowed Next Action:
+Cap:
 Push the README clarification.
 
 Not Allowed:
@@ -58,66 +127,9 @@ Not Allowed:
 - Add CLI/server/package setup
 - Start broad promotion
 
-Decision Packet Required:
-no
-
 Next Loop Command:
 Push the commit, then pause until the next concrete task or external feedback appears.
 ```
-
-### What this means
-
-V13 LoopKit does not just ask whether the task is complete.
-
-It asks whether the next loop should:
-
-- `GO`: continue
-- `HOLD`: wait for more evidence
-- `CAP`: continue only within limits
-- `BLOCK`: stop because the next loop is unsafe or not useful
-
-## Before / After
-
-Without LoopKit, an agent may finish a task like this:
-
-```text
-Done. I updated the README.
-```
-
-That sounds complete, but it does not tell you whether the next loop should run.
-
-With V13 LoopKit, the report becomes:
-
-```text
-Done. I updated the README.
-
-V12 State:
-PASS
-
-V13 Next Loop Gate:
-CAP
-
-Reason:
-The README edit is complete and restartable, but the next action should stay bounded.
-
-Allowed Next Action:
-Push this commit.
-
-Not Allowed:
-- Add new features
-- Start broad promotion
-- Draft v1.0
-
-Decision Packet Required:
-no
-
-Next Loop Command:
-Push the commit, then pause until the next concrete task or external feedback appears.
-```
-
-The difference is simple:
-
-> LoopKit turns “done” into a restartable decision about what should happen next.
 
 ## When should I use it?
 
