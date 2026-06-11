@@ -51,6 +51,14 @@ without checking whether the work is restartable, bounded, and worth repeating.
 - [`USE_CASES.md`](USE_CASES.md): practical use cases
 - [`docs/field_note_types.md`](docs/field_note_types.md): Self-Application, Real-Task Proof, and Public-Exposure Control
 
+## Prototype Status
+
+Current status: feature growth is paused; real-task proof continues.
+
+See:
+
+- [`docs/prototype_status.md`](docs/prototype_status.md)
+
 ## Field Notes
 
 - `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
