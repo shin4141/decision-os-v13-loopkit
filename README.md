@@ -6,6 +6,8 @@ Turns completion records into governed next-loop decisions using GO / HOLD / CAP
 
 V13 LoopKit is a copy-paste prompt kit for the moment after an AI agent says “done.”
 
+Copy [`AGENTS.md`](AGENTS.md) into your AI coding project so the agent reports both completion status and the next-loop gate.
+
 It helps decide whether the next loop should:
 
 - GO
