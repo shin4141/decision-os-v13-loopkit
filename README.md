@@ -1,5 +1,7 @@
 # Decision-OS V13 LoopKit
 
+> AI agent says done. You still don't know if the next loop should run.
+
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
 
 ## What this is
