@@ -1,0 +1,29 @@
+{
+  "previous_loop": "V13 v0.2 was published, V13 LoopKit was created, self-application was recorded, the announcement-post decision was capped, and the announcement post was published.",
+  "v12_status": "PASS",
+  "residue": [
+    "V13 paper exists",
+    "V13 LoopKit exists",
+    "V12 to V13 handoff discipline exists",
+    "Field Note 001 shows self-application",
+    "Field Note 002 shows public-posting CAP",
+    "The announcement loop has already been executed",
+    "Public exposure is now capped",
+    "The next useful evidence should come from real task use, not public reaction"
+  ],
+  "next_variable": "Real-task proof: test whether V13 LoopKit helps decide one concrete next action after AI-assisted work.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "high",
+    "credibility": "high",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "Re-entry capacity is preserved if the operator returns to private/prototype proof and avoids public reaction-chasing."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Run exactly one real-task proof. Do not post follow-up explanations within 48 hours, add new features, broaden promotion, or treat public reaction as the main evaluation. Recheck after one real task has been reviewed using the V13 prompt.",
+  "next_loop_command": "Use V13 LoopKit on one concrete AI-assisted task completion and record whether the gate output was useful, unclear, too heavy, or wrong."
+}

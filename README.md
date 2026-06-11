@@ -33,6 +33,7 @@ Run one real V13 review on an AI coding completion and record whether CAP felt u
 
 - `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
 - `field_notes/002_real_task_v13_announcement_post.md` — V13 LoopKit applied to a real public-posting decision.
+- `field_notes/003_real_task_after_announcement.md` — V13 LoopKit applied after announcement to prevent reaction-chasing and return to real-task proof.
 
 # Decision-OS V13 LoopKit
 
