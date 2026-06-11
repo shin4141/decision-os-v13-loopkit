@@ -1,0 +1,27 @@
+{
+  "previous_loop": "Reviewed notes/v13/README.md in shin4141/decision-os-paper to check whether a first-time reader can identify the next action without explanation.",
+  "v12_status": "PASS",
+  "residue": [
+    "Reader path confirmed",
+    "v0.2 entry point confirmed",
+    "v0.1 historical role confirmed",
+    "LoopKit prototype pointer confirmed",
+    "External README usability passed without another edit",
+    "The previous bounded usability edit was validated"
+  ],
+  "next_variable": "Reader action clarity: whether a reader can identify what to open or do next without explanation.",
+  "carrier_impact": {
+    "fatigue": "low",
+    "money": "low",
+    "attention": "low",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The external README is committed, visible, and clear enough to use without another edit."
+  },
+  "gate": "GO",
+  "cap_or_recheck": "Use the external README as-is for the next reader or task. Recheck only if a reader cannot identify the v0.2 entry point or LoopKit prototype link.",
+  "next_loop_command": "Use the external README as-is for the next reader or task, and continue collecting concrete real-task proof before drafting V13 v1.0."
+}
