@@ -80,6 +80,10 @@ See:
 
 - [`docs/decision_packet.md`](docs/decision_packet.md)
 
+Decision Packet examples:
+
+- [`docs/decision_packet_examples.md`](docs/decision_packet_examples.md)
+
 ## Field Notes
 
 - `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
