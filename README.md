@@ -67,6 +67,7 @@ See:
 - `field_notes/004_real_task_v12_handoff_review.md` — V13 LoopKit applied to a concrete AI-assisted repository task: adding V12→V13 handoff discipline.
 - `field_notes/005_v13_v1_readiness_review.md` — V13 LoopKit applied to the question of whether V13 should move from v0.2 to v1.0.
 - `field_notes/006_external_real_task_review.md` — V13 LoopKit applied to one external concrete AI-assisted task.
+- `field_notes/007_external_v13_readme_usability_review.md` — V13 LoopKit applied to an external V13 README usability review.
 
 ## Short Example
 

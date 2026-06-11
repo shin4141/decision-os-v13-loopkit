@@ -1,0 +1,27 @@
+{
+  "previous_loop": "Reviewed notes/v13/README.md in shin4141/decision-os-paper for first-time reader usability, then made one bounded Read This First edit in external commit 0c71b26.",
+  "v12_status": "PASS",
+  "residue": [
+    "Clearer reader path",
+    "Confirmed v0.2 entry point",
+    "Confirmed v0.1 versus v0.2 distinction",
+    "Added LoopKit prototype pointer",
+    "Improved next action",
+    "External repo now has a concrete usability commit"
+  ],
+  "next_variable": "Reader action clarity: whether a reader can identify what to open or do next without explanation.",
+  "carrier_impact": {
+    "fatigue": "low",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The edit touched one external README section only. The external repo can be paused, pushed, reviewed, or revised without losing optionality."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Cap the next loop to one reader/usability check. Do not rewrite the external README broadly, add new V13 theory, draft V13 v1.0, broaden promotion, or add LoopKit features. Recheck after one reader can say whether the updated README makes the next action clear.",
+  "next_loop_command": "Push the external README usability commit, then run one reader/usability check on notes/v13/README.md."
+}
