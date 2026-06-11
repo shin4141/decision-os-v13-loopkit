@@ -1,0 +1,27 @@
+{
+  "previous_loop": "V13 v0.2 was published as a Canon Freeze / Prototype-Bound Draft, and V13 LoopKit was created with use cases, field notes, V12 to V13 handoff discipline, field note type clarification, and prototype status.",
+  "v12_status": "PASS",
+  "residue": [
+    "V13 Canon is fixed enough to test",
+    "V13 LoopKit exists as a minimal prototype",
+    "The V12 to V13 handoff path is documented",
+    "Field notes show that CAP is useful for preventing premature GO",
+    "The prototype has reduced unclear and too-heavy signals",
+    "The project has a stable current signal: proof continues, features pause, public exposure caps"
+  ],
+  "next_variable": "V13 v1.0 readiness criteria: define what evidence is required before v1.0 becomes valid.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "high",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The project can continue through prototype evidence without forcing a premature v1.0."
+  },
+  "gate": "HOLD",
+  "cap_or_recheck": "Do not write V13 v1.0 yet. Recheck when there are 3 or more concrete real-task proofs, at least 1 non-repository use case, a clear pattern of when CAP is useful, a clear pattern of when HOLD is too vague, and evidence that the prompt is usable without explanation.",
+  "next_loop_command": "Continue proof. Run V13 LoopKit on additional concrete AI-assisted tasks and collect readiness evidence before drafting V13 v1.0."
+}
