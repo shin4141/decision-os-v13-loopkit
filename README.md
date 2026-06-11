@@ -6,7 +6,9 @@ Turns completion records into governed next-loop decisions using GO / HOLD / CAP
 
 V13 LoopKit is a copy-paste prompt kit for the moment after an AI agent says “done.”
 
-Copy [`AGENTS.md`](AGENTS.md) into your AI coding project so the agent reports both completion status and the next-loop gate.
+First action:
+
+Copy [`AGENTS.md`](AGENTS.md) into your AI coding project so your agent reports both completion status and the next-loop gate.
 
 It helps decide whether the next loop should:
 
@@ -14,6 +16,65 @@ It helps decide whether the next loop should:
 - HOLD
 - CAP
 - BLOCK
+
+## Quick Example
+
+Your agent says a task is done.
+
+Instead of immediately starting the next task, V13 LoopKit asks whether the next loop should run.
+
+### Input
+
+```text
+Task completed:
+README first-use path clarified.
+
+Evidence:
+- README.md changed
+- working tree clean
+- no new features added
+
+Proposed next action:
+Add more examples and promote the repository.
+```
+
+### V13 Output
+
+```text
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+CAP
+
+Reason:
+The task is complete and restartable, but the proposed next action expands scope. Continue only with a bounded next step.
+
+Allowed Next Action:
+Push the README clarification.
+
+Not Allowed:
+- Add automation
+- Add CLI/server/package setup
+- Start broad promotion
+
+Decision Packet Required:
+no
+
+Next Loop Command:
+Push the commit, then pause until the next concrete task or external feedback appears.
+```
+
+### What this means
+
+V13 LoopKit does not just ask whether the task is complete.
+
+It asks whether the next loop should:
+
+- `GO`: continue
+- `HOLD`: wait for more evidence
+- `CAP`: continue only within limits
+- `BLOCK`: stop because the next loop is unsafe or not useful
 
 ## When should I use it?
 
