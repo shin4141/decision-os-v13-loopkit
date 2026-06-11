@@ -1,16 +1,62 @@
-# Start Here
+# Decision-OS V13 LoopKit
 
-If an AI agent just finished work and you are not sure what to do next, use V13 LoopKit.
+Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
 
-1. Open `prompts/v13_loop_review.md`
+## What is this?
+
+V13 LoopKit is a copy-paste prompt kit for the moment after an AI agent says “done.”
+
+It helps decide whether the next loop should:
+
+- GO
+- HOLD
+- CAP
+- BLOCK
+
+## When should I use it?
+
+Use it after AI-assisted work such as:
+
+- coding
+- writing
+- research
+- posting
+- automation planning
+
+Especially when you are unsure whether to continue, verify, limit, or stop.
+
+## Fastest Use
+
+1. Open [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md)
 2. Paste the completed work summary
 3. Ask for a V13 Loop Record
-4. Read the gate:
-   - GO: continue
-   - HOLD: observe before scaling
-   - CAP: run only under a fixed limit
-   - BLOCK: do not continue in the current form
+4. Read the gate
 5. Follow the `Next Loop Command`
+
+## What does it prevent?
+
+It prevents jumping from:
+
+> “The task is done”
+
+to:
+
+> “Run the next loop”
+
+without checking whether the work is restartable, bounded, and worth repeating.
+
+## Quick Links
+
+- [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md): copy-paste prompt
+- [`USE_CASES.md`](USE_CASES.md): practical use cases
+- [`docs/field_note_types.md`](docs/field_note_types.md): Self-Application, Real-Task Proof, and Public-Exposure Control
+
+## Field Notes
+
+- `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
+- `field_notes/002_real_task_v13_announcement_post.md` — V13 LoopKit applied to a real public-posting decision.
+- `field_notes/003_real_task_after_announcement.md` — V13 LoopKit applied after announcement to prevent reaction-chasing and return to real-task proof.
+- `field_notes/004_real_task_v12_handoff_review.md` — V13 LoopKit applied to a concrete AI-assisted repository task: adding V12→V13 handoff discipline.
 
 ## Short Example
 
@@ -28,21 +74,6 @@ Ask one user to run the prompt on one real completed AI task. Do not automate ou
 
 Next Loop Command:
 Run one real V13 review on an AI coding completion and record whether CAP felt useful.
-
-## Field Notes
-
-- `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
-- `field_notes/002_real_task_v13_announcement_post.md` — V13 LoopKit applied to a real public-posting decision.
-- `field_notes/003_real_task_after_announcement.md` — V13 LoopKit applied after announcement to prevent reaction-chasing and return to real-task proof.
-- `field_notes/004_real_task_v12_handoff_review.md` — V13 LoopKit applied to a concrete AI-assisted repository task: adding V12→V13 handoff discipline.
-
-See also:
-
-- `docs/field_note_types.md` — explains the difference between Self-Application, Real-Task Proof, and Public-Exposure Control.
-
-# Decision-OS V13 LoopKit
-
-Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
 
 ## Conceptual Flow
 
