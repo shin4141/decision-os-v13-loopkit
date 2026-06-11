@@ -1,0 +1,27 @@
+{
+  "previous_loop": "Enhanced the Decision-OS V13 research notes README in the external shin4141/decision-os-paper repository, modifying notes/v13/README.md in commit 12082e4.",
+  "v12_status": "PASS",
+  "residue": [
+    "External V13 research-note README exists",
+    "V13 Canon is visible outside the LoopKit repo",
+    "The paper repository now points toward the prototype direction",
+    "Version flow from v0.1 to v0.2 to prototype to v1.0 is documented",
+    "The bridge between V12 completion integrity and V13 loop governance is visible in another repository",
+    "The task gives V13 LoopKit a non-LoopKit artifact to review"
+  ],
+  "next_variable": "External usability: test whether the external README helps a reader understand what to do next without adding more theory or features.",
+  "carrier_impact": {
+    "fatigue": "low",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The external repository has a visible commit and a single changed README file. The work can be paused, reviewed, revised, or linked without losing optionality."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Run one bounded external-usability check. Review only notes/v13/README.md, ask whether the V13 research-note path is understandable, and do not add new V13 theory, draft V13 v1.0, broaden promotion, or add LoopKit features. Recheck after one reader or one concrete task review tests whether the README creates a clear next action.",
+  "next_loop_command": "Run one bounded usability review of notes/v13/README.md in shin4141/decision-os-paper and record whether the reader can identify the next action without explanation."
+}
