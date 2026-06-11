@@ -72,6 +72,14 @@ See:
 
 - [`docs/current_signal.md`](docs/current_signal.md)
 
+## Loop Map
+
+Loop Map tracks active loop gates across the prototype: proof, feature growth, public exposure, v1.0 readiness, Decision Packet, and ownership-sensitive work.
+
+See:
+
+- [`docs/loop_map.md`](docs/loop_map.md)
+
 ## Decision Packet
 
 Future direction: V13 LoopKit should eventually produce human-actionable Decision Packets for high-impact or irreversible next-loop decisions.
