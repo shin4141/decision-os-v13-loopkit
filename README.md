@@ -59,6 +59,19 @@ See:
 
 - [`docs/prototype_status.md`](docs/prototype_status.md)
 
+## Current Signal
+
+Current operating state:
+
+- proof continues
+- feature growth is paused
+- public exposure is capped
+- V13 v1.0 is on HOLD
+
+See:
+
+- [`docs/current_signal.md`](docs/current_signal.md)
+
 ## Field Notes
 
 - `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
