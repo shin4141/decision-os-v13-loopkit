@@ -29,6 +29,15 @@ Ask one user to run the prompt on one real completed AI task. Do not automate ou
 Next Loop Command:
 Run one real V13 review on an AI coding completion and record whether CAP felt useful.
 
+## Self-Application Example
+
+This repository uses V13 LoopKit on itself.
+
+See:
+
+- `field_notes/001_self_application_v13_loopkit.md`
+- `examples/cap.self_application_v13_loopkit.json`
+
 # Decision-OS V13 LoopKit
 
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.

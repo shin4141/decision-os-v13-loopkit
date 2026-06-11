@@ -1,0 +1,26 @@
+{
+  "previous_loop": "Created and published the initial V13 LoopKit repository, then added practical use cases and a Start Here README path.",
+  "v12_status": "PASS",
+  "residue": [
+    "Public repository exists",
+    "Copy-paste prompt exists",
+    "Practical use cases exist",
+    "README Start Here path exists",
+    "The repository can be used after AI-assisted work"
+  ],
+  "next_variable": "Proof-of-use: test whether V13 LoopKit produces a useful next-loop decision on itself or one real completed AI task.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "medium",
+    "trust": "low"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The repository can still be paused, edited, redirected, or tested with one user without losing optionality."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Run exactly one self-application test. Do not launch publicly, automate outreach, add CLI/server/package setup, or claim product-market fit. Recheck after one real AI-assisted completion has been reviewed.",
+  "next_loop_command": "Use V13 LoopKit on one real AI-assisted completion and record whether the gate output was useful, unclear, or too heavy."
+}
