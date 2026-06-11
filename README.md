@@ -123,6 +123,7 @@ See:
 - `field_notes/007_external_v13_readme_usability_review.md` — V13 LoopKit applied to an external V13 README usability review.
 - `field_notes/008_reader_usability_check.md` — V13 LoopKit applied to a first-time reader usability check.
 - `field_notes/009_v13_lite_footer_proof.md` — first proof that the V13 Lite Footer appeared naturally in an ordinary Codex report.
+- `handoff/current_codex_handoff.md` — current restartable handoff for Codex-side V13 LoopKit state.
 
 ## Short Example
 
