@@ -1,3 +1,34 @@
+# Start Here
+
+If an AI agent just finished work and you are not sure what to do next, use V13 LoopKit.
+
+1. Open `prompts/v13_loop_review.md`
+2. Paste the completed work summary
+3. Ask for a V13 Loop Record
+4. Read the gate:
+   - GO: continue
+   - HOLD: observe before scaling
+   - CAP: run only under a fixed limit
+   - BLOCK: do not continue in the current form
+5. Follow the `Next Loop Command`
+
+## Short Example
+
+Input:
+"Codex created README, schema, examples, templates, and use cases."
+
+Output:
+CAP
+
+Reason:
+The scaffold is useful, but no real user has tried it yet.
+
+Cap:
+Ask one user to run the prompt on one real completed AI task. Do not automate outreach.
+
+Next Loop Command:
+Run one real V13 review on an AI coding completion and record whether CAP felt useful.
+
 # Decision-OS V13 LoopKit
 
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
