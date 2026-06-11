@@ -72,6 +72,14 @@ See:
 
 - [`docs/current_signal.md`](docs/current_signal.md)
 
+## Decision Packet
+
+Future direction: V13 LoopKit should eventually produce human-actionable Decision Packets for high-impact or irreversible next-loop decisions.
+
+See:
+
+- [`docs/decision_packet.md`](docs/decision_packet.md)
+
 ## Field Notes
 
 - `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
