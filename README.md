@@ -106,6 +106,8 @@ Decision Packet examples:
 
 For ordinary use, humans should not need to manually write full Loop Records. Agents can include a short V13 next-loop footer at the end of each task report.
 
+V13 reports can also include a Chat Continuation signal: `CHAT_CONTINUE`, `PREPARE_HANDOFF`, or `HANDOFF_NOW`, so long-running work does not silently lose restartability.
+
 See:
 
 - [`AGENTS.md`](AGENTS.md)

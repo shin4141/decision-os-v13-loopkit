@@ -97,6 +97,44 @@ Rules:
 - If the next action is irreversible, public, monetary, credential-related, release-related, ownership-sensitive, or authority-changing, set `Decision Packet Required: yes`.
 - If no next loop is needed, say so.
 - Prefer exposed gaps over speculative improvements.
+- If the task or conversation has become handoff-sensitive, also include the Chat Continuation Footer.
+
+## Chat Continuation Footer
+
+At the end of each task report, include a short chat-continuation signal when the task involved significant context, multiple decisions, long-running discussion, or handoff-sensitive work.
+
+This signal is not a perfect prediction.
+
+It is an early warning, like notifying the operator at "50 seconds" so the human can decide before the context reaches "60 seconds."
+
+Use this format:
+
+```text
+Chat Continuation:
+CHAT_CONTINUE / PREPARE_HANDOFF / HANDOFF_NOW
+
+Reason:
+<1-2 lines>
+
+Handoff Required:
+yes / no
+```
+
+Definitions:
+
+- `CHAT_CONTINUE`: The current chat/context can continue without meaningful restart risk.
+- `PREPARE_HANDOFF`: The chat can continue, but a handoff should be prepared before the next large task, major decision, or new implementation loop.
+- `HANDOFF_NOW`: Do not start the next significant task until a handoff is written.
+
+Rules:
+
+- This is an advisory signal, not an automatic cutoff.
+- The human keeps the final Seat.
+- Prefer `PREPARE_HANDOFF` when context has grown large, decisions have branched, commits/signals have accumulated, or the next agent would need substantial reconstruction.
+- Use `HANDOFF_NOW` when continuing without a handoff would create high risk of context loss, duplicated work, mistaken next actions, or restart failure.
+- Do not overuse `HANDOFF_NOW`.
+- If the task was small and context remains simple, use `CHAT_CONTINUE`.
+- If uncertain, prefer `PREPARE_HANDOFF` over silent continuation.
 
 ## Agent Rule
 
