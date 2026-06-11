@@ -17,6 +17,17 @@ Copy [`AGENTS.md`](AGENTS.md) into your AI coding project.
 
 Then ask your agent to follow it when reporting task completion.
 
+## Choose one
+
+Use [`AGENTS.md`](AGENTS.md) when you want this behavior inside an ongoing AI coding project.
+
+Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review of a completed task.
+
+In short:
+
+- ongoing project -> copy [`AGENTS.md`](AGENTS.md)
+- one-off review -> paste [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md)
+
 ## What you get
 
 Instead of only receiving:
@@ -143,7 +154,7 @@ Use it after AI-assisted work such as:
 
 Especially when you are unsure whether to continue, verify, limit, or stop.
 
-## Fastest Use
+## One-off Review
 
 1. Open [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md)
 2. Paste the completed work summary
