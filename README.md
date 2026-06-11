@@ -43,6 +43,11 @@ A Compound Loop improves the condition from which the next loop begins.
 - CAP: valid only under fixed exposure limits
 - BLOCK: damages Aspire, Carrier, or re-entry capacity
 
+## Practical Use
+
+- Start with [`USE_CASES.md`](USE_CASES.md) for common loop-governance scenarios.
+- Copy and paste [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) after a completed work report to produce a V13 Loop Record.
+
 ## Current Status
 
 ```text
