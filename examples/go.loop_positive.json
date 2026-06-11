@@ -1,0 +1,24 @@
+{
+  "previous_loop": "Create a reusable documentation template for loop records.",
+  "v12_status": "PASS",
+  "residue": [
+    "Reusable Markdown template",
+    "Clear example structure",
+    "Reduced setup time for future documentation loops"
+  ],
+  "next_variable": "Test whether the template supports a second documentation topic without redesign.",
+  "carrier_impact": {
+    "fatigue": "low",
+    "money": "low",
+    "attention": "low",
+    "credibility": "low",
+    "trust": "low"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The loop ended with clean notes, reusable residue, and no dependency on memory."
+  },
+  "gate": "GO",
+  "cap_or_recheck": "Recheck only if the next documentation topic requires new sections.",
+  "next_loop_command": "Run the next documentation loop using the template and record any friction."
+}

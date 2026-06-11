@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/decision-os-v13-loop-record.schema.json",
+  "title": "Decision-OS V13 Loop Record",
+  "description": "A governed next-loop decision generated from a completed work state.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "previous_loop": {
+      "type": "string",
+      "minLength": 1
+    },
+    "v12_status": {
+      "type": "string",
+      "enum": ["PASS", "DELAY", "BLOCK", "UNKNOWN"]
+    },
+    "residue": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "next_variable": {
+      "type": "string",
+      "minLength": 1
+    },
+    "carrier_impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fatigue": {
+          "$ref": "#/$defs/impactLevel"
+        },
+        "money": {
+          "$ref": "#/$defs/impactLevel"
+        },
+        "attention": {
+          "$ref": "#/$defs/impactLevel"
+        },
+        "credibility": {
+          "$ref": "#/$defs/impactLevel"
+        },
+        "trust": {
+          "$ref": "#/$defs/impactLevel"
+        }
+      },
+      "required": ["fatigue", "money", "attention", "credibility", "trust"]
+    },
+    "re_entry_capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["preserved", "reduced", "damaged", "unknown"]
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": ["status", "notes"]
+    },
+    "gate": {
+      "type": "string",
+      "enum": ["GO", "HOLD", "CAP", "BLOCK"]
+    },
+    "cap_or_recheck": {
+      "type": "string"
+    },
+    "next_loop_command": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "previous_loop",
+    "residue",
+    "next_variable",
+    "carrier_impact",
+    "re_entry_capacity",
+    "gate",
+    "next_loop_command"
+  ],
+  "$defs": {
+    "impactLevel": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "unknown"]
+    }
+  }
+}

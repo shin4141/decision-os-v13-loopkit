@@ -1,0 +1,24 @@
+{
+  "previous_loop": "Draft public posts from completed product notes.",
+  "v12_status": "PASS",
+  "residue": [
+    "Three candidate public posts",
+    "Reusable framing for future release notes",
+    "Initial publishing checklist"
+  ],
+  "next_variable": "Test whether public posting creates useful signal without draining attention or credibility.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The loop can be repeated, but public exposure and attention costs need boundaries."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Run 3 posts max over 48 hours. No automation. Recheck engagement and fatigue before continuing.",
+  "next_loop_command": "Publish only within the stated cap, then record signal, fatigue, and credibility effects."
+}

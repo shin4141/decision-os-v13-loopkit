@@ -1,0 +1,24 @@
+{
+  "previous_loop": "Generate a detailed analysis packet for a candidate workflow.",
+  "v12_status": "PASS",
+  "residue": [
+    "Useful workflow notes",
+    "Candidate decision criteria",
+    "Partial list of review questions"
+  ],
+  "next_variable": "Determine whether the output quality justifies the model cost and human review burden.",
+  "carrier_impact": {
+    "fatigue": "unknown",
+    "money": "unknown",
+    "attention": "medium",
+    "credibility": "low",
+    "trust": "unknown"
+  },
+  "re_entry_capacity": {
+    "status": "unknown",
+    "notes": "The output is useful, but review effort and repeat cost were not measured."
+  },
+  "gate": "HOLD",
+  "cap_or_recheck": "Measure model cost and review time on one comparable record before running again.",
+  "next_loop_command": "Do not scale this loop yet; collect cost and review-burden data first."
+}

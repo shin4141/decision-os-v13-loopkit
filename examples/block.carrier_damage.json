@@ -1,0 +1,24 @@
+{
+  "previous_loop": "Rapidly produce daily public output without review or recovery time.",
+  "v12_status": "PASS",
+  "residue": [
+    "Several usable drafts",
+    "A repeatable production rhythm",
+    "Evidence that unchecked repetition increases strain"
+  ],
+  "next_variable": "Redesign the loop so output does not consume re-entry capacity.",
+  "carrier_impact": {
+    "fatigue": "high",
+    "money": "low",
+    "attention": "high",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "damaged",
+    "notes": "The loop leaves the operator depleted and less able to restart cleanly."
+  },
+  "gate": "BLOCK",
+  "cap_or_recheck": "Reconsider only after adding recovery time, review checkpoints, and a maximum publishing cadence.",
+  "next_loop_command": "Do not run the current loop form; redesign it around recovery and review constraints first."
+}
