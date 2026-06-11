@@ -1,0 +1,26 @@
+{
+  "previous_loop": "Added V12 to V13 handoff discipline to AGENTS.md and README.md, committed the update, pushed it to GitHub, and verified the public repository state.",
+  "v12_status": "PASS",
+  "residue": [
+    "V13 LoopKit now has an explicit V12 to V13 operating sequence",
+    "The agent rule distinguishes completion from restartability",
+    "The repo no longer treats done as sufficient evidence",
+    "The public prototype is more aligned with the Decision-OS sequence",
+    "Codex now reports operating signals after push tasks"
+  ],
+  "next_variable": "Concrete proof quality: test whether the V12 to V13 handoff helps evaluate a completed AI task without becoming too heavy.",
+  "carrier_impact": {
+    "fatigue": "medium",
+    "money": "low",
+    "attention": "medium",
+    "credibility": "medium",
+    "trust": "medium"
+  },
+  "re_entry_capacity": {
+    "status": "preserved",
+    "notes": "The project can continue because the public repository is restartable, the handoff rule is visible, and the next task can be bounded."
+  },
+  "gate": "CAP",
+  "cap_or_recheck": "Run one concrete task review. Do not add new features, add CLI/server/package setup, broaden promotion, create more theory, or chase public reaction. Recheck after this concrete task review exists.",
+  "next_loop_command": "Record whether the V13 gate output was useful, unclear, too heavy, or wrong for the completed V12 to V13 handoff task."
+}
