@@ -208,6 +208,16 @@ No Decision Packet is needed when:
 * the action does not change public state, ownership, money, credentials, release, or authority
 * the final report can simply include the normal V12/V13 signal
 
+## Aspire-Oriented Extension
+
+The base Loop Map shows which loops are active, capped, paused, blocked, or human-required.
+
+For Aspire-oriented operation, see:
+
+- `docs/aspire_oriented_loop_map.md`
+
+The Aspire-oriented map asks whether each loop is moving the operator closer to a declared Aspire, such as adoption, stars, revenue, or operationalization, without damaging the Carrier.
+
 ## One-Line Summary
 
 Loop Map is the operating map of V13.

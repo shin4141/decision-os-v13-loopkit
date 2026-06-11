@@ -80,6 +80,14 @@ See:
 
 - [`docs/loop_map.md`](docs/loop_map.md)
 
+## Aspire-Oriented Loop Map
+
+V13 is not only defensive. After basic gates are stable, it can also map whether each loop moves toward a declared Aspire such as adoption, stars, revenue, or operationalization without damaging the Carrier.
+
+See:
+
+- [`docs/aspire_oriented_loop_map.md`](docs/aspire_oriented_loop_map.md)
+
 ## Decision Packet
 
 Future direction: V13 LoopKit should eventually produce human-actionable Decision Packets for high-impact or irreversible next-loop decisions.
@@ -91,6 +99,14 @@ See:
 Decision Packet examples:
 
 - [`docs/decision_packet_examples.md`](docs/decision_packet_examples.md)
+
+## V13 Lite Footer
+
+For ordinary use, humans should not need to manually write full Loop Records. Agents can include a short V13 next-loop footer at the end of each task report.
+
+See:
+
+- [`AGENTS.md`](AGENTS.md)
 
 ## Field Notes
 
