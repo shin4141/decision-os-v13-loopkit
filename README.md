@@ -36,6 +36,10 @@ Run one real V13 review on an AI coding completion and record whether CAP felt u
 - `field_notes/003_real_task_after_announcement.md` — V13 LoopKit applied after announcement to prevent reaction-chasing and return to real-task proof.
 - `field_notes/004_real_task_v12_handoff_review.md` — V13 LoopKit applied to a concrete AI-assisted repository task: adding V12→V13 handoff discipline.
 
+See also:
+
+- `docs/field_note_types.md` — explains the difference between Self-Application, Real-Task Proof, and Public-Exposure Control.
+
 # Decision-OS V13 LoopKit
 
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
