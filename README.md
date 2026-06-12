@@ -258,6 +258,7 @@ See:
 - `field_notes/008_reader_usability_check.md` — V13 LoopKit applied to a first-time reader usability check.
 - `field_notes/009_v13_lite_footer_proof.md` — first proof that the V13 Lite Footer appeared naturally in an ordinary Codex report.
 - `field_notes/010_self_repair_diagnostic_001.md` — first diagnostic run before the next Aspire-invasion move.
+- `field_notes/011_context_compression_proof_001.md` — first proof that compressed handoff anchors restarted a later Codex chat successfully.
 - `handoff/current_codex_handoff.md` — current restartable handoff for Codex-side V13 LoopKit state.
 
 ## Short Example
