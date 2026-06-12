@@ -98,6 +98,7 @@ Rules:
 - If no next loop is needed, say so.
 - Prefer exposed gaps over speculative improvements.
 - If the task or conversation has become handoff-sensitive, also include the Chat Continuation Footer.
+- If the task has accumulated enough context that future work would require rereading long history, also include the Context Compression Footer.
 
 ## Chat Continuation Footer
 
@@ -135,6 +136,52 @@ Rules:
 - Do not overuse `HANDOFF_NOW`.
 - If the task was small and context remains simple, use `CHAT_CONTINUE`.
 - If uncertain, prefer `PREPARE_HANDOFF` over silent continuation.
+
+## Context Compression Footer
+
+At the end of task reports involving long context, repeated decisions, handoff-sensitive work, or accumulated project state, include a short Context Compression signal.
+
+This footer is not a perfect memory system.
+
+It is an operational warning that the next large loop should restart from compressed anchors instead of full chat history.
+
+Use this format:
+
+```text
+Context Compression:
+KEEP / COMPRESS / HANDOFF
+
+Reason:
+<1-2 lines>
+
+Preserve:
+- <current signal>
+- <latest pushed state>
+- <allowed next action>
+- <not allowed action>
+- <next loop command>
+- <known mistaken assumption pointer if any>
+
+Restart From:
+<file / commit / handoff / section>
+```
+
+Definitions:
+
+* `KEEP`: Continue using the current context. No compression is needed yet.
+* `COMPRESS`: Create or use a compressed handoff before the next large loop.
+* `HANDOFF`: Do not start the next major task until a handoff or compressed restart anchor is written.
+
+Rules:
+
+* Do not keep all context just because it exists.
+* Do not compress away restartability.
+* Preserve current signal, latest pushed state, allowed actions, not allowed actions, and next loop command.
+* Preserve pointers to known mistaken assumptions when relevant.
+* Use `COMPRESS` when repeated context loading is becoming wasteful but the current task can still continue.
+* Use `HANDOFF` when starting another major task without compressed anchors would create restart risk.
+* If the task is small and context remains simple, use `KEEP`.
+* If uncertain before a large task, prefer `COMPRESS` over silent continuation.
 
 ## Agent Rule
 

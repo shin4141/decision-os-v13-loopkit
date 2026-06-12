@@ -240,6 +240,8 @@ For ordinary use, humans should not need to manually write full Loop Records. Ag
 
 V13 reports can also include a Chat Continuation signal: `CHAT_CONTINUE`, `PREPARE_HANDOFF`, or `HANDOFF_NOW`, so long-running work does not silently lose restartability.
 
+Agents can also report `Context Compression: KEEP / COMPRESS / HANDOFF` so long-running work can reduce context cost without losing restartability.
+
 See:
 
 - [`AGENTS.md`](AGENTS.md)
