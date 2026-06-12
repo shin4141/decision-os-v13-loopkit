@@ -1,5 +1,11 @@
 # Decision-OS V13 LoopKit
 
+![Release](https://img.shields.io/github/v/release/shin4141/decision-os-v13-loopkit?label=release)
+![License](https://img.shields.io/github/license/shin4141/decision-os-v13-loopkit)
+![Status](https://img.shields.io/badge/status-operating%20prototype-blue)
+![No automation](https://img.shields.io/badge/automation-none-lightgrey)
+![Human approval](https://img.shields.io/badge/human%20approval-required-orange)
+
 > AI agent says done. You still don't know if the next loop should run.
 
 Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
