@@ -15,8 +15,92 @@ The repository now focuses on:
 - Aspire-oriented Loop Map
 - V13 Lite Footer
 - Chat Continuation Footer
+- Context Compression Footer
 - MISTAKEN repair log
 - bounded field notes as proof
+
+## Compressed Restart Anchors
+
+Current goal:
+
+Use V13 LoopKit as the working OS for AI-agent completion, next-loop gating, handoff durability, context compression, self-repair, and failed-assumption repair.
+
+Latest public state:
+
+Repository is pushed and restartable from `origin/main` at `3b9b8c7 Add context compression footer`.
+
+Current signal:
+
+```text
+🟢 BLUE / SELF-REPAIR-GREEN-CANDIDATE
++
+🟢 BLUE / CONTEXT-COMPRESSION-FOOTER-PUSHED
++
+🟢 BLUE / V11-RECONNECTION-LAYER-OPERATIONALIZED
++
+🟢 BLUE / MISTAKEN-ASSUMPTIONS-PRESERVED
++
+🟡 YELLOW / PUBLIC-CAP
++
+🟡 YELLOW / FEATURE-GROWTH-CAP
++
+🟡 YELLOW / V1-HOLD
+```
+
+V12 State:
+
+PASS
+
+V13 Next Loop Gate:
+
+CAP
+
+Chat Continuation:
+
+PREPARE_HANDOFF
+
+Context Compression:
+
+COMPRESS
+
+Self-Repair Diagnostic:
+
+GREEN-CANDIDATE
+
+Allowed next actions:
+
+* continue only through concrete exposed gaps
+* use real behavior examples
+* update handoff/compression only when needed
+* use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion appears
+* bounded public/Star Acquisition move only if based on real behavior, not theory explanation
+
+Not allowed:
+
+* add automation
+* add CLI/server/package setup
+* add Telegram bot
+* add schema changes
+* draft V13 v1.0
+* broaden public promotion
+* fill `MISTAKEN.md` speculatively
+* continue large work from full chat history when compressed anchors are available
+
+Known mistaken assumptions:
+
+See `MISTAKEN.md`.
+
+Current relevant lesson:
+
+Do not assume internal clarity equals outside-reader clarity. First-time-reader checks exposed README weaknesses, and the highest-EV repairs were above-the-fold clarity, start-path clarity, Before/After value difference, and pain-first hook.
+
+Restart source:
+
+Start from this file, `AGENTS.md`, `docs/context_compression.md`, and `MISTAKEN.md`. Use the full chat only if a missing detail is required for the next concrete task.
+
+Next Loop Command:
+
+Use compressed anchors for the next large task. Continue only through concrete exposed gaps, real behavior examples, or bounded public/Star Acquisition planning.
 
 ## Current Public State
 
@@ -28,6 +112,8 @@ Recent completed and pushed updates include:
 - Lite Footer proof 001 field note
 - Lite Footer proof 002 README clarification
 - Chat Continuation Footer in `AGENTS.md`
+- Context Compression note in `docs/context_compression.md`
+- Context Compression Footer in `AGENTS.md`
 - README first-use clarity repairs from outside-reader checks:
   - pain-first hook
   - explicit first action
@@ -45,11 +131,11 @@ Use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion app
 ```text
 🟢 BLUE / SELF-REPAIR-GREEN-CANDIDATE
 +
-🟢 BLUE / README-FIRST-USE-CLARITY-REPAIRED
+🟢 BLUE / CONTEXT-COMPRESSION-FOOTER-PUSHED
 +
-🟢 BLUE / MISTAKEN-REPAIR-LOG-PUSHED
+🟢 BLUE / V11-RECONNECTION-LAYER-OPERATIONALIZED
 +
-🟢 BLUE / V12-HANDOFF-INTENT-PRESERVED
+🟢 BLUE / MISTAKEN-ASSUMPTIONS-PRESERVED
 +
 🟡 YELLOW / PUBLIC-CAP
 +
@@ -78,6 +164,7 @@ The main exposed gaps have been addressed for now:
 * Lite Footer worked in no-edit verification.
 * Lite Footer worked in a small real README edit.
 * Chat handoff durability was missing, so Chat Continuation Footer was added.
+* Context Compression was added as a note and operationalized as a footer.
 * README first-use clarity was repaired through outside-reader checks.
 * `MISTAKEN.md` now preserves failed invasion and mistaken assumptions as repairable evidence.
 
@@ -90,6 +177,14 @@ PREPARE_HANDOFF
 Reason:
 
 The thread accumulated many commits, signals, and reporting rules. It can continue, but a handoff should be prepared before another large task.
+
+## Context Compression
+
+COMPRESS
+
+Reason:
+
+Future large work should restart from compressed anchors instead of rereading full chat history.
 
 Handoff Required:
 
@@ -123,6 +218,7 @@ Do not add:
 * schema changes
 * broad promotion
 * speculative `MISTAKEN.md` entries
+* continuing large work from full chat history when compressed anchors are available
 * V13 v1.0 draft
 
 ## Decision Packet Required When
@@ -145,6 +241,7 @@ Proof Loop: GO / CAP
 Friction Reduction Loop: CAP
 Self-Repair Loop: GREEN-CANDIDATE
 MISTAKEN Repair Loop: READY / USE ONLY ON REAL FAILURE
+Context Compression Loop: COMPRESS / USE ANCHORS BEFORE LARGE WORK
 Public Loop: CAP
 Star Acquisition Loop: HOLD direct promotion / CAP for envy-inducing behavior posts
 Feature Growth Loop: HOLD unless exposed gap
@@ -184,3 +281,5 @@ Post only envy-inducing behavior/features when a real example appears.
 Do not chase reactions.
 
 If a public/invasion attempt fails or exposes a mistaken assumption, record it in `MISTAKEN.md`.
+
+Use the Compressed Restart Anchors section before the next large task.
