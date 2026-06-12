@@ -8,6 +8,8 @@ Turns completion records into governed next-loop decisions using GO / HOLD / CAP
 
 V13 LoopKit is a copy-paste reporting kit for AI coding agents.
 
+It is designed for workflows where an agent can follow project-level instructions, including Codex, Claude Code, Cursor, Cline, and similar tools.
+
 After an agent says a task is done, LoopKit makes the agent report two things:
 
 1. whether the task is actually complete and restartable
