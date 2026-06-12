@@ -45,6 +45,8 @@ Claude Code users:
 3. Use the V13 Lite Footer at the end of task reports.
 4. Use Roadmap Anchors before selecting 0.01 repairs.
 
+For signal formatting, follow `AGENTS.md`, including the distinction between active signals and parked horizons.
+
 ## One-line rule
 
 `CLAUDE.md` is the Claude Code doorway.

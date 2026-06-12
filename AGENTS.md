@@ -100,6 +100,52 @@ Rules:
 - If the task or conversation has become handoff-sensitive, also include the Chat Continuation Footer.
 - If the task has accumulated enough context that future work would require rereading long history, also include the Context Compression Footer.
 
+## Signal Format: Active Signals vs Parked Horizons
+
+Do not list every yellow HOLD/CAP item as if it were an active unresolved task.
+
+Separate active task signals from parked future horizons.
+
+Use:
+
+```text
+Signal:
+🟢 BLUE / <current completed repair>
++
+🟢 BLUE / <current positive effect>
++
+🟡 YELLOW / <current active cap if relevant>
+
+Parked Horizons:
+<future direction 1> / <future direction 2> / <future direction 3>
+```
+
+Rules:
+
+- `Signal` is for the current task and its immediate gate.
+- `Parked Horizons` is for recognized future directions that are intentionally not active now.
+- Do not repeat all parked horizons in the main Signal block.
+- Parked horizons are not TODOs.
+- Parked horizons are not failures.
+- Parked horizons are preserved boundaries.
+- Use Parked Horizons when listing many HOLD/CAP items would create yellow overload.
+
+Example:
+
+```text
+Signal:
+🟢 BLUE / CLAUDE-CODE-ENTRY-POINT-PUSHED
++
+🟢 BLUE / ADOPTION-SURFACE-WIDENED
++
+🟡 YELLOW / FEATURE-GROWTH-CAP
++
+🟡 YELLOW / PUBLIC-CAP
+
+Parked Horizons:
+CLAUDE-SKILLS / HOOKS / MCP / PLUGINIZATION / V1
+```
+
 ## Chat Continuation Footer
 
 At the end of each task report, include a short chat-continuation signal when the task involved significant context, multiple decisions, long-running discussion, or handoff-sensitive work.

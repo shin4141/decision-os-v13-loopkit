@@ -69,6 +69,30 @@ Next Loop Command:
 Push the commit, then pause until the next concrete task or external feedback appears.
 ```
 
+### Active Signals vs Parked Horizons
+
+V13 does not treat every yellow item as an unfinished task.
+
+Some yellow items are active caps for the current loop.
+
+Others are parked horizons: known future directions that are intentionally not active now.
+
+Example:
+
+```text
+Signal:
+🟢 BLUE / README-TRUST-BADGES-PUSHED
++
+🟢 BLUE / TRUST-SURFACE-IMPROVED
++
+🟡 YELLOW / FEATURE-GROWTH-CAP
+
+Parked Horizons:
+HOOKS / MCP / PLUGINIZATION / V1
+```
+
+This keeps the current loop readable while preserving future directions without letting them invade the present task.
+
 ## Observed Codex output from an AGENTS.md verification task
 
 This is not a mock example. It was recorded from a Codex verification task after the repository instructions were read.
