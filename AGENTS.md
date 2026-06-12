@@ -97,6 +97,8 @@ Rules:
 - If the next action is irreversible, public, monetary, credential-related, release-related, ownership-sensitive, or authority-changing, set `Decision Packet Required: yes`.
 - If no next loop is needed, say so.
 - Prefer exposed gaps over speculative improvements.
+- Final reports must not include internal tool-call markers, execution syntax, or tool artifacts such as `::git-stage`, `::git-commit`, `::git-push`, or similar marker lines.
+- Report outcomes in plain human-readable text only.
 - If the task or conversation has become handoff-sensitive, also include the Chat Continuation Footer.
 - If the task has accumulated enough context that future work would require rereading long history, also include the Context Compression Footer.
 
@@ -248,6 +250,14 @@ The agent must preserve the difference between:
 # Do Not Overbuild
 
 Do not build a web app, database, UI, dashboard, or complex CLI unless explicitly requested.
+
+Auto-Spend Gate already exists as an external repository / external gate.
+
+Do not reimplement Auto-Spend Gate inside V13.
+
+Any future connection to Auto-Spend Gate is a cross-repo integration decision and requires explicit activation.
+
+Until activated, preserve CAP and do not scaffold integration.
 
 Start with:
 
