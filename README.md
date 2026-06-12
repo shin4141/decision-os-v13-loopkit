@@ -64,11 +64,9 @@ Next Loop Command:
 Push the commit, then pause until the next concrete task or external feedback appears.
 ```
 
-## Observed Codex Output
+## Observed Codex output from an AGENTS.md verification task
 
-This is not a mock example.
-
-The following output was recorded after Codex read the repository instructions and completed a no-edit verification task:
+This is not a mock example. It was recorded from a Codex verification task after the repository instructions were read.
 
 ```text
 V12 State:
