@@ -16,33 +16,42 @@ The repository now focuses on:
 - V13 Lite Footer
 - Chat Continuation Footer
 - Context Compression Footer
+- Roadmap Anchors for meaningful 0.01 selection
+- Plugin Discovery Readiness as a design-only adoption path
 - MISTAKEN repair log
 - bounded field notes as proof
+- OSS community standards
 
 ## Compressed Restart Anchors
 
 Current goal:
 
-Use V13 LoopKit as the working OS for AI-agent completion, next-loop gating, handoff durability, context compression, self-repair, and failed-assumption repair.
+Use V13 LoopKit as the working OS for AI-agent completion, next-loop gating, handoff durability, context compression, self-repair, failed-assumption repair, and roadmap-anchored 0.01 selection.
 
 Latest public state:
 
-Repository is pushed and restartable from `origin/main` at `3b9b8c7 Add context compression footer`.
+Repository is pushed and restartable from `origin/main` at `4fee418 Add roadmap anchors note`.
+
+Release state:
+
+`v0.1.0 — First Operating Prototype` exists and points to `42a1b79 Add community standards`. Current `main` is newer by the plugin discovery readiness and roadmap anchors notes. Do not edit release state unless explicitly instructed.
 
 Current signal:
 
 ```text
-🟢 BLUE / SELF-REPAIR-GREEN-CANDIDATE
+🟢 BLUE / ROADMAP-ANCHORS-PUSHED
 +
-🟢 BLUE / CONTEXT-COMPRESSION-FOOTER-PUSHED
+🟢 BLUE / USER-DIRECTION-LINE-INTRODUCED
 +
-🟢 BLUE / V11-RECONNECTION-LAYER-OPERATIONALIZED
+🟢 BLUE / 0.01-ALIGNMENT-IMPROVED
 +
-🟢 BLUE / MISTAKEN-ASSUMPTIONS-PRESERVED
+🟢 BLUE / PLUGIN-DISCOVERY-READINESS-PUSHED
 +
 🟡 YELLOW / PUBLIC-CAP
 +
 🟡 YELLOW / FEATURE-GROWTH-CAP
++
+🟡 YELLOW / PLUGINIZATION-HOLD
 +
 🟡 YELLOW / V1-HOLD
 ```
@@ -71,9 +80,10 @@ Allowed next actions:
 
 * continue only through concrete exposed gaps
 * use real behavior examples
+* use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization
 * update handoff/compression only when needed
 * use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion appears
-* bounded public/Star Acquisition move only if based on real behavior, not theory explanation
+* bounded public/Star Acquisition planning only if anchored to stars/adoption -> revenue -> enjoy life and based on real behavior, not theory explanation
 
 Not allowed:
 
@@ -81,8 +91,10 @@ Not allowed:
 * add CLI/server/package setup
 * add Telegram bot
 * add schema changes
+* add plugin implementation, `.codex-plugin/`, hooks, or MCP integration
 * draft V13 v1.0
 * broaden public promotion
+* edit GitHub release state without explicit instruction
 * fill `MISTAKEN.md` speculatively
 * continue large work from full chat history when compressed anchors are available
 
@@ -96,11 +108,11 @@ Do not assume internal clarity equals outside-reader clarity. First-time-reader 
 
 Restart source:
 
-Start from this file, `AGENTS.md`, `docs/context_compression.md`, and `MISTAKEN.md`. Use the full chat only if a missing detail is required for the next concrete task.
+Start from this file, `AGENTS.md`, `docs/context_compression.md`, `docs/roadmap_anchors.md`, `docs/plugin_discovery_readiness.md`, and `MISTAKEN.md`. Use the full chat only if a missing detail is required for the next concrete task.
 
 Next Loop Command:
 
-Use compressed anchors for the next large task. Continue only through concrete exposed gaps, real behavior examples, or bounded public/Star Acquisition planning.
+Use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
 
 ## Current Public State
 
@@ -114,6 +126,11 @@ Recent completed and pushed updates include:
 - Chat Continuation Footer in `AGENTS.md`
 - Context Compression note in `docs/context_compression.md`
 - Context Compression Footer in `AGENTS.md`
+- Context Compression Proof 001 in `field_notes/011_context_compression_proof_001.md`
+- Community standards: `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, and issue templates
+- `v0.1.0 — First Operating Prototype` GitHub release at `42a1b79 Add community standards`
+- Plugin Discovery Readiness in `docs/plugin_discovery_readiness.md`
+- Roadmap Anchors in `docs/roadmap_anchors.md`
 - README first-use clarity repairs from outside-reader checks:
   - pain-first hook
   - explicit first action
@@ -129,17 +146,19 @@ Use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion app
 ## Current Signal
 
 ```text
-🟢 BLUE / SELF-REPAIR-GREEN-CANDIDATE
+🟢 BLUE / ROADMAP-ANCHORS-PUSHED
 +
-🟢 BLUE / CONTEXT-COMPRESSION-FOOTER-PUSHED
+🟢 BLUE / USER-DIRECTION-LINE-INTRODUCED
 +
-🟢 BLUE / V11-RECONNECTION-LAYER-OPERATIONALIZED
+🟢 BLUE / 0.01-ALIGNMENT-IMPROVED
 +
-🟢 BLUE / MISTAKEN-ASSUMPTIONS-PRESERVED
+🟢 BLUE / PLUGIN-DISCOVERY-READINESS-PUSHED
 +
 🟡 YELLOW / PUBLIC-CAP
 +
 🟡 YELLOW / FEATURE-GROWTH-CAP
++
+🟡 YELLOW / PLUGINIZATION-HOLD
 +
 🟡 YELLOW / V1-HOLD
 ```
@@ -167,6 +186,9 @@ The main exposed gaps have been addressed for now:
 * Context Compression was added as a note and operationalized as a footer.
 * README first-use clarity was repaired through outside-reader checks.
 * `MISTAKEN.md` now preserves failed invasion and mistaken assumptions as repairable evidence.
+* Community standards were added for OSS trust.
+* Plugin Discovery Readiness was documented without plugin implementation.
+* Roadmap Anchors now define the line for meaningful 0.01 repairs: stars/adoption -> revenue -> enjoy life.
 
 Further repo growth should pause unless another exposed gap appears.
 
@@ -198,6 +220,7 @@ Allowed:
 
 * Use the next concrete ordinary Codex task to observe whether the V13 Lite Footer and Chat Continuation Footer appear naturally.
 * Use V13 LoopKit as the working OS.
+* Use Roadmap Anchors before selecting future 0.01 repairs.
 * Post only envy-inducing behavior/features when a real example appears.
 * Record a field note only if a new observed result appears.
 * Record a `MISTAKEN.md` entry only if an actual mistaken assumption or failed invasion appears.
@@ -216,6 +239,9 @@ Do not add:
 * dependency manager
 * CI
 * schema changes
+* MCP integration
+* plugin implementation
+* `.codex-plugin/`
 * broad promotion
 * speculative `MISTAKEN.md` entries
 * continuing large work from full chat history when compressed anchors are available
@@ -242,6 +268,10 @@ Friction Reduction Loop: CAP
 Self-Repair Loop: GREEN-CANDIDATE
 MISTAKEN Repair Loop: READY / USE ONLY ON REAL FAILURE
 Context Compression Loop: COMPRESS / USE ANCHORS BEFORE LARGE WORK
+Roadmap Anchors Loop: GREEN / USE BEFORE 0.01 SELECTION
+Pluginization Loop: HOLD / DESIGN-CAP ONLY
+External Discovery Loop: HOLD UNTIL ANCHORED
+Model Routing Loop: DESIGN-CAP
 Public Loop: CAP
 Star Acquisition Loop: HOLD direct promotion / CAP for envy-inducing behavior posts
 Feature Growth Loop: HOLD unless exposed gap
@@ -272,14 +302,8 @@ The goal is to make the underlying artifact stronger until simplified presentati
 
 ## Next Loop Command
 
-Pause broad public promotion.
+Use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
 
-Continue development and use V13 LoopKit as the working OS.
+Pause broad public promotion and plugin implementation.
 
-Post only envy-inducing behavior/features when a real example appears.
-
-Do not chase reactions.
-
-If a public/invasion attempt fails or exposes a mistaken assumption, record it in `MISTAKEN.md`.
-
-Use the Compressed Restart Anchors section before the next large task.
+Continue only through concrete exposed gaps, real behavior examples, or bounded public/Star Acquisition planning.
