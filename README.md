@@ -29,14 +29,13 @@ Then ask your agent to follow it when reporting task completion.
 
 ## Choose one
 
-Use [`AGENTS.md`](AGENTS.md) when you want this behavior inside an ongoing AI coding project.
+Use [`AGENTS.md`](AGENTS.md) for Codex or general AI coding agents that read project-level instruction files.
 
-Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review of a completed task.
+Use [`CLAUDE.md`](CLAUDE.md) as the Claude Code entry point. It points back to `AGENTS.md` as the canonical rule set.
 
-In short:
+Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.
 
-- ongoing project -> copy [`AGENTS.md`](AGENTS.md)
-- one-off review -> paste [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md)
+Use [`templates/user_roadmap_anchors.md`](templates/user_roadmap_anchors.md) when you want V13 to align 0.01 repairs with your own direction line.
 
 ## What you get
 
