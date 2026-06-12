@@ -64,6 +64,37 @@ Next Loop Command:
 Push the commit, then pause until the next concrete task or external feedback appears.
 ```
 
+## Observed Codex Output
+
+This is not a mock example.
+
+The following output was recorded after Codex read the repository instructions and completed a no-edit verification task:
+
+```text
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+GO
+
+Reason:
+The V13 Lite Footer worked naturally for this ordinary verification report without requiring a full Loop Record. The repo remained unchanged and restartable.
+
+Allowed Next Action:
+Use the Lite Footer again on the next small concrete Codex task.
+
+Not Allowed:
+- Add automation
+- Add CLI/server/package setup
+- Draft V13 v1.0
+
+Decision Packet Required:
+no
+
+Next Loop Command:
+Run one more ordinary task later and confirm the Lite Footer remains useful without becoming too heavy.
+```
+
 ## Input → Decision → Output
 
 ```text
