@@ -185,6 +185,15 @@ without checking whether the work is restartable, bounded, and worth repeating.
 - [`docs/field_note_types.md`](docs/field_note_types.md): Self-Application, Real-Task Proof, and Public-Exposure Control
 - [`docs/self_repair_diagnostic.md`](docs/self_repair_diagnostic.md): pre-invasion check for identifying the weakest point and highest-EV 0.01 repair
 
+## Contributing and safety
+
+See:
+
+- `CONTRIBUTING.md`
+- `SECURITY.md`
+- `CODE_OF_CONDUCT.md`
+- `.github/ISSUE_TEMPLATE/`
+
 ## Prototype Status
 
 Current status: feature growth is paused; real-task proof continues.
