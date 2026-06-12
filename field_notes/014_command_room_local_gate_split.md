@@ -74,11 +74,13 @@ Large, spend-sensitive, irreversible, automation-expanding, authority-changing, 
 
 It should not proceed as an ordinary bounded repair.
 
-Auto-Spend Gate remains a parked future horizon.
+Auto-Spend Gate already exists as an external repository / external gate.
 
-Do not implement Auto-Spend Gate in this loop.
+Do not reimplement Auto-Spend Gate inside V13.
 
-Do not create an Auto-Spend Gate file, plugin, MCP server, hook, automation scaffold, or CLI.
+Any future connection to Auto-Spend Gate is a cross-repo integration decision and requires explicit activation.
+
+Until activated, preserve CAP and do not create an integration file, plugin, MCP server, hook, automation scaffold, or CLI.
 
 ## Why This Matters
 
@@ -100,7 +102,7 @@ Small repairs can be handled centrally when bounded.
 
 Medium or larger work should first receive local governance.
 
-Auto-Spend Gate is only a parked future horizon at this point.
+Auto-Spend Gate exists externally, but V13 connection to it is only a parked cross-repo integration horizon at this point.
 
 ## Boundary
 
@@ -108,7 +110,7 @@ This does not claim autonomous orchestration.
 
 This does not claim production readiness.
 
-This does not authorize automation, hooks, skills, MCP, plugins, CLI, server behavior, package setup, CI, schema changes, or Auto-Spend Gate implementation.
+This does not authorize automation, hooks, skills, MCP, plugins, CLI, server behavior, package setup, CI, schema changes, Auto-Spend Gate reimplementation, or Auto-Spend Gate integration.
 
 It records a manual governance pattern observed after one successful external entrypoint proof.
 
@@ -122,7 +124,7 @@ Signal:
 🟡 YELLOW / DO-NOT-IMPLEMENT-SPEND-GATE-YET
 
 Parked Horizons:
-CLAUDE-SKILLS / HOOKS / MCP / PLUGINIZATION / V1 / AUTO-SPEND-GATE
+CLAUDE-SKILLS / HOOKS / MCP / PLUGINIZATION / V1 / AUTO-SPEND-GATE-CONNECTION
 
 V12 State:
 PASS
@@ -131,7 +133,7 @@ V13 Next Loop Gate:
 CAP
 
 Reason:
-The external proof showed that V13 can govern a bounded cross-repo repair from the command room, but medium or larger changes should be localized behind a repo-level gate before execution. Auto-Spend Gate remains parked and must not be implemented in this loop.
+The external proof showed that V13 can govern a bounded cross-repo repair from the command room, but medium or larger changes should be localized behind a repo-level gate before execution. Auto-Spend Gate exists externally; V13 connection to it remains parked and must not be scaffolded in this loop.
 
 ## Next Loop
 
