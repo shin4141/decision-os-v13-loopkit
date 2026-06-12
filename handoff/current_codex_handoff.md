@@ -17,6 +17,7 @@ The repository now focuses on:
 - Chat Continuation Footer
 - Context Compression Footer
 - Roadmap Anchors for meaningful 0.01 selection
+- User Roadmap Anchors template for user-defined direction lines
 - Plugin Discovery Readiness as a design-only adoption path
 - MISTAKEN repair log
 - bounded field notes as proof
@@ -30,18 +31,18 @@ Use V13 LoopKit as the working OS for AI-agent completion, next-loop gating, han
 
 Latest public state:
 
-Repository is pushed and restartable from `origin/main` at `4fee418 Add roadmap anchors note`.
+Repository is pushed and restartable from `origin/main` at `464120e Add user roadmap anchors template`.
 
 Release state:
 
-`v0.1.0 — First Operating Prototype` exists and points to `42a1b79 Add community standards`. Current `main` is newer by the plugin discovery readiness and roadmap anchors notes. Do not edit release state unless explicitly instructed.
+`v0.1.0 — First Operating Prototype` exists and points to `42a1b79 Add community standards`. Current `main` is newer by the plugin discovery readiness note, roadmap anchors note, Self-Repair Diagnostic 002 handoff refresh, and user roadmap anchors template. Do not edit release state unless explicitly instructed.
 
 Current signal:
 
 ```text
-🟢 BLUE / ROADMAP-ANCHORS-PUSHED
+🟢 BLUE / USER-ROADMAP-TEMPLATE-PUSHED
 +
-🟢 BLUE / USER-DIRECTION-LINE-INTRODUCED
+🟢 BLUE / USER-DEFINED-ASPIRE-LINE-ENABLED
 +
 🟢 BLUE / 0.01-ALIGNMENT-IMPROVED
 +
@@ -80,7 +81,7 @@ Allowed next actions:
 
 * continue only through concrete exposed gaps
 * use real behavior examples
-* use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization
+* use user-defined Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization
 * update handoff/compression only when needed
 * use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion appears
 * bounded public/Star Acquisition planning only if anchored to stars/adoption -> revenue -> enjoy life and based on real behavior, not theory explanation
@@ -108,11 +109,11 @@ Do not assume internal clarity equals outside-reader clarity. First-time-reader 
 
 Restart source:
 
-Start from this file, `AGENTS.md`, `docs/context_compression.md`, `docs/roadmap_anchors.md`, `docs/plugin_discovery_readiness.md`, and `MISTAKEN.md`. Use the full chat only if a missing detail is required for the next concrete task.
+Start from this file, `AGENTS.md`, `docs/context_compression.md`, `docs/roadmap_anchors.md`, `templates/user_roadmap_anchors.md`, `docs/plugin_discovery_readiness.md`, and `MISTAKEN.md`. Use the full chat only if a missing detail is required for the next concrete task.
 
 Next Loop Command:
 
-Use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
+Use user-defined Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
 
 ## Current Public State
 
@@ -131,6 +132,8 @@ Recent completed and pushed updates include:
 - `v0.1.0 — First Operating Prototype` GitHub release at `42a1b79 Add community standards`
 - Plugin Discovery Readiness in `docs/plugin_discovery_readiness.md`
 - Roadmap Anchors in `docs/roadmap_anchors.md`
+- User Roadmap Anchors template in `templates/user_roadmap_anchors.md`
+- Self-Repair Diagnostic 002 refreshed this handoff after roadmap/plugin/release/community updates
 - README first-use clarity repairs from outside-reader checks:
   - pain-first hook
   - explicit first action
@@ -146,9 +149,9 @@ Use `MISTAKEN.md` only when an actual mistaken assumption or failed invasion app
 ## Current Signal
 
 ```text
-🟢 BLUE / ROADMAP-ANCHORS-PUSHED
+🟢 BLUE / USER-ROADMAP-TEMPLATE-PUSHED
 +
-🟢 BLUE / USER-DIRECTION-LINE-INTRODUCED
+🟢 BLUE / USER-DEFINED-ASPIRE-LINE-ENABLED
 +
 🟢 BLUE / 0.01-ALIGNMENT-IMPROVED
 +
@@ -189,6 +192,7 @@ The main exposed gaps have been addressed for now:
 * Community standards were added for OSS trust.
 * Plugin Discovery Readiness was documented without plugin implementation.
 * Roadmap Anchors now define the line for meaningful 0.01 repairs: stars/adoption -> revenue -> enjoy life.
+* `templates/user_roadmap_anchors.md` now gives other users a fill-in path for defining their own direction anchors.
 
 Further repo growth should pause unless another exposed gap appears.
 
@@ -220,7 +224,7 @@ Allowed:
 
 * Use the next concrete ordinary Codex task to observe whether the V13 Lite Footer and Chat Continuation Footer appear naturally.
 * Use V13 LoopKit as the working OS.
-* Use Roadmap Anchors before selecting future 0.01 repairs.
+* Use user-defined Roadmap Anchors before selecting future 0.01 repairs.
 * Post only envy-inducing behavior/features when a real example appears.
 * Record a field note only if a new observed result appears.
 * Record a `MISTAKEN.md` entry only if an actual mistaken assumption or failed invasion appears.
@@ -268,7 +272,7 @@ Friction Reduction Loop: CAP
 Self-Repair Loop: GREEN-CANDIDATE
 MISTAKEN Repair Loop: READY / USE ONLY ON REAL FAILURE
 Context Compression Loop: COMPRESS / USE ANCHORS BEFORE LARGE WORK
-Roadmap Anchors Loop: GREEN / USE BEFORE 0.01 SELECTION
+Roadmap Anchors Loop: GREEN / USER_DEFINED / USE BEFORE 0.01 SELECTION
 Pluginization Loop: HOLD / DESIGN-CAP ONLY
 External Discovery Loop: HOLD UNTIL ANCHORED
 Model Routing Loop: DESIGN-CAP
@@ -302,7 +306,7 @@ The goal is to make the underlying artifact stronger until simplified presentati
 
 ## Next Loop Command
 
-Use Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
+Use user-defined Roadmap Anchors before choosing future 0.01 repairs, model routing, external discovery, or pluginization.
 
 Pause broad public promotion and plugin implementation.
 
