@@ -21,17 +21,17 @@ After an agent says a task is done, LoopKit makes the agent report two things:
 1. whether the task is actually complete and restartable
 2. whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`
 
-## First action
+## Setup
 
-Copy [`AGENTS.md`](AGENTS.md) into your AI coding project.
+No install is required.
 
-Then ask your agent to follow it when reporting task completion.
+Copy the instruction file that matches your workflow into your project, then ask your agent to follow it when reporting task completion.
 
 ## Choose one
 
-Use [`AGENTS.md`](AGENTS.md) for Codex or general AI coding agents that read project-level instruction files.
+Use [`AGENTS.md`](AGENTS.md) for Codex or any AI coding agent that reads project-level instruction files.
 
-Use [`CLAUDE.md`](CLAUDE.md) as the Claude Code entry point. It points back to `AGENTS.md` as the canonical rule set.
+Use [`CLAUDE.md`](CLAUDE.md) for Claude Code. It is a thin entry point that points back to `AGENTS.md` as the canonical rule set.
 
 Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.
 
