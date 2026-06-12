@@ -27,6 +27,8 @@ No install is required.
 
 Copy the instruction file that matches your workflow into your project, then ask your agent to follow it when reporting task completion.
 
+Do not start by adding automation, integrations, or product features.
+
 ## Choose one
 
 Use [`AGENTS.md`](AGENTS.md) for Codex or any AI coding agent that reads project-level instruction files.
