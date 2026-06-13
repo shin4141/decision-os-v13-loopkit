@@ -46,7 +46,7 @@ Ask the user's AI to read these files in order, then recommend how V13 should fi
 ## Adoption Modes
 
 1. Keep current instructions
-2. Try Lite Footer only
+2. Try Lite Footer only as the smallest first-use test
 3. Add V13 as review-only completion lane
 4. Merge V13 into local instructions
 
