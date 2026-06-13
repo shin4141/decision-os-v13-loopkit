@@ -29,6 +29,23 @@ Copy the instruction file that matches your workflow into your project, then ask
 
 Do not start by adding automation, integrations, or product features.
 
+## First, try the Lite Footer
+
+You do not need the full `AGENTS.md` rule set to feel the first benefit.
+
+Ask your AI agent to append this small footer to its final report:
+
+```text
+V12 State: PASS / DELAY / BLOCK
+V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
+Reason:
+Next Loop:
+```
+
+The footer makes the agent state whether the current task is complete, whether the next loop should run, why, and the single next action.
+
+If that feels useful, copy `AGENTS.md` later.
+
 ## Choose one
 
 Use [`AGENTS.md`](AGENTS.md) for Codex or any AI coding agent that reads project-level instruction files.
