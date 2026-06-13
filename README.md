@@ -8,7 +8,7 @@
 
 > AI agent says done. You still don't know if the next loop should run.
 
-Turns completion records into governed next-loop decisions using GO / HOLD / CAP / BLOCK.
+A no-install Lite Footer that turns AI coding “done” reports into clear next-loop decisions: GO / HOLD / CAP / BLOCK.
 
 ## What this is
 
