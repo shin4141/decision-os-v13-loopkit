@@ -10,6 +10,8 @@
 
 A no-install Lite Footer that turns AI coding “done” reports into clear next-loop decisions: GO / HOLD / CAP / BLOCK.
 
+If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
+
 ## What this is
 
 V13 LoopKit is a copy-paste reporting kit for AI coding agents.
