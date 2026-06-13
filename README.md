@@ -6,9 +6,21 @@
 ![No automation](https://img.shields.io/badge/automation-none-lightgrey)
 ![Human approval](https://img.shields.io/badge/human%20approval-required-orange)
 
-> AI agent says done. You still don't know if the next loop should run.
+> Good completion reduces future AI cost. Good loops reduce lifetime AI cost.
 
-A no-install Lite Footer that turns AI coding “done” reports into clear next-loop decisions: GO / HOLD / CAP / BLOCK.
+Bad completion makes the next AI run spend tokens recovering context.
+
+Bad handoff makes stronger models do cleanup work.
+
+Bad loops keep burning cost forever.
+
+Before paying for a stronger model, fix the fuel efficiency of your AI workflow.
+
+Decision-OS V13 is a no-install Lite Footer for AI coding sessions:
+
+- V12 checks whether the work is actually complete and restartable.
+- V13 checks whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
+- `CAP` prevents small finished tasks from expanding into expensive scope creep.
 
 If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
 
@@ -18,7 +30,7 @@ V13 LoopKit is a copy-paste reporting kit for AI coding agents.
 
 It is designed for workflows where an agent can follow project-level instructions, including Codex, Claude Code, Cursor, Cline, and similar tools.
 
-After an agent says a task is done, LoopKit makes the agent report two things:
+After an agent says a task is done, LoopKit makes the agent report the completion state and the next-loop gate:
 
 1. whether the task is actually complete and restartable
 2. whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`
