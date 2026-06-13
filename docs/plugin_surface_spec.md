@@ -407,6 +407,22 @@ Pluginization:
 DESIGN-CAP
 ```
 
+## Plugin Readiness as Aspire Anchor
+
+Pluginization remains parked as implementation.
+
+Plugin Readiness may be used as a near-term Aspire Anchor before Stars/adoption.
+
+```text
+Plugin Readiness → Stars/adoption → Revenue → Enjoy life
+```
+
+Do not build the plugin yet; improve the conditions that would make the plugin obvious to build.
+
+Future 0.01 loops may improve readiness, recommendation clarity, copy-friction evidence, external proofs, or entry-path clarity.
+
+They must preserve `AGENTS.md` as canonical, avoid double-update cost, and must not create plugin implementation before activation conditions are mostly true.
+
 Ready to move toward implementation only when:
 
 * this surface spec is understandable to a first-time user
