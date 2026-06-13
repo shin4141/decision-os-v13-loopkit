@@ -416,6 +416,25 @@ Ready to move toward implementation only when:
 * Decision Packet conditions are clear
 * there is a concrete external signal that plugin form is needed
 
+Activation timing:
+
+Pluginization should remain parked until most of these are true:
+
+* `AGENTS.md` copy friction is observed from at least one real user or external agent workflow
+* at least two external normal-repo proofs have succeeded with `AGENTS.md`
+* README entry-path testing passes
+* V12/V13 reporting format remains stable across several loops
+* pluginization would reduce setup friction without changing the canonical rule set
+* expected plugin update cost is lower than continued manual-copy friction
+* there is an explicit owner decision to activate pluginization
+
+Boundaries:
+
+* Do not build the plugin before the rule set stabilizes.
+* Do not wait for perfect demand before defining the plugin shelf.
+* Pluginization is a cross-repo / packaging decision, not a reason to split the canonical rule set.
+* `AGENTS.md` remains canonical unless explicitly changed by owner decision.
+
 ## One-Line Rule
 
 Design the plugin surface before implementing the plugin.
