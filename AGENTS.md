@@ -56,6 +56,29 @@ Known Gaps:
 Then produce the V13 Loop Record.
 ```
 
+## Operational Judgment Core References
+
+V13 gates are not label selection.
+
+Before choosing `PASS / DELAY / BLOCK` or `GO / HOLD / CAP / BLOCK`, consult the relevant operational reference when that judgment is needed.
+
+- Next 0.01 selection: read `field_notes/021_required_intermediate_node.md`.
+  Use when selecting the next action. The next 0.01 is the earliest missing required intermediate node between current state and target state.
+- V12→V13 mapping: read `field_notes/022_v12_to_v13_mapping.md`.
+  Use when converting a V12 completion state into a V13 next-loop gate. `PASS` does not automatically mean `GO`; `DELAY / BLOCK / UNKNOWN` must not produce `GO`.
+- CAP axis and limit selection: read `field_notes/023_cap_axis_limit_selection.md`.
+  Use when choosing `CAP`. `CAP` requires a concrete axis and limit. If no concrete limit can be derived, choose `HOLD` instead of arbitrary `CAP`.
+- Aspire / Carrier / Re-entry Capacity: read `field_notes/024_aspire_carrier_reentry_operational_definitions.md`.
+  Use when judging whether a loop damages owner purpose, carrying capacity, or future restartability.
+- Footer axis consolidation: read `field_notes/025_footer_axis_consolidation.md`.
+  Use when deciding whether to include only V13 Lite Footer, or also Chat Continuation / Context Compression. More footers are not better.
+
+If the relevant reference has not been checked and the judgment depends on it, do not output `GO`.
+
+Use `HOLD` or `CAP` until the required judgment reference is checked or the missing evidence is recovered.
+
+AGENTS.md must not treat these field notes as optional background when making these judgments. They are operational references until their contents are later promoted into docs or schemas.
+
 ## V13 Lite Footer
 
 At the end of each task report, include a short V13 next-loop footer.
