@@ -68,6 +68,13 @@ Before choosing `PASS / DELAY / BLOCK` or `GO / HOLD / CAP / BLOCK`, consult the
   Use when converting a V12 completion state into a V13 next-loop gate. `PASS` does not automatically mean `GO`; `DELAY / BLOCK / UNKNOWN` must not produce `GO`.
 - CAP axis and limit selection: read `field_notes/023_cap_axis_limit_selection.md`.
   Use when choosing `CAP`. `CAP` requires a concrete axis and limit. If no concrete limit can be derived, choose `HOLD` instead of arbitrary `CAP`.
+- Execution Loop Gate:
+  When asked to run or repeat a loop, do not GO from momentum.
+  First check: exit condition, evidence source, touch surface, rollback, and debt risk.
+  GO only when all five are clear and bounded.
+  CAP if useful but limits/evidence are incomplete.
+  HOLD if requirements or owner decision are unclear.
+  BLOCK if the loop weakens measurement, hides debt, or violates constraints.
 - Aspire / Carrier / Re-entry Capacity: read `field_notes/024_aspire_carrier_reentry_operational_definitions.md`.
   Use when judging whether a loop damages owner purpose, carrying capacity, or future restartability.
 - Footer axis consolidation: read `field_notes/025_footer_axis_consolidation.md`.
