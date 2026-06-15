@@ -19,6 +19,7 @@ The repository currently focuses on:
 - bounded field notes as proof
 - restartable handoff anchors
 - examples-side navigation pointer
+- fork-user Codex quickstart
 - public-entry evidence without public churn
 
 ## Current Repo State
@@ -27,7 +28,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `c563c5f Add examples start pointer`
+- Latest commit: `6e42731 Add reusable residue quickstart note`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -78,6 +79,13 @@ Completed and parked:
 - The start example is `examples/cap.v12_handoff_review.json`.
 - Reason: it shows completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision.
 - This was a local examples-side edit, not a README/public/canonical edit.
+- `docs/fork_codex_quickstart.md` was added as a docs-side fork-user Codex quickstart.
+- Field Notes 067-069 recorded the PreGOAL Gate Architecture observation, selected the fork-user Codex quickstart case, and mapped it into P1-P8 modules.
+- Field Note 070 reviewed the current quickstart against P1-P8.
+- P8 was the only `HOLD` module because reusable residue for future fork users was implied but not explicit.
+- `docs/fork_codex_quickstart.md` now includes P8 reusable residue guidance.
+- The P8 fix was docs-side only.
+- README, AGENTS, public, and canonical surfaces remain untouched.
 
 Field Note 062 result:
 
@@ -106,7 +114,7 @@ Parked boundaries:
 - `AGENTS.ja.md` must not be edited.
 - `README.md` must not be edited.
 - `CLAUDE.md` must not be edited.
-- docs must not be edited.
+- docs other than explicitly authorized bounded docs-side repairs must not be edited.
 - schema must not be edited.
 - examples JSON files must not be edited.
 - prompts must not be edited.
@@ -150,15 +158,17 @@ When a trigger appears, first:
 ## Current Signal
 
 Signal:
-BLUE / HANDOFF-REFRESHED-TO-C563C5F
+BLUE / HANDOFF-REFRESHED-TO-6E42731
 +
-BLUE / FIELD-NOTES-048-066-ACCOUNTED-FOR
+BLUE / FIELD-NOTES-048-070-ACCOUNTED-FOR
 +
 BLUE / RESTART-ANCHOR-UPDATED
 +
 BLUE / EXAMPLES-SIDE-START-POINTER-RECORDED
 +
 BLUE / CAP-V12-HANDOFF-REVIEW-IS-START-EXAMPLE
++
+BLUE / FORK-CODEX-QUICKSTART-P8-RESIDUE-GUIDANCE-ADDED
 +
 YELLOW / V13-NEXT-LOOP-CAP
 +
@@ -176,7 +186,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `c563c5f Add examples start pointer`.
+The repository is clean, pushed, and restartable from `origin/main` at `6e42731 Add reusable residue quickstart note`.
 
 ## V13 Next Loop Gate
 
@@ -212,16 +222,21 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `c563c5f Add examples start pointer`
+- latest commit: `6e42731 Add reusable residue quickstart note`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
 - Field Note 062 recorded public-entry friction review
 - Field Notes 063-066 recorded examples validation, reader value, first-example selection, and examples pointer edit decision
+- Field Notes 067-070 recorded PreGOAL observation, proof-case selection, quickstart module map, and quickstart module review
 - `examples/README.md` added as a local examples-side start pointer
 - start example: `examples/cap.v12_handoff_review.json`
 - pointer reason: completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision
+- `docs/fork_codex_quickstart.md` includes P8 reusable residue guidance
+- P8 was the only `HOLD` module in the PreGOAL module review
+- P8 fix was docs-side only
 - README edits remain `HOLD`
+- AGENTS promotion remains `HOLD`
 - public value remains unproven without real reader evidence
 - no canonical promotion
 - no implementation expansion
