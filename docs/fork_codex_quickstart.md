@@ -51,6 +51,23 @@ V13 helps after an AI-assisted task or loop, when the question is not only "is i
 * should it be held until more evidence exists?
 * should it be blocked because it may create debt, broaden scope, or damage the repo?
 
+## After a task, ask for reusable residue
+
+After Codex finishes a task, ask it to leave a small reusable residue, not only a completion summary.
+
+Useful residue may include:
+
+* what was changed
+* what was not touched
+* validation or checks performed
+* V12 State
+* V13 Next Loop Gate
+* why the next loop is GO / HOLD / CAP / BLOCK
+* what a future Codex session should read first
+* stop condition
+
+This helps the next session restart without rereading the full history.
+
 ## Start example
 
 Start with:
