@@ -18,6 +18,7 @@ The repository currently focuses on:
 - Roadmap Anchors for meaningful 0.01 selection
 - bounded field notes as proof
 - restartable handoff anchors
+- examples-side navigation pointer
 - public-entry evidence without public churn
 
 ## Current Repo State
@@ -26,7 +27,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `044b4bd Record public entry friction review`
+- Latest commit: `c563c5f Add examples start pointer`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -69,6 +70,14 @@ Completed and parked:
 - The powerful-agent damage-risk route has one possible gap candidate.
 - Public value remains unproven without real reader evidence.
 - README edits remain `HOLD`.
+- Field Note 063 confirmed 12 examples checked / 12 valid / 0 invalid.
+- Field Note 064 confirmed the examples are useful enough to support adoption readiness and restartability.
+- Field Note 065 selected `examples/cap.v12_handoff_review.json` as the best general start-here example.
+- Field Note 066 selected an examples-side index/note as the preferred edit surface.
+- `examples/README.md` was added as a local examples-side start pointer.
+- The start example is `examples/cap.v12_handoff_review.json`.
+- Reason: it shows completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision.
+- This was a local examples-side edit, not a README/public/canonical edit.
 
 Field Note 062 result:
 
@@ -92,13 +101,14 @@ Parked boundaries:
 
 - Lane Recall / Transfer Packet branch remains parked unless a real-task trigger appears.
 - README/public-entry edits remain `HOLD` unless a concrete exposed gap is separately authorized.
+- AGENTS promotion remains `HOLD` unless Shin explicitly asks for AGENTS promotion review.
 - `AGENTS.md` must not be edited.
 - `AGENTS.ja.md` must not be edited.
 - `README.md` must not be edited.
 - `CLAUDE.md` must not be edited.
 - docs must not be edited.
 - schema must not be edited.
-- examples must not be edited.
+- examples JSON files must not be edited.
 - prompts must not be edited.
 - `USE_CASES.md` must not be edited.
 - no automation
@@ -140,11 +150,15 @@ When a trigger appears, first:
 ## Current Signal
 
 Signal:
-BLUE / HANDOFF-REFRESHED-TO-044B4BD
+BLUE / HANDOFF-REFRESHED-TO-C563C5F
 +
-BLUE / FIELD-NOTES-048-062-ACCOUNTED-FOR
+BLUE / FIELD-NOTES-048-066-ACCOUNTED-FOR
 +
 BLUE / RESTART-ANCHOR-UPDATED
++
+BLUE / EXAMPLES-SIDE-START-POINTER-RECORDED
++
+BLUE / CAP-V12-HANDOFF-REVIEW-IS-START-EXAMPLE
 +
 YELLOW / V13-NEXT-LOOP-CAP
 +
@@ -162,7 +176,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `044b4bd Record public entry friction review`.
+The repository is clean, pushed, and restartable from `origin/main` at `c563c5f Add examples start pointer`.
 
 ## V13 Next Loop Gate
 
@@ -198,11 +212,15 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `044b4bd Record public entry friction review`
+- latest commit: `c563c5f Add examples start pointer`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
 - Field Note 062 recorded public-entry friction review
+- Field Notes 063-066 recorded examples validation, reader value, first-example selection, and examples pointer edit decision
+- `examples/README.md` added as a local examples-side start pointer
+- start example: `examples/cap.v12_handoff_review.json`
+- pointer reason: completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision
 - README edits remain `HOLD`
 - public value remains unproven without real reader evidence
 - no canonical promotion
@@ -231,7 +249,7 @@ Do not:
 - edit `AGENTS.md`
 - edit `AGENTS.ja.md`
 - edit `CLAUDE.md`
-- edit docs, schema, examples, prompts, or `USE_CASES.md`
+- edit docs, schema, examples JSON files, prompts, or `USE_CASES.md`
 - add automation
 - add hooks
 - add MCP
