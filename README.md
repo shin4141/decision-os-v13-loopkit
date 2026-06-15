@@ -66,6 +66,8 @@ Use [`AGENTS.md`](AGENTS.md) for Codex or any AI coding agent that reads project
 
 Use [`CLAUDE.md`](CLAUDE.md) for Claude Code. It is a thin entry point that points back to `AGENTS.md` as the canonical rule set.
 
+For fork users using Codex, start here: [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
+
 Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.
 
 Use [`templates/user_roadmap_anchors.md`](templates/user_roadmap_anchors.md) when you want V13 to align 0.01 repairs with your own direction line.
