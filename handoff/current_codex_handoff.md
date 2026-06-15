@@ -20,6 +20,7 @@ The repository currently focuses on:
 - restartable handoff anchors
 - examples-side navigation pointer
 - fork-user Codex quickstart
+- strict README entrypoint pointer
 - public-entry evidence without public churn
 
 ## Current Repo State
@@ -28,7 +29,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `6e42731 Add reusable residue quickstart note`
+- Latest commit: `6cc594d Add fork Codex quickstart pointer`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -85,7 +86,15 @@ Completed and parked:
 - P8 was the only `HOLD` module because reusable residue for future fork users was implied but not explicit.
 - `docs/fork_codex_quickstart.md` now includes P8 reusable residue guidance.
 - The P8 fix was docs-side only.
-- README, AGENTS, public, and canonical surfaces remain untouched.
+- Field Note 071 proved the fork + Codex quickstart path is clear enough for a pre-article fixed point.
+- Field Note 072 reviewed the AGENTS context-bloat article outline, but article drafting remained capped.
+- Field Note 073 recorded traffic evidence: visible human entrypoints are Overview/README and AGENTS, while deep docs are not yet visible enough.
+- Field Note 074 selected a strict README pointer candidate to `docs/fork_codex_quickstart.md`.
+- `README.md` now contains one strict pointer for fork users using Codex:
+  `For fork users using Codex, start here: docs/fork_codex_quickstart.md`
+- Destination: `docs/fork_codex_quickstart.md`.
+- This was a one-line pointer only, not a README rewrite.
+- AGENTS, public, and canonical surfaces remain untouched.
 
 Field Note 062 result:
 
@@ -158,9 +167,9 @@ When a trigger appears, first:
 ## Current Signal
 
 Signal:
-BLUE / HANDOFF-REFRESHED-TO-6E42731
+BLUE / HANDOFF-REFRESHED-TO-6CC594D
 +
-BLUE / FIELD-NOTES-048-070-ACCOUNTED-FOR
+BLUE / FIELD-NOTES-048-074-ACCOUNTED-FOR
 +
 BLUE / RESTART-ANCHOR-UPDATED
 +
@@ -169,6 +178,8 @@ BLUE / EXAMPLES-SIDE-START-POINTER-RECORDED
 BLUE / CAP-V12-HANDOFF-REVIEW-IS-START-EXAMPLE
 +
 BLUE / FORK-CODEX-QUICKSTART-P8-RESIDUE-GUIDANCE-ADDED
++
+BLUE / STRICT-README-FORK-CODEX-POINTER-RECORDED
 +
 YELLOW / V13-NEXT-LOOP-CAP
 +
@@ -186,7 +197,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `6e42731 Add reusable residue quickstart note`.
+The repository is clean, pushed, and restartable from `origin/main` at `6cc594d Add fork Codex quickstart pointer`.
 
 ## V13 Next Loop Gate
 
@@ -222,20 +233,22 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `6e42731 Add reusable residue quickstart note`
+- latest commit: `6cc594d Add fork Codex quickstart pointer`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
 - Field Note 062 recorded public-entry friction review
 - Field Notes 063-066 recorded examples validation, reader value, first-example selection, and examples pointer edit decision
 - Field Notes 067-070 recorded PreGOAL observation, proof-case selection, quickstart module map, and quickstart module review
+- Field Notes 071-074 recorded fork + Codex reader proof, article outline review, traffic-based entrypoint review, and entrypoint pointer decision review
 - `examples/README.md` added as a local examples-side start pointer
 - start example: `examples/cap.v12_handoff_review.json`
 - pointer reason: completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision
 - `docs/fork_codex_quickstart.md` includes P8 reusable residue guidance
 - P8 was the only `HOLD` module in the PreGOAL module review
 - P8 fix was docs-side only
-- README edits remain `HOLD`
+- README now contains one strict fork + Codex pointer to `docs/fork_codex_quickstart.md`
+- README pointer was one-line only, not a rewrite
 - AGENTS promotion remains `HOLD`
 - public value remains unproven without real reader evidence
 - no canonical promotion
