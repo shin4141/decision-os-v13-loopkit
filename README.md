@@ -8,11 +8,11 @@
 
 > Good completion reduces future AI cost. Good loops reduce lifetime AI cost.
 
-Bad completion makes the next AI run spend tokens recovering context.
+AI work gets expensive when every session has to rediscover the same context.
 
-Bad handoff makes stronger models do cleanup work.
+LoopKit helps Codex-style workflows reduce that hidden re-onboarding cost: what was done, why it stopped, what must not be touched, where residue belongs, and whether the next loop should run.
 
-Bad loops keep burning cost forever.
+It keeps always-on rules small, moves manuals and examples to on-demand surfaces, and records restart points so the next agent does not have to reconstruct everything from scratch.
 
 Before paying for a stronger model, fix the fuel efficiency of your AI workflow.
 
@@ -20,6 +20,7 @@ Decision-OS V13 is a no-install Lite Footer for AI coding sessions:
 
 - V12 checks whether the work is actually complete and restartable.
 - V13 checks whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
+- `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed.
 - `CAP` prevents small finished tasks from expanding into expensive scope creep.
 
 If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
