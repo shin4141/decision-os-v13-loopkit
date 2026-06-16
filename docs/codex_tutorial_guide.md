@@ -14,6 +14,22 @@ Before explaining, read:
 4. `examples/README.md`
 5. `examples/cap.v12_handoff_review.json`
 
+## Language Behavior
+
+Use the user's language for explanations and menu guidance.
+
+Keep file paths, command-like labels, and gate names unchanged:
+
+- `README.md`
+- `AGENTS.md`
+- `field_notes/`
+- `handoff/current_codex_handoff.md`
+- `examples/`
+- `GO / HOLD / CAP / BLOCK`
+- `PASS / DELAY / BLOCK`
+
+If the user asks in Japanese, present the tutorial menu and explanations in Japanese, while preserving the original English file names and gate labels.
+
 ## Start With This Menu
 
 Show the user this menu:
@@ -83,4 +99,3 @@ Start by showing me the menu.
 Then recommend the best first path for a fork user.
 Do not edit files unless I explicitly approve.
 ```
-
