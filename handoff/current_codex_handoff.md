@@ -23,6 +23,7 @@ The repository currently focuses on:
 - fork-user residue storage map
 - Codex first-run tutorial guide
 - strict README entrypoint pointer
+- README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
 - public-entry evidence without public churn
 
@@ -32,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `7151ca7 Add quickstart pointer to Codex tutorial`
+- Latest commit: `5bd3808 Clarify README re-onboarding cost positioning`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -123,6 +124,11 @@ Completed and parked:
 - This makes the Codex first-run tutorial discoverable from the fork quickstart.
 - This was a one-line pointer only.
 - No README, AGENTS, `AGENTS.ja.md`, tutorial guide edit, new files, translations, new gates, theory expansion, automation, or implementation were added.
+- README opening now emphasizes hidden re-onboarding cost.
+- LoopKit is framed as reducing repeated context rediscovery: what was done, why it stopped, what must not be touched, where residue belongs, and whether the next loop should run.
+- README now also states that `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed.
+- This was a bounded README positioning edit only.
+- No AGENTS, docs, examples, new concepts, automation, or implementation were added.
 
 Field Note 062 result:
 
@@ -217,6 +223,8 @@ BLUE / CODEX-FIRST-RUN-TUTORIAL-GUIDE-ADDED
 +
 BLUE / QUICKSTART-TO-TUTORIAL-POINTER-ADDED
 +
+BLUE / README-REONBOARDING-COST-POSITIONING-CLARIFIED
++
 YELLOW / V13-NEXT-LOOP-CAP
 +
 YELLOW / PUBLIC-VALUE-STILL-UNPROVEN
@@ -233,7 +241,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `7151ca7 Add quickstart pointer to Codex tutorial`.
+The repository is clean, pushed, and restartable from `origin/main` at `5bd3808 Clarify README re-onboarding cost positioning`.
 
 ## V13 Next Loop Gate
 
@@ -269,7 +277,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `7151ca7 Add quickstart pointer to Codex tutorial`
+- latest commit: `5bd3808 Clarify README re-onboarding cost positioning`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -303,6 +311,10 @@ Preserve:
 - this makes the Codex first-run tutorial discoverable from the fork quickstart
 - this was a one-line pointer only
 - no README, AGENTS, `AGENTS.ja.md`, tutorial guide edit, new files, translations, new gates, theory expansion, automation, or implementation were added
+- README opening emphasizes hidden re-onboarding cost and repeated context rediscovery
+- README now states that `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed
+- this was a bounded README positioning edit only
+- no AGENTS, docs, examples, new concepts, automation, or implementation were added
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
