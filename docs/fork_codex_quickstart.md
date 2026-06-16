@@ -68,6 +68,20 @@ Useful residue may include:
 
 This helps the next session restart without rereading the full history.
 
+## Where to record things
+
+Before or after a task, decide where the residue belongs:
+
+* `field_notes/`: observations, failures, near-misses, and reusable lessons that are not yet canonical.
+* `handoff/current_codex_handoff.md`: the current restart point for a future Codex or human session.
+* `examples/`: reusable examples that teach a pattern.
+* `AGENTS.md`: minimal always-on rules only. Treat promotion to AGENTS.md as HOLD unless separately authorized.
+* `README.md`: public entrypoint only. Do not use it as a work log.
+* No record: tiny, reversible work with no reusable lesson or restart need.
+
+Before starting a non-trivial task, Codex should state the expected record target:
+`none`, `field_note`, `handoff`, `example`, or `AGENTS_candidate_HOLD`.
+
 ## Start example
 
 Start with:
