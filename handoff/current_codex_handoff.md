@@ -32,7 +32,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `afd775e Add Codex first-run tutorial guide`
+- Latest commit: `2349276 Add tutorial language behavior rule`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -115,6 +115,7 @@ Completed and parked:
 - `docs/codex_tutorial_guide.md` was created as a short Codex-facing first-run tutorial guide for fork users.
 - It lets Codex onboard a new user like a game tutorial.
 - The guide includes files Codex should read first, a user-facing menu, recommended first-run order, recording surfaces, boundaries against editing during tutorial, no AGENTS promotion, no README rewrite, no new gate outcomes, and `GO / HOLD / CAP / BLOCK` only.
+- `docs/codex_tutorial_guide.md` now tells Codex to use the user's language for tutorial explanations and menus, while preserving file paths and gate labels such as `README.md`, `AGENTS.md`, `GO / HOLD / CAP / BLOCK`, and `PASS / DELAY / BLOCK`.
 - This is an onboarding guide, not a theory document, README rewrite, AGENTS rule, implementation, or automation.
 - No README, AGENTS, handoff beyond this refresh, examples, field notes, automation, implementation, or external repo changes were added.
 
@@ -225,7 +226,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `afd775e Add Codex first-run tutorial guide`.
+The repository is clean, pushed, and restartable from `origin/main` at `2349276 Add tutorial language behavior rule`.
 
 ## V13 Next Loop Gate
 
@@ -261,7 +262,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `afd775e Add Codex first-run tutorial guide`
+- latest commit: `2349276 Add tutorial language behavior rule`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -288,6 +289,7 @@ Preserve:
 - no README, AGENTS, `AGENTS.ja.md`, tutorial guide file, field notes, automation, implementation, or external repo changes were added
 - `docs/codex_tutorial_guide.md` was created as a short Codex-facing first-run tutorial guide for fork users
 - tutorial guide includes read-first files, user-facing menu, recommended first-run order, recording surfaces, boundaries against tutorial edits, no AGENTS promotion, no README rewrite, no new gate outcomes, and `GO / HOLD / CAP / BLOCK` only
+- tutorial guide tells Codex to use the user's language for tutorial explanations and menus while preserving file paths and gate labels such as `README.md`, `AGENTS.md`, `GO / HOLD / CAP / BLOCK`, and `PASS / DELAY / BLOCK`
 - tutorial guide is onboarding only, not theory, README rewrite, AGENTS rule, implementation, or automation
 - no discoverability pointers have been added yet
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
