@@ -32,7 +32,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `2349276 Add tutorial language behavior rule`
+- Latest commit: `7151ca7 Add quickstart pointer to Codex tutorial`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -118,6 +118,11 @@ Completed and parked:
 - `docs/codex_tutorial_guide.md` now tells Codex to use the user's language for tutorial explanations and menus, while preserving file paths and gate labels such as `README.md`, `AGENTS.md`, `GO / HOLD / CAP / BLOCK`, and `PASS / DELAY / BLOCK`.
 - This is an onboarding guide, not a theory document, README rewrite, AGENTS rule, implementation, or automation.
 - No README, AGENTS, handoff beyond this refresh, examples, field notes, automation, implementation, or external repo changes were added.
+- `docs/fork_codex_quickstart.md` now includes one pointer to `docs/codex_tutorial_guide.md`.
+- Exact line: `For an interactive first-run walkthrough, ask Codex to read [Codex Tutorial Guide](codex_tutorial_guide.md).`
+- This makes the Codex first-run tutorial discoverable from the fork quickstart.
+- This was a one-line pointer only.
+- No README, AGENTS, `AGENTS.ja.md`, tutorial guide edit, new files, translations, new gates, theory expansion, automation, or implementation were added.
 
 Field Note 062 result:
 
@@ -210,6 +215,8 @@ BLUE / QUICKSTART-RESIDUE-STORAGE-MAP-RECORDED
 +
 BLUE / CODEX-FIRST-RUN-TUTORIAL-GUIDE-ADDED
 +
+BLUE / QUICKSTART-TO-TUTORIAL-POINTER-ADDED
++
 YELLOW / V13-NEXT-LOOP-CAP
 +
 YELLOW / PUBLIC-VALUE-STILL-UNPROVEN
@@ -226,7 +233,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `2349276 Add tutorial language behavior rule`.
+The repository is clean, pushed, and restartable from `origin/main` at `7151ca7 Add quickstart pointer to Codex tutorial`.
 
 ## V13 Next Loop Gate
 
@@ -262,7 +269,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `2349276 Add tutorial language behavior rule`
+- latest commit: `7151ca7 Add quickstart pointer to Codex tutorial`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -291,7 +298,11 @@ Preserve:
 - tutorial guide includes read-first files, user-facing menu, recommended first-run order, recording surfaces, boundaries against tutorial edits, no AGENTS promotion, no README rewrite, no new gate outcomes, and `GO / HOLD / CAP / BLOCK` only
 - tutorial guide tells Codex to use the user's language for tutorial explanations and menus while preserving file paths and gate labels such as `README.md`, `AGENTS.md`, `GO / HOLD / CAP / BLOCK`, and `PASS / DELAY / BLOCK`
 - tutorial guide is onboarding only, not theory, README rewrite, AGENTS rule, implementation, or automation
-- no discoverability pointers have been added yet
+- `docs/fork_codex_quickstart.md` now includes one pointer to `docs/codex_tutorial_guide.md`
+- exact line: `For an interactive first-run walkthrough, ask Codex to read [Codex Tutorial Guide](codex_tutorial_guide.md).`
+- this makes the Codex first-run tutorial discoverable from the fork quickstart
+- this was a one-line pointer only
+- no README, AGENTS, `AGENTS.ja.md`, tutorial guide edit, new files, translations, new gates, theory expansion, automation, or implementation were added
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
