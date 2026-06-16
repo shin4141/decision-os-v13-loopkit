@@ -2,6 +2,8 @@
 
 This guide is for someone who forks this repo and wants to ask Codex to use V13 without guessing what to read first.
 
+For an interactive first-run walkthrough, ask Codex to read [Codex Tutorial Guide](codex_tutorial_guide.md).
+
 ## Ask Codex to read these first
 
 1. `AGENTS.md`
