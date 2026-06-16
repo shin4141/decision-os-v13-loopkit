@@ -21,6 +21,7 @@ The repository currently focuses on:
 - examples-side navigation pointer
 - fork-user Codex quickstart
 - fork-user residue storage map
+- Codex first-run tutorial guide
 - strict README entrypoint pointer
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
 - public-entry evidence without public churn
@@ -31,7 +32,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `c2dde5f Add quickstart residue record map`
+- Latest commit: `afd775e Add Codex first-run tutorial guide`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -111,6 +112,11 @@ Completed and parked:
 - This reduces fork-user confusion about where observations, failures, handoffs, reusable examples, and AGENTS promotion candidates belong.
 - This was a quickstart storage-map edit only.
 - No README, AGENTS, `AGENTS.ja.md`, tutorial guide file, field notes, automation, implementation, or external repo changes were added.
+- `docs/codex_tutorial_guide.md` was created as a short Codex-facing first-run tutorial guide for fork users.
+- It lets Codex onboard a new user like a game tutorial.
+- The guide includes files Codex should read first, a user-facing menu, recommended first-run order, recording surfaces, boundaries against editing during tutorial, no AGENTS promotion, no README rewrite, no new gate outcomes, and `GO / HOLD / CAP / BLOCK` only.
+- This is an onboarding guide, not a theory document, README rewrite, AGENTS rule, implementation, or automation.
+- No README, AGENTS, handoff beyond this refresh, examples, field notes, automation, implementation, or external repo changes were added.
 
 Field Note 062 result:
 
@@ -201,6 +207,8 @@ BLUE / PROMPT-INJECTION-SAFETY-FLOOR-RECORDED-IN-AGENTS
 +
 BLUE / QUICKSTART-RESIDUE-STORAGE-MAP-RECORDED
 +
+BLUE / CODEX-FIRST-RUN-TUTORIAL-GUIDE-ADDED
++
 YELLOW / V13-NEXT-LOOP-CAP
 +
 YELLOW / PUBLIC-VALUE-STILL-UNPROVEN
@@ -217,7 +225,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `c2dde5f Add quickstart residue record map`.
+The repository is clean, pushed, and restartable from `origin/main` at `afd775e Add Codex first-run tutorial guide`.
 
 ## V13 Next Loop Gate
 
@@ -253,7 +261,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `c2dde5f Add quickstart residue record map`
+- latest commit: `afd775e Add Codex first-run tutorial guide`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -278,6 +286,10 @@ Preserve:
 - quickstart now asks Codex to state expected pre-task record target: `none`, `field_note`, `handoff`, `example`, or `AGENTS_candidate_HOLD`
 - this was a quickstart storage-map edit only
 - no README, AGENTS, `AGENTS.ja.md`, tutorial guide file, field notes, automation, implementation, or external repo changes were added
+- `docs/codex_tutorial_guide.md` was created as a short Codex-facing first-run tutorial guide for fork users
+- tutorial guide includes read-first files, user-facing menu, recommended first-run order, recording surfaces, boundaries against tutorial edits, no AGENTS promotion, no README rewrite, no new gate outcomes, and `GO / HOLD / CAP / BLOCK` only
+- tutorial guide is onboarding only, not theory, README rewrite, AGENTS rule, implementation, or automation
+- no discoverability pointers have been added yet
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
