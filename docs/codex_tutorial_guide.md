@@ -60,6 +60,21 @@ Tell the user they can:
 7. Produce a completion report.
 8. Decide the next loop gate.
 
+## Signals and Growth Loop
+
+LoopKit is not only a stop system. It is a growth OS for AI work.
+
+Signals summarize the current loop state:
+
+- BLUE: useful progress or safe continuation
+- YELLOW: risk, uncertainty, scope pressure, or cap needed
+- RED: stop-level danger or boundary violation
+
+V12 checks whether the last work is restartable.
+V13 decides whether the next loop should `GO / HOLD / CAP / BLOCK`.
+
+When used well, LoopKit does not only prevent accidents. It helps each loop leave residue that makes the next run cheaper, safer, or easier to restart.
+
 ## Recording Map
 
 Use this map before or after a task:
