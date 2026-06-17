@@ -163,6 +163,11 @@ Completed and parked:
 - Keep V13 gate language canonical: use only `GO / HOLD / CAP / BLOCK`; do not use `TEST GO` as a gate.
 - A second-agent dry-run may proceed under `CAP`, but only with no file edits, no commits, no new canonical terms, no AGENTS promotion, no automation or routing, and no new gate outcomes.
 - Avoid canonicalizing new phrases such as `Owner Choice Flow`; use plain wording like `two-choice Owner prompt format`.
+- A second-agent dry-run was completed using Claude Code.
+- The residue recommendation format was exercised again in a bounded dry-run.
+- This is now observed twice across coding-agent contexts, but still must not be described as proven.
+- Keep the claim level as `observed again` and `exercised twice in bounded dry-runs`, not `proven`.
+- The negative-example suggestion was skipped for now to avoid adding examples before a stronger need appears.
 
 Field Note 062 result:
 
@@ -368,6 +373,9 @@ Preserve:
 - second-agent dry-run may proceed under `CAP` only with no file edits, commits, new canonical terms, AGENTS promotion, automation/routing, or new gate outcomes
 - keep gate language canonical: `GO / HOLD / CAP / BLOCK` only; avoid `TEST GO`
 - avoid canonicalizing phrases such as `Owner Choice Flow`; use plain wording like `two-choice Owner prompt format`
+- second-agent dry-run was completed using Claude Code
+- residue recommendation format was `observed again` and `exercised twice in bounded dry-runs`, but still not `proven`
+- negative-example suggestion was skipped for now
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
