@@ -84,6 +84,20 @@ Before or after a task, decide where the residue belongs:
 Before starting a non-trivial task, Codex should state the expected record target:
 `none`, `field_note`, `handoff`, `example`, or `AGENTS_candidate_HOLD`.
 
+## When to read each surface
+
+Do not read every surface for every task. Use the smallest surface that matches the current need.
+
+* `AGENTS.md`: read as the always-on rule surface before repo work.
+* `README.md`: read when you need the public entrypoint or project positioning.
+* `docs/fork_codex_quickstart.md`: read when onboarding a fork user or choosing where residue should go.
+* `docs/codex_tutorial_guide.md`: read when the user wants an interactive first-run walkthrough.
+* `handoff/current_codex_handoff.md`: read when resuming prior work or checking the current restart anchor.
+* `examples/`: read only when a similar reusable pattern is needed.
+* `field_notes/`: read only when investigating a related failure, observation, or non-canonical lesson.
+
+If the current task is tiny, reversible, and has no reusable residue, no extra memory surface is required.
+
 ## Start example
 
 Start with:
