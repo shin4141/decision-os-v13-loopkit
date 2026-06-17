@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `5bd3808 Clarify README re-onboarding cost positioning`
+- Latest commit: `60e936b Add tutorial signals growth loop note`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -129,6 +129,11 @@ Completed and parked:
 - README now also states that `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed.
 - This was a bounded README positioning edit only.
 - No AGENTS, docs, examples, new concepts, automation, or implementation were added.
+- `docs/codex_tutorial_guide.md` now includes a Signals and Growth Loop section.
+- It explains BLUE / YELLOW / RED signals.
+- It explains V12 as restartability checking.
+- It explains V13 as `GO / HOLD / CAP / BLOCK` next-loop gating.
+- It frames LoopKit as a growth OS that leaves residue for cheaper, safer, easier restarts.
 
 Field Note 062 result:
 
@@ -241,7 +246,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `5bd3808 Clarify README re-onboarding cost positioning`.
+The repository is clean, pushed, and restartable from `origin/main` at `60e936b Add tutorial signals growth loop note`.
 
 ## V13 Next Loop Gate
 
@@ -277,7 +282,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `5bd3808 Clarify README re-onboarding cost positioning`
+- latest commit: `60e936b Add tutorial signals growth loop note`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -315,6 +320,8 @@ Preserve:
 - README now states that `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed
 - this was a bounded README positioning edit only
 - no AGENTS, docs, examples, new concepts, automation, or implementation were added
+- `docs/codex_tutorial_guide.md` includes a Signals and Growth Loop section
+- tutorial guide explains BLUE / YELLOW / RED signals, V12 restartability checking, V13 `GO / HOLD / CAP / BLOCK` next-loop gating, and LoopKit as a growth OS that leaves residue for cheaper, safer, easier restarts
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
