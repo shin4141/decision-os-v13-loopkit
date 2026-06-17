@@ -53,6 +53,48 @@ V13 helps after an AI-assisted task or loop, when the question is not only "is i
 * should it be held until more evidence exists?
 * should it be blocked because it may create debt, broaden scope, or damage the repo?
 
+## Attach LoopKit to external goals
+
+LoopKit does not need to replace another `/goal`, loop, or automation.
+
+If an external prompt is good at making a coding agent execute work, keep it. Attach LoopKit at the boundary after the work so the result can be judged, capped, and restarted.
+
+Use this as an exit gate after external goals or loops:
+
+```text
+V12 State: PASS / DELAY / BLOCK
+V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
+
+Evidence:
+<what was verified>
+
+What changed:
+<short summary>
+
+What must not be touched next:
+<boundaries>
+
+Reusable residue:
+<none, or one sentence>
+
+Recommendation:
+Low / Medium / High / Owner Approval Required
+
+Suggested placement:
+handoff / field_notes / examples / docs / AGENTS_candidate_HOLD / no record
+
+Owner choices:
+A. Record the minimal residue
+B. Skip for now
+
+Stop condition:
+<why this loop stops here>
+```
+
+Do not put every external loop rule into `AGENTS.md`.
+
+Use `AGENTS.md` for minimal always-on rules only. Use docs, examples, and handoff for on-demand guidance.
+
 ## After a task, ask for reusable residue
 
 After Codex finishes a task, ask it to leave a small reusable residue, not only a completion summary.
