@@ -158,6 +158,11 @@ Completed and parked:
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
 - It also notes that `Owner Approval Required` is needed for `AGENTS.md` promotion, new files, automation, routing, or canonical rule changes.
 - This records the High-value dry-run residue while skipping the Medium handoff-pointer residue for now.
+- Claim boundary: a single successful dry-run is not proof.
+- Describe the residue recommendation behavior as `observed once` and `exercised once in a bounded dry-run`, not `proven`.
+- Keep V13 gate language canonical: use only `GO / HOLD / CAP / BLOCK`; do not use `TEST GO` as a gate.
+- A second-agent dry-run may proceed under `CAP`, but only with no file edits, no commits, no new canonical terms, no AGENTS promotion, no automation or routing, and no new gate outcomes.
+- Avoid canonicalizing new phrases such as `Owner Choice Flow`; use plain wording like `two-choice Owner prompt format`.
 
 Field Note 062 result:
 
@@ -359,6 +364,10 @@ Preserve:
 - `examples/residue_recommendation_ladder.md` was added as a minimal reusable example for the residue recommendation ladder
 - the example records the High-value dry-run residue and skips the Medium handoff-pointer residue for now
 - no AGENTS, README, docs, automation, routing implementation, or new gate outcomes were added
+- residue recommendation behavior is `observed once` and `exercised once in a bounded dry-run`, not `proven`
+- second-agent dry-run may proceed under `CAP` only with no file edits, commits, new canonical terms, AGENTS promotion, automation/routing, or new gate outcomes
+- keep gate language canonical: `GO / HOLD / CAP / BLOCK` only; avoid `TEST GO`
+- avoid canonicalizing phrases such as `Owner Choice Flow`; use plain wording like `two-choice Owner prompt format`
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
