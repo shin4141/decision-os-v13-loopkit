@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `60e936b Add tutorial signals growth loop note`
+- Latest commit: `80a46e3 Separate tutorial power concepts menu`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -134,6 +134,10 @@ Completed and parked:
 - It explains V12 as restartability checking.
 - It explains V13 as `GO / HOLD / CAP / BLOCK` next-loop gating.
 - It frames LoopKit as a growth OS that leaves residue for cheaper, safer, easier restarts.
+- `docs/codex_tutorial_guide.md` now separates the tutorial menu into `Basic Tutorial` and `Power Concepts / Advanced Concepts`.
+- The original 1-8 tutorial items remain.
+- Optional modules were added: `🚦 Signals` and `🌱 Growth OS`.
+- This improves first-run onboarding by separating basic usage from higher-value LoopKit concepts.
 
 Field Note 062 result:
 
@@ -246,7 +250,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `60e936b Add tutorial signals growth loop note`.
+The repository is clean, pushed, and restartable from `origin/main` at `80a46e3 Separate tutorial power concepts menu`.
 
 ## V13 Next Loop Gate
 
@@ -282,7 +286,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `60e936b Add tutorial signals growth loop note`
+- latest commit: `80a46e3 Separate tutorial power concepts menu`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -322,6 +326,8 @@ Preserve:
 - no AGENTS, docs, examples, new concepts, automation, or implementation were added
 - `docs/codex_tutorial_guide.md` includes a Signals and Growth Loop section
 - tutorial guide explains BLUE / YELLOW / RED signals, V12 restartability checking, V13 `GO / HOLD / CAP / BLOCK` next-loop gating, and LoopKit as a growth OS that leaves residue for cheaper, safer, easier restarts
+- tutorial guide now separates `Basic Tutorial` from `Power Concepts / Advanced Concepts`
+- original 1-8 tutorial items remain, with optional `🚦 Signals` and `🌱 Growth OS` modules
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
