@@ -98,6 +98,48 @@ Do not read every surface for every task. Use the smallest surface that matches 
 
 If the current task is tiny, reversible, and has no reusable residue, no extra memory surface is required.
 
+## When residue is detected
+
+Do not ask the Owner a heavy open-ended question like "Should I add this?"
+
+When reusable residue is detected, the coding agent should report it with a recommendation level, expected effect, suggested placement, and two choices.
+
+Recommendation levels:
+
+* `Low`: mention in the report only. No record may be needed.
+* `Medium`: recording may reduce future re-onboarding cost or prevent a small repeat mistake.
+* `High`: recording is likely to improve restartability, safety, or repeated task quality.
+* `Owner Approval Required`: needed for `AGENTS.md` promotion, new files, automation, routing, or canonical rule changes.
+
+Use this format:
+
+```text
+Detected reusable residue:
+<one sentence>
+
+Recommendation:
+Low / Medium / High / Owner Approval Required
+
+Expected effect:
+<one sentence>
+
+Suggested placement:
+handoff / field_notes / examples / docs / AGENTS_candidate_HOLD / no record
+
+Owner choices:
+A. Record the minimal residue
+B. Skip for now
+```
+
+Default placements:
+
+* Current restart need -> `handoff/current_codex_handoff.md`
+* Non-canonical lesson, failure, or observation -> `field_notes/`
+* Reusable task pattern -> `examples/`
+* Onboarding or manual guidance -> `docs/`
+* Always-on safety rule -> `AGENTS_candidate_HOLD`
+* Tiny reversible task with no reusable lesson -> `no record`
+
 ## Start example
 
 Start with:
