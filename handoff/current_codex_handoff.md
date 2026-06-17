@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `15ecf43 Add quickstart residue recommendation ladder`
+- Latest commit: `23828e4 Add residue recommendation ladder example`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -153,6 +153,11 @@ Completed and parked:
 - It asks agents to report detected reusable residue, recommendation level, expected effect, suggested placement, and two Owner choices.
 - Default placements include `handoff/current_codex_handoff.md`, `field_notes/`, `examples/`, `docs/`, `AGENTS_candidate_HOLD`, and `no record`.
 - This makes the Growth OS more actionable without adding automation, routing, new files, or AGENTS promotion.
+- `examples/residue_recommendation_ladder.md` was added.
+- It provides a minimal reusable example for the residue recommendation ladder.
+- The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
+- It also notes that `Owner Approval Required` is needed for `AGENTS.md` promotion, new files, automation, routing, or canonical rule changes.
+- This records the High-value dry-run residue while skipping the Medium handoff-pointer residue for now.
 
 Field Note 062 result:
 
@@ -265,7 +270,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `15ecf43 Add quickstart residue recommendation ladder`.
+The repository is clean, pushed, and restartable from `origin/main` at `23828e4 Add residue recommendation ladder example`.
 
 ## V13 Next Loop Gate
 
@@ -301,7 +306,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `15ecf43 Add quickstart residue recommendation ladder`
+- latest commit: `23828e4 Add residue recommendation ladder example`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -351,6 +356,9 @@ Preserve:
 - residue ladder asks agents to report detected reusable residue, recommendation level, expected effect, suggested placement, and two Owner choices instead of heavy open-ended Owner prompts
 - default placements include `handoff/current_codex_handoff.md`, `field_notes/`, `examples/`, `docs/`, `AGENTS_candidate_HOLD`, and `no record`
 - this makes Growth OS more actionable without automation, routing, new files, or AGENTS promotion
+- `examples/residue_recommendation_ladder.md` was added as a minimal reusable example for the residue recommendation ladder
+- the example records the High-value dry-run residue and skips the Medium handoff-pointer residue for now
+- no AGENTS, README, docs, automation, routing implementation, or new gate outcomes were added
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
