@@ -22,6 +22,7 @@ The repository currently focuses on:
 - fork-user Codex quickstart
 - fork-user residue storage map
 - Codex first-run tutorial guide
+- Setup Pill read-only starter pack helper
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -33,7 +34,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `1b10767 Add quickstart external goal adapter`
+- Latest commit: `13fb6c9 Rename tutorial repo fit check to setup pill`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -174,6 +175,11 @@ Completed and parked:
 - The section provides an exit-gate format using `V12 State: PASS / DELAY / BLOCK`, `V13 Next Loop Gate: GO / HOLD / CAP / BLOCK`, Evidence, What changed, Boundaries, Reusable residue, Recommendation level, Suggested placement, Owner choices A/B, and Stop condition.
 - It states that external loop rules should not be dumped into `AGENTS.md`.
 - `AGENTS.md` remains minimal always-on rules only; docs, examples, and handoff remain on-demand guidance.
+- `docs/codex_tutorial_guide.md` now uses `💊 Setup Pill` as the visible Power Concept label.
+- "repo fit check" remains only explanatory wording, not the feature name.
+- `💊 Setup Pill` is a read-only, one-repo starter pack helper.
+- Boundaries remain: one specified repo only, no file edits, no commits, no automation, no routing, and no new gate outcomes.
+- It returns a compact starter pack for starting LoopKit in a repo.
 
 Field Note 062 result:
 
@@ -286,7 +292,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `1b10767 Add quickstart external goal adapter`.
+The repository is clean, pushed, and restartable from `origin/main` at `13fb6c9 Rename tutorial repo fit check to setup pill`.
 
 ## V13 Next Loop Gate
 
@@ -322,7 +328,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `1b10767 Add quickstart external goal adapter`
+- latest commit: `13fb6c9 Rename tutorial repo fit check to setup pill`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -387,6 +393,10 @@ Preserve:
 - external prompts can remain execution accelerators, while LoopKit acts as the exit gate after the work
 - the external-goal adapter uses V12/V13 state, evidence, changed summary, boundaries, reusable residue, recommendation level, suggested placement, Owner choices A/B, and stop condition
 - external loop rules should not be dumped into `AGENTS.md`; `AGENTS.md` remains minimal always-on rules only, with docs, examples, and handoff as on-demand guidance
+- `docs/codex_tutorial_guide.md` uses `💊 Setup Pill` as the visible Power Concept label
+- "repo fit check" remains explanatory wording only, not the feature name
+- `💊 Setup Pill` is a read-only, one-repo starter pack helper with no file edits, commits, automation, routing, or new gate outcomes
+- it returns a compact starter pack for starting LoopKit in a repo
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
