@@ -27,12 +27,15 @@ Keep file paths, command-like labels, and gate names unchanged:
 - `examples/`
 - `GO / HOLD / CAP / BLOCK`
 - `PASS / DELAY / BLOCK`
+- `BLUE / YELLOW / RED`
 
 If the user asks in Japanese, present the tutorial menu and explanations in Japanese, while preserving the original English file names and gate labels.
 
 ## Start With This Menu
 
 Show the user this menu:
+
+Basic Tutorial:
 
 1. What is LoopKit?
 2. What problem does it solve?
@@ -43,11 +46,17 @@ Show the user this menu:
 7. How do I avoid bloating AGENTS.md?
 8. How do I know whether the next loop should run?
 
+Power Concepts / Advanced Concepts:
+
+- `🚦 Signals`: read the current AI-work state using BLUE / YELLOW / RED.
+- `🌱 Growth OS`: turn completions, failures, and residue into cheaper, safer, easier future runs.
+
 Tell the user they can:
 
 - ask for one topic
 - follow the recommended order
 - run a tiny guided task
+- choose `🚦 Signals` or `🌱 Growth OS` as optional but valuable follow-up modules
 
 ## Recommended First-Run Order
 
@@ -60,11 +69,11 @@ Tell the user they can:
 7. Produce a completion report.
 8. Decide the next loop gate.
 
-## Signals and Growth Loop
+## Power Concepts / Advanced Concepts
 
 LoopKit is not only a stop system. It is a growth OS for AI work.
 
-Signals summarize the current loop state:
+`🚦 Signals` summarize the current AI-work state:
 
 - BLUE: useful progress or safe continuation
 - YELLOW: risk, uncertainty, scope pressure, or cap needed
@@ -73,7 +82,7 @@ Signals summarize the current loop state:
 V12 checks whether the last work is restartable.
 V13 decides whether the next loop should `GO / HOLD / CAP / BLOCK`.
 
-When used well, LoopKit does not only prevent accidents. It helps each loop leave residue that makes the next run cheaper, safer, or easier to restart.
+`🌱 Growth OS` means LoopKit does not only prevent accidents. It helps each loop leave residue that makes the next run cheaper, safer, or easier to restart.
 
 ## Recording Map
 
