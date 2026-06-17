@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `08dfb43 Add tutorial power concepts presentation rule`
+- Latest commit: `f0d6267 Add quickstart memory surface reading guidance`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -143,6 +143,10 @@ Completed and parked:
 - The emoji markers are visual prefixes only; canonical labels remain unchanged.
 - `🌱 Growth OS` should keep the growth marker visible in headings or summary lines.
 - This improves tutorial clarity and makes the Power Concepts more immediately understandable.
+- `docs/fork_codex_quickstart.md` now includes `When to read each surface`.
+- The section explains that agents should not read every surface for every task.
+- It defines the smallest matching surface for `AGENTS.md`, `README.md`, `docs/fork_codex_quickstart.md`, `docs/codex_tutorial_guide.md`, `handoff/current_codex_handoff.md`, `examples/`, and `field_notes/`.
+- It also states that tiny, reversible tasks with no reusable residue require no extra memory surface.
 
 Field Note 062 result:
 
@@ -255,7 +259,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `08dfb43 Add tutorial power concepts presentation rule`.
+The repository is clean, pushed, and restartable from `origin/main` at `f0d6267 Add quickstart memory surface reading guidance`.
 
 ## V13 Next Loop Gate
 
@@ -291,7 +295,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `08dfb43 Add tutorial power concepts presentation rule`
+- latest commit: `f0d6267 Add quickstart memory surface reading guidance`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -334,6 +338,9 @@ Preserve:
 - tutorial guide now separates `Basic Tutorial` from `Power Concepts / Advanced Concepts`
 - original 1-8 tutorial items remain, with optional `🚦 Signals` and `🌱 Growth OS` modules
 - tutorial guide includes a Power Concepts presentation rule: `🚦 Signals` should use `🟢 BLUE`, `🟡 YELLOW`, and `🔴 RED` visual prefixes while preserving canonical labels, and `🌱 Growth OS` should keep the growth marker visible
+- `docs/fork_codex_quickstart.md` includes `When to read each surface`, explaining that agents should not read every surface for every task and should choose the smallest matching surface
+- quickstart defines reading conditions for `AGENTS.md`, `README.md`, `docs/fork_codex_quickstart.md`, `docs/codex_tutorial_guide.md`, `handoff/current_codex_handoff.md`, `examples/`, and `field_notes/`
+- tiny, reversible tasks with no reusable residue require no extra memory surface
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
