@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `f0d6267 Add quickstart memory surface reading guidance`
+- Latest commit: `15ecf43 Add quickstart residue recommendation ladder`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -147,6 +147,12 @@ Completed and parked:
 - The section explains that agents should not read every surface for every task.
 - It defines the smallest matching surface for `AGENTS.md`, `README.md`, `docs/fork_codex_quickstart.md`, `docs/codex_tutorial_guide.md`, `handoff/current_codex_handoff.md`, `examples/`, and `field_notes/`.
 - It also states that tiny, reversible tasks with no reusable residue require no extra memory surface.
+- `docs/fork_codex_quickstart.md` now includes `When residue is detected`.
+- The section gives a coding-agent-neutral recommendation ladder: `Low`, `Medium`, `High`, and `Owner Approval Required`.
+- It prevents heavy open-ended Owner prompts like "Should I add this?"
+- It asks agents to report detected reusable residue, recommendation level, expected effect, suggested placement, and two Owner choices.
+- Default placements include `handoff/current_codex_handoff.md`, `field_notes/`, `examples/`, `docs/`, `AGENTS_candidate_HOLD`, and `no record`.
+- This makes the Growth OS more actionable without adding automation, routing, new files, or AGENTS promotion.
 
 Field Note 062 result:
 
@@ -259,7 +265,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `f0d6267 Add quickstart memory surface reading guidance`.
+The repository is clean, pushed, and restartable from `origin/main` at `15ecf43 Add quickstart residue recommendation ladder`.
 
 ## V13 Next Loop Gate
 
@@ -295,7 +301,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `f0d6267 Add quickstart memory surface reading guidance`
+- latest commit: `15ecf43 Add quickstart residue recommendation ladder`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -341,6 +347,10 @@ Preserve:
 - `docs/fork_codex_quickstart.md` includes `When to read each surface`, explaining that agents should not read every surface for every task and should choose the smallest matching surface
 - quickstart defines reading conditions for `AGENTS.md`, `README.md`, `docs/fork_codex_quickstart.md`, `docs/codex_tutorial_guide.md`, `handoff/current_codex_handoff.md`, `examples/`, and `field_notes/`
 - tiny, reversible tasks with no reusable residue require no extra memory surface
+- `docs/fork_codex_quickstart.md` includes `When residue is detected`, a coding-agent-neutral recommendation ladder with `Low`, `Medium`, `High`, and `Owner Approval Required`
+- residue ladder asks agents to report detected reusable residue, recommendation level, expected effect, suggested placement, and two Owner choices instead of heavy open-ended Owner prompts
+- default placements include `handoff/current_codex_handoff.md`, `field_notes/`, `examples/`, `docs/`, `AGENTS_candidate_HOLD`, and `no record`
+- this makes Growth OS more actionable without automation, routing, new files, or AGENTS promotion
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
