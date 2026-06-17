@@ -71,6 +71,26 @@ Tell the user they can:
 
 ## Power Concepts / Advanced Concepts
 
+### Presentation Rule for Power Concepts
+
+When explaining `🚦 Signals`, always pair the canonical labels with visual markers:
+
+- `🟢 BLUE`
+- `🟡 YELLOW`
+- `🔴 RED`
+
+Do not replace the canonical labels. Use the emoji as a visual prefix.
+
+When explaining `🌱 Growth OS`, keep the `🌱` marker visible in headings or summary lines, because the concept is about turning completions, failures, and residue into future improvement.
+
+Prefer this compact summary when explaining Signals:
+
+```text
+🟢 BLUE = useful progress / safe continuation
+🟡 YELLOW = risk / uncertainty / CAP or HOLD
+🔴 RED = stop-level danger / boundary violation
+```
+
 LoopKit is not only a stop system. It is a growth OS for AI work.
 
 `🚦 Signals` summarize the current AI-work state:
