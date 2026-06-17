@@ -33,7 +33,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `23828e4 Add residue recommendation ladder example`
+- Latest commit: `1b10767 Add quickstart external goal adapter`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -168,6 +168,12 @@ Completed and parked:
 - This is now observed twice across coding-agent contexts, but still must not be described as proven.
 - Keep the claim level as `observed again` and `exercised twice in bounded dry-runs`, not `proven`.
 - The negative-example suggestion was skipped for now to avoid adding examples before a stronger need appears.
+- `docs/fork_codex_quickstart.md` now includes `Attach LoopKit to external goals`.
+- LoopKit can attach to external `/goal`, loops, or automation outputs without replacing them.
+- External prompts can remain execution accelerators, while LoopKit acts as the exit gate after the work.
+- The section provides an exit-gate format using `V12 State: PASS / DELAY / BLOCK`, `V13 Next Loop Gate: GO / HOLD / CAP / BLOCK`, Evidence, What changed, Boundaries, Reusable residue, Recommendation level, Suggested placement, Owner choices A/B, and Stop condition.
+- It states that external loop rules should not be dumped into `AGENTS.md`.
+- `AGENTS.md` remains minimal always-on rules only; docs, examples, and handoff remain on-demand guidance.
 
 Field Note 062 result:
 
@@ -280,7 +286,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `23828e4 Add residue recommendation ladder example`.
+The repository is clean, pushed, and restartable from `origin/main` at `1b10767 Add quickstart external goal adapter`.
 
 ## V13 Next Loop Gate
 
@@ -316,7 +322,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `23828e4 Add residue recommendation ladder example`
+- latest commit: `1b10767 Add quickstart external goal adapter`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -376,6 +382,11 @@ Preserve:
 - second-agent dry-run was completed using Claude Code
 - residue recommendation format was `observed again` and `exercised twice in bounded dry-runs`, but still not `proven`
 - negative-example suggestion was skipped for now
+- `docs/fork_codex_quickstart.md` includes `Attach LoopKit to external goals`
+- LoopKit can attach to external `/goal`, loops, or automation outputs without replacing them
+- external prompts can remain execution accelerators, while LoopKit acts as the exit gate after the work
+- the external-goal adapter uses V12/V13 state, evidence, changed summary, boundaries, reusable residue, recommendation level, suggested placement, Owner choices A/B, and stop condition
+- external loop rules should not be dumped into `AGENTS.md`; `AGENTS.md` remains minimal always-on rules only, with docs, examples, and handoff as on-demand guidance
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
