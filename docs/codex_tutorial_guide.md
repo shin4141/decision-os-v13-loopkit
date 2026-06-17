@@ -50,14 +50,14 @@ Power Concepts / Advanced Concepts:
 
 - `🚦 Signals`: read the current AI-work state using BLUE / YELLOW / RED.
 - `🌱 Growth OS`: turn completions, failures, and residue into cheaper, safer, easier future runs.
-- `💊 Repo Fit Check`: inspect one specified repo in read-only mode and produce a small LoopKit starter pack for that repo.
+- `💊 Setup Pill`: create a small read-only starter pack for using LoopKit in one specified repo.
 
 Tell the user they can:
 
 - ask for one topic
 - follow the recommended order
 - run a tiny guided task
-- choose `🚦 Signals`, `🌱 Growth OS`, or `💊 Repo Fit Check` as optional but valuable follow-up modules
+- choose `🚦 Signals`, `🌱 Growth OS`, or `💊 Setup Pill` as optional but valuable follow-up modules
 
 ## Recommended First-Run Order
 
@@ -105,9 +105,11 @@ V13 decides whether the next loop should `GO / HOLD / CAP / BLOCK`.
 
 `🌱 Growth OS` means LoopKit does not only prevent accidents. It helps each loop leave residue that makes the next run cheaper, safer, or easier to restart.
 
-### 💊 Repo Fit Check
+### 💊 Setup Pill
 
 Use this when the Owner wants to know how to start using LoopKit in a specific repo.
+
+It works like a repo fit check, but the output is only a small read-only starter pack.
 
 Do not scan every repo. Do not edit files. Do not create files. Do not commit.
 
