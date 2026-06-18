@@ -24,6 +24,7 @@ The repository currently focuses on:
 - Codex first-run tutorial guide
 - Setup Pill read-only starter pack helper
 - terminal demo script for LoopKit signals
+- terminal demo storyboard
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -35,7 +36,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `3438cd2 Add terminal demo script for LoopKit signals`
+- Latest commit: `d4d5dd6 Add demo storyboard for LoopKit terminal video`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -187,6 +188,11 @@ Completed and parked:
 - It prints a short demo sequence showing LoopKit pain framing, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, `V12 State: PASS`, `V13 Next Loop Gate: CAP`, BLUE/YELLOW signals, residue recommendation, Owner choices A/B, and stop condition.
 - Verification passed: `bash -n scripts/demo_loopkit_terminal.sh`; the script previously ran and printed the full demo sequence.
 - This is demo material only, not a publish-ready professional video.
+- `docs/demo_storyboard.md` was added.
+- It is a 30-45 second professional terminal-demo storyboard, currently about 42 seconds.
+- It covers the pain scene, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 footer, Signals, residue recommendation, Owner choices, explicit stop condition scene, and closing line.
+- It is video planning material only, not a created or published video.
+- It pairs with `scripts/demo_loopkit_terminal.sh` as recording/editing preparation material.
 
 Field Note 062 result:
 
@@ -299,7 +305,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `3438cd2 Add terminal demo script for LoopKit signals`.
+The repository is clean, pushed, and restartable from `origin/main` at `d4d5dd6 Add demo storyboard for LoopKit terminal video`.
 
 ## V13 Next Loop Gate
 
@@ -335,7 +341,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `3438cd2 Add terminal demo script for LoopKit signals`
+- latest commit: `d4d5dd6 Add demo storyboard for LoopKit terminal video`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -409,6 +415,10 @@ Preserve:
 - the script prints LoopKit pain framing, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 state, BLUE/YELLOW signals, residue recommendation, Owner choices A/B, and stop condition
 - `bash -n scripts/demo_loopkit_terminal.sh` passed and the script previously ran with the full demo sequence
 - this is demo material only, not a publish-ready professional video
+- `docs/demo_storyboard.md` was added as a 30-45 second professional terminal-demo storyboard, currently about 42 seconds
+- the storyboard covers the pain scene, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 footer, Signals, residue recommendation, Owner choices, explicit stop condition scene, and closing line
+- the storyboard is video planning material only, not a created or published video
+- it pairs with `scripts/demo_loopkit_terminal.sh` as recording/editing preparation material
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
