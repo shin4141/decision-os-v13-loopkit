@@ -23,6 +23,7 @@ The repository currently focuses on:
 - fork-user residue storage map
 - Codex first-run tutorial guide
 - Setup Pill read-only starter pack helper
+- terminal demo script for LoopKit signals
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -34,7 +35,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `13fb6c9 Rename tutorial repo fit check to setup pill`
+- Latest commit: `3438cd2 Add terminal demo script for LoopKit signals`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits
@@ -180,6 +181,12 @@ Completed and parked:
 - `💊 Setup Pill` is a read-only, one-repo starter pack helper.
 - Boundaries remain: one specified repo only, no file edits, no commits, no automation, no routing, and no new gate outcomes.
 - It returns a compact starter pack for starting LoopKit in a repo.
+- `scripts/demo_loopkit_terminal.sh` was added.
+- It is a minimal deterministic terminal demo script for LoopKit signals.
+- It does not call Codex, access network, edit files, commit, install dependencies, or access secrets.
+- It prints a short demo sequence showing LoopKit pain framing, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, `V12 State: PASS`, `V13 Next Loop Gate: CAP`, BLUE/YELLOW signals, residue recommendation, Owner choices A/B, and stop condition.
+- Verification passed: `bash -n scripts/demo_loopkit_terminal.sh`; the script previously ran and printed the full demo sequence.
+- This is demo material only, not a publish-ready professional video.
 
 Field Note 062 result:
 
@@ -292,7 +299,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `13fb6c9 Rename tutorial repo fit check to setup pill`.
+The repository is clean, pushed, and restartable from `origin/main` at `3438cd2 Add terminal demo script for LoopKit signals`.
 
 ## V13 Next Loop Gate
 
@@ -328,7 +335,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `13fb6c9 Rename tutorial repo fit check to setup pill`
+- latest commit: `3438cd2 Add terminal demo script for LoopKit signals`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -397,6 +404,11 @@ Preserve:
 - "repo fit check" remains explanatory wording only, not the feature name
 - `💊 Setup Pill` is a read-only, one-repo starter pack helper with no file edits, commits, automation, routing, or new gate outcomes
 - it returns a compact starter pack for starting LoopKit in a repo
+- `scripts/demo_loopkit_terminal.sh` was added as a minimal deterministic terminal demo script for LoopKit signals
+- the script does not call Codex, access network, edit files, commit, install dependencies, or access secrets
+- the script prints LoopKit pain framing, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 state, BLUE/YELLOW signals, residue recommendation, Owner choices A/B, and stop condition
+- `bash -n scripts/demo_loopkit_terminal.sh` passed and the script previously ran with the full demo sequence
+- this is demo material only, not a publish-ready professional video
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
