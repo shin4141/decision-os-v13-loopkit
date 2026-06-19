@@ -31,6 +31,39 @@ Keep file paths, command-like labels, and gate names unchanged:
 
 If the user asks in Japanese, present the tutorial menu and explanations in Japanese, while preserving the original English file names and gate labels.
 
+## Exact First Response
+
+When the user asks for the LoopKit tutorial, onboarding, or first walkthrough, start by printing this exact menu before explaining anything else:
+
+```md
+## LoopKit Tutorial
+
+Basic Tutorial:
+
+1. LoopKitとは？
+2. 何の問題を解決するの？
+3. V12とV13はどう動くの？
+4. GO / HOLD / CAP / BLOCK とは？
+5. notes・failures・handoff・examples はどこに記録するの？
+6. 最初の小さなタスクはどう実行するの？
+7. AGENTS.md を肥大化させないには？
+8. 次のループを走らせるべきかどう判断するの？
+
+Power Concepts:
+
+- 🚦 Signals
+- 🌱 Growth OS
+- 💊 Setup Pill
+
+番号か項目名で選んでください。
+おすすめは 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 の順です。
+最初に全体像だけ掴みたいなら 1 から始めましょう。
+```
+
+After the menu, wait for the user to choose a number or item. Do not explain the full tutorial all at once unless the user asks for the full walkthrough.
+
+Keep this as an on-demand docs surface. Do not promote it to `AGENTS.md`.
+
 ## Start With This Menu
 
 Show the user this menu:
