@@ -36,10 +36,10 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest commit: `d4d5dd6 Add demo storyboard for LoopKit terminal video`
+- Latest reflected commit: `188d8d2 Add exact tutorial first-response script`
 - Working tree: clean
 - Local `main` tracking `origin/main`
-- No unpushed commits
+- Local `main` is ahead of `origin/main` until the tutorial first-response commit and this handoff refresh are pushed.
 
 Release state:
 
@@ -193,6 +193,11 @@ Completed and parked:
 - It covers the pain scene, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 footer, Signals, residue recommendation, Owner choices, explicit stop condition scene, and closing line.
 - It is video planning material only, not a created or published video.
 - It pairs with `scripts/demo_loopkit_terminal.sh` as recording/editing preparation material.
+- `docs/codex_tutorial_guide.md` now includes an `Exact First Response` section.
+- Purpose: improve tutorial reproducibility by making Codex print the same 1-8 tutorial menu first and wait for user selection.
+- The exact first response includes the Japanese `Basic Tutorial` menu, `🚦 Signals`, `🌱 Growth OS`, and `💊 Setup Pill`.
+- After printing the menu, Codex should wait for the user to choose a number or item instead of explaining the full tutorial all at once.
+- This remains an on-demand docs surface and was not promoted to `AGENTS.md`.
 
 Field Note 062 result:
 
@@ -305,7 +310,7 @@ PASS
 
 Reason:
 
-The repository is clean, pushed, and restartable from `origin/main` at `d4d5dd6 Add demo storyboard for LoopKit terminal video`.
+The repository is clean and restartable from local `main` at `188d8d2 Add exact tutorial first-response script`. Local `main` is ahead of `origin/main` until the tutorial first-response commit and this handoff refresh are pushed.
 
 ## V13 Next Loop Gate
 
@@ -341,7 +346,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest commit: `d4d5dd6 Add demo storyboard for LoopKit terminal video`
+- latest reflected commit: `188d8d2 Add exact tutorial first-response script`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -419,6 +424,9 @@ Preserve:
 - the storyboard covers the pain scene, `🚦 Signals`, `🌱 Growth OS`, `💊 Setup Pill`, V12/V13 footer, Signals, residue recommendation, Owner choices, explicit stop condition scene, and closing line
 - the storyboard is video planning material only, not a created or published video
 - it pairs with `scripts/demo_loopkit_terminal.sh` as recording/editing preparation material
+- `docs/codex_tutorial_guide.md` includes an `Exact First Response` section for tutorial reproducibility
+- the exact first response makes Codex print the same 1-8 tutorial menu first and wait for user selection
+- this remains an on-demand docs surface and was not promoted to `AGENTS.md`
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
