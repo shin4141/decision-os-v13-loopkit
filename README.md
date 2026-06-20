@@ -25,6 +25,8 @@ Decision-OS V13 is a no-install Lite Footer for AI coding sessions:
 
 If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
 
+Ask your AI to generate a tutorial from this repo: see [AI_TUTORIAL_CAPSULE.md](AI_TUTORIAL_CAPSULE.md).
+
 ## What this is
 
 V13 LoopKit is a copy-paste reporting kit for AI coding agents.

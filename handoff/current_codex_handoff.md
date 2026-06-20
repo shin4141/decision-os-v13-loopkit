@@ -25,6 +25,7 @@ The repository currently focuses on:
 - Setup Pill read-only starter pack helper
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
+- AI Tutorial Capsule for AI-readable external onboarding
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
@@ -42,7 +43,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `08a68fd Add GOAL Health Overlay definition`
+- Latest reflected commit before this task: `081264a Add GOAL Health Overlay submission draft`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -363,7 +364,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `08a68fd Add GOAL Health Overlay definition` before this GOAL Health Overlay Loop candidate task.
+The repository was clean and restartable from `origin/main` at `081264a Add GOAL Health Overlay submission draft` before this AI Tutorial Capsule task.
 
 ## V13 Next Loop Gate
 
@@ -399,7 +400,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `08a68fd Add GOAL Health Overlay definition`
+- latest reflected commit before this task: `081264a Add GOAL Health Overlay submission draft`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -515,6 +516,12 @@ Preserve:
 - It is a library candidate, not yet external-post ready.
 - A possible next step is a separate review/compress pass for external submission.
 - Do not jump from this candidate into broad marketing, productization, automation, or external posting.
+- `AI_TUTORIAL_CAPSULE.md` was added as a minimal AI-readable onboarding capsule.
+- Purpose: help a user's own AI assistant explain V13 LoopKit, generate a beginner-friendly tutorial, review first-use onboarding, and suggest the smallest useful onboarding edit.
+- Scope: external onboarding improvement only, not a new product feature.
+- `README.md` now includes one small link to `AI_TUTORIAL_CAPSULE.md`.
+- Possible later split into `tutorial.md`, `tutorial_prompt.md`, `tutorial_review.md`, or a generated example remains parked until a stronger need appears.
+- Do not expand this into multiple tutorial files, marketing copy, automation, hooks, MCP, pluginization, execution engine, or broad productization now.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
