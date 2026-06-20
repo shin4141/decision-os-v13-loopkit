@@ -90,6 +90,28 @@ LoopKit produces a Next Action Card:
 The loop does not stop forever.
 It avoids jumping to a future node before the dependency frontier is ready.
 
+## Submission Draft
+
+GOAL-style execution is useful when the next action is clear. But execution loops can keep moving after the map starts weakening: context gets long, anchors fade, a future node becomes visible, or the model starts jumping beyond the dependency frontier.
+
+The GOAL Health Overlay Loop adds LoopKit around execution without replacing it. GOAL executes. LoopKit watches whether the map is healthy enough for the next 0.01 action.
+
+Before continuing, the overlay surfaces Loop Map Confidence, Required Confidence, Context Risk, Route Fidelity, Returnability, and recovery choices such as Consult, Handoff, Split, or Stop. The loop proceeds only when:
+
+`Loop Map Confidence >= Required Confidence`
+
+and
+
+`Context Risk is not RED`.
+
+When Context Risk is YELLOW, the required threshold rises and Consult / Handoff / Split must be visible. When Context Risk is RED, normal GOAL-style auto-continuation is blocked.
+
+The key rule is:
+
+`Loop Map may see islands. Next Action must not jump to islands.`
+
+Consult Mode returns Seat to the human before the loop breaks by asking one missing-input question and then updating the Next Action Card.
+
 ## What this is not
 
 This is not:
