@@ -273,6 +273,92 @@ It is the confidence that the AI can choose the next 0.01 action without breakin
 
 Codex limit warnings either reduce Loop Map Confidence or raise the Required Confidence threshold through Context Risk.
 
+Loop Map Confidence should be explained using supporting axes such as:
+
+- Route Fidelity: are we still following the valid dependency route?
+- Returnability: can we recover, split, or resume if the loop weakens?
+- Context Risk: is the current context still usable?
+- Seat: is the human still the decision owner?
+- Risk: is the next action reversible and appropriately scoped?
+
+The MVP does not require numeric sub-scores.
+
+It only requires the Next Action Card to state why confidence is high, medium, or low.
+
+## Route Fidelity
+
+Route Fidelity is the degree to which the current route still matches the intended path from the current state to the forward anchor.
+
+It asks:
+
+> Are we still moving along the intended dependency frontier, or are we jumping to a visible but unsupported future node?
+
+Loop Map may contain non-linear future anchors.
+
+Visible future nodes are allowed.
+
+But Next Action must follow the dependency frontier.
+
+Canonical line:
+
+```text
+Loop Map may see islands. Next Action must not jump to islands.
+```
+
+Japanese canonical line:
+
+```text
+Loop Mapは飛び地で見えてよい。Next Actionは飛び地に飛んではいけない。
+```
+
+Route Fidelity weakens when:
+
+- the AI skips dependency steps
+- the next action targets a future node without required anchors
+- current work drifts from the forward anchor
+- implementation outruns the spec
+- public/external action appears before the map is stable
+- the AI confuses "visible future value" with "valid next action"
+
+Route Fidelity supports Loop Map Confidence when:
+
+- the next action follows the current dependency frontier
+- required anchors are present
+- the next action is small and reversible
+- the route still points toward the forward anchor
+- the AI can explain why this 0.01 action comes before later nodes
+
+## Returnability
+
+Returnability is the degree to which the loop can safely recover, pause, split, handoff, or resume if the next action fails, stalls, or exceeds context capacity.
+
+It asks:
+
+> If this next action goes wrong, can the loop return to a usable state?
+
+Returnability weakens when:
+
+- there is no clear handoff path
+- the current context is near failure
+- a failed action would create unclear repo state
+- rollback is missing
+- the next action is too large to inspect
+- the AI cannot state what should happen if confidence drops
+- the work cannot be resumed by another agent or future self
+
+Returnability supports Loop Map Confidence when:
+
+- the next action is reversible or inspectable
+- handoff/split is available
+- current state is documented
+- stop condition is clear
+- the repo can return to a clean state
+- future continuation does not depend on hidden chat memory
+
+GOAL-style execution keeps the loop moving.
+
+LoopKit checks whether the map is still faithful enough and returnable enough for the next 0.01 action.
+
 ## Required Confidence Defaults
 
 MVP default ranges:

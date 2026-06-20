@@ -364,6 +364,14 @@ Proceed Rule:
 Reason:
 - Why this signal and confidence were assigned.
 
+Route Fidelity:
+- High / Medium / Low
+- Reason:
+
+Returnability:
+- High / Medium / Low
+- Reason:
+
 Missing:
 - The one missing input that would most improve the next 0.01 action.
 - Use `None` if no critical input is missing.
@@ -377,6 +385,10 @@ Choices:
 3. Show another option
 4. Create handoff / split context
 ```
+
+Route Fidelity and Returnability are optional explanation fields.
+
+Include them when the confidence score would otherwise be unclear.
 
 ## Worked Example: Context Risk YELLOW After A Small Docs Edit
 
@@ -426,6 +438,63 @@ This example does not mean "stop everything."
 It means normal continuation is not justified under the adjusted threshold. The next best 0.01 action is to consult, restore the missing anchor, or hand off / split before editing further.
 
 If Context Risk were RED, option 1 would not be valid. Normal GOAL-style continuation would be blocked, and the available choices would narrow to Handoff / Split / Consult / Stop.
+
+## Worked Example: Future Node Visible But Route Fidelity Weak
+
+```md
+# Next Action Card
+
+Signal:
+- 🟡
+
+Context Risk:
+- BLUE
+
+Loop Map Confidence:
+- 64%
+
+Required Confidence:
+- 70%
+- Context Risk Modifier: none
+
+Proceed Rule:
+- Proceed only if Loop Map Confidence >= Required Confidence
+- and Context Risk is not RED
+
+Reason:
+- The Loop Map can see a future useful task, such as a GOAL Health Overlay, Forward Future Loop Library submission, or public post.
+- That future node may be valid later, but the current dependency frontier requires finishing Route Fidelity / Returnability definitions first.
+- Loop Map Confidence is reduced because the visible future value is being confused with the valid next action.
+
+Route Fidelity:
+- Low
+- Reason: the proposed next action jumps to a visible future node before the required dependency anchor is finished.
+
+Returnability:
+- Medium
+- Reason: handoff or split is available, but jumping ahead would make the route harder to inspect and resume.
+
+Missing:
+- Finished Route Fidelity / Returnability definitions.
+
+Recommended Next:
+- Do not jump to public posting, library submission, or future overlay work yet.
+- Finish the missing Route Fidelity / Returnability definition work first, or consult / handoff if the dependency frontier is unclear.
+
+Choices:
+1. Continue with GOAL-style execution only on the dependency-frontier definition work
+2. Consult and confirm the missing route anchor
+3. Show another bounded docs-only option
+4. Create handoff / split context before selecting a future-node task
+```
+
+Loop Map may see islands.
+
+Next Action must not jump to islands.
+
+```text
+Loop Mapは飛び地で見えてよい。Next Actionは飛び地に飛んではいけない。
+```
 
 ## Final Seat
 

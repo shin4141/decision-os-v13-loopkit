@@ -27,6 +27,7 @@ The repository currently focuses on:
 - terminal demo storyboard
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
+- Route Fidelity and Returnability as Loop Map Confidence support axes
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -38,7 +39,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `389aca1 Add context risk modifier to V13 MVP spec`
+- Latest reflected commit before this task: `29bac6a Add next action card template and example`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -219,6 +220,14 @@ Completed and parked:
 - The example shows that normal GOAL-style continuation is not justified when adjusted confidence is insufficient.
 - The example recommends Consult / restoring the missing restart anchor, or Handoff / Split before editing further.
 - The example states that if Context Risk were RED, normal GOAL-style continuation would be blocked and choices would narrow to Handoff / Split / Consult / Stop.
+- `docs/loop_map.md` now defines Route Fidelity and Returnability as supporting axes for Loop Map Confidence.
+- Route Fidelity asks whether the current route still matches the intended dependency frontier from current state to forward anchor.
+- Canonical line: `Loop Map may see islands. Next Action must not jump to islands.`
+- Japanese canonical line: `Loop Mapは飛び地で見えてよい。Next Actionは飛び地に飛んではいけない。`
+- Returnability asks whether the loop can safely recover, pause, split, handoff, or resume if the next action fails, stalls, or exceeds context capacity.
+- Loop Map Confidence can now be explained through Route Fidelity, Returnability, Context Risk, Seat, and Risk without numeric sub-scores.
+- `docs/decision_packet.md` now includes optional Route Fidelity and Returnability fields in the Next Action Card template.
+- `docs/decision_packet.md` adds a worked example where a future useful node is visible but Route Fidelity is weak, so the card recommends finishing the dependency-frontier definition work, consulting, or handoff/split instead of jumping to public posting, library submission, or overlay work.
 
 Field Note 062 result:
 
@@ -333,7 +342,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `389aca1 Add context risk modifier to V13 MVP spec` before this Next Action Card task.
+The repository was clean and restartable from `origin/main` at `29bac6a Add next action card template and example` before this Route Fidelity / Returnability task.
 
 ## V13 Next Loop Gate
 
@@ -369,7 +378,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `389aca1 Add context risk modifier to V13 MVP spec`
+- latest reflected commit before this task: `29bac6a Add next action card template and example`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -462,6 +471,12 @@ Preserve:
 - the worked example shows YELLOW Context Risk adding +10 Required Confidence for a small docs/repo edit: Loop Map Confidence 76%, adjusted Required Confidence 80%
 - the example recommends Consult / restoring the missing restart anchor, or Handoff / Split before editing further when adjusted confidence is insufficient
 - the example states RED Context Risk blocks normal GOAL-style continuation and narrows choices to Handoff / Split / Consult / Stop
+- `docs/loop_map.md` defines Route Fidelity and Returnability as supporting axes for Loop Map Confidence
+- Route Fidelity protects the dependency frontier: `Loop Map may see islands. Next Action must not jump to islands.`
+- Japanese canonical line preserved: `Loop Mapは飛び地で見えてよい。Next Actionは飛び地に飛んではいけない。`
+- Returnability asks whether the loop can recover, pause, split, handoff, or resume if the next action weakens
+- `docs/decision_packet.md` adds optional Route Fidelity and Returnability fields to the Next Action Card template
+- the new worked example shows a visible future node should not be selected before dependency-frontier definition work is finished
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
