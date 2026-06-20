@@ -30,6 +30,7 @@ The repository currently focuses on:
 - Route Fidelity and Returnability as Loop Map Confidence support axes
 - Consult Mode for Next Action Card recovery
 - GOAL Health Overlay as the LoopKit health/map/recovery layer around GOAL-style execution
+- GOAL Health Overlay Loop as a draft Forward Future Loop Library candidate
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -41,7 +42,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `47dd8ab Add Consult Mode to Next Action Card flow`
+- Latest reflected commit before this task: `08a68fd Add GOAL Health Overlay definition`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -362,7 +363,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `47dd8ab Add Consult Mode to Next Action Card flow` before this GOAL Health Overlay task.
+The repository was clean and restartable from `origin/main` at `08a68fd Add GOAL Health Overlay definition` before this GOAL Health Overlay Loop candidate task.
 
 ## V13 Next Loop Gate
 
@@ -398,7 +399,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `47dd8ab Add Consult Mode to Next Action Card flow`
+- latest reflected commit before this task: `08a68fd Add GOAL Health Overlay definition`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -508,6 +509,12 @@ Preserve:
 - the non-competition rule is explicit: LoopKit does not replace GOAL-style execution
 - the overlay connects Next Action Card, Loop Map Confidence, Required Confidence, Context Risk Modifier, Route Fidelity, Returnability, and Consult Mode
 - the worked note shows the overlay preventing a jump beyond the dependency frontier toward public posting or Forward Future Loop Library submission
+- `docs/goal_health_overlay_loop.md` was added as a concise Forward Future Loop Library draft candidate.
+- It compresses Context Risk Modifier, Next Action Card, Route Fidelity, Returnability, Consult Mode, and GOAL Health Overlay into `GOAL Health Overlay Loop`.
+- It includes before/intervention/after, the proceed rule, the island/dependency-frontier rule, the Consult Seat-return rule, a minimal example, and docs-only candidate status.
+- It is a library candidate, not yet external-post ready.
+- A possible next step is a separate review/compress pass for external submission.
+- Do not jump from this candidate into broad marketing, productization, automation, or external posting.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
