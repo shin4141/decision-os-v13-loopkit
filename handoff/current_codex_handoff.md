@@ -25,6 +25,7 @@ The repository currently focuses on:
 - Setup Pill read-only starter pack helper
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
+- Context Risk Modifier in MVP loop-map logic
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -36,10 +37,10 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit: `188d8d2 Add exact tutorial first-response script`
+- Latest reflected commit before this task: `446e997 Refresh handoff for tutorial first response`
 - Working tree: clean
 - Local `main` tracking `origin/main`
-- Local `main` is ahead of `origin/main` until the tutorial first-response commit and this handoff refresh are pushed.
+- No unpushed commits before this task.
 
 Release state:
 
@@ -198,6 +199,17 @@ Completed and parked:
 - The exact first response includes the Japanese `Basic Tutorial` menu, `🚦 Signals`, `🌱 Growth OS`, and `💊 Setup Pill`.
 - After printing the menu, Codex should wait for the user to choose a number or item instead of explaining the full tutorial all at once.
 - This remains an on-demand docs surface and was not promoted to `AGENTS.md`.
+- `docs/loop_map.md` now documents the Context Risk Modifier.
+- Context Risk is an external context-health signal that affects the next-loop gate; MVP does not require automatic detection.
+- Core proceed rule: `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`.
+- Context Risk levels are `BLUE`, `YELLOW`, and `RED`.
+- `YELLOW` Context Risk adds +10 to Required Confidence and requires Consult / Handoff / Split to be surfaced as choices.
+- `RED` Context Risk blocks GOAL-style auto-continuation regardless of confidence and narrows choices to Handoff / Split / Consult / Stop.
+- Loop Map Confidence is defined as confidence that the AI can choose the next 0.01 action without breaking Goal, Forward Anchor, Current State, Context Boundary, Re-entry, Seat, or Risk.
+- Loop Map Confidence is not progress percentage.
+- `docs/decision_packet.md` now states that a Next Action Card must obey the Context Risk Modifier and adjust behavior by Context Risk level.
+- V12 carry-forward rule: if a concept changes the gate, threshold, stop condition, or recovery path, it must be carried forward in the next handoff.
+- The Context Risk Modifier changes gate and threshold behavior, so it must not be left only in chat memory.
 
 Field Note 062 result:
 
@@ -276,6 +288,8 @@ BLUE / FIELD-NOTES-048-074-ACCOUNTED-FOR
 +
 BLUE / RESTART-ANCHOR-UPDATED
 +
+BLUE / CONTEXT-RISK-MODIFIER-CARRIED-FORWARD
++
 BLUE / EXAMPLES-SIDE-START-POINTER-RECORDED
 +
 BLUE / CAP-V12-HANDOFF-REVIEW-IS-START-EXAMPLE
@@ -310,7 +324,7 @@ PASS
 
 Reason:
 
-The repository is clean and restartable from local `main` at `188d8d2 Add exact tutorial first-response script`. Local `main` is ahead of `origin/main` until the tutorial first-response commit and this handoff refresh are pushed.
+The repository was clean and restartable from `origin/main` at `446e997 Refresh handoff for tutorial first response` before this Context Risk Modifier task.
 
 ## V13 Next Loop Gate
 
@@ -346,7 +360,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit: `188d8d2 Add exact tutorial first-response script`
+- latest reflected commit before this task: `446e997 Refresh handoff for tutorial first response`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -427,6 +441,13 @@ Preserve:
 - `docs/codex_tutorial_guide.md` includes an `Exact First Response` section for tutorial reproducibility
 - the exact first response makes Codex print the same 1-8 tutorial menu first and wait for user selection
 - this remains an on-demand docs surface and was not promoted to `AGENTS.md`
+- `docs/loop_map.md` documents the Context Risk Modifier as a gate-affecting context-health signal
+- proceed only when `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`
+- `YELLOW` Context Risk adds +10 Required Confidence and requires Consult / Handoff / Split choices
+- `RED` Context Risk blocks GOAL-style auto-continuation and narrows choices to Handoff / Split / Consult / Stop
+- Loop Map Confidence is not progress percentage; it is confidence that the next 0.01 can be chosen without breaking Goal, Forward Anchor, Current State, Context Boundary, Re-entry, Seat, or Risk
+- `docs/decision_packet.md` states that Next Action Card behavior must obey the Context Risk Modifier
+- V12 carry-forward rule: gate, threshold, stop-condition, or recovery-path changes must be carried into the next handoff
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule

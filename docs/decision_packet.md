@@ -172,6 +172,8 @@ Send a Decision Packet when any of the following occurs:
 
 * BLOCK is detected
 * CAP would be exceeded
+* Context Risk is YELLOW and the next action depends on context health
+* Context Risk is RED and normal continuation must be replaced by Handoff / Split / Consult / Stop
 * irreversible action is pending
 * public release or public promotion is proposed
 * money, credentials, deletion, account access, or external authority is involved
@@ -316,6 +318,24 @@ Human Reply
 ↓
 Next Loop Command
 ```
+
+## Relationship to Next Action Card and Context Risk
+
+In the MVP, a Next Action Card is the compact next-step surface that may precede or trigger a Decision Packet.
+
+It must obey the Context Risk Modifier from `docs/loop_map.md`:
+
+```text
+Loop Map Confidence >= Required Confidence
+AND
+Context Risk is not RED
+```
+
+When Context Risk is BLUE, the card may recommend normal continuation if confidence is sufficient.
+
+When Context Risk is YELLOW, the card must show the adjusted Required Confidence, include Consult / Handoff / Split as available choices, and frame Continue as "continue under cap."
+
+When Context Risk is RED, the card must not recommend normal continuation. It may recommend only Handoff, Split context, Consult and restore missing anchors, or Stop and resume later.
 
 ## Final Seat
 

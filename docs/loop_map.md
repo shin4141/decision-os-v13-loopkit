@@ -187,6 +187,136 @@ Human reply
 Next Loop Command
 ```
 
+## Context Risk Modifier
+
+Context Risk is an external context-health signal that affects the next-loop gate.
+
+It is not automatic detection in the MVP. The operator may observe it manually.
+
+Signals include:
+
+- Codex limit warning
+- context pressure warning
+- repeated clarification failure
+- repeated re-checks caused by context uncertainty
+- mild boundary confusion
+- instruction confusion
+- anchor weakening or anchor loss
+- goal mixing
+- Seat loss
+- contradiction with the handoff
+
+Core proceed rule:
+
+```text
+Loop Map Confidence >= Required Confidence
+AND
+Context Risk is not RED
+```
+
+GOAL-style execution moves the loop.
+
+LoopKit watches the health of the map around the loop.
+
+When the map weakens, LoopKit injects only the missing context, confidence threshold, Seat check, or recovery path needed for the next 0.01 action.
+
+## Context Risk Levels
+
+### BLUE
+
+Context remains usable.
+
+Normal Required Confidence applies.
+
+GOAL-style execution may continue if task risk allows it.
+
+### YELLOW
+
+YELLOW means limit warning, context pressure, mild boundary confusion, repeated re-checks, or early anchor weakening.
+
+Effects:
+
+- Add +10 to Required Confidence.
+- Next Action Card must surface Consult / Handoff / Split as available choices.
+- Continue is allowed only under cap and only if adjusted confidence remains sufficient.
+
+### RED
+
+RED means key anchors are missing or contradicted.
+
+Examples:
+
+- the model is mixing goals
+- the model is losing Seat
+- instructions are confused
+- context failure is near
+- the current state contradicts the handoff
+
+Effects:
+
+- GOAL-style auto-continuation is blocked.
+- Allowed choices narrow to Handoff / Split / Consult / Stop.
+
+## Loop Map Confidence
+
+Loop Map Confidence is not progress percentage.
+
+It is the confidence that the AI can choose the next 0.01 action without breaking:
+
+- Goal
+- Forward Anchor
+- Current State
+- Context Boundary
+- Re-entry
+- Seat
+- Risk
+
+Codex limit warnings either reduce Loop Map Confidence or raise the Required Confidence threshold through Context Risk.
+
+## Required Confidence Defaults
+
+MVP default ranges:
+
+| Task type | Required Confidence |
+| --- | ---: |
+| Low-risk search / notes / drafts | 40-55 |
+| Small docs / repo edits | 60-75 |
+| Commit / push / public-facing docs | 75-85 |
+| External post / release / deletion / payment / irreversible actions | 90+ |
+
+YELLOW Context Risk adds +10 to the Required Confidence threshold.
+
+RED Context Risk blocks GOAL-style continuation regardless of confidence.
+
+## Next Action Card Behavior
+
+When Context Risk is BLUE:
+
+- Next Action Card may recommend normal continuation if Loop Map Confidence is sufficient.
+
+When Context Risk is YELLOW:
+
+- Next Action Card must show the adjusted Required Confidence.
+- Next Action Card must include Consult / Handoff / Split as available choices.
+- Continue must be framed as "continue under cap," not unrestricted execution.
+
+When Context Risk is RED:
+
+- Next Action Card must not recommend normal continuation.
+- It may recommend only:
+  1. Handoff
+  2. Split context
+  3. Consult and restore missing anchors
+  4. Stop and resume later
+
+## V12 Carry-Forward Rule
+
+If a concept changes the gate, threshold, stop condition, or recovery path, it must be carried forward in the next handoff.
+
+Context Risk Modifier changes gate and threshold behavior.
+
+It must not be left only in chat memory.
+
 ## When to Trigger a Decision Packet
 
 A Decision Packet should be triggered when:
