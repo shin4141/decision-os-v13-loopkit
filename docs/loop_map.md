@@ -187,6 +187,158 @@ Human reply
 Next Loop Command
 ```
 
+## GOAL Health Overlay
+
+GOAL Health Overlay is the LoopKit layer that surrounds GOAL-style execution.
+
+GOAL is the execution engine.
+
+LoopKit is the overlay that monitors:
+
+- Loop Map Confidence
+- Required Confidence
+- Context Risk
+- Route Fidelity
+- Returnability
+- Seat
+- missing context
+- recovery paths
+
+Canonical English framing:
+
+```text
+LoopKit does not replace GOAL-style execution. It lets the loop keep moving, while showing health signals, missing context, and recovery paths when the map starts weakening.
+```
+
+Canonical Japanese framing:
+
+```text
+AI実行ループで進む。LoopKitで、弱ってきた地図に必要な情報だけ差し込む。
+```
+
+GOAL Health Overlay does not decide for the user.
+
+It does not replace execution.
+
+It does not slow execution by default.
+
+It helps the loop continue when the map is still healthy, and recover when the map begins weakening.
+
+### GOAL / LoopKit Boundary
+
+GOAL-style execution is best when:
+
+- the goal is clear
+- the next action is obvious
+- context is stable
+- risk is low or medium
+- the dependency frontier is clear
+- the loop can continue without missing anchors
+
+LoopKit is most useful when:
+
+- the context is getting long
+- the map is weakening
+- the next 0.01 action is unclear
+- route fidelity is uncertain
+- returnability is weakening
+- Seat may drift
+- external/public/irreversible action is approaching
+- handoff/split/consult may be needed
+
+### Non-Competition Rule
+
+LoopKit must not be framed as replacing GOAL-style execution.
+
+Incorrect framing:
+
+- "LoopKit is a better execution loop."
+- "LoopKit decides the next action automatically."
+- "LoopKit slows down unsafe loops."
+- "LoopKit replaces GOAL."
+
+Correct framing:
+
+- "GOAL executes."
+- "LoopKit checks whether the map is healthy enough to keep executing."
+- "When the map weakens, LoopKit injects the smallest missing context or recovery path."
+- "LoopKit lets execution continue when confidence and risk allow it."
+
+### Existing Component Relationship
+
+Next Action Card:
+
+- shows the current health of the loop before the next 0.01 action
+
+Loop Map Confidence:
+
+- estimates whether the AI can choose the next 0.01 action without breaking the map
+
+Required Confidence:
+
+- depends on task impact
+
+Context Risk Modifier:
+
+- adjusts threshold or blocks continuation when context weakens
+
+Route Fidelity:
+
+- checks whether the next action follows the dependency frontier
+
+Returnability:
+
+- checks whether the loop can recover, split, handoff, or resume
+
+Consult Mode:
+
+- returns Seat to the human and asks one missing-input question before the loop breaks
+
+### Minimal Flow
+
+```text
+GOAL-style execution
+  ↓
+Next 0.01 action
+  ↓
+LoopKit Health Overlay checks:
+  - Loop Map Confidence
+  - Required Confidence
+  - Context Risk
+  - Route Fidelity
+  - Returnability
+  - Seat
+  - Missing context
+  - Recovery path
+  ↓
+Outcome:
+  - Continue
+  - Consult
+  - Handoff / Split
+  - Stop
+```
+
+### Worked Note: Fast Docs Loop Near A Future Node
+
+Scenario:
+
+A GOAL-style execution loop is moving quickly through docs edits.
+
+The next visible future node is public posting or Forward Future Loop Library submission.
+
+However, Context Risk is YELLOW and Route Fidelity is not high enough.
+
+GOAL alone might continue because the next task is visible.
+
+GOAL Health Overlay surfaces that the map is weakening and recommends:
+
+- Continue under cap only if adjusted confidence passes
+- otherwise Consult / Handoff / Split before external action
+
+This does not replace GOAL execution.
+
+It protects the execution loop from jumping beyond the dependency frontier.
+
 ## Context Risk Modifier
 
 Context Risk is an external context-health signal that affects the next-loop gate.

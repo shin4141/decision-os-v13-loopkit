@@ -29,6 +29,7 @@ The repository currently focuses on:
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
 - Consult Mode for Next Action Card recovery
+- GOAL Health Overlay as the LoopKit health/map/recovery layer around GOAL-style execution
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -40,7 +41,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence`
+- Latest reflected commit before this task: `47dd8ab Add Consult Mode to Next Action Card flow`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -238,6 +239,15 @@ Completed and parked:
 - After the human answers, the Next Action Card must be updated, and the loop must not auto-proceed unless `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`.
 - Context Risk relationship: BLUE makes Consult optional; YELLOW must surface Consult and usually recommends it when adjusted Required Confidence is not met; RED allows Consult only to restore anchors or prepare handoff/split while normal GOAL-style continuation remains blocked.
 - `docs/decision_packet.md` includes a worked example where Forward Future Loop Library submission is visible, but Consult Mode definition is the dependency-frontier anchor, so Consult prevents jumping to the future node.
+- `docs/loop_map.md` now defines `GOAL Health Overlay`.
+- GOAL is described as the execution engine.
+- LoopKit is described as the health/map/missing-context/Seat/recovery overlay around GOAL-style execution.
+- Canonical English framing: `LoopKit does not replace GOAL-style execution. It lets the loop keep moving, while showing health signals, missing context, and recovery paths when the map starts weakening.`
+- Canonical Japanese framing: `AI実行ループで進む。LoopKitで、弱ってきた地図に必要な情報だけ差し込む。`
+- Non-competition rule: LoopKit must not be framed as replacing GOAL-style execution.
+- Existing components are connected to the overlay: Next Action Card, Loop Map Confidence, Required Confidence, Context Risk Modifier, Route Fidelity, Returnability, and Consult Mode.
+- A minimal text flow shows GOAL-style execution -> Next 0.01 action -> LoopKit Health Overlay checks -> Continue / Consult / Handoff-Split / Stop.
+- A worked note shows a fast docs loop near public posting or Forward Future Loop Library submission where Context Risk is YELLOW and Route Fidelity is not high enough; the overlay recommends cap/consult/handoff/split instead of jumping beyond the dependency frontier.
 
 Field Note 062 result:
 
@@ -352,7 +362,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence` before this Consult Mode task.
+The repository was clean and restartable from `origin/main` at `47dd8ab Add Consult Mode to Next Action Card flow` before this GOAL Health Overlay task.
 
 ## V13 Next Loop Gate
 
@@ -388,7 +398,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence`
+- latest reflected commit before this task: `47dd8ab Add Consult Mode to Next Action Card flow`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -492,6 +502,12 @@ Preserve:
 - Consult Mode must not auto-proceed unless `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`
 - Consult Mode includes the canonical line `Consult Mode returns Seat before the loop breaks.` and Japanese line `Consult Modeは、ループが壊れる前にSeatを人間へ戻す。`
 - the Consult Mode example prevents jumping to Forward Future Loop Library submission before the Consult Mode dependency-frontier anchor is defined
+- `docs/loop_map.md` defines `GOAL Health Overlay` as the LoopKit layer around GOAL-style execution
+- GOAL is the execution engine; LoopKit is the health/map/missing-context/Seat/recovery overlay
+- canonical framing preserved in English and Japanese
+- the non-competition rule is explicit: LoopKit does not replace GOAL-style execution
+- the overlay connects Next Action Card, Loop Map Confidence, Required Confidence, Context Risk Modifier, Route Fidelity, Returnability, and Consult Mode
+- the worked note shows the overlay preventing a jump beyond the dependency frontier toward public posting or Forward Future Loop Library submission
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
