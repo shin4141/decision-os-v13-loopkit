@@ -390,6 +390,131 @@ Route Fidelity and Returnability are optional explanation fields.
 
 Include them when the confidence score would otherwise be unclear.
 
+## Consult Mode
+
+Consult Mode is a LoopKit recovery mode that pauses GOAL-style auto-continuation and returns Seat to the human operator long enough to restore one missing map field.
+
+Use Consult Mode when:
+
+- Loop Map Confidence is below Required Confidence
+- Context Risk is YELLOW
+- Route Fidelity is weak or unclear
+- Returnability is weak or unclear
+- the next action depends on a missing anchor
+- the AI cannot safely choose the next 0.01 action without one additional input
+
+Consult Mode does not decide for the user.
+
+Consult Mode does not ask many questions.
+
+Consult Mode asks the one missing input that most improves the next 0.01 action.
+
+Canonical line:
+
+```text
+Consult Mode returns Seat before the loop breaks.
+```
+
+Japanese canonical line:
+
+```text
+Consult Modeは、ループが壊れる前にSeatを人間へ戻す。
+```
+
+### Consult Mode Output
+
+```md
+# Consult Mode
+
+Current Loop Map:
+- Goal:
+- Forward Anchor:
+- Current State:
+- Context Boundary:
+- Re-entry Path:
+- Seat:
+- Risk:
+
+Route Fidelity:
+- High / Medium / Low
+- Reason:
+
+Returnability:
+- High / Medium / Low
+- Reason:
+
+Confidence Gap:
+- Loop Map Confidence:
+- Required Confidence:
+- Gap:
+- Context Risk Modifier:
+
+Missing Field:
+- The one missing field most needed to recover the map.
+
+One Question:
+- Ask exactly one question to the human operator.
+
+After Answer:
+- Update the Next Action Card.
+- Do not proceed automatically unless the updated Proceed Rule passes.
+```
+
+### One-Question Rule
+
+Consult Mode must ask only one question.
+
+The question should be the input that most improves the next 0.01 action.
+
+Good Consult questions:
+
+- "Which anchor is the current forward anchor: Next Action Card, GOAL Health Overlay, or Loop Library submission?"
+- "Should this loop remain docs-only, or may it update examples?"
+- "Is the next action a small docs edit or an external-facing change?"
+- "Should we split context now, or continue under cap for one more docs-only edit?"
+
+Bad Consult questions:
+
+- asking multiple questions at once
+- asking broad strategy questions
+- asking for product direction when only one missing anchor is needed
+- asking the user to redesign the whole loop
+- asking questions that do not change the next 0.01 action
+
+### Context Risk Relationship
+
+When Context Risk is BLUE:
+
+- Consult is optional.
+- GOAL-style execution may continue if the Proceed Rule passes.
+
+When Context Risk is YELLOW:
+
+- Consult must be surfaced as an available choice.
+- If adjusted Required Confidence is not met, Consult should usually be the recommended next action unless Handoff / Split is more appropriate.
+
+When Context Risk is RED:
+
+- Consult may be used only to restore missing anchors or prepare handoff / split.
+- Normal GOAL-style continuation remains blocked.
+
+### After Consult
+
+When the human answers the one question:
+
+- update the missing field
+- recalculate or restate Loop Map Confidence
+- restate Required Confidence
+- restate Context Risk
+- recommend the next 0.01 action
+- do not auto-proceed unless:
+
+```text
+Loop Map Confidence >= Required Confidence
+AND
+Context Risk is not RED
+```
+
 ## Worked Example: Context Risk YELLOW After A Small Docs Edit
 
 ```md
@@ -495,6 +620,96 @@ Next Action must not jump to islands.
 ```text
 Loop Mapは飛び地で見えてよい。Next Actionは飛び地に飛んではいけない。
 ```
+
+## Worked Example: Consult Prevents Jumping To A Future Node
+
+```md
+# Next Action Card
+
+Signal:
+- 🟡
+
+Context Risk:
+- BLUE
+
+Loop Map Confidence:
+- 66%
+
+Required Confidence:
+- 70%
+- Context Risk Modifier: none
+
+Proceed Rule:
+- Proceed only if Loop Map Confidence >= Required Confidence
+- and Context Risk is not RED
+
+Reason:
+- The Loop Map can see a future useful node: Forward Future Loop Library submission.
+- Route Fidelity is not high because Consult Mode itself is not yet defined.
+- The dependency frontier says Consult Mode definition comes before library submission.
+
+Route Fidelity:
+- Low
+- Reason: jumping to the library submission would skip the missing Consult Mode anchor.
+
+Returnability:
+- Medium
+- Reason: docs-only work can be recovered, but a future-node jump would weaken the map and make restart harder.
+
+Missing:
+- Consult Mode definition.
+
+Recommended Next:
+- Do not submit to the future library yet.
+- Use Consult Mode or complete the docs-only Consult Mode definition first.
+
+Choices:
+1. Continue with GOAL-style execution only on the docs-only Consult Mode definition
+2. Consult and confirm that Consult Mode is the current dependency-frontier anchor
+3. Show another bounded docs-only option
+4. Create handoff / split context before selecting the future library submission
+```
+
+If the user chooses Consult, switch to:
+
+```md
+# Consult Mode
+
+Current Loop Map:
+- Goal: make Next Action Card operationally usable
+- Forward Anchor: Consult Mode definition
+- Current State: Next Action Card exists, but Consult behavior is undefined
+- Context Boundary: docs-only MVP, no automation
+- Re-entry Path: update the card after the missing anchor is confirmed
+- Seat: human operator
+- Risk: jumping to a visible future node too early
+
+Route Fidelity:
+- Low
+- Reason: the visible library submission is not on the current dependency frontier.
+
+Returnability:
+- Medium
+- Reason: handoff / split is available, but the missing Consult definition should be restored first.
+
+Confidence Gap:
+- Loop Map Confidence: 66%
+- Required Confidence: 70%
+- Gap: 4%
+- Context Risk Modifier: none
+
+Missing Field:
+- Current forward anchor.
+
+One Question:
+- Is the current forward anchor the docs-only Consult Mode definition, or should this loop split before selecting a future library submission?
+
+After Answer:
+- Update the Next Action Card.
+- Do not proceed automatically unless the updated Proceed Rule passes.
+```
+
+Seat returns to the human before the loop jumps.
 
 ## Final Seat
 

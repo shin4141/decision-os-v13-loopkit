@@ -28,6 +28,7 @@ The repository currently focuses on:
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
+- Consult Mode for Next Action Card recovery
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -39,7 +40,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `29bac6a Add next action card template and example`
+- Latest reflected commit before this task: `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -228,6 +229,15 @@ Completed and parked:
 - Loop Map Confidence can now be explained through Route Fidelity, Returnability, Context Risk, Seat, and Risk without numeric sub-scores.
 - `docs/decision_packet.md` now includes optional Route Fidelity and Returnability fields in the Next Action Card template.
 - `docs/decision_packet.md` adds a worked example where a future useful node is visible but Route Fidelity is weak, so the card recommends finishing the dependency-frontier definition work, consulting, or handoff/split instead of jumping to public posting, library submission, or overlay work.
+- `docs/decision_packet.md` now defines Consult Mode.
+- Consult Mode pauses GOAL-style auto-continuation and returns Seat to the human operator long enough to restore one missing map field.
+- Consult Mode asks exactly one question: the missing input that most improves the next 0.01 action.
+- Canonical line: `Consult Mode returns Seat before the loop breaks.`
+- Japanese canonical line: `Consult Modeは、ループが壊れる前にSeatを人間へ戻す。`
+- Consult Mode output includes Current Loop Map, Route Fidelity, Returnability, Confidence Gap, Missing Field, One Question, and After Answer.
+- After the human answers, the Next Action Card must be updated, and the loop must not auto-proceed unless `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`.
+- Context Risk relationship: BLUE makes Consult optional; YELLOW must surface Consult and usually recommends it when adjusted Required Confidence is not met; RED allows Consult only to restore anchors or prepare handoff/split while normal GOAL-style continuation remains blocked.
+- `docs/decision_packet.md` includes a worked example where Forward Future Loop Library submission is visible, but Consult Mode definition is the dependency-frontier anchor, so Consult prevents jumping to the future node.
 
 Field Note 062 result:
 
@@ -342,7 +352,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `29bac6a Add next action card template and example` before this Route Fidelity / Returnability task.
+The repository was clean and restartable from `origin/main` at `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence` before this Consult Mode task.
 
 ## V13 Next Loop Gate
 
@@ -378,7 +388,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `29bac6a Add next action card template and example`
+- latest reflected commit before this task: `a2aa3a0 Add route fidelity and returnability to Loop Map Confidence`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -477,6 +487,11 @@ Preserve:
 - Returnability asks whether the loop can recover, pause, split, handoff, or resume if the next action weakens
 - `docs/decision_packet.md` adds optional Route Fidelity and Returnability fields to the Next Action Card template
 - the new worked example shows a visible future node should not be selected before dependency-frontier definition work is finished
+- `docs/decision_packet.md` defines Consult Mode as a recovery mode that pauses GOAL-style auto-continuation and returns Seat to the human operator to restore one missing map field
+- Consult Mode asks exactly one question and must update the Next Action Card after the answer
+- Consult Mode must not auto-proceed unless `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`
+- Consult Mode includes the canonical line `Consult Mode returns Seat before the loop breaks.` and Japanese line `Consult Modeは、ループが壊れる前にSeatを人間へ戻す。`
+- the Consult Mode example prevents jumping to Forward Future Loop Library submission before the Consult Mode dependency-frontier anchor is defined
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
