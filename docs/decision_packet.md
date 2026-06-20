@@ -337,6 +337,96 @@ When Context Risk is YELLOW, the card must show the adjusted Required Confidence
 
 When Context Risk is RED, the card must not recommend normal continuation. It may recommend only Handoff, Split context, Consult and restore missing anchors, or Stop and resume later.
 
+## Minimal Next Action Card Template
+
+Loop Map Confidence is not progress percentage. It is confidence that the next 0.01 action can be chosen without breaking the map.
+
+```md
+# Next Action Card
+
+Signal:
+- 🟢 / 🟡 / 🔴
+
+Context Risk:
+- BLUE / YELLOW / RED
+
+Loop Map Confidence:
+- X%
+
+Required Confidence:
+- Y%
+- Context Risk Modifier: none / +10 / blocked
+
+Proceed Rule:
+- Proceed only if Loop Map Confidence >= Required Confidence
+- and Context Risk is not RED
+
+Reason:
+- Why this signal and confidence were assigned.
+
+Missing:
+- The one missing input that would most improve the next 0.01 action.
+- Use `None` if no critical input is missing.
+
+Recommended Next:
+- The best conditional next 0.01 action.
+
+Choices:
+1. Continue with GOAL-style execution
+2. Consult and fill the missing map field
+3. Show another option
+4. Create handoff / split context
+```
+
+## Worked Example: Context Risk YELLOW After A Small Docs Edit
+
+```md
+# Next Action Card
+
+Signal:
+- 🟡
+
+Context Risk:
+- YELLOW
+
+Loop Map Confidence:
+- 76%
+
+Required Confidence:
+- 80%
+- Context Risk Modifier: +10
+
+Proceed Rule:
+- Proceed only if Loop Map Confidence >= Required Confidence
+- and Context Risk is not RED
+
+Reason:
+- A small docs/repo edit has base Required Confidence in the 60-75 range.
+- Context Risk is YELLOW because the Codex context is long or a context pressure warning appears.
+- The adjusted threshold is 80.
+- Loop Map Confidence is 76, which is below the adjusted threshold.
+
+Missing:
+- Current restart anchor confirmation.
+
+Recommended Next:
+- Do not silently continue with normal GOAL-style execution.
+- Consult the Owner or restore the missing restart anchor before editing further.
+- If the context remains long or unstable, create a handoff or split context.
+
+Choices:
+1. Continue with GOAL-style execution only under cap after the missing anchor is restored
+2. Consult and confirm the current restart anchor
+3. Show another bounded option that does not edit files
+4. Create handoff / split context before further repo edits
+```
+
+This example does not mean "stop everything."
+
+It means normal continuation is not justified under the adjusted threshold. The next best 0.01 action is to consult, restore the missing anchor, or hand off / split before editing further.
+
+If Context Risk were RED, option 1 would not be valid. Normal GOAL-style continuation would be blocked, and the available choices would narrow to Handoff / Split / Consult / Stop.
+
 ## Final Seat
 
 The final Seat remains with the human.

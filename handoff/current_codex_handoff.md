@@ -26,6 +26,7 @@ The repository currently focuses on:
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
 - Context Risk Modifier in MVP loop-map logic
+- minimal Next Action Card template and worked example
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -37,7 +38,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `446e997 Refresh handoff for tutorial first response`
+- Latest reflected commit before this task: `389aca1 Add context risk modifier to V13 MVP spec`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -210,6 +211,14 @@ Completed and parked:
 - `docs/decision_packet.md` now states that a Next Action Card must obey the Context Risk Modifier and adjust behavior by Context Risk level.
 - V12 carry-forward rule: if a concept changes the gate, threshold, stop condition, or recovery path, it must be carried forward in the next handoff.
 - The Context Risk Modifier changes gate and threshold behavior, so it must not be left only in chat memory.
+- `docs/decision_packet.md` now includes a minimal `Next Action Card` template.
+- The template includes Signal, Context Risk, Loop Map Confidence, Required Confidence, Proceed Rule, Reason, Missing, Recommended Next, and Choices.
+- The template repeats that Loop Map Confidence is not progress percentage and applies the proceed rule: `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`.
+- `docs/decision_packet.md` also includes one worked example for a small docs/repo edit under YELLOW Context Risk.
+- The example uses Loop Map Confidence 76%, adjusted Required Confidence 80%, and Context Risk Modifier +10.
+- The example shows that normal GOAL-style continuation is not justified when adjusted confidence is insufficient.
+- The example recommends Consult / restoring the missing restart anchor, or Handoff / Split before editing further.
+- The example states that if Context Risk were RED, normal GOAL-style continuation would be blocked and choices would narrow to Handoff / Split / Consult / Stop.
 
 Field Note 062 result:
 
@@ -324,7 +333,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `446e997 Refresh handoff for tutorial first response` before this Context Risk Modifier task.
+The repository was clean and restartable from `origin/main` at `389aca1 Add context risk modifier to V13 MVP spec` before this Next Action Card task.
 
 ## V13 Next Loop Gate
 
@@ -360,7 +369,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `446e997 Refresh handoff for tutorial first response`
+- latest reflected commit before this task: `389aca1 Add context risk modifier to V13 MVP spec`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -448,6 +457,11 @@ Preserve:
 - Loop Map Confidence is not progress percentage; it is confidence that the next 0.01 can be chosen without breaking Goal, Forward Anchor, Current State, Context Boundary, Re-entry, Seat, or Risk
 - `docs/decision_packet.md` states that Next Action Card behavior must obey the Context Risk Modifier
 - V12 carry-forward rule: gate, threshold, stop-condition, or recovery-path changes must be carried into the next handoff
+- `docs/decision_packet.md` includes a minimal `Next Action Card` template with Signal, Context Risk, Loop Map Confidence, Required Confidence, Proceed Rule, Reason, Missing, Recommended Next, and Choices
+- the template applies `Loop Map Confidence >= Required Confidence` and `Context Risk is not RED`
+- the worked example shows YELLOW Context Risk adding +10 Required Confidence for a small docs/repo edit: Loop Map Confidence 76%, adjusted Required Confidence 80%
+- the example recommends Consult / restoring the missing restart anchor, or Handoff / Split before editing further when adjusted confidence is insufficient
+- the example states RED Context Risk blocks normal GOAL-style continuation and narrows choices to Handoff / Split / Consult / Stop
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
