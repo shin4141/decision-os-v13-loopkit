@@ -26,6 +26,7 @@ The repository currently focuses on:
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
 - AI Tutorial Capsule for AI-readable external onboarding
+- Reddit signal on AI-explainable repo first-contact framing
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
@@ -43,7 +44,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `081264a Add GOAL Health Overlay submission draft`
+- Latest reflected commit before this task: `ca863eb Add AI tutorial capsule`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -364,7 +365,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `081264a Add GOAL Health Overlay submission draft` before this AI Tutorial Capsule task.
+The repository was clean and restartable from `origin/main` at `ca863eb Add AI tutorial capsule` before this Reddit signal field note task.
 
 ## V13 Next Loop Gate
 
@@ -400,7 +401,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `081264a Add GOAL Health Overlay submission draft`
+- latest reflected commit before this task: `ca863eb Add AI tutorial capsule`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -522,6 +523,12 @@ Preserve:
 - `README.md` now includes one small link to `AI_TUTORIAL_CAPSULE.md`.
 - Possible later split into `tutorial.md`, `tutorial_prompt.md`, `tutorial_review.md`, or a generated example remains parked until a stronger need appears.
 - Do not expand this into multiple tutorial files, marketing copy, automation, hooks, MCP, pluginization, execution engine, or broad productization now.
+- Field Note 080 captured the Reddit signal from the AI-readable onboarding discussion.
+- Current external framing should prefer `AI-explainable repo on first contact` over `AI-readable onboarding capsule` when speaking to general developers.
+- The signal is that some practitioners hear "capsule/docs" as "more docs," while the immediate value is letting a user's own AI explain an unfamiliar repo and identify the safest first action.
+- This is a market-language signal, not a final verdict.
+- No further Reddit posting today.
+- No repo redesign, README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial split, examples, automation, hooks, MCP, pluginization, execution engine, or broad productization from this signal yet.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
