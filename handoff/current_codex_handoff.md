@@ -36,6 +36,7 @@ The repository currently focuses on:
 - Consult Mode for Next Action Card recovery
 - GOAL Health Overlay as the LoopKit health/map/recovery layer around GOAL-style execution
 - GOAL Health Overlay Loop as a draft Forward Future Loop Library candidate
+- Next-Action Confidence Check as a Loop Library V2 candidate
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -47,7 +48,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `d4b7330 Add tutorial benefit framing`
+- Latest reflected commit before this task: `f2ff820 Fix tutorial onboarding entry point`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -368,7 +369,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `d4b7330 Add tutorial benefit framing` before this tutorial onboarding entry-point fix.
+The repository was clean and restartable from `origin/main` at `f2ff820 Fix tutorial onboarding entry point` before this Next-Action Confidence Check candidate task.
 
 ## V13 Next Loop Gate
 
@@ -404,7 +405,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `d4b7330 Add tutorial benefit framing`
+- latest reflected commit before this task: `f2ff820 Fix tutorial onboarding entry point`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -549,6 +550,14 @@ Preserve:
 - This addresses third-party fork feedback where Codex understood the repo but produced a summary instead of starting the tutorial flow.
 - The capsule also includes a recommended onboarding prompt that tells Codex to print the exact menu first and not edit files.
 - No README rewrite, tutorial restructuring, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning rewrite was added.
+- `docs/loop_library_next_action_confidence_check.md` was added as a Loop Library V2 candidate.
+- Working title: `Next-Action Confidence Check`.
+- Purpose: translate V13 into a copyable 1-minute loop that runs after an AI agent finishes a task and before it starts the next visible idea.
+- The candidate includes Use when / Goal / Input / Loop / Copy-paste prompt / Verifier / Stop condition / Example / Why this helps.
+- It separates V12 completion from V13 next-loop permission and keeps the user's final Seat.
+- This is not a resubmission yet.
+- External Loop Library submission, issue, PR, or posting decision remains `HOLD`.
+- No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, extra examples, automation, hooks, MCP, pluginization, execution engine, or broad productization was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
