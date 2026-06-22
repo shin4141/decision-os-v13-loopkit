@@ -14,6 +14,73 @@ Before explaining, read:
 4. `examples/README.md`
 5. `examples/cap.v12_handoff_review.json`
 
+## What do I get?
+
+LoopKit is not just a checklist.
+
+It helps reduce the hidden cost of AI work.
+
+### 1. Lower restart cost
+
+Each handoff leaves a short recap of what changed, what was verified, what was not touched, and what the next safe action is.
+
+This means the next AI does not have to rediscover the whole context from scratch.
+
+### 2. Less token waste
+
+Without a recap, every new AI session spends tokens re-reading, guessing, and reconstructing prior decisions.
+
+LoopKit keeps the reusable state small and explicit, so the model can spend more reasoning on progress instead of re-onboarding.
+
+### 3. Less drift
+
+LoopKit encourages the user or agent to record the actual reason for a decision, not just the most plausible explanation later.
+
+This reduces the risk that a future AI continues from a false assumption.
+
+### 4. Fewer accidental expansions
+
+V13 separates "the current task is complete" from "the next loop should start."
+
+A task can be V12 PASS while the next loop is still CAP or HOLD.
+
+This prevents the AI from treating "done" as permission to start every visible next idea.
+
+### 5. Smaller agent instructions
+
+AGENTS.md should remain an operating manual, not a dumping ground.
+
+Reusable lessons go to field notes.
+Restart context goes to handoff.
+Reusable examples go to examples.
+
+The goal is not to add more documentation.
+
+The goal is to make the next AI restart faster, cheaper, and safer.
+
+## First 5-minute use
+
+If you are not sure where to start, do not migrate the whole repo.
+
+Start by asking Codex to attach a V12/V13 report after one small task:
+
+```text
+When this task is done, report:
+
+- What changed
+- What was verified
+- What was not touched
+- V12 State: PASS / DELAY / BLOCK
+- V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
+- Reason
+- Allowed Next Action
+- Not Allowed
+
+Do not start the next task automatically.
+```
+
+If the next gate is CAP or HOLD, keep the next action small.
+
 ## Language Behavior
 
 Use the user's language for explanations and menu guidance.

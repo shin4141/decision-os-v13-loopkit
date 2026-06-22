@@ -22,6 +22,7 @@ The repository currently focuses on:
 - fork-user Codex quickstart
 - fork-user residue storage map
 - Codex first-run tutorial guide
+- tutorial benefit framing and first 5-minute use prompt
 - Setup Pill read-only starter pack helper
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
@@ -45,7 +46,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `93576b6 Record AI-explainable repo field note`
+- Latest reflected commit before this task: `2317c65 Record recap and re-onboarding cost field note`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -366,7 +367,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `93576b6 Record AI-explainable repo field note` before this recap / re-onboarding cost field note task.
+The repository was clean and restartable from `origin/main` at `2317c65 Record recap and re-onboarding cost field note` before this tutorial benefit-framing task.
 
 ## V13 Next Loop Gate
 
@@ -402,7 +403,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `93576b6 Record AI-explainable repo field note`
+- latest reflected commit before this task: `2317c65 Record recap and re-onboarding cost field note`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -536,6 +537,11 @@ Preserve:
 - Missing handoff forces future AI agents to spend tokens, time, attention, and reasoning capacity rediscovering what happened, what was proven, what must not be touched, why the prior loop stopped, and what the next safe action is.
 - V13 remains framed as an exit gate that keeps AI work restartable by leaving completion state, evidence, limits, stop reason, next-loop gate, and next safe action.
 - No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial file, example, automation, hooks, MCP, pluginization, execution engine, new Reddit post, or broad product-positioning rewrite from this signal yet.
+- `docs/codex_tutorial_guide.md` now includes a `What do I get?` section near the top.
+- The tutorial now explains user-facing benefits before feature details: lower restart cost, less token waste, less drift, fewer accidental expansions, smaller `AGENTS.md` / less instruction bloat, and faster safer next-AI continuation.
+- The tutorial now includes a `First 5-minute use` prompt that asks Codex to attach a V12/V13 report after one small task and not start the next task automatically.
+- README and `AI_TUTORIAL_CAPSULE.md` remain unchanged by this tutorial benefit-framing edit.
+- No feature expansion, tutorial file split, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning rewrite was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
