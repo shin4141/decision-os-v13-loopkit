@@ -27,6 +27,7 @@ The repository currently focuses on:
 - terminal demo storyboard
 - AI Tutorial Capsule for AI-readable external onboarding
 - Reddit signal on AI-explainable repo first-contact framing
+- recap / re-onboarding cost framing for restartable AI work
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
@@ -44,7 +45,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `ca863eb Add AI tutorial capsule`
+- Latest reflected commit before this task: `93576b6 Record AI-explainable repo field note`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -365,7 +366,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `ca863eb Add AI tutorial capsule` before this Reddit signal field note task.
+The repository was clean and restartable from `origin/main` at `93576b6 Record AI-explainable repo field note` before this recap / re-onboarding cost field note task.
 
 ## V13 Next Loop Gate
 
@@ -401,7 +402,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `ca863eb Add AI tutorial capsule`
+- latest reflected commit before this task: `93576b6 Record AI-explainable repo field note`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -529,6 +530,12 @@ Preserve:
 - This is a market-language signal, not a final verdict.
 - No further Reddit posting today.
 - No repo redesign, README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial split, examples, automation, hooks, MCP, pluginization, execution engine, or broad productization from this signal yet.
+- Field Note 081 captured the recap / re-onboarding cost framing.
+- Current external framing candidate: strong AI still needs the recap.
+- V13 positioning: handoff is acceleration, not paperwork.
+- Missing handoff forces future AI agents to spend tokens, time, attention, and reasoning capacity rediscovering what happened, what was proven, what must not be touched, why the prior loop stopped, and what the next safe action is.
+- V13 remains framed as an exit gate that keeps AI work restartable by leaving completion state, evidence, limits, stop reason, next-loop gate, and next safe action.
+- No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial file, example, automation, hooks, MCP, pluginization, execution engine, new Reddit post, or broad product-positioning rewrite from this signal yet.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
