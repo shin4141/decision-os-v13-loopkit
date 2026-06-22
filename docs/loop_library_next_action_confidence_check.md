@@ -1,5 +1,14 @@
 # Next-Action Confidence Check
 
+Use when:
+An AI agent finishes a task and wants to continue to the next one.
+
+Verify:
+The agent separates task completion from next-loop permission.
+
+Stop when:
+The agent outputs one gate, one allowed next action, and does not start the next task.
+
 ## Use when
 
 Use this loop when an AI agent finishes a task and wants to continue to the next one.
@@ -33,12 +42,12 @@ Ask the agent to report:
 1. State what changed.
 2. State what was verified.
 3. State what was not touched.
-4. Identify missing evidence or uncertainty.
-5. Decide `V12 State`: `PASS` / `DELAY` / `BLOCK`.
-6. Decide `V13 Next Loop Gate`: `GO` / `HOLD` / `CAP` / `BLOCK`.
-7. If the gate is `CAP`, define the exact limit.
-8. If the gate is `HOLD` or `BLOCK`, do not start the next task.
-9. Output one allowed next action.
+4. State what is still uncertain.
+5. Decide whether the current task is actually complete.
+6. Decide whether the next loop should run.
+7. Output one of `GO`, `HOLD`, `CAP`, or `BLOCK`.
+8. Give exactly one allowed next action.
+9. If the gate is `CAP`, define the exact limit.
 10. Stop and wait for the user.
 
 ## Copy-paste prompt
@@ -52,14 +61,15 @@ Report:
 - What was verified
 - What was not touched
 - What remains uncertain
-- V12 State: PASS / DELAY / BLOCK
-- V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
+- Is the current task complete? PASS / DELAY / BLOCK
+- Should the next loop run? GO / HOLD / CAP / BLOCK
 - Reason
-- Allowed Next Action
-- Not Allowed
+- One allowed next action
+- Not allowed
 - CAP limit, if any
 
 Do not start the next task automatically.
+Stop after this report and wait for the user.
 ```
 
 ## Verifier
@@ -90,19 +100,19 @@ The file was edited and the handoff was updated.
 What was not touched:
 README, examples, automation, hooks, MCP, pluginization.
 
-V12 State:
+Is the current task complete?
 PASS
 
-V13 Next Loop Gate:
+Should the next loop run?
 CAP
 
 Reason:
 The current task is complete, but the next visible actions could expand into README rewrite, examples, or posting.
 
-Allowed Next Action:
+One allowed next action:
 Run one no-edit onboarding retest.
 
-Not Allowed:
+Not allowed:
 Do not rewrite README.
 Do not add examples.
 Do not submit externally yet.

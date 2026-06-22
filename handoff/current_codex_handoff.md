@@ -37,6 +37,7 @@ The repository currently focuses on:
 - GOAL Health Overlay as the LoopKit health/map/recovery layer around GOAL-style execution
 - GOAL Health Overlay Loop as a draft Forward Future Loop Library candidate
 - Next-Action Confidence Check as a Loop Library V2 candidate
+- copyable one-line verifier / stop condition for Next-Action Confidence Check
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -48,7 +49,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `f2ff820 Fix tutorial onboarding entry point`
+- Latest reflected commit before this task: `22f0be9 Add next-action confidence loop candidate`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -369,7 +370,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `f2ff820 Fix tutorial onboarding entry point` before this Next-Action Confidence Check candidate task.
+The repository was clean and restartable from `origin/main` at `22f0be9 Add next-action confidence loop candidate` before this copyable-loop revision task.
 
 ## V13 Next Loop Gate
 
@@ -405,7 +406,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `f2ff820 Fix tutorial onboarding entry point`
+- latest reflected commit before this task: `22f0be9 Add next-action confidence loop candidate`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -558,6 +559,13 @@ Preserve:
 - This is not a resubmission yet.
 - External Loop Library submission, issue, PR, or posting decision remains `HOLD`.
 - No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, extra examples, automation, hooks, MCP, pluginization, execution engine, or broad productization was added.
+- `docs/loop_library_next_action_confidence_check.md` was revised into a simpler copyable-loop format.
+- The top of the candidate now includes one-line `Use when`, `Verify`, and `Stop when` lines.
+- `Verify`: the agent separates task completion from next-loop permission.
+- `Stop when`: the agent outputs one gate, one allowed next action, and does not start the next task.
+- Decision-OS-specific terms were reduced from the opening so the first screen is understandable without knowing the whole system.
+- External Loop Library submission / PR remains `HOLD`.
+- No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, examples, automation, hooks, MCP, pluginization, execution engine, or broad repo expansion was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
