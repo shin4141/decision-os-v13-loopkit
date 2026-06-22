@@ -27,6 +27,7 @@ The repository currently focuses on:
 - terminal demo script for LoopKit signals
 - terminal demo storyboard
 - AI Tutorial Capsule for AI-readable external onboarding
+- AI Tutorial Capsule first-contact onboarding rule
 - Reddit signal on AI-explainable repo first-contact framing
 - recap / re-onboarding cost framing for restartable AI work
 - Context Risk Modifier in MVP loop-map logic
@@ -46,7 +47,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `2317c65 Record recap and re-onboarding cost field note`
+- Latest reflected commit before this task: `d4b7330 Add tutorial benefit framing`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -367,7 +368,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `2317c65 Record recap and re-onboarding cost field note` before this tutorial benefit-framing task.
+The repository was clean and restartable from `origin/main` at `d4b7330 Add tutorial benefit framing` before this tutorial onboarding entry-point fix.
 
 ## V13 Next Loop Gate
 
@@ -403,7 +404,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `2317c65 Record recap and re-onboarding cost field note`
+- latest reflected commit before this task: `d4b7330 Add tutorial benefit framing`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -542,6 +543,12 @@ Preserve:
 - The tutorial now includes a `First 5-minute use` prompt that asks Codex to attach a V12/V13 report after one small task and not start the next task automatically.
 - README and `AI_TUTORIAL_CAPSULE.md` remain unchanged by this tutorial benefit-framing edit.
 - No feature expansion, tutorial file split, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning rewrite was added.
+- `AI_TUTORIAL_CAPSULE.md` now includes a first-contact onboarding rule.
+- It directs onboarding requests to `docs/codex_tutorial_guide.md` and the `Exact First Response` section.
+- Codex should print the tutorial menu before summarizing or explaining the repo, then wait for the user's selection.
+- This addresses third-party fork feedback where Codex understood the repo but produced a summary instead of starting the tutorial flow.
+- The capsule also includes a recommended onboarding prompt that tells Codex to print the exact menu first and not edit files.
+- No README rewrite, tutorial restructuring, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning rewrite was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
