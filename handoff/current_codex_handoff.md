@@ -40,6 +40,7 @@ The repository currently focuses on:
 - Next-Action Confidence Check as a Loop Library V2 candidate
 - copyable one-line verifier / stop condition for Next-Action Confidence Check
 - Loop Library listing signal for The next-action confidence check
+- The Restartable Handoff Loop as a Loop Library Operations candidate
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -51,7 +52,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `552262c Record re-entry rethink field note`
+- Latest reflected commit before this task: `0d9e2e8 Record loop library listing signal`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -372,7 +373,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `552262c Record re-entry rethink field note` before this Loop Library listing signal task.
+The repository was clean and restartable from `origin/main` at `0d9e2e8 Record loop library listing signal` before this Restartable Handoff Loop candidate task.
 
 ## V13 Next Loop Gate
 
@@ -408,7 +409,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `552262c Record re-entry rethink field note`
+- latest reflected commit before this task: `0d9e2e8 Record loop library listing signal`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -578,6 +579,13 @@ Preserve:
 - This is an external validation signal for the V13 copyable-loop translation, not proof that the whole market understands V13.
 - Translation lesson: plain language, one-line `Verify` / `Stop when`, copy-paste prompt, and example made one V13-derived loop legible externally.
 - No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, examples, automation, hooks, MCP, pluginization, execution engine, new submission, public post, or feature expansion was added.
+- `docs/loop_library_restartable_handoff_loop.md` was added as a Loop Library Operations candidate.
+- Title: `The Restartable Handoff Loop`.
+- Purpose: close AI-agent sessions so the next human or AI can restart without guessing what happened, what was verified, what is off limits, or what the safest next action is.
+- Category target: Operations.
+- This is distinct from `Next-Action Confidence Check`, which is an Evaluation loop for deciding whether the next loop should run.
+- External submission remains pending until Shin reviews.
+- No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, automation, hooks, MCP, pluginization, execution engine, additional candidate, issue, PR, or public post was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
