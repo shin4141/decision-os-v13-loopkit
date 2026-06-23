@@ -30,6 +30,7 @@ The repository currently focuses on:
 - AI Tutorial Capsule first-contact onboarding rule
 - Reddit signal on AI-explainable repo first-contact framing
 - recap / re-onboarding cost framing for restartable AI work
+- Re-entry Rethink / receiver-side rescale after handoff
 - Context Risk Modifier in MVP loop-map logic
 - minimal Next Action Card template and worked example
 - Route Fidelity and Returnability as Loop Map Confidence support axes
@@ -49,7 +50,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `22f0be9 Add next-action confidence loop candidate`
+- Latest reflected commit before this task: `d4bc8f9 Add copyable next-action confidence loop`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -370,7 +371,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `22f0be9 Add next-action confidence loop candidate` before this copyable-loop revision task.
+The repository was clean and restartable from `origin/main` at `d4bc8f9 Add copyable next-action confidence loop` before this Re-entry Rethink field note task.
 
 ## V13 Next Loop Gate
 
@@ -406,7 +407,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `22f0be9 Add next-action confidence loop candidate`
+- latest reflected commit before this task: `d4bc8f9 Add copyable next-action confidence loop`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -566,6 +567,11 @@ Preserve:
 - Decision-OS-specific terms were reduced from the opening so the first screen is understandable without knowing the whole system.
 - External Loop Library submission / PR remains `HOLD`.
 - No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, examples, automation, hooks, MCP, pluginization, execution engine, or broad repo expansion was added.
+- Field Note 082 captured Re-entry Rethink / receiver-side rescale.
+- Framing: handoff should not only preserve restartability; the receiver should run a bounded rethink before continuation.
+- This avoids continuity bias, route lock-in, stale priorities, accumulated mistakes, outdated field notes, and external signals being ignored.
+- Re-entry Rethink sits between V12 and V13: V12 asks whether restart is possible, Re-entry Rethink asks whether to restart in the same direction, and V13 gates the next loop.
+- No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, examples, automation, hooks, MCP, pluginization, execution engine, public post, or feature expansion was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
