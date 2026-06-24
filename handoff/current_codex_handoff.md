@@ -627,6 +627,11 @@ Preserve:
 - This connects to minimal-radius thinking: the shortest valid next action may come from integrating weaker nearby signals that share a direction.
 - Risk: false integration can create overconfidence when unrelated, recent, emotional, or incompatible signals are forced together.
 - No README edit, tutorial edit, copy-paste file, example, automation, hooks, MCP, pluginization, execution engine, loop submission, public post, or feature expansion was added.
+- Field Note 086 captured the second Forward Future Loop Library listing signal.
+- `The restartable handoff loop` was listed under `Operations`, following `The next-action confidence check` under `Evaluation`.
+- Signal: V13 can translate into multiple practical copyable loops across categories.
+- Translation lesson: plain language, `Verify`, `Stop when`, one safe next action, and "what they must not assume" remain important.
+- Boundary: no new loop submission, README rewrite, tutorial change, copy-paste expansion, automation, hooks, MCP, pluginization, execution engine, public post, or feature expansion from this signal yet.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
