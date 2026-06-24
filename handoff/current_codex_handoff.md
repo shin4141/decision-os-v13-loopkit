@@ -44,6 +44,7 @@ The repository currently focuses on:
 - thin copy-paste CLAUDE.md / AGENTS.md base template
 - copy-paste Next-Action Confidence Check prompt
 - copy-paste Restartable Handoff prompt
+- AI Agent Handoff Audit service note
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -55,7 +56,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `974fc4b Add copy-paste next-action confidence check`
+- Latest reflected commit before this task: `956bded Add copy-paste restartable handoff`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -376,7 +377,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `974fc4b Add copy-paste next-action confidence check` before this copy-paste Restartable Handoff task.
+The repository was clean and restartable from `origin/main` at `956bded Add copy-paste restartable handoff` before this AI Agent Handoff Audit service note task.
 
 ## V13 Next Loop Gate
 
@@ -412,7 +413,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `974fc4b Add copy-paste next-action confidence check`
+- latest reflected commit before this task: `956bded Add copy-paste restartable handoff`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -606,6 +607,12 @@ Preserve:
 - It includes the prompt, when to use, verify, and stop condition.
 - `README.md` received one small pointer to the copy-paste handoff prompt in the existing `Choose one` section.
 - No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple files, automation, hooks, MCP, pluginization, execution engine, post, or additional loop was added.
+- `services/ai_agent_handoff_audit.md` was added as a service-oriented one-pager.
+- Purpose: practical service path from V13 LoopKit for repos using AI coding agents such as Codex, Claude Code, Cursor, `CLAUDE.md`, `AGENTS.md`, or similar instruction files.
+- Free diagnostic scope: one observed friction point, one risk if left unchanged, one suggested 0.01 improvement, and one relevant LoopKit copy-paste link if useful.
+- The note defines target users, poor candidates, a paid setup path, outreach principle, outreach draft, and service boundaries.
+- No product launch yet.
+- No README edit, tutorial edit, automation, email tooling, GitHub scraping, mass outreach, pricing, additional service note, hooks, MCP, pluginization, or execution engine was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
