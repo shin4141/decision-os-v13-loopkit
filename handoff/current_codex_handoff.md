@@ -632,6 +632,11 @@ Preserve:
 - Signal: V13 can translate into multiple practical copyable loops across categories.
 - Translation lesson: plain language, `Verify`, `Stop when`, one safe next action, and "what they must not assume" remain important.
 - Boundary: no new loop submission, README rewrite, tutorial change, copy-paste expansion, automation, hooks, MCP, pluginization, execution engine, public post, or feature expansion from this signal yet.
+- `services/ai_agent_handoff_audit_automation.md` was added as a service automation spec.
+- Purpose: automate candidate discovery, friction extraction, audit drafting, outreach draft generation, and follow-up state logging for AI Agent Handoff Audit.
+- Human approval remains required before any contact.
+- Mass outreach and automatic sending are `BLOCK`; human-approved single contact is `CAP`.
+- No implementation, script, GitHub API tooling, email tooling, message sending, README edit, tutorial edit, copy-paste edit, pricing, public post, automation, hooks, MCP, pluginization, or execution engine was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
