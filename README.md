@@ -69,6 +69,8 @@ Use [`AGENTS.md`](AGENTS.md) for Codex or any AI coding agent that reads project
 
 Use [`CLAUDE.md`](CLAUDE.md) for Claude Code. It is a thin entry point that points back to `AGENTS.md` as the canonical rule set.
 
+Use [Thin CLAUDE.md / AGENTS.md base](copy-paste/claude-md-thin-base.md) when you want a small copy-paste starter for keeping always-loaded agent instructions short.
+
 For fork users using Codex, start here: [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
 
 Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.

@@ -41,6 +41,7 @@ The repository currently focuses on:
 - copyable one-line verifier / stop condition for Next-Action Confidence Check
 - Loop Library listing signal for The next-action confidence check
 - The Restartable Handoff Loop as a Loop Library Operations candidate
+- thin copy-paste CLAUDE.md / AGENTS.md base template
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -52,7 +53,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `0d9e2e8 Record loop library listing signal`
+- Latest reflected commit before this task: `91da98e Add restartable handoff loop candidate`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -373,7 +374,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `0d9e2e8 Record loop library listing signal` before this Restartable Handoff Loop candidate task.
+The repository was clean and restartable from `origin/main` at `91da98e Add restartable handoff loop candidate` before this thin agent instruction base template task.
 
 ## V13 Next Loop Gate
 
@@ -409,7 +410,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `0d9e2e8 Record loop library listing signal`
+- latest reflected commit before this task: `91da98e Add restartable handoff loop candidate`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -586,6 +587,12 @@ Preserve:
 - This is distinct from `Next-Action Confidence Check`, which is an Evaluation loop for deciding whether the next loop should run.
 - External submission remains pending until Shin reviews.
 - No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, automation, hooks, MCP, pluginization, execution engine, additional candidate, issue, PR, or public post was added.
+- `copy-paste/claude-md-thin-base.md` was added as one small copy-paste template for a thin always-loaded `CLAUDE.md` / `AGENTS.md` base.
+- Purpose: reduce first-use conversion cost after Reddit feedback that `CLAUDE.md` / `AGENTS.md` can get too heavy and always-loaded instructions can become context poison.
+- Framing: keep always-loaded agent instructions thin; move project memory, field notes, mistakes, examples, and task-specific guidance into separate files read only when relevant.
+- The template includes always-loaded rules, before-acting checks, before-handoff checks, and a rule of thumb.
+- `README.md` received one small pointer to the copy-paste template in the existing `Choose one` section.
+- No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple templates, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning expansion was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
