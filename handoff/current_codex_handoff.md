@@ -45,6 +45,7 @@ The repository currently focuses on:
 - copy-paste Next-Action Confidence Check prompt
 - copy-paste Restartable Handoff prompt
 - AI Agent Handoff Audit service note
+- external loop discovery skill signal and Discover-to-Gate parked horizon
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -56,7 +57,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `956bded Add copy-paste restartable handoff`
+- Latest reflected commit before this task: `68a223e Add AI agent handoff audit service note`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -377,7 +378,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `956bded Add copy-paste restartable handoff` before this AI Agent Handoff Audit service note task.
+The repository was clean and restartable from `origin/main` at `68a223e Add AI agent handoff audit service note` before this loop discovery skill signal field note task.
 
 ## V13 Next Loop Gate
 
@@ -413,7 +414,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `956bded Add copy-paste restartable handoff`
+- latest reflected commit before this task: `68a223e Add AI agent handoff audit service note`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -613,6 +614,11 @@ Preserve:
 - The note defines target users, poor candidates, a paid setup path, outreach principle, outreach draft, and service boundaries.
 - No product launch yet.
 - No README edit, tutorial edit, automation, email tooling, GitHub scraping, mass outreach, pricing, additional service note, hooks, MCP, pluginization, or execution engine was added.
+- Field Note 084 captured the external signal from Matt Pocock's `loop-me` skill.
+- External signal: loop tooling is moving toward discovering recurring loops, interviewing users to specify workflows, pushing checkpoints later, producing decision-ready briefs, and treating workflow specs as done only when an implementer agent can build without asking another question.
+- V13 interpretation: loop discovery is not loop governance; discovered loops still need gating, stop conditions, human checkpoints, restartability, and returnability.
+- Parked Horizon: `Discover-to-Gate`.
+- Do not implement a skill, MCP, hooks, pluginization, automation, workflow generation, README edit, tutorial edit, example, public post, or feature expansion from this signal yet.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
