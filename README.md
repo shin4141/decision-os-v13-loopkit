@@ -73,6 +73,8 @@ Use [Thin CLAUDE.md / AGENTS.md base](copy-paste/claude-md-thin-base.md) when yo
 
 Use [Next-Action Confidence Check](copy-paste/next-action-confidence-check.md) before letting an AI agent continue into the next task.
 
+Use [Restartable Handoff](copy-paste/restartable-handoff.md) before ending a long AI-agent session.
+
 For fork users using Codex, start here: [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
 
 Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.

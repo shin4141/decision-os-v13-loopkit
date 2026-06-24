@@ -43,6 +43,7 @@ The repository currently focuses on:
 - The Restartable Handoff Loop as a Loop Library Operations candidate
 - thin copy-paste CLAUDE.md / AGENTS.md base template
 - copy-paste Next-Action Confidence Check prompt
+- copy-paste Restartable Handoff prompt
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -54,7 +55,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `5671630 Add thin agent instruction base template`
+- Latest reflected commit before this task: `974fc4b Add copy-paste next-action confidence check`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -375,7 +376,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `5671630 Add thin agent instruction base template` before this copy-paste Next-Action Confidence Check task.
+The repository was clean and restartable from `origin/main` at `974fc4b Add copy-paste next-action confidence check` before this copy-paste Restartable Handoff task.
 
 ## V13 Next Loop Gate
 
@@ -411,7 +412,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `5671630 Add thin agent instruction base template`
+- latest reflected commit before this task: `974fc4b Add copy-paste next-action confidence check`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -598,6 +599,12 @@ Preserve:
 - Purpose: let GitHub visitors immediately take the prompt without reading the full docs.
 - It includes the prompt, when to use, verify, and stop condition.
 - `README.md` received one small pointer to the copy-paste prompt in the existing `Choose one` section.
+- No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple files, automation, hooks, MCP, pluginization, execution engine, post, or additional loop was added.
+- `copy-paste/restartable-handoff.md` was added as the repo-local copy-paste version of the Operations handoff loop.
+- Purpose: let GitHub visitors immediately use the handoff prompt without reading the full docs.
+- It complements `copy-paste/next-action-confidence-check.md`: the confidence check gates the next loop, while the restartable handoff closes a long AI-agent session for restart.
+- It includes the prompt, when to use, verify, and stop condition.
+- `README.md` received one small pointer to the copy-paste handoff prompt in the existing `Choose one` section.
 - No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple files, automation, hooks, MCP, pluginization, execution engine, post, or additional loop was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
