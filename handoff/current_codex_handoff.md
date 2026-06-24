@@ -42,6 +42,7 @@ The repository currently focuses on:
 - Loop Library listing signal for The next-action confidence check
 - The Restartable Handoff Loop as a Loop Library Operations candidate
 - thin copy-paste CLAUDE.md / AGENTS.md base template
+- copy-paste Next-Action Confidence Check prompt
 - strict README entrypoint pointer
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
@@ -53,7 +54,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `91da98e Add restartable handoff loop candidate`
+- Latest reflected commit before this task: `5671630 Add thin agent instruction base template`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -374,7 +375,7 @@ PASS
 
 Reason:
 
-The repository was clean and restartable from `origin/main` at `91da98e Add restartable handoff loop candidate` before this thin agent instruction base template task.
+The repository was clean and restartable from `origin/main` at `5671630 Add thin agent instruction base template` before this copy-paste Next-Action Confidence Check task.
 
 ## V13 Next Loop Gate
 
@@ -410,7 +411,7 @@ Future large work should restart from this compressed handoff instead of rereadi
 
 Preserve:
 
-- latest reflected commit before this task: `91da98e Add restartable handoff loop candidate`
+- latest reflected commit before this task: `5671630 Add thin agent instruction base template`
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
 - Field Notes 048-061 completed and parked Lane Recall / Transfer Packet
@@ -593,6 +594,11 @@ Preserve:
 - The template includes always-loaded rules, before-acting checks, before-handoff checks, and a rule of thumb.
 - `README.md` received one small pointer to the copy-paste template in the existing `Choose one` section.
 - No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple templates, examples, automation, hooks, MCP, pluginization, execution engine, Reddit post, or broad product-positioning expansion was added.
+- `copy-paste/next-action-confidence-check.md` was added as the repo-local copy-paste version of the Loop Library listed Evaluation loop.
+- Purpose: let GitHub visitors immediately take the prompt without reading the full docs.
+- It includes the prompt, when to use, verify, and stop condition.
+- `README.md` received one small pointer to the copy-paste prompt in the existing `Choose one` section.
+- No README rewrite, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, multiple files, automation, hooks, MCP, pluginization, execution engine, post, or additional loop was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
