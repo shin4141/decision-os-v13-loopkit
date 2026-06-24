@@ -637,6 +637,11 @@ Preserve:
 - Human approval remains required before any contact.
 - Mass outreach and automatic sending are `BLOCK`; human-approved single contact is `CAP`.
 - No implementation, script, GitHub API tooling, email tooling, message sending, README edit, tutorial edit, copy-paste edit, pricing, public post, automation, hooks, MCP, pluginization, or execution engine was added.
+- `services/ai_agent_handoff_audit_automation.md` now requires a Contact Readiness Card before recommending `SEND`.
+- `SEND` requires evidence depth, route justification, repo-specific friction, a short useful message, and Shin-only approve/paste readiness.
+- The card asks the AI to estimate reply, adoption, and useful-learning probability before contact, using rough planning estimates only.
+- The card defines wait rule, success definition, failure/no-signal definition, learning if no reply, and next action.
+- Automatic sending remains `BLOCK`; Shin decides `SEND` / `HOLD` / `SKIP`.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule

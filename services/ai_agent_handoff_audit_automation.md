@@ -125,6 +125,153 @@ Recommendation: SEND / HOLD / SKIP
 
 No contact may be made until Shin explicitly approves `SEND`.
 
+## Contact Readiness Card
+
+Before recommending `SEND`, produce a Contact Readiness Card.
+
+No message should be sent unless this card is complete.
+
+```text
+Contact Readiness Card
+
+Candidate:
+Repo:
+Route:
+Target URL:
+
+Evidence depth:
+E0 = search result only
+E1 = README / top-level files checked
+E2 = relevant agent instruction or workflow file checked
+E3 = relevant issue / PR / code path checked
+E4 = repo-specific friction confirmed from multiple public sources
+
+Required for SEND:
+At least E2.
+Prefer E3 when commenting on an existing issue.
+
+What was inspected:
+-
+-
+-
+
+Why this repo fits:
+<one concrete reason>
+
+Why this route fits:
+<why GitHub issue / discussion / email / X is appropriate>
+
+Visible friction:
+<one concrete friction point>
+
+Proposed 0.01:
+<one small improvement>
+
+Message type:
+- issue comment
+- new issue
+- discussion reply
+- email
+- X reply
+- hold
+
+Risk:
+LOW / MEDIUM / HIGH
+
+Risk reason:
+<why this may be welcomed, ignored, or feel spammy>
+
+Estimated probability:
+- Reply probability:
+- Adoption probability:
+- Useful learning probability:
+
+Waiting rule:
+<how long to wait before considering the contact closed>
+
+Default:
+- GitHub issue/comment: wait 7 days, no follow-up unless they reply
+- Email/DM: wait 7 days, no follow-up unless there is a clear reason
+- Public social reply: no follow-up unless they engage
+
+Success definition:
+<what counts as success>
+
+Failure definition:
+<what counts as no signal>
+
+Learning if no reply:
+<what this contact teaches even if ignored>
+
+Next action if success:
+<one action>
+
+Next action if no reply:
+<one action or HOLD>
+
+Recommendation:
+SEND / HOLD / SKIP
+```
+
+## SEND rules
+
+`SEND` is allowed only when:
+
+- the contact route is public or clearly appropriate
+- the friction is repo-specific
+- the message is useful even if the person never replies
+- the message is short
+- only one LoopKit link is included
+- no pressure, hype, or broad Decision-OS explanation is included
+- Shin only has to approve and paste
+
+`HOLD` when:
+
+- the repo seems relevant but the evidence depth is too shallow
+- the message would require more context than the AI has
+- the outreach route is unclear
+- the suggestion may look self-promotional
+
+`SKIP` when:
+
+- the friction is generic
+- the repo is inactive
+- no safe route exists
+- the suggestion would look like spam
+- the repo already solves the issue better than LoopKit
+
+## Probability guidance
+
+Use rough estimates, not false precision.
+
+For a cold GitHub issue/comment:
+
+- Reply probability is often low.
+- Adoption probability is lower.
+- Useful learning probability may still be meaningful if the friction is well matched.
+
+Example estimate:
+
+```text
+Reply probability: 10-20%
+Adoption probability: 3-8%
+Useful learning probability: 40-70%
+```
+
+Do not present these as facts.
+
+They are planning estimates only.
+
+## Boundary
+
+The AI may recommend.
+
+Shin decides.
+
+Automatic contact remains `BLOCK`.
+
+Mass outreach remains `BLOCK`.
+
 ### 7. Contact logging
 
 After contact, record:
