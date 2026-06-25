@@ -28,6 +28,17 @@ This does not mean retrying because the probability is high.
 
 It means retrying only when the total expected value is positive.
 
+## Two errors to prevent
+
+The Rechallenge Gate should prevent both errors:
+
+1. Continuing only because of sunk cost.
+2. Avoiding a now-positive-EV route only because the previous attempt hurt.
+
+The point is not to retry because the past effort must be justified.
+
+The point is to separate past pain from current expected value.
+
 ## Rechallenge Gate
 
 A previously failed route can be reconsidered when:
