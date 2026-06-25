@@ -642,6 +642,11 @@ Preserve:
 - The card asks the AI to estimate reply, adoption, and useful-learning probability before contact, using rough planning estimates only.
 - The card defines wait rule, success definition, failure/no-signal definition, learning if no reply, and next action.
 - Automatic sending remains `BLOCK`; Shin decides `SEND` / `HOLD` / `SKIP`.
+- Field Note 087 captured the Rechallenge Gate concept.
+- Framing: previously failed routes should not be permanently avoided if conditions and total EV change.
+- AI may resurface a past failed route for bounded re-evaluation, but must not force a retry.
+- High probability alone is not enough; changed conditions, bounded downside, learning value, and positive total EV matter.
+- No README edit, tutorial edit, copy-paste file, service edit, example, automation, hooks, MCP, pluginization, execution engine, new loop submission, or application to Archive / a specific route was added.
 - AGENTS promotion remains `HOLD` beyond this single safety-floor rule
 - public value remains unproven without real reader evidence
 - no public/canonical promotion beyond this single `AGENTS.md` safety rule
