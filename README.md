@@ -41,6 +41,20 @@ If this repo looks relevant, fork it and ask your own AI to interpret it inside 
 
 This README is the entry point. Your own AI can explain the useful parts more accurately after seeing your actual repo, workflow, constraints, and failure traces.
 
+## Example: documented does not always mean restartable
+
+A long-running AI-agent repo was checked with the Workspace Health Check.
+
+It had governance docs, release ledgers, protocols, and many records, but the current source of truth was split across branches and docs. The health check returned:
+
+> 🔴 RED — there was an operating system, but the current handoff is broken.
+
+Key lesson:
+
+> Many records ≠ restartable state.
+
+See: [`docs/examples/workspace_health_check_red_example.md`](docs/examples/workspace_health_check_red_example.md)
+
 ## What this is
 
 V13 LoopKit is a copy-paste reporting kit for AI coding agents.

@@ -52,6 +52,7 @@ The repository currently focuses on:
 - AI Agent Workspace Health Check growth-path / input-quality clarification
 - AI Agent Workspace Health Check Loop Library candidate
 - README Ask your AI first entry block
+- Workspace Health Check anonymized RED example
 - LLM Wiki / V11 / V13 context-boundary note
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
@@ -66,7 +67,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `7222587 Clarify workspace health check inputs and green signal`
+- Latest reflected commit before this task: `062035e Add workspace health check framing and context boundary`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -226,6 +227,11 @@ Completed and parked:
 - Framing: LLM Wiki is V11-adjacent selective context loading; V13 handles context validity, human-seat return, and next-loop permission.
 - No `CONTEXT_INDEX.md` implementation was added.
 - No `AGENTS.md`, `CLAUDE.md`, service, copy-paste, skill registry, automation, hook, MCP, pluginization, execution engine, Loop Library submission, public post, fear-based framing, or external validation claim was added.
+- `docs/examples/workspace_health_check_red_example.md` was added as an anonymized RED example for AI Agent Workspace Health Check.
+- README now links to the example with a short block only.
+- The example shows that many records do not equal restartability.
+- Key phrase preserved: "there was an operating system, but the current handoff is broken."
+- No screenshots, local paths, MMAR repair, public post, Loop Library submission, automation, hook, MCP, pluginization, or execution engine were added.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
