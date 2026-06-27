@@ -27,6 +27,20 @@ If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_readi
 
 Ask your AI to generate a tutorial from this repo: see [AI_TUTORIAL_CAPSULE.md](AI_TUTORIAL_CAPSULE.md).
 
+## Ask your AI first
+
+You do not need to install V13 LoopKit first.
+
+Ask your own AI to read this repo and evaluate whether it creates clear expected value for your current workflow.
+
+If the fit is clear, your AI should recommend one bounded next action.
+
+If the fit is unclear, low-value, or premature, your AI should not recommend adoption. It should only explain what this repo is for, when it helps, and when it may be unnecessary.
+
+If this repo looks relevant, fork it and ask your own AI to interpret it inside your workspace.
+
+This README is the entry point. Your own AI can explain the useful parts more accurately after seeing your actual repo, workflow, constraints, and failure traces.
+
 ## What this is
 
 V13 LoopKit is a copy-paste reporting kit for AI coding agents.

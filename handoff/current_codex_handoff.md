@@ -50,6 +50,9 @@ The repository currently focuses on:
 - Repo Health Check / archaeology signal for old AI-agent repos
 - AI Agent Workspace Health Check loop skill
 - AI Agent Workspace Health Check growth-path / input-quality clarification
+- AI Agent Workspace Health Check Loop Library candidate
+- README Ask your AI first entry block
+- LLM Wiki / V11 / V13 context-boundary note
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
 - strict README entrypoint pointer
@@ -63,7 +66,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `7a6d46a Add AI agent workspace health check skill`
+- Latest reflected commit before this task: `7222587 Clarify workspace health check inputs and green signal`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -214,6 +217,15 @@ Completed and parked:
 - Framing is compounding advantage, not fear or danger.
 - No new skill was created.
 - No `AGENTS.md`, `CLAUDE.md`, README, service, copy-paste, skill registry, automation, hook, MCP, pluginization, execution engine, or public post change was made.
+- `docs/loop_library_ai_agent_workspace_health_check.md` was created as a Loop Library candidate draft only.
+- The candidate frames Workspace Health Check as a pre-flight health check before work.
+- It has not been submitted and is not externally listed.
+- README now includes a thin `Ask your AI first` block.
+- The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
+- Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
+- Framing: LLM Wiki is V11-adjacent selective context loading; V13 handles context validity, human-seat return, and next-loop permission.
+- No `CONTEXT_INDEX.md` implementation was added.
+- No `AGENTS.md`, `CLAUDE.md`, service, copy-paste, skill registry, automation, hook, MCP, pluginization, execution engine, Loop Library submission, public post, fear-based framing, or external validation claim was added.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.

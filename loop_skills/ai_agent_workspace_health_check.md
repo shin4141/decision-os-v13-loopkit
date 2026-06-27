@@ -383,6 +383,12 @@ If the user intends to keep the project small and simple, low-complexity GREEN m
 
 If the user intends to grow the project into long-running AI-agent development, include Growth-Path Notes showing what to preserve early so the workspace does not become expensive to reconstruct later.
 
+Current state may be GREEN.
+
+If this repo remains small and simple, no additional structure may be needed.
+
+However, if this project is expected to grow into a long-running AI-agent workspace, early choices such as a living source of truth, thin always-loaded instructions, clear handoff location, accepted-state records, and seat-return rules can create compounding advantage later.
+
 Good framing:
 
 ```text
