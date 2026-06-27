@@ -45,6 +45,7 @@ The repository currently focuses on:
 - copy-paste Next-Action Confidence Check prompt
 - copy-paste Restartable Handoff prompt
 - AI Agent Handoff Audit service note
+- AI Agent Handoff Audit draft paid offer page
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
 - strict README entrypoint pointer
@@ -58,7 +59,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `198d04a Record loop discovery skill signal`
+- Latest reflected commit before this task: `ddb6183 Clarify rechallenge gate errors`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -178,6 +179,13 @@ Completed and parked:
 - It asks agents to report detected reusable residue, recommendation level, expected effect, suggested placement, and two Owner choices.
 - Default placements include `handoff/current_codex_handoff.md`, `field_notes/`, `examples/`, `docs/`, `AGENTS_candidate_HOLD`, and `no record`.
 - This makes the Growth OS more actionable without adding automation, routing, new files, or AGENTS promotion.
+- `services/ai_agent_handoff_audit_offer.md` was created as a draft paid offer page for AI Agent Handoff Audit.
+- Purpose: convert V13 LoopKit into a requestable / payable service offer.
+- The offer page includes Free Diagnostic, Paid Light Audit, Paid Setup, scope, boundaries, first input, and delivery expectations.
+- Pricing is provisional.
+- This is not a public launch.
+- No outreach was sent.
+- No automation, hooks, MCP, pluginization, or execution engine were added.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
