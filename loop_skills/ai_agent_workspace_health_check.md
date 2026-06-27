@@ -52,6 +52,48 @@ Use this skill when:
 - the user wants to know whether the repo is safe to continue
 - the user wants a workspace visibility check before setup or repair
 
+## Best Inputs
+
+This skill works best on high-signal traces, not random healthy chats.
+
+Use it on:
+
+- a long AI-agent session that became hard to continue
+- a chat where the AI said `done` but the user was not sure
+- a repo where the next AI could not restart safely
+- a failed handoff
+- a repeated re-explanation loop
+- a confusing `AGENTS.md` / `CLAUDE.md` / `CODEX.md` instruction conflict
+- a moment where the user felt something was off but could not name it
+- an old repo with many docs, commits, snapshots, tests, or stale artifacts
+- a project that has accumulated AI-agent residue over time
+
+The goal is not to force a RED signal.
+
+The goal is to name the failure mode and convert it into a next-time prevention condition.
+
+## Low-Signal Inputs
+
+Do not over-interpret a short, simple, successful chat.
+
+A GREEN result from a low-complexity input may only mean the situation was not stressful enough to reveal the failure mode.
+
+Examples of low-signal inputs:
+
+- a short successful chat
+- a simple one-file change
+- a repo with no long-running AI-agent work
+- a task with no handoff requirement
+- a project that is not expected to grow
+
+For low-signal inputs, the useful output is usually not a repair plan.
+
+The useful output is:
+
+- whether the current workflow is simple enough to remain lightweight
+- what early choices would preserve advantage if the project becomes more complex
+- whether any always-loaded agent instructions are already bloated, duplicated, undefined, or conflicting
+
 ## Do not use when
 
 Do not use this skill to:
@@ -291,6 +333,23 @@ What decision must be returned to the human?
 
 ## Public Takeaway
 One sentence.
+
+## Growth-Path Notes
+If the signal is GREEN, clarify whether this appears to be:
+
+- disciplined GREEN: the workspace is structurally prepared for continued complexity
+- low-complexity GREEN: the workspace is currently healthy because the project is still simple
+
+If the project is expected to grow into long-running AI-agent development, identify early choices that can create compounding advantage later.
+
+Examples:
+- keep always-loaded agent instructions thin
+- define the living source of truth
+- define where handoff lives
+- record accepted state / accepted SHA
+- separate task-specific rules from global rules
+- label stale experiments clearly
+- define when the AI must return the seat to the human
 ```
 
 ## Signal criteria
@@ -310,6 +369,25 @@ Use GREEN when:
 GREEN does not mean perfect.
 
 It means safe to continue with bounded action.
+
+GREEN does not mean future-safe.
+
+GREEN only means the current evidence supports bounded continuation under the current project complexity.
+
+A GREEN result may come from two different conditions:
+
+- `disciplined GREEN`: the repo is structurally prepared for longer AI-agent work
+- `low-complexity GREEN`: the repo is healthy because it has not yet become complex enough to reveal failure modes
+
+If the user intends to keep the project small and simple, low-complexity GREEN may be enough.
+
+If the user intends to grow the project into long-running AI-agent development, include Growth-Path Notes showing what to preserve early so the workspace does not become expensive to reconstruct later.
+
+Good framing:
+
+```text
+If this grows, these early choices can create a large advantage later.
+```
 
 ### 🟡 YELLOW
 
@@ -376,6 +454,10 @@ Do not edit files.
 Run an AI Agent Workspace Health Check.
 
 Focus on restartability, living source of truth, handoff freshness, stale artifacts, branch/public-state mismatch, and always-loaded agent instruction quality.
+
+Use the most relevant high-signal trace available: a long session, failed handoff, confusing repo state, repeated re-explanation loop, or a chat where the AI said done but the user was unsure.
+
+If the input is short/simple/low-complexity, do not overstate the result. Mark it as low-complexity GREEN when appropriate and provide Growth-Path Notes instead of a repair plan.
 
 Return 🟢 / 🟡 / 🔴, evidence, likely failure modes, safest next action, and what decision must return to the human.
 ```
