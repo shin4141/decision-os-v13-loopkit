@@ -48,6 +48,7 @@ The repository currently focuses on:
 - AI Agent Handoff Audit draft paid offer page
 - GitHub conversion / AI-readable repo framing signal
 - Repo Health Check / archaeology signal for old AI-agent repos
+- AI Agent Workspace Health Check loop skill
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
 - strict README entrypoint pointer
@@ -61,7 +62,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `4512672 Record github conversion framing`
+- Latest reflected commit before this task: `39d70dc Record repo health check archaeology signal`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -199,6 +200,12 @@ Completed and parked:
 - Strong phrase: good guardrails can turn into archaeology without a living source of truth.
 - Service connection: AI Agent Handoff Audit can inspect restartability and source-of-truth health, not only `CLAUDE.md` / `AGENTS.md`.
 - No MMAR repair, README change, service-page change, automation, hook, MCP, pluginization, execution engine, public post, or feature expansion was made.
+- `loop_skills/ai_agent_workspace_health_check.md` was added.
+- Purpose: make V13's practical entry point a workspace visibility check, not immediate installation.
+- The skill covers repo restartability, living source of truth, handoff freshness, stale artifacts, branch/public mismatch, and agent instruction health.
+- It captures future `AGENTS.md` / `CLAUDE.md` check direction: always-loaded bloat, duplicate instructions, undefined terms, vector conflicts, scope leakage, and missing seat return.
+- No `AGENTS.md` link was added yet.
+- No README, service, copy-paste, automation, repair, hook, MCP, pluginization, execution engine, or public post change was made.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
