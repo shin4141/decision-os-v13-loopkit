@@ -47,6 +47,7 @@ The repository currently focuses on:
 - AI Agent Handoff Audit service note
 - AI Agent Handoff Audit draft paid offer page
 - GitHub conversion / AI-readable repo framing signal
+- Repo Health Check / archaeology signal for old AI-agent repos
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
 - strict README entrypoint pointer
@@ -60,7 +61,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `6da9e36 Add handoff audit offer page`
+- Latest reflected commit before this task: `4512672 Record github conversion framing`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -192,6 +193,12 @@ Completed and parked:
 - V13 should be presented as an AI-readable repo users can fork and ask their own AI to apply.
 - Future README criteria: why use now, why fork, what happens after fork, and what to ask your AI first.
 - No README, tutorial, copy-paste, service, automation, hook, MCP, pluginization, or execution-engine changes were made for this note.
+- Field Note 089 recorded the Repo Health Check / archaeology signal from old MMAR-related repo reviews.
+- Framing: old AI-agent repos can be diagnosed as `YELLOW` or `RED` using V12/V13 health signals.
+- Key insight: many records do not equal restartability.
+- Strong phrase: good guardrails can turn into archaeology without a living source of truth.
+- Service connection: AI Agent Handoff Audit can inspect restartability and source-of-truth health, not only `CLAUDE.md` / `AGENTS.md`.
+- No MMAR repair, README change, service-page change, automation, hook, MCP, pluginization, execution engine, public post, or feature expansion was made.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
