@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `7c4fe94 Record agent instruction expression density`
+- Latest reflected commit before this task: `c684025 Record complexity not length archaeology signal`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -223,6 +223,12 @@ Completed and parked:
 - `docs/loop_library_ai_agent_workspace_health_check.md` was created as a Loop Library candidate draft only.
 - The candidate frames Workspace Health Check as a pre-flight health check before work.
 - It has not been submitted and is not externally listed.
+- `docs/loop_library_ai_agent_workspace_health_check.md` was patched with a sharper diagnostic principle.
+- Added principle: length is not the root cause; risk appears when complexity exceeds restartability structure.
+- Added clarification: many records do not equal restartable state if source of truth, accepted state, handoff, and next safe action are unclear.
+- Added `Open / Unclosed Items` to the output format for unresolved verdicts, stale tests, old artifacts, branch/public mismatch, incomplete handoff, undefined next safe action, and conflicting or unprioritized instructions.
+- Adjusted public takeaway to avoid implying `long = unsafe`.
+- The Workspace Health Check Loop Library candidate remains not submitted.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.

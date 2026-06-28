@@ -10,6 +10,18 @@ This loop checks whether an AI-agent workspace is safe to continue from.
 
 It looks at the repo, recent work, handoff state, source of truth, agent instructions, stale artifacts, and next safe action before asking the AI to continue work.
 
+## Diagnostic principle
+
+Length is not the root cause.
+
+Risk appears when complexity exceeds restartability structure.
+
+A long AI-agent workspace can remain healthy if it has a living source of truth, fresh handoff, accepted state clarity, labeled stale artifacts, and one safe next action.
+
+A short or fragmented workflow can still become unsafe if unresolved state accumulates across many small sessions.
+
+Many records do not equal restartable state if source of truth, accepted state, handoff, and next safe action are unclear.
+
 ## When to use
 
 Use this when:
@@ -69,6 +81,19 @@ Check for:
 - vector conflicts
 - scope leakage
 - missing seat-return rules
+
+## Open / Unclosed Items
+List unresolved or unclosed items that may make continuation unsafe.
+
+Examples:
+- unclear accepted state
+- unresolved verdicts
+- stale tests
+- old artifacts
+- branch/public mismatch
+- incomplete handoff
+- undefined next safe action
+- conflicting or unprioritized instructions
 
 ## Growth-Path Notes
 If GREEN, clarify whether this is disciplined GREEN or low-complexity GREEN.
@@ -130,4 +155,6 @@ Restartable Handoff before exit.
 
 ## Public takeaway
 
-Long AI-agent development needs a living source of truth. Otherwise even good guardrails can turn into archaeology.
+Long AI-agent development does not become archaeology because it is long.
+
+It becomes archaeology when complexity exceeds the workspace's living source of truth, handoff, verification, and restartability structure.
