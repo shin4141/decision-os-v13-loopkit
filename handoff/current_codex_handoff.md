@@ -69,8 +69,8 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `cbd50eb Record field notes future line farming`
-- Working tree: clean
+- Latest reflected commit before this task: `d4f70c1 Record capability reserve signal`
+- Working tree before this task: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
 
@@ -265,6 +265,10 @@ Completed and parked:
 - Current observed state: V12 State `PASS`; Execution Health Signal `🟡`; Capability Reserve Signal `🟡`; V13 Next Loop Gate `CAP`.
 - Key rule: clean completion does not prove remaining capability.
 - Heavy development should resume only from a fresh/lighter context or after a restartable handoff.
+- Field Note 097 recorded the Pain Translation Gate.
+- Core rule: no pain translation, no promotion.
+- Purpose: prevent clean internal V13 concepts from becoming README, AGENTS.md / CLAUDE.md, public, service, or system expansion unless they map to a concrete user-recognizable pain.
+- Boundary: no README change, AGENTS.md / CLAUDE.md promotion, external post, automation, hooks, MCP, pluginization, execution engine, or new service was added.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
