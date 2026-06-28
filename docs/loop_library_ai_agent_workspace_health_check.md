@@ -10,6 +10,8 @@ This loop checks whether an AI-agent workspace is safe to continue from.
 
 It looks at the repo, recent work, handoff state, source of truth, agent instructions, stale artifacts, and next safe action before asking the AI to continue work.
 
+This is not a safety badge. It is a way to turn failure traces into prevention structure.
+
 ## Diagnostic principle
 
 Length is not the root cause.
@@ -34,6 +36,19 @@ Use this when:
 - the AI said `done` but the user is not sure
 - a project contains old docs, snapshots, tmp files, stale tests, or unclear accepted state
 - the user felt something was wrong but could not name it
+
+Use this especially on failure traces:
+
+- a past AI-agent accident
+- a long session that became hard to continue
+- a confusing handoff
+- a repeated re-explanation loop
+- a chat where the AI said `done` but the user felt unsure
+- a moment where the user sensed something was wrong but could not name it
+
+Do not use this loop only to prove that a healthy chat was fine.
+
+Use it where something went wrong, felt unclear, or became hard to restart. The value is that your own AI can name the failure pattern and help turn it into a next-time prevention condition.
 
 ## Ready-to-use prompt
 

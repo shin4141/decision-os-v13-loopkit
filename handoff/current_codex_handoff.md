@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `c684025 Record complexity not length archaeology signal`
+- Latest reflected commit before this task: `0fb5f6a Clarify workspace health check diagnostic principle`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -228,6 +228,11 @@ Completed and parked:
 - Added clarification: many records do not equal restartable state if source of truth, accepted state, handoff, and next safe action are unclear.
 - Added `Open / Unclosed Items` to the output format for unresolved verdicts, stale tests, old artifacts, branch/public mismatch, incomplete handoff, undefined next safe action, and conflicting or unprioritized instructions.
 - Adjusted public takeaway to avoid implying `long = unsafe`.
+- The Workspace Health Check Loop Library candidate remains not submitted.
+- `docs/loop_library_ai_agent_workspace_health_check.md` was patched with failure-trace learning framing.
+- Clarified the loop is not a safety badge or generic healthy-chat check.
+- Added use on past AI-agent accidents, long sessions that became hard to continue, confusing handoffs, repeated re-explanation loops, unclear `done` states, and unnamed failure traces.
+- Framing: the value is to name the failure mode and turn it into a next-time prevention condition.
 - The Workspace Health Check Loop Library candidate remains not submitted.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
