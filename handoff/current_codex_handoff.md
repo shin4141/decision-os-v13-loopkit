@@ -55,6 +55,7 @@ The repository currently focuses on:
 - Workspace Health Check anonymized RED example
 - LLM Wiki / V11 / V13 context-boundary note
 - AGENTS.md / CLAUDE.md expression-density signal
+- complexity-not-length archaeology signal
 - external loop discovery skill signal and Discover-to-Gate parked horizon
 - subthreshold signal integration and directional compatibility
 - strict README entrypoint pointer
@@ -68,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `e7940b2 Add workspace health check red example`
+- Latest reflected commit before this task: `7c4fe94 Record agent instruction expression density`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -239,6 +240,12 @@ Completed and parked:
 - Examples preserved: handoff note, restart memo, router not warehouse, toolbox not backpack, and seat-return checkpoint.
 - Connection: future Workspace Health Check / agent-instruction audit can inspect behavioral legibility.
 - No `AGENTS.md`, `CLAUDE.md`, README, service, copy-paste, loop skill, `CONTEXT_INDEX.md`, automation, hook, MCP, pluginization, execution engine, public post, or new skill change was made.
+- Field Note 092 recorded the complexity-not-length archaeology signal.
+- Topic: archaeology risk is caused by complexity exceeding restartability structure, not length alone.
+- Key distinction: long work can remain closer to `GREEN` if source of truth, handoff, accepted state, and boundaries are aligned.
+- Short fragmented work can still become archaeological when small unresolved assumptions, missing handoffs, stale artifacts, and branch drift accumulate.
+- Future paper relevance was recorded, but no paper or public post was drafted.
+- No README, `AGENTS.md`, `CLAUDE.md`, loop skill, service, copy-paste, new loop, Loop Library submission, automation, hook, MCP, pluginization, or execution engine change was made.
 - `examples/residue_recommendation_ladder.md` was added.
 - It provides a minimal reusable example for the residue recommendation ladder.
 - The example shows how a coding agent should report reusable residue with detected reusable residue, recommendation level, expected effect, suggested placement, and Owner choices A/B.
