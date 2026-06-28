@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `0fb5f6a Clarify workspace health check diagnostic principle`
+- Latest reflected commit before this task: `6aea0c3 Add failure trace framing to workspace health check`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -234,6 +234,11 @@ Completed and parked:
 - Added use on past AI-agent accidents, long sessions that became hard to continue, confusing handoffs, repeated re-explanation loops, unclear `done` states, and unnamed failure traces.
 - Framing: the value is to name the failure mode and turn it into a next-time prevention condition.
 - The Workspace Health Check Loop Library candidate remains not submitted.
+- `docs/loop_library_ai_agent_workspace_health_check_submission.md` was created.
+- Purpose: final compressed submission draft for Forward Future Loop Library.
+- Suggested category: `Evaluation`.
+- It preserves "Don't install a framework first", pre-flight workspace check, failure-trace learning, length is not root cause, many records do not equal restartability, and the relationship to the two already listed loops.
+- The Workspace Health Check candidate remains not submitted.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
