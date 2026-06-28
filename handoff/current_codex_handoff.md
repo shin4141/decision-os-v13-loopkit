@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `913322c Record workspace health check submission`
+- Latest reflected commit before this task: `c2b61af Record Codex external brain idea memory signal`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -250,6 +250,11 @@ Completed and parked:
 - Topic: GPT as conversation / ideation layer, Codex as extraction / versioned-memory layer, GitHub repo as external brain, and Field Notes as future decision material.
 - Connection: V11 reconnectable forgetting and V13 subthreshold signal integration can help weak AI-generated fragments reconnect, converge, and become bounded future actions.
 - Boundary: no new repo, no product, no README change, and no public post.
+- Field Note 094 recorded the End-of-Chat Salvage Pass.
+- Topic: separate V12 handoff from Field Note candidates at the end of a long AI conversation.
+- Three capture routes: user-declared, AI-detected, and end-of-chat salvage.
+- Purpose: avoid losing future-value ideas while keeping immediate handoff lightweight.
+- Boundary: no automation, no README change, no product, and no new skill.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
