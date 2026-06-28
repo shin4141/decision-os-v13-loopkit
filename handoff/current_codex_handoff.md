@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `2992431 Add workspace health check submission draft`
+- Latest reflected commit before this task: `913322c Record workspace health check submission`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -246,6 +246,10 @@ Completed and parked:
 - Positioning: pre-flight / failure-trace `Evaluation` loop.
 - Relationship: Workspace Health Check before entering the workspace or after messy history; Next-Action Confidence Check before continuing; Restartable Handoff Loop before exiting or handing off.
 - No public post yet, no README change, and no further action until review result or external signal.
+- Field Note 093 recorded Codex + Field Notes as an external brain for AI idea memory, not only coding.
+- Topic: GPT as conversation / ideation layer, Codex as extraction / versioned-memory layer, GitHub repo as external brain, and Field Notes as future decision material.
+- Connection: V11 reconnectable forgetting and V13 subthreshold signal integration can help weak AI-generated fragments reconnect, converge, and become bounded future actions.
+- Boundary: no new repo, no product, no README change, and no public post.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
