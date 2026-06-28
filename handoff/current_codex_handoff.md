@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `d4f70c1 Record capability reserve signal`
+- Latest reflected commit before this task: `264386a Record pain translation gate`
 - Working tree before this task: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -269,6 +269,10 @@ Completed and parked:
 - Core rule: no pain translation, no promotion.
 - Purpose: prevent clean internal V13 concepts from becoming README, AGENTS.md / CLAUDE.md, public, service, or system expansion unless they map to a concrete user-recognizable pain.
 - Boundary: no README change, AGENTS.md / CLAUDE.md promotion, external post, automation, hooks, MCP, pluginization, execution engine, or new service was added.
+- Field Note 098 recorded Agent Instruction Expression Density.
+- Core idea: `AGENTS.md` / `CLAUDE.md` performance depends on length, structure, and expression density.
+- Stronger instructions map abstract requirements to human workflows such as checklist, handoff, verification, router, toolbox, or Seat return.
+- Boundary: no `AGENTS.md`, `CLAUDE.md`, README, services, copy-paste files, loop skills, Loop Library candidate files, `CONTEXT_INDEX.md`, automation, hooks, MCP, pluginization, execution engine, or public post changes were made.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
