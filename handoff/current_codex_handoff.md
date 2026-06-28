@@ -69,7 +69,7 @@ Current state:
 
 - V12 State: `PASS`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `6deb3dd Record end of chat salvage pass`
+- Latest reflected commit before this task: `cbd50eb Record field notes future line farming`
 - Working tree: clean
 - Local `main` tracking `origin/main`
 - No unpushed commits before this task.
@@ -260,6 +260,11 @@ Completed and parked:
 - Added Seed / Sprout / Crop / Parked / Compost as a lightweight review lens, not mandatory labels for every note.
 - Connection: Subthreshold Signal Integration and market-entry hypothesis through internal Field Note convergence, external market pain, and low-cost test path.
 - Boundary: no new repo, no product, no README change, no Field Note registry, and no automation.
+- Field Note 096 recorded the Capability Reserve Signal as a long-context close-out criterion.
+- Core distinction: V12 = artifact restartability; Execution Health = tool/process reliability; Capability Reserve = remaining reasoning capacity under long context; V13 = next-loop permission.
+- Current observed state: V12 State `PASS`; Execution Health Signal `🟡`; Capability Reserve Signal `🟡`; V13 Next Loop Gate `CAP`.
+- Key rule: clean completion does not prove remaining capability.
+- Heavy development should resume only from a fresh/lighter context or after a restartable handoff.
 - README now includes a thin `Ask your AI first` block.
 - The block asks the user's own AI to evaluate expected value, recommend one bounded next action if fit is clear, and avoid recommending adoption if fit is unclear, low-value, or premature.
 - Field Note 090 recorded the LLM Wiki / V11 / V13 context-boundary signal.
