@@ -66,6 +66,20 @@ This is not only a prompt kit. Used as a fork, LoopKit becomes a small external 
 
 The 5-minute check shows the first benefit. A fork captures the longer benefit: fewer repeated mistakes, less re-explanation, lower token waste, and safer restartability over time.
 
+## After you fork: where to write
+
+A fork becomes useful when your AI work starts leaving memory outside the chat.
+
+Use these three surfaces first:
+
+- `handoff/` — write the current restart state: what changed, what is unfinished, what was verified, and how the next human or AI should resume.
+- `MISTAKEN.md` — write mistakes or do-not-repeat rules before the next correction loop.
+- `field_notes/` — write reusable observations, failures, context-risk signals, and lessons that are not ready to become canonical rules yet.
+
+Do not use the README as a work log.
+Do not write every task into `field_notes/`.
+Only record what should reduce future re-onboarding, repeated mistakes, token waste, or unsafe restart.
+
 ## Ask your AI first
 
 You do not need to install V13 LoopKit first.
