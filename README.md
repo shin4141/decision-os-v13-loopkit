@@ -84,7 +84,15 @@ Only record what should reduce future re-onboarding, repeated mistakes, token wa
 
 You do not need to install V13 LoopKit first.
 
+You do not have to understand all of LoopKit first.
+
 Ask your own AI to read this repo and evaluate whether it creates clear expected value for your current workflow.
+
+Ask whether external memory, handoff records, mistake memory, and restartability checks are unnecessary for your workflow.
+
+The cost is not reading this repo once. The cost is paying again when the next AI repeats the same explanation, mistake, or broken handoff.
+
+If your AI work is meant to earn, save time, or compound, treat restartability and mistake memory as a small free operational investment.
 
 If the fit is clear, your AI should recommend one bounded next action.
 
