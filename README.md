@@ -86,7 +86,17 @@ You do not need to install V13 LoopKit first.
 
 You do not have to understand all of LoopKit first.
 
-Ask your own AI to read this repo and evaluate whether it creates clear expected value for your current workflow.
+### Fastest way to evaluate it
+
+You do not need to fork first.
+
+Ask your own AI to read this README and explain whether LoopKit would reduce your repeated explanation cost, handoff failures, token waste, or restart risk.
+
+If your AI says it is not useful for your workflow, stop there.
+
+If it is useful, fork the repo and start moving memory outside the chat.
+
+For a broader fit check, ask your own AI to read this repo and evaluate whether it creates clear expected value for your current workflow.
 
 Ask whether external memory, handoff records, mistake memory, and restartability checks are unnecessary for your workflow.
 
@@ -458,17 +468,15 @@ See:
 
 ## Field Notes
 
-- `field_notes/001_self_application_v13_loopkit.md` — V13 LoopKit applied to itself.
-- `field_notes/002_real_task_v13_announcement_post.md` — V13 LoopKit applied to a real public-posting decision.
-- `field_notes/003_real_task_after_announcement.md` — V13 LoopKit applied after announcement to prevent reaction-chasing and return to real-task proof.
-- `field_notes/004_real_task_v12_handoff_review.md` — V13 LoopKit applied to a concrete AI-assisted repository task: adding V12→V13 handoff discipline.
-- `field_notes/005_v13_v1_readiness_review.md` — V13 LoopKit applied to the question of whether V13 should move from v0.2 to v1.0.
-- `field_notes/006_external_real_task_review.md` — V13 LoopKit applied to one external concrete AI-assisted task.
-- `field_notes/007_external_v13_readme_usability_review.md` — V13 LoopKit applied to an external V13 README usability review.
-- `field_notes/008_reader_usability_check.md` — V13 LoopKit applied to a first-time reader usability check.
-- `field_notes/009_v13_lite_footer_proof.md` — first proof that the V13 Lite Footer appeared naturally in an ordinary Codex report.
-- `field_notes/010_self_repair_diagnostic_001.md` — first diagnostic run before the next Aspire-invasion move.
-- `field_notes/011_context_compression_proof_001.md` — first proof that compressed handoff anchors restarted a later Codex chat successfully.
+Field notes are not the first reading path. They are evidence of what the repo records over time.
+
+Examples:
+
+- `field_notes/099_handoff_responsibility_transfer.md` — broken handoff responsibility transfer.
+- `field_notes/100_session_size_context_risk.md` — session size becoming Context Risk.
+- `field_notes/062_public_entry_friction_review.md` — public entry friction.
+- `field_notes/063_example_schema_validation_audit.md` — schema validation audit.
+- `field_notes/057_external_repo_transfer_packet_minimum_input_contract.md` — external repo transfer packet checks.
 - `handoff/current_codex_handoff.md` — current restartable handoff for Codex-side V13 LoopKit state.
 
 ## Short Example
