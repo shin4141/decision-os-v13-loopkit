@@ -14,6 +14,35 @@ In one line:
 
 > MISTAKEN.md turns failed invasion into repairable evidence.
 
+## When to Read This
+
+MISTAKEN.md is read before corrective action, not after damage.
+
+Japanese framing:
+
+```text
+MISTAKEN.mdは、被害後の反省ではなく、修正行動に入る直前に読む。
+```
+
+Read this file before entering a correction loop, not after the damage is done.
+
+Use it when:
+
+- a visible defect has been detected and the next instinct is to patch it immediately
+- a handoff, cleanup, generalization, or restartability issue appears
+- a Codex or execution-agent instruction is about to be written for a fix
+- the loop is in YELLOW / CAP and the task looks executable but may hide scope, ownership, or restartability risk
+
+Do not use this file as a blame log.
+
+Use it as a stop-board before corrective action.
+
+Core rule:
+
+```text
+Visible defect -> do not patch immediately -> scope audit -> Keep / Fix / Unclear classification -> fix only confirmed Fix class.
+```
+
 ## Why This Exists
 
 Aspire-oriented loops will sometimes fail.
