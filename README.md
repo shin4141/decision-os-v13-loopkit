@@ -16,6 +16,15 @@ It keeps always-on rules small, moves manuals and examples to on-demand surfaces
 
 Before paying for a stronger model, fix the fuel efficiency of your AI workflow.
 
+> **Do not read everything first.**
+> Ask your own AI whether external memory, handoff records, mistake memory, and restartability checks are unnecessary for your workflow.
+
+| Step | Action | What you get |
+|---|---|---|
+| 1 | Ask your AI | "Is this useful for my AI workflow?" |
+| 2 | Run the 5-minute check | See if your current task is safely restartable |
+| 3 | Fork only if it helps | Store handoffs, mistakes, context risks, and restart rules outside the chat |
+
 Decision-OS V13 is a no-install Lite Footer for AI coding sessions:
 
 - V12 checks whether the work is actually complete and restartable.
