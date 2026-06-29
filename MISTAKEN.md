@@ -125,6 +125,63 @@ LOW
 Do not assume README clarity from internal improvement. Recheck with a first-time reader before public invasion.
 ```
 
+## 2026-06-29 — Mistaken MD: Local Fix Before Scope Audit
+
+### Mistaken assumption
+
+We believed the visible defect could be corrected safely as a local fix.
+
+### Action taken
+
+A personal-name dependency was noticed in one field note, and the first impulse was to patch that visible instance directly.
+
+### Observed result
+
+The better repair path was to audit `field_notes/` first, classify findings into Keep / Fix / Unclear, then fix only the confirmed Fix class.
+
+### Why it was mistaken
+
+A correction loop becomes mistaken when the system patches the visible defect before checking whether the same pattern exists elsewhere.
+
+Correct MD does not start with editing.
+
+It starts with scope audit, classification, then bounded correction.
+
+The safe order is:
+
+1. detect one visible defect
+2. do not patch immediately
+3. audit whether the same pattern exists elsewhere
+4. classify findings into Keep / Fix / Unclear
+5. fix only the confirmed Fix class
+6. preserve Keep items
+
+This prevents local correction from becoming a rework loop.
+
+This also protects the operator's attention as a Resource Justice boundary.
+
+Japanese note:
+
+```text
+見えている1箇所だけを先に直すと、修正のつもりが再修正ループになる。正しいMDは編集から始まらない。まず棚卸しし、Keep / Fix / Unclear に分類し、Fixだけを閉じる。
+```
+
+### Gate that should have applied
+
+CAP
+
+### Repair
+
+Before fixing a visible pattern that may recur across a folder or surface, run a bounded scope audit, classify findings, and correct only the confirmed Fix class.
+
+### Carrier impact
+
+MEDIUM
+
+### Next rule
+
+Do not patch a visible cross-surface defect before checking whether it is an isolated issue or a repeated pattern.
+
 ## Relationship to V13
 
 `MISTAKEN.md` connects to:
