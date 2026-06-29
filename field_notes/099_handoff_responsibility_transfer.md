@@ -16,7 +16,7 @@ The failure pattern:
 
 - a completion line already implies routine cleanup
 - the executing AI can close the cleanup directly
-- instead of converting the cleanup into execution-agent instructions, the handoff returns the burden to Shin
+- instead of converting the cleanup into execution-agent instructions, the handoff returns the burden to the operator
 - the next chat starts with information, but not with clear ownership
 
 This creates a false handoff.
@@ -43,7 +43,7 @@ V12 completion integrity is not only whether the artifact can be restarted.
 
 It also includes whether the remaining operational responsibility is transferred to the right actor.
 
-If the next AI must ask Shin what to do with routine cleanup that the completion line already identifies, the handoff is incomplete.
+If the next AI must ask the Decision Owner what to do with routine cleanup that the completion line already identifies, the handoff is incomplete.
 
 ## Responsibility Transfer Rule
 
@@ -67,21 +67,21 @@ This is what I must not expand.
 This is when I should stop.
 ```
 
-Never return operational cleanup to Shin when an execution agent can close it.
+Never return operational cleanup to the Decision Owner when an execution agent can close it.
 
 Japanese framing:
 
 ```text
-実行AIが閉じられる後始末を、Shinに判断や操作として返してはいけない。
+実行AIが閉じられる後始末を、人間のOperatorに判断や操作として返してはいけない。
 ```
 
 ## Resource Justice Boundary
 
-Resource Justice matters here because Shin's attention is a limited operational resource.
+Resource Justice matters here because the human operator's attention is a limited operational resource.
 
-Returning routine cleanup to Shin creates unnecessary coordination cost.
+Returning routine cleanup to the operator creates unnecessary coordination cost.
 
-It can make Shin:
+It can make the operator:
 
 - re-parse the completion line
 - decide an already-decided cleanup step
@@ -90,7 +90,7 @@ It can make Shin:
 
 This is not good seat return.
 
-Good seat return asks Shin for judgment only when judgment is actually required.
+Good seat return asks the Decision Owner for judgment only when judgment is actually required.
 
 Routine execution-agent cleanup should be closed by the execution agent.
 
@@ -100,7 +100,7 @@ When receiving a handoff, the AI should check:
 
 1. What did the previous line already complete?
 2. What cleanup remains?
-3. Can an execution agent close that cleanup without Shin's judgment?
+3. Can an execution agent close that cleanup without Decision Owner judgment?
 4. What exact files, commands, or verification steps are in scope?
 5. What surfaces must not be touched?
 6. What would count as V12 PASS?
@@ -109,14 +109,14 @@ When receiving a handoff, the AI should check:
 
 If the cleanup is routine and executable, the receiving AI should proceed.
 
-If judgment, risk, exposure, money, credentials, release state, or external action is involved, the AI should return the seat to Shin.
+If judgment, risk, exposure, money, credentials, release state, or external action is involved, the AI should return the seat to the Decision Owner.
 
 ## Correct Closure Pattern
 
 Incorrect closure:
 
 ```text
-The remaining cleanup is X. Shin, what do you want to do?
+The remaining cleanup is X. Decision Owner, what do you want to do?
 ```
 
 Correct closure:
@@ -127,7 +127,7 @@ The execution AI can close it.
 Do X only, verify Y, do not touch Z, then stop.
 ```
 
-For Codex or another execution AI, convert routine cleanup into clear execution instructions, not commands returned to Shin.
+For Codex or another execution AI, convert routine cleanup into clear execution instructions, not commands returned to the operator.
 
 Examples:
 

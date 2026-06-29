@@ -40,7 +40,7 @@ Required:
 
 - repo name
 - local path or URL
-- whether the repo is owned by Shin or external
+- whether the repo is operator-owned, external, or unknown
 
 Why:
 

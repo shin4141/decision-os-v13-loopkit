@@ -49,7 +49,7 @@ Target repo name/path/URL:
 <local path or URL>
 
 Repo ownership:
-<owned by Shin / external / unknown>
+<operator-owned / external / unknown>
 
 Packet owner:
 <owner name or role>
