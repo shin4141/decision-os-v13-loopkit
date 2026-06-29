@@ -56,6 +56,16 @@ Claude Code, Cursor, Cline, and similar tools can still start with the same rest
 
 The deeper docs, `AGENTS.md`, `CLAUDE.md`, and `field_notes/` are useful after the first trial. They are not required for the first five minutes.
 
+## Why fork this repo?
+
+Copy the prompt to try LoopKit once.
+
+Fork the repo when you want your own AI-agent workspace to remember what broke, what worked, what not to repeat, and how the next AI should restart.
+
+This is not only a prompt kit. Used as a fork, LoopKit becomes a small external brain for your AI work: handoffs, mistakes, context risks, boundaries, and restart rules live outside the chat so the next session does not have to rediscover them.
+
+The 5-minute check shows the first benefit. A fork captures the longer benefit: fewer repeated mistakes, less re-explanation, lower token waste, and safer restartability over time.
+
 ## Ask your AI first
 
 You do not need to install V13 LoopKit first.
