@@ -23,9 +23,37 @@ Decision-OS V13 is a no-install Lite Footer for AI coding sessions:
 - `AGENTS.md` stays minimal while docs, examples, handoff, and field notes are read only when needed.
 - `CAP` prevents small finished tasks from expanding into expensive scope creep.
 
-If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
+## Start in 5 minutes
 
-Ask your AI to generate a tutorial from this repo: see [AI_TUTORIAL_CAPSULE.md](AI_TUTORIAL_CAPSULE.md).
+Your AI may say “done,” but the next human or AI may still be unable to safely restart or decide the next step.
+
+Use this after your next AI-assisted task, before letting the agent continue.
+
+Primary check:
+[Next-Action Confidence Check](copy-paste/next-action-confidence-check.md)
+
+Ask your AI:
+
+> Is this safely restartable?
+
+Expected output:
+
+- what changed
+- what was verified
+- what was not touched
+- whether the current task is complete
+- whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`
+- one allowed next action
+- what must not happen next
+
+Stop there. Do not start the next task automatically.
+
+### For Codex users
+
+If you want to try this inside a Codex workflow, start with:
+[Fork + Codex Quickstart](docs/fork_codex_quickstart.md)
+
+The deeper docs, `AGENTS.md`, `CLAUDE.md`, and `field_notes/` are useful after the first trial. They are not required for the first five minutes.
 
 ## Ask your AI first
 
@@ -101,9 +129,13 @@ Use [Thin CLAUDE.md / AGENTS.md base](copy-paste/claude-md-thin-base.md) when yo
 
 Use [Next-Action Confidence Check](copy-paste/next-action-confidence-check.md) before letting an AI agent continue into the next task.
 
-Use [Restartable Handoff](copy-paste/restartable-handoff.md) before ending a long AI-agent session.
+After the first trial, use [Restartable Handoff](copy-paste/restartable-handoff.md) before ending a long AI-agent session.
 
 For fork users using Codex, start here: [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
+
+If this feels abstract, ask your AI to read the [AI Reading Order](docs/ai_reading_order.md) and decide how V13 should fit your repo.
+
+Ask your AI to generate a tutorial from this repo: see [AI_TUTORIAL_CAPSULE.md](AI_TUTORIAL_CAPSULE.md).
 
 Use [`prompts/v13_loop_review.md`](prompts/v13_loop_review.md) when you want a one-off review without adding project-level instruction files.
 
