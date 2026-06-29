@@ -10,7 +10,7 @@
 
 AI work gets expensive when every session has to rediscover the same context.
 
-LoopKit helps Codex-style workflows reduce that hidden re-onboarding cost: what was done, why it stopped, what must not be touched, where residue belongs, and whether the next loop should run.
+LoopKit helps AI-agent workflows reduce that hidden re-onboarding cost: what was done, why it stopped, what must not be touched, where residue belongs, and whether the next loop should run.
 
 It keeps always-on rules small, moves manuals and examples to on-demand surfaces, and records restart points so the next agent does not have to reconstruct everything from scratch.
 
@@ -48,10 +48,11 @@ Expected output:
 
 Stop there. Do not start the next task automatically.
 
-### For Codex users
+### For AI-agent workspace users
 
-If you want to try this inside a Codex workflow, start with:
-[Fork + Codex Quickstart](docs/fork_codex_quickstart.md)
+Codex users have a dedicated quickstart: [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
+
+Claude Code, Cursor, Cline, and similar tools can still start with the same restartability check above.
 
 The deeper docs, `AGENTS.md`, `CLAUDE.md`, and `field_notes/` are useful after the first trial. They are not required for the first five minutes.
 
