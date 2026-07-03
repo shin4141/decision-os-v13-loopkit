@@ -21,7 +21,7 @@ The original rule was to wait seven days without additional outreach or follow-u
 
 That rule was valid as an external response window.
 
-However, once a reply arrived, the no-response wait was superseded. The remaining calendar window should not keep Shin or the active work loop frozen.
+However, once a reply arrived, the no-response wait was superseded. The remaining calendar window should not keep the operator or the active work loop frozen.
 
 ## Candidate 1 State
 
@@ -84,14 +84,14 @@ The correct split is:
 
 ```text
 Do not pressure the candidate.
-Do not keep Shin’s attention parked on the candidate.
+Do not keep the operator’s attention parked on the candidate.
 ```
 
 This preserves both outreach discipline and operator resources.
 
 ## Prevented Failure
 
-Without this closure, the system could have continued treating Candidate 1 as an unresolved active dependency, keeping Shin’s attention tied to a response window that had already been superseded by reply.
+Without this closure, the system could have continued treating Candidate 1 as an unresolved active dependency, keeping the operator’s attention tied to a response window that had already been superseded by reply.
 
 ## Current Gate
 

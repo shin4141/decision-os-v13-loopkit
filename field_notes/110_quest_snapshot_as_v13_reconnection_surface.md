@@ -99,7 +99,7 @@ Quest Snapshot helps V13 reconnect faster because it preserves Gate, next action
 
 ## Seat Owner
 
-Human / Shin keeps the Seat.
+Human / Decision Owner keeps the Seat.
 
 ## One Next Action
 
@@ -111,18 +111,18 @@ Do not edit V13, edit Entry Window Radar, add runtime generation, add PNG/PDF/sc
 
 ## Recheck Condition
 
-Recheck after a future Codex/AI session uses the Quest Snapshot and can correctly state what it owns, current Gate, one next action, do-not-do boundary, recheck condition, and Completion Line without Shin re-explaining V13.
+Recheck after a future Codex/AI session uses the Quest Snapshot and can correctly state what it owns, current Gate, one next action, do-not-do boundary, recheck condition, and Completion Line without the Decision Owner re-explaining V13.
 
 ## Completion Line
 
-This snapshot is successful if the next AI can resume V13’s state and constraints from the snapshot without broadening scope or returning routine state reconstruction to Shin.
+This snapshot is successful if the next AI can resume V13’s state and constraints from the snapshot without broadening scope or returning routine state reconstruction to the Decision Owner.
 
 ## UNKNOWN Fields
 
 - Independent user proof: UNKNOWN. Blocks broad adoption claims, not this read-only validation.
 - Whether Quest Snapshot alone is enough for all future handoffs: UNKNOWN. Needs future resume test.
 - Whether PNG visual storage is worth adding to V13: UNKNOWN. Current result suggests not yet.
-- Best long-term storage surface: UNKNOWN. Candidate is Field Note, not handoff or README, if Shin chooses to record this validation.
+- Best long-term storage surface: UNKNOWN. Candidate is Field Note, not handoff or README, if the Decision Owner chooses to record this validation.
 
 ## Optional Decision Owner Questions
 
@@ -376,7 +376,7 @@ Completion Line
 Seat Owner
 ```
 
-without Shin re-explaining V13.
+without the Decision Owner re-explaining V13.
 
 ## Completion Line
 

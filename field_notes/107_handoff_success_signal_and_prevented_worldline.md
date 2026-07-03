@@ -71,7 +71,7 @@ Handoff success.
 
 The receiving AI can now start with the target layer, Current Gate, Completion Line, Missing Closure, and next actor already visible.
 
-Without this handoff, the next AI would likely have restarted by asking what was complete and what remained HOLD, returning routine cleanup decisions to Shin.
+Without this handoff, the next AI would likely have restarted by asking what was complete and what remained HOLD, returning routine cleanup decisions to the Decision Owner.
 ```
 
 Bad example:
