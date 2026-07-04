@@ -2,19 +2,52 @@
 
 ## Current Signal
 
-🟢 BLUE / WORK-CONTINUE  
-🟡 YELLOW / PUBLIC-CAP
+- 🟢 BLUE / MANUAL-PROTOTYPE-MAINTAINED
+- 🟡 YELLOW / FEATURE-GROWTH-HOLD
+- 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
+- 🔴 RED / RUNTIME-AUTOMATION-BLOCK
 
 ## Current State
 
-V13 LoopKit is a minimal copy-paste prototype for reviewing the next loop after AI-assisted work.
+V13 LoopKit remains prototype-bound and manual.
+
+However, it is no longer only a prompt collection.
+
+It now includes reusable manual governance surfaces for AI-agent restartability, handoff, mistake memory, launch boundaries, and current-state transfer.
 
 It is currently usable for:
 
-- V12→V13 handoff review
-- post-completion loop review
-- GO / HOLD / CAP / BLOCK judgment
+- V12 to V13 handoff review
+- post-completion GO / HOLD / CAP / BLOCK judgment
+- next-action confidence checks
+- restartability checks
+- handoff responsibility transfer
+- manual reconnection packet creation
 - bounded field-note proof-of-use
+
+## Current Manual Surfaces
+
+Current reusable surfaces include:
+
+- README first-use path
+- copy-paste prompts
+- `AGENTS.md` / `CLAUDE.md`
+- `MISTAKEN.md`
+- `handoff/current_codex_handoff.md`
+- `templates/v13_reconnection_packet_template.md`
+- field notes
+- launch capsules
+- acceptance audit records
+
+## Boundary
+
+Still not a runtime.
+
+Still not an execution engine.
+
+Still no hooks / MCP / pluginization.
+
+Human keeps the Seat.
 
 ## Feature Growth Status
 
@@ -22,59 +55,40 @@ Feature growth is currently paused.
 
 This does not mean the project is stopped.
 
-It means the next improvement should come from real-task proof, not from adding more features.
+It means the next improvement should come from concrete observed need, restartability repair, or current-surface reconciliation, not from adding more product surface.
 
 Do not add:
 
 - CLI
 - server
 - package setup
-- automation
-- new schema fields
+- runtime automation
+- hooks
+- MCP
+- pluginization
+- execution engine
 - broader promotion
 
-until more real-task proof exists.
-
-## Why Feature Growth Is Paused
-
-The repository already has enough structure for first use:
-
-- README first-use path
-- copy-paste prompt
-- use cases
-- schema
-- examples
-- V12→V13 handoff discipline
-- field notes
-- field note type clarification
-
-Adding more surface area now may increase complexity before usefulness is proven.
-
-## Allowed Next Loop
-
-Run V13 LoopKit on one concrete AI-assisted task completion.
-
-Record whether the gate output was:
-
-- useful
-- unclear
-- too heavy
-- wrong
+without a separate explicit gate.
 
 ## Public Exposure Status
 
-Public exposure remains capped.
+Public exposure remains on HOLD / CAP.
 
 Do not treat weak public reaction as invalidation.
 
-Do not post repeated follow-ups within 48 hours.
-
-Do not broaden promotion before more proof-of-use exists.
+Do not broaden promotion from this status file.
 
 ## Next Loop Command
 
-Use V13 LoopKit on one concrete AI-assisted task completion and record the result.
+Use V13 LoopKit on one bounded AI-assisted task completion or handoff-sensitive closure.
+
+If restartability matters, use:
+
+```text
+templates/v13_reconnection_packet_template.md
+```
 
 In one line:
 
-> Pause features, continue proof.
+> Keep the prototype manual, preserve restartability, and use the reconnection packet before handing off state.

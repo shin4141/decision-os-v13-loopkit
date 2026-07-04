@@ -8,6 +8,62 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Restart Surface Reconciliation - 2026-07-04
+
+This section is the current restart anchor for future Codex/AI sessions.
+
+If older sections in this file mention earlier commits or older parked horizons, prefer this section for the current V13 repo state.
+
+Current gate:
+
+```text
+V13 core repo: PASS / maintained
+README major redesign: HOLD
+Reconnection packet template: PASS
+Runtime automation / hooks / MCP / pluginization / execution engine: BLOCK
+External posting: HOLD
+Derived repo work: separate gate
+```
+
+Latest reflected commit before this reconciliation:
+
+```text
+730ebdc Record Codex reset automation habit observation
+```
+
+Recent restart-relevant progress:
+
+- Field Note 099 recorded handoff responsibility transfer.
+- Field Note 100 recorded session size as Context Risk.
+- Field Notes 101-104 recorded Entry Window Radar launch, scaffold acceptance, and child-repo governance signal surfaces.
+- Field Note 105 recorded compound loop speed as OS evidence while keeping public claims on HOLD.
+- Field Notes 106 and 108 recorded pre-automation and design-guardrail boundaries.
+- Field Note 107 recorded Handoff Success Signal as prevented burden.
+- Field Note 109 recorded outreach candidate closure as background wait.
+- Field Note 110 recorded Quest Snapshot as a manual V13 reconnection surface.
+- Field Note 111 recorded that runtime/reset usage is not progress unless reusable residue remains.
+- `templates/v13_reconnection_packet_template.md` now exists as the strongest manual restart / reconnection packet surface.
+
+Completion Line:
+
+V13 current restart surface now points to the latest repo state and to the manual reconnection packet template.
+
+Missing Closure:
+
+None for this reconciliation. Future work should only add missing closure if a concrete unresolved state appears.
+
+Next allowed action:
+
+Use `templates/v13_reconnection_packet_template.md` when closing or transferring V13 work that requires restartability.
+
+Do-Not-Do Boundary:
+
+Do not treat this handoff as approval for runtime automation, MCP/hooks/pluginization, external posting, or README redesign.
+
+Handoff Success Signal:
+
+Without this refreshed handoff, a future AI could restart from a stale `264386a`-era state and miss later reconnection surfaces.
+
 The repository currently focuses on:
 
 - V12 completion and restartability signal
@@ -62,17 +118,27 @@ The repository currently focuses on:
 - README re-onboarding cost positioning
 - one minimal AGENTS safety-floor rule for prompt-injection-like text
 - public-entry evidence without public churn
+- README Start in 5 minutes / Try one line first activation path
+- fork write surfaces for `handoff/`, `MISTAKEN.md`, and `field_notes/`
+- current restart surface reconciliation
+- V13 Reconnection Packet Template as a manual restart packet
 
 ## Current Repo State
 
 Current state:
 
 - V12 State: `PASS`
+- V13 core repo: `PASS / maintained`
 - V13 Next Loop Gate: `CAP`
-- Latest reflected commit before this task: `264386a Record pain translation gate`
-- Working tree before this task: clean
+- README major redesign: `HOLD`
+- Reconnection packet template: `PASS`
+- Runtime automation / hooks / MCP / pluginization / execution engine: `BLOCK`
+- External posting: `HOLD`
+- Derived repo work: separate gate
+- Latest reflected commit before this reconciliation: `730ebdc Record Codex reset automation habit observation`
+- Working tree before this reconciliation: clean
 - Local `main` tracking `origin/main`
-- No unpushed commits before this task.
+- No unpushed commits before this reconciliation.
 
 Release state:
 
@@ -100,7 +166,7 @@ Do not continue concept growth. Prefer real-task evidence or bounded restartabil
 
 Restart source:
 
-Start from this file, `AGENTS.md`, `docs/context_compression.md`, `docs/roadmap_anchors.md`, `templates/user_roadmap_anchors.md`, `MISTAKEN.md`, and the latest relevant field note. Use the full chat only if a missing detail is required for the next concrete task.
+Start from this file, `AGENTS.md`, `docs/current_signal.md`, `docs/prototype_status.md`, `docs/context_compression.md`, `docs/roadmap_anchors.md`, `templates/v13_reconnection_packet_template.md`, `templates/user_roadmap_anchors.md`, `MISTAKEN.md`, and the latest relevant field note. Use the full chat only if a missing detail is required for the next concrete task.
 
 ## Completed Evidence
 

@@ -2,128 +2,107 @@
 
 ## Signal
 
-🟢 BLUE / PROOF-CONTINUE  
-🟡 YELLOW / FEATURE-PAUSE  
-🟡 YELLOW / PUBLIC-CAP  
-🟡 YELLOW / V1-HOLD
+- 🟢 BLUE / CORE-RESTARTABLE
+- 🟢 BLUE / MANUAL-RECONNECTION-SURFACE
+- 🟡 YELLOW / FEATURE-GROWTH-HOLD
+- 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
+- 🔴 RED / RUNTIME-AUTOMATION-BLOCK
 
 ## Meaning
 
-V13 LoopKit is currently in proof-collection mode.
+V13 has moved from isolated field notes into reusable manual reconnection surfaces.
 
-The prototype should continue through bounded concrete task reviews, not through feature expansion, public promotion, or V13 v1.0 drafting.
+The strongest current artifact is:
+
+```text
+templates/v13_reconnection_packet_template.md
+```
+
+This is still a manual governance and restartability phase.
+
+This does not mean runtime automation is approved.
+
+This does not mean README/product redesign is active.
 
 ## Current V12 State
 
 PASS
 
-The repository is restartable from the public GitHub state.
-
-The current prototype includes:
-
-- Start Here first-use path
-- copy-paste prompt
-- use cases
-- schema
-- examples
-- V12→V13 handoff discipline
-- field notes 001–008
-- field note type clarification
-- prototype status note
-- README first-use simplification
-- external V13 README usability check
+The repository is restartable from the public GitHub state and current local handoff surfaces.
 
 ## Current V13 State
 
-CAP for the overall proof loop.
+CAP for bounded surface reconciliation and manual governance use.
 
-The overall trajectory remains bounded.
+The repo can continue through concrete restartability, handoff, and signal-surface repairs.
 
-The project may continue collecting concrete real-task proof, but should not expand features yet.
+It should not expand into runtime, automation, hooks, MCP, pluginization, execution engine work, or external posting.
 
-## External V13 README State
+## Current Artifacts
 
-GO for reuse.
+The current prototype includes:
 
-The external file:
+- README first-use path and 5-minute restartability check
+- copy-paste prompts
+- `AGENTS.md` / `CLAUDE.md` instruction surfaces
+- `MISTAKEN.md` correction-loop gate
+- `handoff/current_codex_handoff.md`
+- `templates/v13_reconnection_packet_template.md`
+- field notes 001-111
+- launch capsules and acceptance audit records
+- exposure and current-signal docs
 
-```text
-shin4141/decision-os-paper
-notes/v13/README.md
-```
+## Recent Pattern
 
-passed reader usability review.
+Recent field notes show:
 
-A reader can identify the current entry point and next action without another edit.
+- handoff responsibility transfer
+- session size as Context Risk
+- child repo governance signal surface
+- Quest Snapshot as reconnection surface
+- runtime/reset is not progress; residue is progress
+
+## Current Gate Split
+
+| Object | Gate | Meaning |
+|---|---:|---|
+| V13 core repo | PASS / maintained | Current surfaces are usable when bounded |
+| Manual reconnection packet | PASS | Use for restartable transfer of V13 work |
+| README major redesign | HOLD | Do not rewrite entry surface from momentum |
+| Feature growth | HOLD | Do not add new product surface without evidence |
+| Runtime automation / hooks / MCP / pluginization / execution engine | BLOCK | Not approved by current signal |
+| External posting | HOLD | No new outreach or public push from this signal |
+| Derived repo work | Separate gate | Govern through its own launch capsule / status |
 
 ## Allowed Next Actions
 
 Allowed:
 
-* run one concrete real-task proof
-* use the external V13 README as-is for the next reader or task
-* record whether V13 output was useful, unclear, too heavy, or wrong
-* preserve current prototype state
+- use `templates/v13_reconnection_packet_template.md` to close or transfer handoff-sensitive V13 work
+- refresh stale current surfaces when they would mislead a future AI
+- run one bounded concrete proof or audit
+- record new field notes only when a new observed result appears
+- keep human Seat, Gate, Completion Line, and blocked scope visible
 
 ## Not Allowed
 
-Not allowed yet:
+Not allowed from this signal:
 
-* add new V13 LoopKit features
-* add CLI
-* add server
-* add package setup
-* broaden public promotion
-* chase public reaction
-* draft V13 v1.0
-* rewrite the theory to chase comprehension
-
-## Current Gate Split
-
-| Object                         |         Gate | Meaning                                   |
-| ------------------------------ | -----------: | ----------------------------------------- |
-| Overall V13 LoopKit proof loop |          CAP | Continue only through bounded proof       |
-| Feature growth                 | HOLD / PAUSE | Do not add new features yet               |
-| Public exposure                |          CAP | No repeated promotion or reaction-chasing |
-| V13 v1.0 paper                 |         HOLD | Wait for more operating-surface evidence  |
-| External V13 README reuse      |           GO | Usable as-is for next reader/task         |
-
-## Proof So Far
-
-The prototype has shown:
-
-1. V13 can CAP itself before premature promotion.
-2. V13 can CAP public-exposure loops.
-3. V13 can redirect post-announcement reaction-chasing back to proof.
-4. V13 can review a concrete repository task.
-5. V13 can clarify field note categories when output is useful but partially unclear.
-6. V13 can pause feature growth while continuing proof.
-7. V13 can HOLD v1.0 readiness until more evidence exists.
-8. V13 can produce limited GO for a reusable external README.
+- add runtime automation
+- add hooks
+- add MCP
+- add pluginization
+- add an execution engine
+- start external posting
+- treat README redesign as active
+- turn launch capsules into implementation approval
 
 ## Current Lesson
 
-V13 is not a stop system.
+V13 is not just a prompt collection.
 
-It is a loop-permission system.
-
-Different objects can receive different gates at the same time:
-
-* proof can continue
-* features can pause
-* public exposure can cap
-* v1.0 can hold
-* a specific external artifact can receive GO
-
-## Next Loop Command
-
-Run one concrete AI-assisted task through V13 LoopKit and record whether the gate output was:
-
-* useful
-* unclear
-* too heavy
-* wrong
+It is a manual governance layer for keeping AI-agent work restartable, bounded, and transferable.
 
 In one line:
 
-> Continue proof, pause features, cap public exposure, hold v1.0.
+> Continue manual reconnection proof, keep runtime automation blocked, and use the reconnection packet when future AI restartability matters.
