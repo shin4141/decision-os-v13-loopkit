@@ -78,6 +78,22 @@ Build Command framing: BLOCK
 Evidence-backed Pain Signal Map framing: GO
 ```
 
+### Repo Root Canon
+
+```text
+Before running git status, editing files, committing, or reporting repo state, confirm the actual project root.
+Do not work from a parent directory, empty outer repo, or similarly named folder.
+If the expected repo is nested, use the nested real repo path as the working root and report it explicitly in Context Health.
+```
+
+Context Health reporting, when relevant:
+
+```text
+Repo Root:
+Root Drift Risk: YES/NO
+If YES, state the correct working root and do not proceed from the wrong directory.
+```
+
 ## 5. One-line Definition
 
 ```text
