@@ -268,6 +268,33 @@ Completion Line:
 Context health is now an operational surface. Codex must proactively surface context risk instead of returning the monitoring burden to Shin.
 ```
 
+## 0.01 Update Check
+
+At the end of each bounded loop, report the one variable that made the next loop cheaper, safer, clearer, or more restartable.
+
+Use this format:
+
+```text
+0.01 Update Check:
+Variable:
+Effect: cheaper / safer / clearer / more restartable
+Score: +0.01 candidate / 1.00 / 0.99 risk
+Risk:
+Next carryover, if any:
+```
+
+Scoring:
+
+- `+0.01 candidate`: the loop improves a future operating condition.
+- `1.00`: the loop completed work but did not improve the next loop.
+- `0.99 risk`: the loop adds copy burden, unclear handoff, repo-root ambiguity, unresolved path ambiguity, operator cleanup, or restart friction.
+
+Repo/path rule:
+
+- If a required repo path is unresolved, do not infer it.
+- Mark it as carryover: `Next carryover: repo path unresolved`.
+- Do not proceed into work that depends on that path.
+
 ## Context Compression Footer
 
 At the end of task reports involving long context, repeated decisions, handoff-sensitive work, or accumulated project state, include a short Context Compression signal.
