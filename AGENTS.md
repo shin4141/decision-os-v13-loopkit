@@ -215,6 +215,59 @@ Rules:
 - If the task was small and context remains simple, use `CHAT_CONTINUE`.
 - If uncertain, prefer `PREPARE_HANDOFF` over silent continuation.
 
+## Context Health Self-Check
+
+At the start and end of each bounded task, report context health.
+
+The operator should not need to manually ask whether the current Codex/chat context is becoming unsafe.
+
+Context health is part of V13 loop governance and V14 Resource Justice.
+
+Use this format:
+
+```text
+Context Risk:
+BLUE / YELLOW / RED
+
+Reason:
+<one short line>
+
+Action:
+Continue / Compact Handoff / Stop
+
+Latest commit:
+<commit hash or UNKNOWN>
+
+Current Gate:
+<current gate or UNKNOWN>
+
+Allowed:
+<bounded allowed scope>
+
+Blocked:
+<blocked scope>
+
+Next one action:
+<one next action>
+```
+
+Risk rules:
+
+- `BLUE`: repo, gate, latest commit, allowed scope, blocked scope, and next action are clear.
+- `YELLOW`: long context, prior unrelated repo/task residue, recent correction, possible gate mixing, or non-trivial uncertainty. Only one small bounded task may proceed. No implementation expansion, README overhaul, multi-repo sync, public release, or new automation.
+- `RED`: repo identity, latest commit, gate, allowed/blocked scope, or next action cannot be confidently identified; or instructions from another repo/task are being mixed. Stop work and produce compact handoff only.
+
+Completion rule:
+
+- If Context Risk is `YELLOW` or `RED`, do not ask the operator to decide routine cleanup.
+- Produce a compact handoff with latest commit, current gate, allowed, blocked, completed, remaining, and next one action.
+
+Completion Line:
+
+```text
+Context health is now an operational surface. Codex must proactively surface context risk instead of returning the monitoring burden to Shin.
+```
+
 ## Context Compression Footer
 
 At the end of task reports involving long context, repeated decisions, handoff-sensitive work, or accumulated project state, include a short Context Compression signal.
