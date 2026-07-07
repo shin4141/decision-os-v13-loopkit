@@ -775,6 +775,9 @@ Preserve:
 - Category target: Operations.
 - This is distinct from `Next-Action Confidence Check`, which is an Evaluation loop for deciding whether the next loop should run.
 - External submission remains pending until Shin reviews.
+- Later Loop Library listing/status evidence supersedes this older pending line.
+- There is no active external submission or outreach queue from this line.
+- Any new external contact still requires a fresh Contact Readiness Card and explicit Decision Owner `SEND` approval.
 - No README edit, `AI_TUTORIAL_CAPSULE.md` edit, tutorial edit, automation, hooks, MCP, pluginization, execution engine, additional candidate, issue, PR, or public post was added.
 - `copy-paste/claude-md-thin-base.md` was added as one small copy-paste template for a thin always-loaded `CLAUDE.md` / `AGENTS.md` base.
 - Purpose: reduce first-use conversion cost after Reddit feedback that `CLAUDE.md` / `AGENTS.md` can get too heavy and always-loaded instructions can become context poison.
