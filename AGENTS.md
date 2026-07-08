@@ -38,6 +38,8 @@ Use one of:
 
 The V12 output becomes the input condition for V13.
 
+When the user selects `Handoff`, follow `docs/handoff_command.md`.
+
 Minimal handoff:
 
 ```text
