@@ -295,6 +295,37 @@ Repo/path rule:
 - Mark it as carryover: `Next carryover: repo path unresolved`.
 - Do not proceed into work that depends on that path.
 
+## Concept Promotion Gate
+
+Field Notes, hypotheses, and adopted priors must not be promoted into canonical operating rules without an explicit promotion check.
+
+Rule:
+
+```text
+Prior adopted does not mean verified.
+```
+
+Any hypothesis used as an operating prior must keep a visible status tag until verified.
+
+Required status tag:
+
+```text
+Prior adopted / verification pending
+```
+
+Canonical promotion into README, AGENTS.md, templates, schemas, or Core Rules is `HOLD` unless the promotion record includes:
+
+- what is being promoted
+- why it is no longer only a hypothesis
+- verification or evidence used
+- falsifier or countercondition
+- rollback / downgrade condition
+- owner approval when the change affects public surface, outreach, authority, or irreversible action
+
+Example:
+
+The repair-distance hypothesis may be used as an adopted prior, but it must remain tagged as verification pending. It must not be treated as a verified principle until the Concept Promotion Gate is passed.
+
 ## Context Compression Footer
 
 At the end of task reports involving long context, repeated decisions, handoff-sensitive work, or accumulated project state, include a short Context Compression signal.
