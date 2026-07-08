@@ -819,6 +819,11 @@ Preserve:
 - Signal: V13 can translate into multiple practical copyable loops across categories.
 - Translation lesson: plain language, `Verify`, `Stop when`, one safe next action, and "what they must not assume" remain important.
 - Boundary: no new loop submission, README rewrite, tutorial change, copy-paste expansion, automation, hooks, MCP, pluginization, execution engine, public post, or feature expansion from this signal yet.
+- Forward Future Loop Library now shows 3 loops by Shinichi Nagata / @DecisionOS.
+- Confirmed loops: `The restartable handoff loop`, `The next-action confidence check`, and `The AI-agent workspace health check`.
+- Treat this as a small public surface signal, not a victory declaration.
+- No outreach, SNS post, README promotion, Canon promotion, or public release action is authorized by this note.
+- Relevance: the third listing connects directly to B -- AI Repo Re-entry / Handoff Audit.
 - `services/ai_agent_handoff_audit_automation.md` was added as a service automation spec.
 - Purpose: automate candidate discovery, friction extraction, audit drafting, outreach draft generation, and follow-up state logging for AI Agent Handoff Audit.
 - Human approval remains required before any contact.
