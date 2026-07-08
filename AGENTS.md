@@ -42,6 +42,8 @@ When the user selects `Handoff`, follow `docs/handoff_command.md`.
 
 When creating a new repo/workspace capsule, follow `docs/new_repo_scaffold_standard.md`.
 
+When reviewing or promoting Field Notes, follow `docs/field_note_lifecycle.md`.
+
 Minimal handoff:
 
 ```text
