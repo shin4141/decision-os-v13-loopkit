@@ -824,6 +824,16 @@ Preserve:
 - Treat this as a small public surface signal, not a victory declaration.
 - No outreach, SNS post, README promotion, Canon promotion, or public release action is authorized by this note.
 - Relevance: the third listing connects directly to B -- AI Repo Re-entry / Handoff Audit.
+- Pain -> Entry Bridge v0.1 recorded as an upstream chain signal.
+- Pain-side commit: `b13d3ebe731398a9b96d4e79f1bce6a13c3b0675`.
+- Entry-side commit: `8cb2ffe9bbaf279db67da7333c8466990fbce18c`.
+- Meaning: Pain Timing Map can produce a Pain Signal Package / Entry Intake Pack; Entry Window Radar can receive it and produce an Entry Decision Card.
+- Chain: Pain Timing Map -> Pain Signal Package / Entry Intake Pack -> Entry Window Radar -> Entry Decision Card -> Project Start -> Re-entry / Handoff Audit -> V13 Loop Governance.
+- V13 interpretation: this is a practical upstream chain for Future Line Selection. Pain packages the signal; Entry judges entry strength; V13 governs whether the next AI loop should `GO` / `HOLD` / `CAP` / `BLOCK`.
+- Boundary: Pain does not make a build decision, Entry does not authorize implementation, and V13 does not treat this bridge as market proof.
+- No public posting, automation, API, scanner, build command, or repo expansion is authorized.
+- Required carry-forward: future V13 capsules using this chain must include V12 Completion Self-Report fields.
+- Missing Closure: no real Pain Signal Package has passed through Entry Intake Receiver yet; GitHub rendered README checks are not confirmed; Re-entry repo remains conceptually connected, not operationally required yet.
 - `services/ai_agent_handoff_audit_automation.md` was added as a service automation spec.
 - Purpose: automate candidate discovery, friction extraction, audit drafting, outreach draft generation, and follow-up state logging for AI Agent Handoff Audit.
 - Human approval remains required before any contact.
