@@ -8,6 +8,53 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Remediation Anchor - 2026-07-10
+
+This section is the current restart anchor and supersedes older state statements below.
+
+Accepted Operational SHA:
+
+```text
+37ef875 docs: remove public private-context leaks
+```
+
+Accepted state:
+
+```text
+Branch: main
+Tracking: origin/main
+V13 core repo: PASS / maintained
+Public-surface remediation: PASS
+README broad rewrite: HOLD
+Runtime automation / hooks / MCP / pluginization / execution engine: BLOCK
+Public posting / outreach / release: HOLD
+Canon promotion: HOLD
+Derived repo work: separate gate
+```
+
+Public/private boundary repair:
+
+- Tracked text contains no operator-specific absolute local path.
+- Private operational references use `Decision Owner`, `operator`, or `maintainer` rather than a personal name.
+- Public author attribution remains only where it is clearly attribution.
+- No credential, token, private email, legal identifier, or secret was found in the remediation scan.
+
+Completion Line:
+
+The accepted V13 state is the remediation commit above. No public action, outreach, release, runtime change, or Canon promotion is authorized by this handoff.
+
+Missing Closure:
+
+None within the tracked-text remediation scope. A future rendered GitHub-surface check requires a separately bounded task.
+
+Next allowed action:
+
+Stop after this handoff-only refresh. Any future public-surface work must begin with a new bounded gate.
+
+Do-Not-Do Boundary:
+
+Do not treat this handoff as approval for public posting, outreach, release, README redesign, runtime work, automation, MCP/hooks/pluginization, or Canon promotion.
+
 ## Current Restart Surface Reconciliation - 2026-07-04
 
 This section is the current restart anchor for future Codex/AI sessions.
@@ -472,7 +519,7 @@ Parked boundaries:
 
 - Lane Recall / Transfer Packet branch remains parked unless a real-task trigger appears.
 - README/public-entry edits remain `HOLD` unless a concrete exposed gap is separately authorized.
-- AGENTS promotion remains `HOLD` beyond the already-authorized prompt-injection safety-floor rule unless Shin explicitly asks for AGENTS promotion review.
+- AGENTS promotion remains `HOLD` beyond the already-authorized prompt-injection safety-floor rule unless the Decision Owner explicitly asks for AGENTS promotion review.
 - `AGENTS.md` must not be edited further without separate authorization.
 - `AGENTS.ja.md` must not be edited.
 - `README.md` must not be edited.
@@ -506,7 +553,7 @@ Valid triggers:
 - a future agent needs lane recall to reduce real ambiguity
 - repeated successful real applications appear
 - a real negative-case downshift occurs
-- Shin explicitly asks for AGENTS promotion review
+- the Decision Owner explicitly asks for AGENTS promotion review
 - a concrete public-entry gap is separately authorized for review or edit
 
 Reopen does not mean `GO`.
@@ -774,7 +821,7 @@ Preserve:
 - Purpose: close AI-agent sessions so the next human or AI can restart without guessing what happened, what was verified, what is off limits, or what the safest next action is.
 - Category target: Operations.
 - This is distinct from `Next-Action Confidence Check`, which is an Evaluation loop for deciding whether the next loop should run.
-- External submission remains pending until Shin reviews.
+- External submission remains pending until the Decision Owner reviews.
 - Later Loop Library listing/status evidence supersedes this older pending line.
 - There is no active external submission or outreach queue from this line.
 - Any new external contact still requires a fresh Contact Readiness Card and explicit Decision Owner `SEND` approval.
@@ -840,10 +887,10 @@ Preserve:
 - Mass outreach and automatic sending are `BLOCK`; human-approved single contact is `CAP`.
 - No implementation, script, GitHub API tooling, email tooling, message sending, README edit, tutorial edit, copy-paste edit, pricing, public post, automation, hooks, MCP, pluginization, or execution engine was added.
 - `services/ai_agent_handoff_audit_automation.md` now requires a Contact Readiness Card before recommending `SEND`.
-- `SEND` requires evidence depth, route justification, repo-specific friction, a short useful message, and Shin-only approve/paste readiness.
+- `SEND` requires evidence depth, route justification, repo-specific friction, a short useful message, and Decision Owner approval/paste readiness.
 - The card asks the AI to estimate reply, adoption, and useful-learning probability before contact, using rough planning estimates only.
 - The card defines wait rule, success definition, failure/no-signal definition, learning if no reply, and next action.
-- Automatic sending remains `BLOCK`; Shin decides `SEND` / `HOLD` / `SKIP`.
+- Automatic sending remains `BLOCK`; the Decision Owner decides `SEND` / `HOLD` / `SKIP`.
 - Field Note 087 captured the Rechallenge Gate concept.
 - Framing: previously failed routes should not be permanently avoided if conditions and total EV change.
 - AI may resurface a past failed route for bounded re-evaluation, but must not force a retry.
@@ -907,6 +954,6 @@ Set `Decision Packet Required: yes` if the next action is:
 
 ## Stop Condition
 
-Stop after bounded restartability repair unless Shin authorizes a concrete next task.
+Stop after bounded restartability repair unless the Decision Owner authorizes a concrete next task.
 
 Do not convert this handoff refresh into README edits, public copy, AGENTS.ja.md translation, docs/security files, scanners, automation, implementation, or additional safety rules.
