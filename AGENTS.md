@@ -271,7 +271,7 @@ Completion rule:
 Completion Line:
 
 ```text
-Context health is now an operational surface. Codex must proactively surface context risk instead of returning the monitoring burden to Shin.
+Context health is now an operational surface. Codex must proactively surface context risk instead of returning the monitoring burden to the Decision Owner.
 ```
 
 ## 0.01 Update Check

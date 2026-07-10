@@ -36,7 +36,7 @@ When the user selects `Handoff`, follow `docs/handoff_command.md`.
 - Next Owner
 - First One Action
 - Do Not Continue Boundary
-- What must not be returned to Shin
+- What must not be returned to the Decision Owner
 
 ## Do Not Authorize
 

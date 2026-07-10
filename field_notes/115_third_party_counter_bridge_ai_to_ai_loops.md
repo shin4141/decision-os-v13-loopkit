@@ -70,7 +70,7 @@ Start manually.
 2. A checkpoint summary is passed to Claude or another third-party AI.
 3. The third-party AI checks for drift, false completion, hidden assumptions, missing UNKNOWNs, responsibility dump, and missing V12 self-report.
 4. It returns a Counter.
-5. Shin / Decision Owner decides whether to apply it.
+5. The Decision Owner decides whether to apply it.
 ```
 
 This is checkpoint-based, not continuous surveillance.

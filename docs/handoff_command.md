@@ -17,7 +17,7 @@ This command only transfers the current operational state.
 - Next Owner
 - First One Action
 - Do Not Continue Boundary
-- What must not be returned to Shin
+- What must not be returned to the Decision Owner
 
 ## Rules
 
@@ -26,6 +26,6 @@ This command only transfers the current operational state.
 - Include only current state, not speculative plans.
 - If a field is unknown, write `UNKNOWN` and explain why in one line.
 - Do not hide missing closure.
-- Do not return routine cleanup to Shin if an execution agent can close it.
+- Do not return routine cleanup to the Decision Owner if an execution agent can close it.
 - Do not authorize outreach, public posting, implementation, release, pricing, scraping, API, or automation unless already explicitly approved.
 - End with a Completion Line.

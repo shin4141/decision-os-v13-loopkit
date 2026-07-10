@@ -31,7 +31,7 @@ The preflight asks the repo/workspace to declare enough accepted state for safe 
 
 If AI enters a repo and starts editing before accepted state is declared, it may treat stale branches, stale tests, quarantined fixtures, outdated handoffs, or ambiguous source-of-truth files as current truth.
 
-This creates false continuation and returns repair burden to Shin.
+This creates false continuation and returns repair burden to the human operator.
 
 The failure mode is not merely "AI made a bad edit."
 

@@ -40,7 +40,7 @@ field_notes/040_real_task_execution_loop_gate_application.md
 What happened:
 
 - 038 was applied to a real non-README, non-public-readiness task.
-- Target was `/Users/sn/Projects/decisiongate-triage`.
+- Target was `<external-repo-root>`.
 - Concrete loop was validating scanner regression examples until clean.
 - Ordinary agent would likely GO.
 - V13 used 038 criteria and returned CAP because validation method, allowed touch surface, and measuring-instrument safety were not yet concrete.

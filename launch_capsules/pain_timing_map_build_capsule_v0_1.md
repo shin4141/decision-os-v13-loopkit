@@ -47,7 +47,7 @@ Entry Window Radar: adjacent but separate
 ## 3. Decision Owner
 
 ```text
-Decision Owner: Shin
+Decision Owner: designated Decision Owner
 ```
 
 AI / Codex の役割：
@@ -206,7 +206,7 @@ build command generator
 agentic autonomous builder
 ranking-only dashboard
 genre calendar
-Shin-only personal pain tool
+single-operator personal pain tool
 ```
 
 ## 9. Input Boundary
@@ -224,7 +224,7 @@ Shin-only personal pain tool
 出してほしい視点
 ```
 
-Shin向け初期入力例：
+Decision Owner向け初期入力例：
 
 ```text
 AI / LLM / 個人開発 / バイブコーディング周辺で、今後3〜12ヶ月に顕在化しそうな未命名の痛みを探したい。
@@ -372,7 +372,7 @@ Do not make this a Reddit scraping/API project first.
 Do not make this a pain notebook.
 Do not tell users what to build as a command.
 Do not guarantee market outcomes.
-Do not start from Shin’s personal pain only.
+Do not start from the Decision Owner's personal pain only.
 Do not start from Decision-OS theory.
 Do not treat future pain as current pain.
 Do not use market size alone as a GO signal.
@@ -422,7 +422,7 @@ External posting: HOLD
 ## 15. Next Actor
 
 ```text
-Next Actor: Shin / AI
+Next Actor: Decision Owner / AI
 ```
 
 次に許可される行動は1つ。
@@ -471,7 +471,7 @@ API / scraping / automation を入れたくなった
 Pain Timing Map が “売れるもの推薦” に寄りそうになった
 痛みノート化しそうになった
 Entry Window Radar と境界が混ざりそうになった
-Shin個人の痛みだけに寄りすぎた
+Decision Owner個人の痛みだけに寄りすぎた
 Decision-OS理論説明から始めそうになった
 外向き投稿したくなった
 ```

@@ -9,7 +9,7 @@ V13 LoopKit successfully governed a fresh external normal-repo proof.
 External repo:
 
 ```text
-/Users/sn/Projects/decisiongate-triage
+<external-repo-root>
 ```
 
 External proof commit:

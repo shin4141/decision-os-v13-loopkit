@@ -17,7 +17,7 @@ The purpose is to test whether the execution-loop gate criteria work beyond READ
 External repo:
 
 ```text
-/Users/sn/workspaces/mmar-l0-core
+<external-repo-root>
 ```
 
 Dependency / environment surface inspected:
@@ -40,7 +40,7 @@ Related inspected surfaces:
 
 The external repo was inspected read-only.
 
-The preferred repo `/Users/sn/Projects/decisiongate-triage` was not used for this loop because no obvious dependency, package, lockfile, environment, or setup files were found during read-only inspection.
+The preferred repo `<external-repo-root>` was not used for this loop because no obvious dependency, package, lockfile, environment, or setup files were found during read-only inspection.
 
 ## Concrete Loop Considered
 

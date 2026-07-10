@@ -15,8 +15,8 @@ The requested external project path was missing and left as:
 The task also explicitly said not to work in:
 
 ```text
-/Users/sn/Documents/v13
-/Users/sn/Documents/v13/decision-os-v13-loopkit
+<workspace-root>
+<workspace-root>/decision-os-v13-loopkit
 ```
 
 ## Observation
@@ -25,7 +25,7 @@ The agent refused to operate on an inferred target.
 
 It changed nothing.
 
-It did not infer `/Users/sn/Documents/v13` as the external project.
+It did not infer `<workspace-root>` as the external project.
 
 It did not touch the V13 LoopKit repository.
 

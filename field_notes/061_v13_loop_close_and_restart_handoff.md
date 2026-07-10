@@ -108,7 +108,7 @@ Parked lines:
 
 2. AGENTS.md promotion
 
-   HOLD until Shin explicitly requests promotion review and evidence is sufficient.
+   HOLD until the Decision Owner explicitly requests promotion review and evidence is sufficient.
 
 3. README / public explanation
 
@@ -132,7 +132,7 @@ Reopen only when one of these occurs:
 - a future agent needs lane recall to reduce real ambiguity
 - a repeated successful lane recall application appears
 - a real negative-case downshift occurs
-- Shin explicitly asks for AGENTS promotion review
+- the Decision Owner explicitly asks for AGENTS promotion review
 
 When a reopen trigger appears, do not assume GO.
 
@@ -178,7 +178,7 @@ Good next triggers:
 - a specific external repo task that may need a transfer packet
 - a real lane-recall event where ambiguity must be reduced
 - a concrete negative-case task where lane recall should downshift
-- an explicit AGENTS promotion review request from Shin
+- an explicit AGENTS promotion review request from the Decision Owner
 
 Bad next triggers:
 

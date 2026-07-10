@@ -45,7 +45,7 @@ personal names
 private operator context
 financial runway
 health / fatigue / collapse wording
-Ask Shin / Shin-approved / Shin-only style references
+Named-owner / owner-approved / owner-only style references
 private recovery capacity
 sensitive motivation or survival framing
 private handoff notes exposed as public examples
@@ -97,11 +97,11 @@ Public release = BLOCK until the audit is clean.
 ## Allowed Replacements
 
 ```text
-Shin → Decision Owner / operator / maintainer
-Ask Shin → Ask the Decision Owner
-Shin-approved → Decision Owner-approved
-Shin-only → operator-only / single-user
-Shin’s time / recovery capacity → operator capacity
+Named person → Decision Owner / operator / maintainer
+Named-owner request → Ask the Decision Owner
+Named-owner-approved → Decision Owner-approved
+Named-owner-only → operator-only / single-user
+Named owner's time / recovery capacity → operator capacity
 survival / runway crisis → resource-constrained prioritization
 ```
 

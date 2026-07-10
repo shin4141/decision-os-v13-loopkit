@@ -26,7 +26,7 @@ Entry Window Radar repo-to-video workflow
 Decision Owner:
 
 ```text
-Shin
+Decision Owner
 ```
 
 Latest meaningful Entry Window Radar commit referenced:

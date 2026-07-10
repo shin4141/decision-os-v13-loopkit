@@ -49,7 +49,7 @@ This is a practical Compound Loop signal.
 
 ## Source Observation
 
-Shin observed that Entry Window Radar reached an initial usable scaffold state in a short period, while still preserving V13 boundaries.
+The Decision Owner observed that Entry Window Radar reached an initial usable scaffold state in a short period, while still preserving V13 boundaries.
 
 This produced the feeling:
 

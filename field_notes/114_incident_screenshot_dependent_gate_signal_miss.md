@@ -27,7 +27,7 @@ Entry Window Radar README public-surface closure
 Decision Owner:
 
 ```text
-Shin
+Decision Owner
 ```
 
 Related Entry Window Radar correction:

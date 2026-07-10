@@ -365,14 +365,14 @@ Bounded future edit candidate:
 Add one compact README sentence or example that names damage-risk protection for powerful-agent repo work.
 ```
 
-This candidate should not run unless Shin explicitly authorizes a README/public-entry edit.
+This candidate should not run unless the Decision Owner explicitly authorizes a README/public-entry edit.
 
 ## Future Direction
 
 Review outcome:
 
 ```text
-HOLD public edits unless real reader evidence appears or Shin explicitly authorizes one bounded README edit candidate.
+HOLD public edits unless real reader evidence appears or the Decision Owner explicitly authorizes one bounded README edit candidate.
 ```
 
 The review should not lead directly to a README change.
@@ -462,4 +462,4 @@ Reason:
 The review produced bounded evidence and one possible future public-entry edit candidate, but it did not prove public value or authorize README/public/canonical changes.
 
 Next Loop Command:
-Stop after this evidence note. Do not edit public surfaces unless Shin separately authorizes a bounded README/public-entry edit or real reader evidence exposes the same gap.
+Stop after this evidence note. Do not edit public surfaces unless the Decision Owner separately authorizes a bounded README/public-entry edit or real reader evidence exposes the same gap.

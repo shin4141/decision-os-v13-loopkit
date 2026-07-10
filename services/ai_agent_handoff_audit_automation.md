@@ -123,7 +123,7 @@ Risk: LOW / MEDIUM / HIGH
 Recommendation: SEND / HOLD / SKIP
 ```
 
-No contact may be made until Shin explicitly approves `SEND`.
+No contact may be made until the Decision Owner explicitly approves `SEND`.
 
 ## Contact Readiness Card
 
@@ -223,7 +223,7 @@ SEND / HOLD / SKIP
 - the message is short
 - only one LoopKit link is included
 - no pressure, hype, or broad Decision-OS explanation is included
-- Shin only has to approve and paste
+- The Decision Owner only has to approve and paste
 
 `HOLD` when:
 
@@ -266,7 +266,7 @@ They are planning estimates only.
 
 The AI may recommend.
 
-Shin decides.
+The Decision Owner decides.
 
 Automatic contact remains `BLOCK`.
 
@@ -295,7 +295,7 @@ A follow-up is allowed only if:
 - the recipient replies
 - there is a direct question
 - the repo owner asks for more detail
-- Shin explicitly approves a follow-up
+- The Decision Owner explicitly approves a follow-up
 
 ## Output format for discovery run
 

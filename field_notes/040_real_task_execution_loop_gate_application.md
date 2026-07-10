@@ -13,7 +13,7 @@ The purpose is to test whether the execution-loop gate criteria change or constr
 External repo:
 
 ```text
-/Users/sn/Projects/decisiongate-triage
+<external-repo-root>
 ```
 
 Concrete task / loop inspected:

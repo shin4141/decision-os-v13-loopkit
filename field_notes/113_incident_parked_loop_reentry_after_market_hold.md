@@ -27,7 +27,7 @@ Entry Window Radar repo-to-video workflow
 Decision Owner:
 
 ```text
-Shin
+Decision Owner
 ```
 
 Related prior note:

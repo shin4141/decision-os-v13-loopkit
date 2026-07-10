@@ -36,7 +36,7 @@ The success is that the scaffold was created under a bounded Launch Capsule and 
 New repo scaffold:
 
 ```text
-/Users/sn/Documents/Codex/2026-07-01/entry-window-radar-repo-scaffold-source/entry-window-radar
+<entry-window-radar-repo-root>
 ```
 
 Initial scaffold commit:

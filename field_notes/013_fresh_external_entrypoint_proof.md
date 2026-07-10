@@ -5,7 +5,7 @@ Date: 2026-06-13
 ## External Repo
 
 ```text
-/Users/sn/Projects/decisiongate-triage
+<external-repo-root>
 ```
 
 External commit:

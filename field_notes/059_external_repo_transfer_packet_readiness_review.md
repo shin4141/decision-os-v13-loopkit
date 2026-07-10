@@ -133,7 +133,7 @@ Without those inputs, the packet would risk becoming:
 
 The line may reopen only when:
 
-- Shin provides a concrete external repo task, or
+- the Decision Owner provides a concrete external repo task, or
 - a future agent needs to decide whether to create a packet before medium-or-larger external work.
 
 Valid reopen examples:

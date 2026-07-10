@@ -176,7 +176,7 @@ Future validation work should reopen only if:
 - examples change
 - schema changes
 - a real reader or agent reports an example/schema mismatch
-- Shin separately authorizes validation tooling or CI
+- the Decision Owner separately authorizes validation tooling or CI
 
 ## V13 Signal
 

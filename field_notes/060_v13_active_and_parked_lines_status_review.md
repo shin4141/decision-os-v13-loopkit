@@ -151,7 +151,7 @@ The parked or capped lines may reopen when:
 - a real future agent needs lane recall to reduce ambiguity
 - repeated successful lane recall applications appear
 - negative-case downshift works in a real task
-- Shin explicitly asks for AGENTS promotion review
+- the Decision Owner explicitly asks for AGENTS promotion review
 
 Reopen does not mean GO.
 

@@ -45,7 +45,7 @@ Observed in the Entry Window Radar derived repo during Phase 5.1 governance reco
 Child repo path:
 
 ```text
-/Users/sn/Documents/Entry Window Radar
+<entry-window-radar-repo-root>
 ```
 
 Relevant commit:

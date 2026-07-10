@@ -5,7 +5,7 @@ Date: 2026-06-13
 ## External Repo
 
 ```text
-/Users/sn/workspaces/v12-gate-clean
+<external-repo-root>
 ```
 
 External repo remote:
