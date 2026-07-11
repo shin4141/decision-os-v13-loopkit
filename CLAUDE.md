@@ -42,7 +42,7 @@ Claude Code users:
 
 1. Keep this `CLAUDE.md` in the project root.
 2. Read and follow `AGENTS.md`.
-3. Use the V13 Lite Footer at the end of task reports.
+3. Use the canonical base report in `AGENTS.md` at the end of task reports.
 4. Use Roadmap Anchors before selecting 0.01 repairs.
 
 For signal formatting, follow `AGENTS.md`, including the distinction between active signals and parked horizons.

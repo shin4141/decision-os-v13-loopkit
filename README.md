@@ -162,10 +162,10 @@ You do not need the full `AGENTS.md` rule set to feel the first benefit.
 Ask your AI agent to append this small footer to its final report:
 
 ```text
-V12 State: PASS / DELAY / BLOCK
+V12 State: PASS / DELAY / BLOCK / UNKNOWN
 V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
 Reason:
-Next Loop:
+Next Authorized Action:
 ```
 
 The footer makes the agent state whether the current task is complete, whether the next loop should run, why, and the single next action.
@@ -214,16 +214,22 @@ CAP
 Reason:
 The README edit is complete, but the next action should stay bounded.
 
-Allowed Next Action:
+Next Authorized Action:
 Push this commit.
 
-Not Allowed:
+Not Authorized:
 - Add new features
 - Start broad promotion
 - Draft v1.0
 
-Next Loop Command:
-Push the commit, then pause until the next concrete task or external feedback appears.
+Decision Packet Required:
+no
+
+Decision Owner:
+Repository maintainer
+
+Completion Line:
+The README edit is complete and the next loop remains capped to pushing this commit.
 ```
 
 ### Active Signals vs Parked Horizons
@@ -264,10 +270,10 @@ GO
 Reason:
 The V13 Lite Footer worked naturally for this ordinary verification report without requiring a full Loop Record. The repo remained unchanged and restartable.
 
-Allowed Next Action:
+Next Authorized Action:
 Use the Lite Footer again on the next small concrete Codex task.
 
-Not Allowed:
+Not Authorized:
 - Add automation
 - Add CLI/server/package setup
 - Draft V13 v1.0
@@ -275,8 +281,11 @@ Not Allowed:
 Decision Packet Required:
 no
 
-Next Loop Command:
-Run one more ordinary task later and confirm the Lite Footer remains useful without becoming too heavy.
+Decision Owner:
+Repository maintainer
+
+Completion Line:
+The verification report is complete without requiring a full Loop Record.
 ```
 
 ## Input → Decision → Output
@@ -344,21 +353,31 @@ Add more examples and promote the repository.
 ### Output
 
 ```text
+V12 State:
+PASS
+
+V13 Next Loop Gate:
 CAP
 
 Reason:
 The task is complete and restartable, but the proposed next action expands scope. Continue only with a bounded next step.
 
-Cap:
+Next Authorized Action:
 Push the README clarification.
 
-Not Allowed:
+Not Authorized:
 - Add automation
 - Add CLI/server/package setup
 - Start broad promotion
 
-Next Loop Command:
-Push the commit, then pause until the next concrete task or external feedback appears.
+Decision Packet Required:
+no
+
+Decision Owner:
+Repository maintainer
+
+Completion Line:
+The clarification is bounded to the README push; broader promotion remains unauthorized.
 ```
 
 ## When should I use it?

@@ -70,10 +70,10 @@ V13 Next Loop Gate:
 まずは final report の末尾に、この footer を付けさせます。
 
 ```text
-V12 State: PASS / DELAY / BLOCK
+V12 State: PASS / DELAY / BLOCK / UNKNOWN
 V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
 Reason:
-Next Loop:
+Next Authorized Action:
 ```
 
 ## V12 / V13 の意味
@@ -84,7 +84,7 @@ V13 は、次の loop を GO / HOLD / CAP / BLOCK のどれにするべきかを
 
 Reason は、判断の理由を短く書きます。
 
-Next Loop は、次にやる action を一つだけ書きます。
+Next Authorized Action は、現在の gate で許可されている action を一つだけ書きます。未解決なら `UNKNOWN` と書きます。
 
 ## CAP の意味
 
