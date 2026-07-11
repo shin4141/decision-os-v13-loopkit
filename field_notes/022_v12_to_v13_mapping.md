@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `V12 → V13 Handoff Discipline` and `Operational Judgment Core References` → `V12→V13 mapping`
+- Retained as origin evidence for the completion-state to next-loop gate mapping.
+
 ## Observation
 
 V12 and V13 use different state spaces.

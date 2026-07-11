@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `V13 Lite Footer / Canonical Base Report` and `Conditional Extensions`
+- Retained as origin evidence for separating the base report from conditional extensions.
+
 ## Observation
 
 V13 has several footer forms:

@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `Operational Judgment Core References` → `Next 0.01 selection`
+- Retained as origin evidence for the Required Intermediate Node definition.
+
 ## Observation
 
 V13 often says "next 0.01" when selecting the next action.

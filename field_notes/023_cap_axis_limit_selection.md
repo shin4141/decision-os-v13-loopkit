@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `Operational Judgment Core References` → `CAP axis and limit selection`, and `CAP Rule`
+- Retained as origin evidence for concrete CAP-axis and limit selection.
+
 ## Observation
 
 V13 uses CAP when the next loop is useful but must not run freely.

@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `Operational Judgment Core References` → `Aspire / Carrier / Re-entry Capacity`, and `Safety Rule`
+- Retained as origin evidence for the operational proxy definitions.
+
 ## Observation
 
 V13 needs more than V12 completion integrity and CAP limits.
