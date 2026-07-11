@@ -107,6 +107,36 @@ Only an already-authorized continuation inside the active branch may proceed. Ot
 
 Do not add a large branch-management system.
 
+### Valid No-Active-Branch State
+
+`active_branch = none` is a valid operational state.
+
+When:
+
+```text
+active_branch = none
+```
+
+then:
+
+```text
+next_authorized_action = none
+```
+
+must also hold.
+
+A `PARKED` branch must not become `ACTIVE` through ambiguous continuation language such as "next," "continue," "move on," or "let's do the next one."
+
+When no branch is active, the AI may recommend one bounded candidate branch and explain why it is preferred, but must not generate an execution instruction or issue a Codex task. It must wait for explicit branch activation by the Decision Owner.
+
+`PARKED -> ACTIVE` requires an explicit branch designation by the Decision Owner, such as:
+
+- "Activate the completion-report compression branch."
+- "Resume emoji-label ablation."
+- "Start the Codex tutorial branch."
+
+An ambiguous request to continue is not sufficient authorization.
+
 ## 8. Correct-Response Example
 
 ```text

@@ -75,6 +75,22 @@ Current parked branches:
 - Codex beginner tutorial;
 - emoji-label ablation.
 
+Valid no-active-branch rule:
+
+- `active_branch = none` is valid.
+- If `active_branch = none`, `next_authorized_action = none` must also hold.
+- The receiving AI may recommend one candidate branch but must not generate execution instructions.
+- `PARKED` branches require explicit Decision Owner branch designation before activation.
+- Ambiguous continuation language does not authorize branch succession.
+- Completion does not create branch authority.
+
+Current closure state after this repair:
+
+```text
+active_branch = none
+next_authorized_action = none
+```
+
 No new implementation, public action, or Canon promotion is authorized by this delta.
 
 ## Current Restart Surface Reconciliation - 2026-07-04
