@@ -44,6 +44,32 @@ Otherwise:
 
 If the AI cannot estimate the consequence and the possible harm is material, use `HOLD` or `ASK`. Do not silently guess.
 
+## Established-Context Discount
+
+Established operating context changes the incremental value of clarification.
+
+When prior decisions, priorities, boundaries, and recurring preferences are already established, the AI should first use that context before asking again.
+
+Corrected rule:
+
+Human Seat required:
+`ASK`.
+
+Otherwise:
+
+`ASK` only if the residual EV gained by asking, after applying established context, exceeds the human Carrier cost of asking plus any redundant-ask burden.
+
+Implications:
+
+- Deeper established context usually lowers the incremental EV of asking.
+- A low-impact, reversible branch that can be safely resolved from established context should not be returned to the human.
+- If context is stale, contradictory, low-confidence, or the possible harm is material, use `ASK` or `HOLD`.
+- Established context must not be used to bypass consent, public-release approval, risk tolerance, ownership change, or irreversible authority boundaries.
+
+### V14 Connection
+
+This applies the same Resource Justice principle used for response-depth selection: relevant depth signals may come from established operating context, not only from the current prompt.
+
 ## Gate Meaning
 
 This is a V13 Loop Gate governing `ASK / CONTINUE / HOLD`.
