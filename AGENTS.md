@@ -259,7 +259,7 @@ Reason:
 <one short line>
 
 Action:
-Continue / Compact Handoff / Stop
+Continue Under Cap / Compact Handoff / Stop
 
 Context Anchor:
 <repo root, latest commit, or current gate that is material to the risk; otherwise UNKNOWN>
@@ -268,13 +268,13 @@ Context Anchor:
 Risk rules:
 
 - `BLUE`: repo, gate, latest commit, allowed scope, blocked scope, and next action are clear.
-- `YELLOW`: long context, prior unrelated repo/task residue, recent correction, possible gate mixing, or non-trivial uncertainty. Only one small bounded task may proceed. No implementation expansion, README overhaul, multi-repo sync, public release, or new automation.
+- `YELLOW`: context remains usable but is pressured by long history, prior unrelated repo/task residue, recent correction, possible gate mixing, or non-trivial uncertainty. YELLOW is neither automatic permission to continue nor an automatic stop. At most one small bounded task may proceed under `CAP`, and only when the current anchors are clear, adjusted confidence is sufficient, and the action does not worsen restartability. Otherwise choose `Compact Handoff`. No implementation expansion, README overhaul, multi-repo sync, public release, or new automation.
 - `RED`: repo identity, latest commit, gate, allowed/blocked scope, or next action cannot be confidently identified; or instructions from another repo/task are being mixed. Stop work and produce compact handoff only.
 
 Completion rule:
 
 - If Context Risk is `YELLOW` or `RED`, do not ask the operator to decide routine cleanup.
-- Produce a compact handoff with latest commit, current gate, allowed, blocked, completed, remaining, and next one action.
+- If risk remains `YELLOW` after the one bounded action, or is `RED`, produce a compact handoff with latest commit, current gate, allowed, blocked, completed, remaining, and next one action.
 
 Completion Line:
 
