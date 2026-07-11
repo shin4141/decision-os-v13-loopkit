@@ -8,6 +8,58 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 122 Action-Control Amendment - 2026-07-11
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+```
+
+Active branch:
+
+```text
+V13 / Field Note 122 — Completion-to-Expansion Drift Missing Closure
+```
+
+Next authorized action:
+
+```text
+Return the complete amendment report to the originating conversation. Do not activate another branch.
+```
+
+Root diagnosis:
+
+```text
+Rule-Knowledge / Action-Control Gap
+```
+
+Declarative knowledge is insufficient without mandatory pre-output evaluation. Before any response contains an execution instruction, path, patch, ownership transfer, or reporting obligation, explicitly state:
+
+```text
+Active branch: __ / Next authorized action: __
+```
+
+Executable output is permitted only when both values are established and the proposed action is the already-authorized continuation inside that active branch.
+
+If either value is `none`, `UNKNOWN`, conflicting, or not authorized, the response may contain at most one bounded proposal and must not contain execution instructions. `active_branch = none` must remain a valid state with `next_authorized_action = none`; it must not be auto-filled from a parked branch.
+
+The pre-output check must apply established operating context, including the canonical authority surface, current gate, active and parked branch state, ownership transfer, Completion Line, AI-owned routine work, and any established complete-instruction requirement. A local correction must re-evaluate the whole active contract so that Correction-Induced Drift does not create a new violation.
+
+Routine correction, inspection, diff preparation, validation, Git synchronization, reporting completion, and closure remain AI-owned inside the authorized branch. They must not be returned to the Decision Owner as operational choices.
+
+Next owner:
+
+```text
+Originating AI — receive the report and continue to the chat handoff step.
+```
+
+Completion Line:
+
+Field Note 122 and the canonical Codex handoff explicitly distinguish recorded governance knowledge from binding action control. Executable output is gated by an explicit active branch and a single already-authorized next action.
+
 ## Current Canon Repair Closure - 2026-07-11
 
 This section is the current restart anchor and supersedes older state statements below.
