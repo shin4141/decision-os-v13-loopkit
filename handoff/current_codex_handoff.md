@@ -8,6 +8,80 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Canon Repair Closure - 2026-07-11
+
+This section is the current restart anchor and supersedes older state statements below.
+
+Target Layer:
+
+```text
+V13 / Canon Balance and Operational Authority
+```
+
+Repo Root:
+
+```text
+decision-os-v13-loopkit
+```
+
+Current State:
+
+- Canon repair continuation from `ff5039d` is complete through `29ba21e`.
+- `First One Action: none` alignment, current-state ownership transfer, Context Risk YELLOW semantics, Field Notes 021–025 lifecycle status, independent-agent reporting burden, and final repository sufficiency have been repaired or reviewed in sequence.
+- Final verification passed for Git synchronization and object integrity, shell syntax, JSON parsing and example schema shape, live internal Markdown links, Markdown fence balance, and conflict-marker absence.
+- No routine investigation, diff, verification, Git operation, or cleanup remains from this sequence.
+
+Current Gate:
+
+```text
+V12 State: PASS
+V13 Next Loop Gate: HOLD
+```
+
+Active Branch:
+
+```text
+none
+```
+
+Next Authorized Action:
+
+```text
+none
+```
+
+Completion Line:
+
+The specified Canon repair sequence and final repository sufficiency audit are complete, verified, committed, and synchronized through the repair commit above.
+
+Missing Closure:
+
+No known Missing Closure within the specified Canon repair sequence or final audit scope.
+
+Next Owner:
+
+No execution owner is active until the Decision Owner explicitly activates a new bounded branch.
+
+What the Receiving AI Now Owns:
+
+- Preserve this verified closure and the single-branch boundary.
+- If a new branch is explicitly activated, own its routine investigation, diff, verification, Git operations, and cleanup without returning them to the Decision Owner.
+- Stop after that one bounded branch unless another branch is explicitly activated.
+
+First One Action:
+
+```text
+none
+```
+
+Do Not Continue Boundary:
+
+Do not infer a new branch from completion. Do not start a broad rewrite, public release, outreach, runtime automation, hooks, MCP, pluginization, or a second concurrent decision surface.
+
+What must not be returned to the Decision Owner:
+
+Routine repository investigation, diff review, validation, commit/push synchronization, and cleanup inside any future explicitly activated bounded task.
+
 ## Current Remediation Anchor - 2026-07-10
 
 This section is the current restart anchor and supersedes older state statements below.
