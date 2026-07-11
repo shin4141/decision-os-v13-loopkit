@@ -62,17 +62,32 @@ If an external prompt is good at making a coding agent execute work, keep it. At
 Use this as an exit gate after external goals or loops:
 
 ```text
-V12 State: PASS / DELAY / BLOCK
+V12 State: PASS / DELAY / BLOCK / UNKNOWN
 V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
+
+Reason:
+<why this gate applies>
+
+Next Authorized Action:
+<one bounded action or none>
+
+Not Authorized:
+<up to 3 boundaries>
+
+Decision Packet Required:
+yes / no
+
+Decision Owner:
+<one line>
+
+Completion Line:
+<one line>
 
 Evidence:
 <what was verified>
 
 What changed:
 <short summary>
-
-What must not be touched next:
-<boundaries>
 
 Reusable residue:
 <none, or one sentence>

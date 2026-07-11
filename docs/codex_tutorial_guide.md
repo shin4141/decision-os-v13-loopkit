@@ -70,11 +70,14 @@ When this task is done, report:
 - What changed
 - What was verified
 - What was not touched
-- V12 State: PASS / DELAY / BLOCK
+- V12 State: PASS / DELAY / BLOCK / UNKNOWN
 - V13 Next Loop Gate: GO / HOLD / CAP / BLOCK
 - Reason
-- Allowed Next Action
-- Not Allowed
+- Next Authorized Action
+- Not Authorized
+- Decision Packet Required: yes / no
+- Decision Owner
+- Completion Line
 
 Do not start the next task automatically.
 ```

@@ -75,7 +75,7 @@ Includes:
 * Chat Continuation
 * Context Compression
 * Decision Packet requirement checks
-* allowed / not allowed next actions
+* authorized / not authorized next actions
 
 Plugin role:
 
@@ -95,7 +95,7 @@ Outputs:
 
 ```text
 V12 State:
-PASS / DELAY / BLOCK
+PASS / DELAY / BLOCK / UNKNOWN
 
 V13 Next Loop Gate:
 GO / HOLD / CAP / BLOCK
@@ -103,16 +103,19 @@ GO / HOLD / CAP / BLOCK
 Reason:
 <1-2 lines>
 
-Allowed Next Action:
+Next Authorized Action:
 <one line>
 
-Not Allowed:
+Not Authorized:
 <up to 3 bullets>
 
 Decision Packet Required:
 yes / no
 
-Next Loop Command:
+Decision Owner:
+<one line>
+
+Completion Line:
 <one line>
 ```
 
