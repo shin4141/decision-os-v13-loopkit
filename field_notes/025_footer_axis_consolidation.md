@@ -141,6 +141,14 @@ Do not treat more footers as better governance.
 
 If the axis cannot be separated, use the V13 Lite Footer plus one sentence explaining the context/restart concern.
 
+### Forward-only Canon Reconciliation
+
+The V13 Lite Footer now serves as the canonical base report in `AGENTS.md`.
+
+Context Health, Chat Continuation, Context Compression, Handoff, completion-evidence, branch-authority, and 0.01 information are conditional extensions. Include only the extension whose trigger applies. The Branch Authority extension adds `Active Branch`; the canonical base report already carries `Next Authorized Action`.
+
+Historical references in this note to the V13 Lite Footer mean the canonical base report. Absence of an extension must not imply safe continuation, completed inspection, accepted handoff, branch activation, or compounding improvement.
+
 ## Examples
 
 ### Example 1: Small code task, low context

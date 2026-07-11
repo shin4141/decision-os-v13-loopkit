@@ -395,7 +395,7 @@ A future plugin should follow:
 5. Produce a Decision Packet if project-wide behavior would change
 6. Ask human approval
 7. Apply the smallest approved change
-8. Report V12 State, V13 Next Loop Gate, Chat Continuation, and Context Compression
+8. Report the canonical base report, then add Chat Continuation or Context Compression only when its trigger applies
 ```
 
 ## Readiness Gate

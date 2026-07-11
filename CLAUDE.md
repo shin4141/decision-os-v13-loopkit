@@ -25,7 +25,7 @@ CLAUDE.md
 ↓
 AGENTS.md
 ↓
-V12 / V13 / Chat Continuation / Context Compression reporting
+V13 canonical base report + triggered conditional extensions
 ```
 
 ## Do not duplicate rules here
