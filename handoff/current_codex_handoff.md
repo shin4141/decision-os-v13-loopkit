@@ -8,6 +8,70 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 123 Model-Independent Enforcement - 2026-07-11
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+```
+
+Active branch:
+
+```text
+V13 / Model-Independent Gate Enforcement
+```
+
+Next authorized action:
+
+```text
+Return the complete Field Note 123 report to the originating conversation. Do not activate another branch.
+```
+
+Main diagnosis:
+
+```text
+Rule-Knowledge / Action-Control Gap
+```
+
+Immediate-Correction Non-Persistence is a short-horizon manifestation: a recent explicit correction may remain visible without being evaluated as a binding condition during the next action-generation step. Correction-Induced Drift remains a subordinate diagnostic.
+
+Operational principle:
+
+```text
+Model-Independent Gate Enforcement
+```
+
+Critical operational gates must not rely only on model understanding, memory, or voluntary compliance. Before executable output, evaluate recorded governance rules and explicit recent corrections as binding preconditions independently of inferred conversational continuation.
+
+The Field Note 122 gate remains mandatory:
+
+```text
+Active branch: __ / Next authorized action: __
+```
+
+Executable output is permitted only when the proposed action is the single already-authorized continuation inside the established active branch. If the branch, next action, or effect of a recent correction is `none`, `UNKNOWN`, conflicting, or unauthorized, the response may contain at most one bounded proposal and must not contain executable instructions.
+
+A recent explicit correction overrides inferred continuation, stops the current action path, and triggers re-evaluation of the full active contract. It does not silently rewrite permanent Canon or the canonical authority surface.
+
+`Model-Dependent Compliance Variance` remains an operator observation and verification-pending hypothesis. No particular model is classified as inherently more or less compliant.
+
+Current enforcement is the explicit pre-output contract and canonical handoff state. Runtime hooks, validators, automatic generation blockers, MCP, plugin enforcement, and other mechanical implementations remain `HOLD`.
+
+Routine evaluation, correction, reporting, validation, Git synchronization, and closure remain AI-owned inside the authorized branch and must not be returned to the Decision Owner.
+
+Next owner:
+
+```text
+Originating AI — receive the report and close the chat-side handoff step.
+```
+
+Completion Line:
+
+V13 records that neither stored governance knowledge nor an immediate explicit correction is operationally binding until evaluated by the pre-output action-control gate. The enforcement principle is model-independent, while model-dependent compliance variance remains explicitly unverified.
+
 ## Current Field Note 122 Action-Control Amendment - 2026-07-11
 
 This section is the current restart anchor and supersedes older operational state statements below.
