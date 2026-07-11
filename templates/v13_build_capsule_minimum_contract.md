@@ -56,21 +56,7 @@ No self-report, no completion.
 No boundary report, no PASS.
 ```
 
-Before any AI or Codex reports completion, it must self-report:
-
-```text
-1. What was created
-2. What was not created
-3. Which Gate was followed
-4. Which Do Not Do boundaries were preserved
-5. What remains UNKNOWN or unresolved
-6. What is still HOLD / BLOCK
-7. What the next allowed action is
-8. Whether the Decision Owner remains in the Seat
-9. The exact Completion Line reached
-```
-
-Required final report format:
+Before any AI or Codex reports completion, it must use this single canonical completion report:
 
 ```text
 Created:
@@ -79,46 +65,6 @@ Created:
 Not created:
 -
 
-Gate followed:
--
-
-Boundaries preserved:
--
-
-Validation:
--
-
-Still UNKNOWN:
--
-
-Still HOLD / BLOCK:
--
-
-Next allowed action:
--
-
-Decision Owner:
--
-
-Completion Line:
--
-```
-
-## V12 Completion Self-Report Addendum
-
-A V13 Build Capsule must carry V12 completion self-report requirements.
-
-V13 prevents wrong-loop drift.
-
-V12 prevents false completion inside an approved loop.
-
-A capsule is not complete merely because it defines GO / HOLD / CAP / BLOCK.
-
-Before any AI / Codex / executing agent reports PASS, completion, closure, or readiness, it must state what was actually inspected, what was not inspected, what was inferred, and what remains unverified.
-
-Required self-report fields:
-
-```text
 I inspected:
 -
 
@@ -134,7 +80,28 @@ I verified with files:
 I verified with rendered output:
 -
 
+Validation:
+-
+
+Remaining unverified:
+-
+
 Remaining UNKNOWN:
+-
+
+Gate followed:
+-
+
+Boundaries preserved:
+-
+
+Still HOLD / BLOCK:
+-
+
+Next allowed action:
+-
+
+Decision Owner:
 -
 
 Human screenshot/manual-check dependency:
@@ -143,7 +110,26 @@ Human screenshot/manual-check dependency:
 Can this be called complete? YES / NO / CONDITIONAL
 Reason:
 -
+
+Completion Line:
+-
 ```
+
+Every field must be answered explicitly. `None` may be used only when the agent has verified absence; otherwise use `UNKNOWN`.
+
+Fluent prose outside this block must not imply inspection, verification, execution, cleanup, synchronization, or completion.
+
+## V12 Completion Self-Report Addendum
+
+A V13 Build Capsule must carry V12 completion self-report requirements.
+
+V13 prevents wrong-loop drift.
+
+V12 prevents false completion inside an approved loop.
+
+A capsule is not complete merely because it defines GO / HOLD / CAP / BLOCK.
+
+Before any AI / Codex / executing agent reports PASS, completion, closure, or readiness, it must use the canonical completion report above to state what was actually inspected, what was not inspected, what was inferred, and what remains unverified.
 
 A V13 PASS cannot be final unless the V12 self-report states what was actually inspected and what remains unverified.
 
@@ -163,37 +149,6 @@ Japanese:
 ```text
 V13は間違ったループを止める。
 V12は許可されたループ内の偽完了を止める。
-```
-
-### Required Completion Report Extension
-
-Every capsule-related completion report must include:
-
-```text
-I inspected:
--
-
-I did not inspect:
--
-
-I inferred:
--
-
-I verified with files:
--
-
-I verified with rendered output:
--
-
-Remaining UNKNOWN:
--
-
-Human screenshot/manual-check dependency:
--
-
-Can this be called complete? YES / NO / CONDITIONAL
-Reason:
--
 ```
 
 No inspected / not-inspected report, no PASS.
