@@ -138,6 +138,9 @@ Rules:
 - If a required base field is unresolved, write `UNKNOWN`; omission or fluent prose must not imply PASS, completion, authority, or permission.
 - If no next loop is authorized, say so in `Next Authorized Action`.
 - Prefer exposed gaps over speculative improvements.
+- One bounded task has one canonical base report, emitted by the agent responsible for integrating and closing that task.
+- Independent or supporting agents should return only their scoped findings, evidence, uninspected surfaces, and `UNKNOWN`s unless their assignment explicitly delegates a separate gate judgment. Do not make every contributor repeat the full base report or conditional extensions.
+- The closing agent must preserve who inspected what and must not convert a contributor's scoped evidence into a broader inspection or completion claim.
 - Final reports must not include internal tool-call markers, execution syntax, or tool artifacts such as `::git-stage`, `::git-commit`, `::git-push`, or similar marker lines.
 - Report outcomes in plain human-readable text only.
 
