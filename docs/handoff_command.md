@@ -12,6 +12,8 @@ This command only transfers the current operational state.
 - Target Layer
 - Repo Root
 - Current Gate
+- Active Branch
+- Next Authorized Action
 - Completion Line
 - Missing Closure
 - Next Owner
@@ -27,5 +29,7 @@ This command only transfers the current operational state.
 - If a field is unknown, write `UNKNOWN` and explain why in one line.
 - Do not hide missing closure.
 - Do not return routine cleanup to the Decision Owner if an execution agent can close it.
+- `First One Action: none` is valid only when `Active Branch: none` and `Next Authorized Action: none` are both explicit, no unfinished work or `UNKNOWN` ownership remains, and no routine investigation, diff, verification, Git operation, or cleanup remains executable by the receiving AI.
+- If any such work remains, name its earliest bounded step as `First One Action` and assign its owner. Do not use `none` to make an incomplete transfer appear closed.
 - Do not authorize outreach, public posting, implementation, release, pricing, scraping, API, or automation unless already explicitly approved.
 - End with a Completion Line.

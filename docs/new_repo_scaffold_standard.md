@@ -31,12 +31,16 @@ When the user selects `Handoff`, follow `docs/handoff_command.md`.
 - Target Layer
 - Repo Root
 - Current Gate
+- Active Branch
+- Next Authorized Action
 - Completion Line
 - Missing Closure
 - Next Owner
 - First One Action
 - Do Not Continue Boundary
 - What must not be returned to the Decision Owner
+
+`First One Action: none` is valid only when `Active Branch: none` and `Next Authorized Action: none` are both explicit, no unfinished work or `UNKNOWN` ownership remains, and no routine investigation, diff, verification, Git operation, or cleanup remains executable by the receiving AI. Otherwise the handoff must name the earliest bounded action and its owner.
 
 ## Do Not Authorize
 
