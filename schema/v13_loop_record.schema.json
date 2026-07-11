@@ -75,6 +75,7 @@
   },
   "required": [
     "previous_loop",
+    "v12_status",
     "residue",
     "next_variable",
     "carrier_impact",
