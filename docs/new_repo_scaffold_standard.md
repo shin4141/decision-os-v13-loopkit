@@ -30,15 +30,19 @@ When the user selects `Handoff`, follow `docs/handoff_command.md`.
 
 - Target Layer
 - Repo Root
+- Current State
 - Current Gate
 - Active Branch
 - Next Authorized Action
 - Completion Line
 - Missing Closure
 - Next Owner
+- What the Receiving AI Now Owns
 - First One Action
 - Do Not Continue Boundary
 - What must not be returned to the Decision Owner
+
+`Current State` must distinguish completed work, unresolved work, and routine cleanup. `What the Receiving AI Now Owns` must assign the unresolved executable responsibility; `Next Owner` alone is not a substitute for that transfer. If ownership cannot be established, write `UNKNOWN` and do not imply accepted transfer, PASS, or closure.
 
 `First One Action: none` is valid only when `Active Branch: none` and `Next Authorized Action: none` are both explicit, no unfinished work or `UNKNOWN` ownership remains, and no routine investigation, diff, verification, Git operation, or cleanup remains executable by the receiving AI. Otherwise the handoff must name the earliest bounded action and its owner.
 
