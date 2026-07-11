@@ -55,6 +55,28 @@ Do-Not-Do Boundary:
 
 Do not treat this handoff as approval for public posting, outreach, release, README redesign, runtime work, automation, MCP/hooks/pluginization, or Canon promotion.
 
+## Current Branch Checkpoint Delta - 2026-07-11
+
+Completion does not authorize branch succession.
+
+At task completion, before generating or issuing any next action, declare:
+
+```text
+Active branch: __ / Next authorized action: __
+```
+
+Only an already-authorized continuation inside the active branch may proceed. Adjacent ideas may be discussed or recorded, but remain parked until explicitly activated.
+
+Routine branch selection and closure remain AI-owned and must not be returned to the Decision Owner. Human Seat is required only for actual authority decisions.
+
+Current parked branches:
+
+- completion-report compression experiment;
+- Codex beginner tutorial;
+- emoji-label ablation.
+
+No new implementation, public action, or Canon promotion is authorized by this delta.
+
 ## Current Restart Surface Reconciliation - 2026-07-04
 
 This section is the current restart anchor for future Codex/AI sessions.
