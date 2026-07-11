@@ -256,6 +256,10 @@ First-screen visible elements are gate signals.
 
 Before public-surface PASS, rendered first-screen gate signals must be compared against Current Gate.
 
+Before public-surface PASS, inspect both source-visible and rendered public surfaces for private operator names or internal approval references, operator-specific local paths, private operational context, private health, financial, recovery, or survival details, and internal handoff material exposed as a public example.
+
+Public author attribution may remain when it is clearly attribution. If a confirmed private-context leak remains, public-surface PASS is not allowed.
+
 If rendered inspection is unavailable, public-surface PASS must remain UNKNOWN or HOLD.
 
 ## Handoff / Residue Requirement

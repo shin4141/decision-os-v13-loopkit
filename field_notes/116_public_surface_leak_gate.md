@@ -1,5 +1,29 @@
 # Field Note 116 — Public Surface Leak Gate
 
+## Status
+
+Canon-promoted
+
+Promoted location:
+
+`templates/v13_build_capsule_minimum_contract.md`
+
+`## Public Surface Rule`
+
+Promotion evidence:
+
+- The rule changed a later real remediation task.
+- Confirmed operator-specific paths and private operational references were removed.
+- Rendered GitHub surface verification found no remaining leak or redaction-induced breakage.
+
+Concise trigger:
+
+Before public-surface PASS, inspect source and rendered surfaces for private-context leakage.
+
+Rollback / demotion condition:
+
+If the rule creates repeated false positives, is applied to non-public work by default, duplicates another canonical rule without independent value, or adds excessive capsule friction, demote it to on-demand documentation.
+
 ## Layer
 
 V13 / Public Release Gate / Public Surface Integrity
@@ -204,8 +228,8 @@ Current status:
 
 ```text
 Field Note: PASS
-Public release rule candidate: RECORDED
+Public release rule: CANON-PROMOTED
 Public reopen: HOLD
-Minimum Contract promotion: HOLD / future review
+Minimum Contract promotion: COMPLETE
 Pain repo cleanup: completed outside this note
 ```
