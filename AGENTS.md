@@ -90,7 +90,7 @@ If the relevant reference has not been checked and the judgment depends on it, d
 
 Use `HOLD` or `CAP` until the required judgment reference is checked or the missing evidence is recovered.
 
-AGENTS.md must not treat these field notes as optional background when making these judgments. They are operational references until their contents are later promoted into docs or schemas.
+AGENTS.md must not treat these field notes as optional background when making these judgments. Their lifecycle status is `Canon-promoted`, and they remain operational origin references for the routed judgments unless canonical text explicitly replaces that routing.
 
 ## V13 Lite Footer / Canonical Base Report
 
