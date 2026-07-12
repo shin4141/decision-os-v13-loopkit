@@ -107,6 +107,84 @@ Executable output is allowed only when the proposed action is the single already
 
 If the branch, next action, or effect of a recent correction is `none`, `UNKNOWN`, conflicting, or not authorized, the response may contain at most one bounded proposal and must not contain executable instructions.
 
+## Forward-Only Addendum: Completed Work Pre-Output Reuse
+
+This addendum records another manifestation of the existing `Rule-Knowledge / Action-Control Gap`. It does not introduce a new root diagnosis or independent framework.
+
+### Observed Recurrence
+
+A completed Completion Report Character Limit / Output Surface Integrity branch had already established:
+
+- eight real completion reports inspected;
+- sixteen Full / Compact blind comparison packets evaluated;
+- median character reduction of approximately `86.85%`;
+- no material continuation-information loss;
+- no increase in false-completion or scope risk;
+- an `L02` defect where `Next owner` returned routine review to the Decision Owner;
+- `DUAL LABEL` adopted;
+- emoji-only rejected, with the emoji experiment not to be rerun.
+
+These completed findings are recorded as the prior branch foundation, not re-analyzed by this addendum.
+
+On later re-entry, the stored results did not constrain the next analysis because they were not loaded as the active branch foundation before generation. A generic classification began from a near-initial state, and the completed foundation was recovered only after human intervention.
+
+The same root pattern also appeared when independent Cleaner and character-count hypotheses were about to be blended, when Destination / existing-or-new chat choice / required chat count were omitted, and when generic analysis restarted despite completed character-count evidence. In each case, branch, boundary, completed-work, or ownership state remained reachable as knowledge but was not applied as a pre-output constraint.
+
+Repeated recurrence after explicit rule additions is supporting evidence that documentation is necessary but not sufficient. The main diagnosis remains `Rule-Knowledge / Action-Control Gap`.
+
+### Reachable-Branch Compounding Relationship
+
+This is a direct failure of Reachable-Branch Compounding:
+
+- the foundation artifact existed;
+- the next branch was already reachable from that foundation;
+- the foundation was not applied before generation;
+- the exploration position regressed toward an initial state.
+
+### Binding Reuse Rule
+
+Before generating a new analysis, proposal, execution instruction, ownership transfer, or reporting obligation for a branch, the pre-output checkpoint must establish:
+
+1. Active Branch;
+2. Canonical handoff / completion surface;
+3. Completed Work;
+4. Remaining Missing Closure;
+5. Next Authorized Action.
+
+When Completed Work exists:
+
+- do not restart from general theory;
+- explicitly reuse the established findings;
+- preserve items marked not to be rerun;
+- do not imply that the prior result did not exist;
+- if prior findings are invalidated or replaced, state the reason and evidence;
+- generate only the remaining delta.
+
+Internally establish before output:
+
+```text
+Reused foundation: __ / Remaining delta: __
+```
+
+This is a binding internal action-control checkpoint, not a mandatory universal display footer. Surface it only when foundation reuse, authority, or scope must be auditable.
+
+Field Note 122 still governs branch and action authority. This Field Note still governs recorded rules and immediate corrections. This addendum establishes that Completed Work is likewise not operationally binding until it is evaluated and reused as the active foundation before generation.
+
+```text
+A recorded rule is not an enforced rule.
+A stored result is not a reused result.
+```
+
+This strengthens Model-Independent Gate Enforcement without authorizing runtime or mechanical enforcement.
+
+### Addendum Boundary
+
+Do not reopen or re-run the completed character-count experiment. Do not activate Cleaner, completion-report compression, tutorial, Pain research, implementation, automation, productization, publication, or an adjacent branch from this addendum.
+
+### Addendum Completion Line
+
+Completed branch results must be evaluated and reused as the pre-output foundation. New output may address only the remaining delta rather than silently restarting from general theory.
+
 ## 9. External Enforcement Boundary
 
 ### Current Operational Level

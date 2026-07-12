@@ -8,6 +8,63 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 123 Completed Work Reuse Delta - 2026-07-12
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Record location:
+
+```text
+field_notes/123_model_independent_gate_enforcement.md
+Forward-Only Addendum: Completed Work Pre-Output Reuse
+```
+
+Status:
+
+```text
+READY_FOR_RETURN
+Documented operational gate: ACTIVE
+Runtime / mechanical enforcement: HOLD
+```
+
+Completed Work must be evaluated and reused as the active foundation before new branch output. New analysis, proposals, instructions, ownership transfers, and reporting obligations may address only the remaining authorized delta.
+
+Internal checkpoint:
+
+```text
+Reused foundation: __ / Remaining delta: __
+```
+
+This is an internal action-control checkpoint, not a mandatory universal display footer.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the documented Completed Work reuse rule. Runtime and mechanical enforcement remain HOLD.
+```
+
+Next owner:
+
+```text
+Originating AI — receive the report and close the chat-side handoff step.
+```
+
+Completion Line:
+
+Field Note 123 and the canonical Codex handoff require completed branch results to be evaluated and reused as the pre-output foundation; new output is limited to the remaining authorized delta.
+
 ## Current Cleaner v0.1 RETIRE Semantics Delta - 2026-07-12
 
 This section is the current restart anchor and supersedes older operational state statements below.
