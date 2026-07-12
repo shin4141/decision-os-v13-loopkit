@@ -48,7 +48,7 @@ The current prototype includes:
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
 - `templates/v13_reconnection_packet_template.md`
-- field notes 001-111
+- `field_notes/` through Field Note 123
 - launch capsules and acceptance audit records
 - exposure and current-signal docs
 
