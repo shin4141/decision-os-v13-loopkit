@@ -82,7 +82,7 @@ A fork becomes useful when your AI work starts leaving memory outside the chat.
 
 Use these three surfaces first:
 
-- `handoff/` — write the current restart state: what changed, what is unfinished, what was verified, and how the next human or AI should resume.
+- [`handoff/current_codex_handoff.md`](handoff/current_codex_handoff.md) — write the current restart state: what changed, what is unfinished, what was verified, and how the next human or AI should resume.
 - `MISTAKEN.md` — write mistakes or do-not-repeat rules before the next correction loop.
 - `field_notes/` — write reusable observations, failures, context-risk signals, and lessons that are not ready to become canonical rules yet.
 
