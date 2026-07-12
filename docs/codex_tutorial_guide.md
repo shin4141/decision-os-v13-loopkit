@@ -267,3 +267,22 @@ Start by showing me the menu.
 Then recommend the best first path for a fork user.
 Do not edit files unless I explicitly approve.
 ```
+
+## Forward-Only Delta: Aspire-First Codex Magic Trial 001
+
+As-of 2026-07-12, one internal primary-user trial produced the following observed sequence:
+
+```text
+Casual answer -> Instant artifact -> One visible change -> Spontaneous idea expansion
+```
+
+The central observation was that initial-answer detail was not the useful success signal. Contact with a concrete artifact and one visible change was followed by the user's own next ideas.
+
+This is internal primary evidence only. It is not an external beginner test, confirmed theory, causal proof, or general onboarding claim. It does not change the existing tutorial menu, first-response contract, or tutorial boundaries.
+
+Evidence and preserved artifact:
+
+- `examples/aspire_first_trial_001/trial_record.md`
+- `examples/aspire_first_trial_001/index.html`
+
+Do not rerun, generalize, publish, or expand the artifact from this delta alone.

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>研究の庭 — 散歩から生まれる問い</title>
+  <style>
+    :root {
+      --ink: #183429;
+      --muted: #66796f;
+      --paper: #f5f2e8;
+      --cream: #fffdf6;
+      --leaf: #2f7355;
+      --leaf-dark: #1f523e;
+      --moss: #8cab72;
+      --sun: #e7b85c;
+      --lavender: #8b7ab5;
+      --line: rgba(47, 115, 85, .28);
+      --shadow: 0 24px 80px rgba(25, 61, 45, .16);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 14% 18%, rgba(255,255,255,.92) 0 5%, transparent 27%),
+        radial-gradient(circle at 88% 8%, rgba(231,184,92,.18), transparent 24%),
+        linear-gradient(145deg, #e8efe2, var(--paper) 55%, #e2eadb);
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(1px);
+      opacity: .55;
+    }
+
+    body::before {
+      width: 360px;
+      height: 360px;
+      left: -150px;
+      bottom: -180px;
+      background: rgba(70, 125, 87, .18);
+    }
+
+    body::after {
+      width: 280px;
+      height: 280px;
+      right: -120px;
+      top: 30%;
+      background: rgba(139, 122, 181, .11);
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 50px 0 42px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 12px;
+      color: var(--leaf-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    header { max-width: 780px; }
+
+    h1 {
+      margin: 0;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: clamp(42px, 7vw, 82px);
+      font-weight: 500;
+      letter-spacing: -.04em;
+      line-height: 1;
+    }
+
+    .lead {
+      max-width: 620px;
+      margin: 19px 0 0;
+      color: var(--muted);
+      font-size: clamp(14px, 2vw, 17px);
+      line-height: 1.9;
+    }
+
+    .experience {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr);
+      gap: 22px;
+      margin-top: 32px;
+    }
+
+    .garden,
+    .insight {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .garden {
+      min-height: 510px;
+      padding: 28px;
+      background:
+        linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.38)),
+        repeating-linear-gradient(115deg, transparent 0 52px, rgba(47,115,85,.045) 53px 54px),
+        #e5eddd;
+    }
+
+    .garden::after {
+      content: "";
+      position: absolute;
+      left: 3%;
+      right: -10%;
+      bottom: -180px;
+      height: 330px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #92ad76, #5f825e);
+      transform: rotate(-3deg);
+      opacity: .7;
+    }
+
+    .garden-top {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .garden-label {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: .05em;
+    }
+
+    .counter {
+      padding: 8px 13px;
+      border: 1px solid rgba(47,115,85,.16);
+      border-radius: 999px;
+      background: rgba(255,255,255,.58);
+      color: var(--leaf-dark);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .plot {
+      position: absolute;
+      inset: 82px 25px 22px;
+      z-index: 3;
+    }
+
+    .stem-line {
+      position: absolute;
+      height: 2px;
+      background: var(--line);
+      transform-origin: left center;
+      transition: background .5s, box-shadow .5s;
+    }
+
+    .line-a { width: 31%; left: 23%; top: 57%; transform: rotate(-25deg); }
+    .line-b { width: 32%; left: 48%; top: 43%; transform: rotate(25deg); }
+    .line-c { width: 46%; left: 25%; top: 61%; transform: rotate(4deg); }
+
+    .plot.has-growth .stem-line {
+      background: rgba(47,115,85,.52);
+      box-shadow: 0 0 12px rgba(47,115,85,.24);
+    }
+
+    .seed {
+      position: absolute;
+      width: 155px;
+      min-height: 155px;
+      padding: 20px 15px 16px;
+      border: 0;
+      border-radius: 48% 52% 46% 54%;
+      color: var(--ink);
+      background: rgba(255,253,246,.92);
+      box-shadow: 0 18px 38px rgba(35, 78, 56, .15);
+      cursor: pointer;
+      transition: transform .3s ease, box-shadow .3s ease, background .3s;
+      z-index: 2;
+    }
+
+    .seed::before,
+    .seed::after {
+      content: "";
+      position: absolute;
+      width: 28px;
+      height: 44px;
+      top: -21px;
+      background: var(--moss);
+      opacity: .8;
+      transition: transform .45s ease, background .3s;
+    }
+
+    .seed::before {
+      left: calc(50% - 24px);
+      border-radius: 100% 0 100% 0;
+      transform: rotate(-30deg) scale(.78);
+      transform-origin: bottom right;
+    }
+
+    .seed::after {
+      right: calc(50% - 24px);
+      border-radius: 0 100% 0 100%;
+      transform: rotate(30deg) scale(.78);
+      transform-origin: bottom left;
+    }
+
+    .seed:hover { transform: translateY(-5px); box-shadow: 0 22px 44px rgba(35,78,56,.22); }
+    .seed:focus-visible { outline: 3px solid var(--sun); outline-offset: 5px; }
+    .seed.active { background: var(--cream); transform: translateY(-8px) scale(1.03); }
+    .seed.active::before { transform: rotate(-42deg) scale(1.15); background: var(--leaf); }
+    .seed.active::after { transform: rotate(42deg) scale(1.15); background: var(--leaf); }
+    .seed.opened::before { transform: rotate(-42deg) scale(1.08); background: var(--leaf); }
+    .seed.opened::after { transform: rotate(42deg) scale(1.08); background: var(--leaf); }
+    .seed.opened { border: 1px solid rgba(47,115,85,.18); }
+
+    .seed-one { left: 3%; bottom: 8%; }
+    .seed-two { left: 39%; top: 18%; }
+    .seed-three { right: 1%; bottom: 13%; }
+
+    .seed-number {
+      position: relative;
+      display: block;
+      margin-bottom: 8px;
+      color: var(--leaf);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+
+    .seed-number::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -52px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--sun);
+      box-shadow:
+        0 -10px 0 1px #d9a9a0,
+        9px -5px 0 1px #d9a9a0,
+        9px 5px 0 1px #d9a9a0,
+        0 10px 0 1px #d9a9a0,
+        -9px 5px 0 1px #d9a9a0,
+        -9px -5px 0 1px #d9a9a0;
+      opacity: 0;
+      transform: translateX(-50%) scale(.2) rotate(-25deg);
+      transition: opacity .4s ease, transform .55s cubic-bezier(.2,.9,.3,1.25);
+    }
+
+    .seed.opened .seed-number::before {
+      opacity: 1;
+      transform: translateX(-50%) scale(1) rotate(0);
+    }
+
+    .seed-title {
+      display: block;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .seed-hint {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .insight {
+      display: flex;
+      min-height: 510px;
+      padding: 31px;
+      flex-direction: column;
+      background: rgba(255,253,246,.88);
+      backdrop-filter: blur(14px);
+    }
+
+    .insight-kicker {
+      margin: 0;
+      color: var(--lavender);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .16em;
+    }
+
+    .insight h2 {
+      margin: 15px 0 12px;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: clamp(27px, 3vw, 38px);
+      font-weight: 500;
+      line-height: 1.25;
+    }
+
+    .insight-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    .question-card {
+      margin-top: auto;
+      padding: 20px;
+      border-left: 3px solid var(--sun);
+      border-radius: 4px 18px 18px 4px;
+      background: rgba(231,184,92,.1);
+      transition: transform .35s ease, opacity .35s ease;
+    }
+
+    .question-card.updating { opacity: 0; transform: translateY(8px); }
+
+    .question-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #9a6b1f;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .13em;
+    }
+
+    .question {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.65;
+    }
+
+    .next-branch {
+      margin: 16px 0 0;
+      color: var(--leaf-dark);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .aspire {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .aspire strong { color: var(--ink); }
+
+    @media (max-width: 820px) {
+      main { padding-top: 34px; }
+      .experience { grid-template-columns: 1fr; }
+      .garden, .insight { min-height: 470px; }
+      .insight { min-height: 400px; }
+    }
+
+    @media (max-width: 560px) {
+      main { width: min(100% - 20px, 1120px); }
+      .garden { min-height: 580px; padding: 20px; }
+      .plot { inset: 80px 12px 16px; }
+      .seed { width: 138px; min-height: 138px; }
+      .seed-one { left: 0; bottom: 3%; }
+      .seed-two { left: calc(50% - 69px); top: 8%; }
+      .seed-three { right: 0; bottom: 15%; }
+      .stem-line { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">A garden for walking thoughts</p>
+      <h1>研究の庭</h1>
+      <p class="lead">散歩で浮かんだ断片を、消える前に小さな芽へ。芽をひらくと、AIと研究へつながる問いが一本ずつ育ちます。</p>
+    </header>
+
+    <section class="experience" aria-label="研究の庭インタラクション">
+      <div class="garden">
+        <div class="garden-top">
+          <span class="garden-label">気になる芽を押してください</span>
+          <span class="counter" id="counter" aria-live="polite">0 / 3 芽がひらいた</span>
+        </div>
+
+        <div class="plot" id="plot">
+          <span class="stem-line line-a" aria-hidden="true"></span>
+          <span class="stem-line line-b" aria-hidden="true"></span>
+          <span class="stem-line line-c" aria-hidden="true"></span>
+
+          <button class="seed seed-one" data-key="walk" aria-pressed="false">
+            <span class="seed-number">SEED 01</span>
+            <span class="seed-title">歩くと、なぜ考えが動く？</span>
+            <span class="seed-hint">ひらいて問いを見る</span>
+          </button>
+
+          <button class="seed seed-two" data-key="image" aria-pressed="false">
+            <span class="seed-number">SEED 02</span>
+            <span class="seed-title">美しさは、思考を深める？</span>
+            <span class="seed-hint">ひらいて問いを見る</span>
+          </button>
+
+          <button class="seed seed-three" data-key="ai" aria-pressed="false">
+            <span class="seed-number">SEED 03</span>
+            <span class="seed-title">AIは断片を研究にできる？</span>
+            <span class="seed-hint">ひらいて問いを見る</span>
+          </button>
+        </div>
+      </div>
+
+      <aside class="insight" aria-live="polite">
+        <p class="insight-kicker">TODAY'S RESEARCH SEED</p>
+        <h2 id="detail-title">まだ名前のない考え</h2>
+        <p class="insight-copy" id="detail-copy">散歩中の思いつきは、完成した答えでなくて大丈夫。気になる芽を一つ押すと、研究へつながる小さな問いが現れます。</p>
+
+        <div class="question-card" id="question-card">
+          <span class="question-label">最初の研究の問い</span>
+          <p class="question" id="question">今日は、どの芽が気になりますか？</p>
+          <p class="next-branch" id="next-branch">3つは別々ではなく、やがて同じ庭でつながります。</p>
+        </div>
+
+        <p class="aspire"><strong>戻る言葉：</strong>歩いて浮かぶ考えを失わず、きれいなつながりとして眺めたい。</p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const details = {
+      walk: {
+        title: '歩くと思考が動く',
+        copy: '健康のための散歩が、同時にアイデアの発生場所にもなっている。その変化を、記憶だけでなく観察できる形にします。',
+        question: '歩く前と後で、問いの数や種類はどう変わるだろう？',
+        branch: '次の枝：散歩前後のメモを1行ずつ比べてみる。'
+      },
+      image: {
+        title: '美しさが考えを招く',
+        copy: '描く技術に縛られず、生成された美しい像から新しい考えが返ってくる。その往復自体を研究対象にできます。',
+        question: '同じアイデアでも、画像の雰囲気が変わると考え方も変わるだろうか？',
+        branch: '次の枝：一つの考えを、静かな像と鮮やかな像で比べる。'
+      },
+      ai: {
+        title: '断片から研究の輪郭へ',
+        copy: '散歩中の短い断片をAIへ渡し、結論ではなく「つながり」と「まだ分からないこと」を見つけます。',
+        question: 'AIは思いつきを整理するだけでなく、見落としていた関係を示せるだろうか？',
+        branch: '次の枝：3つの断片から、共通点と反対点を一つずつ出す。'
+      }
+    };
+
+    const opened = new Set();
+    const seeds = [...document.querySelectorAll('.seed')];
+    const card = document.getElementById('question-card');
+    const title = document.getElementById('detail-title');
+    const copy = document.getElementById('detail-copy');
+    const question = document.getElementById('question');
+    const branch = document.getElementById('next-branch');
+    const counter = document.getElementById('counter');
+    const plot = document.getElementById('plot');
+
+    seeds.forEach((seed) => {
+      seed.addEventListener('click', () => {
+        const key = seed.dataset.key;
+        const detail = details[key];
+
+        opened.add(key);
+        seed.classList.add('opened');
+        seeds.forEach((item) => {
+          const active = item === seed;
+          item.classList.toggle('active', active);
+          item.setAttribute('aria-pressed', String(active));
+        });
+
+        card.classList.add('updating');
+        window.setTimeout(() => {
+          title.textContent = detail.title;
+          copy.textContent = detail.copy;
+          question.textContent = detail.question;
+          branch.textContent = detail.branch;
+          counter.textContent = `${opened.size} / 3 芽がひらいた`;
+          plot.classList.toggle('has-growth', opened.size > 1);
+          card.classList.remove('updating');
+        }, 180);
+      });
+    });
+  </script>
+</body>
+</html>
