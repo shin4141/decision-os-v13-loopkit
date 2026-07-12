@@ -1,46 +1,6 @@
 # Aspire-First Codex Pre-Tutorial
 
-## 1. What This Is
-
-This is the internal canonical and governance surface for the Aspire-First Codex Pre-Tutorial.
-
-- Internal canonical and governance surface: `docs/aspire_first_codex_pre_tutorial.md`
-- Participant-facing share surface: [`docs/aspire_first_codex_pre_tutorial_participant.md`](aspire_first_codex_pre_tutorial_participant.md)
-
-Send participants only the participant-facing share surface. Do not send this full internal canonical document.
-
-It is for someone who has used generative AI but has little or no Vibe coding experience.
-
-In about 20–30 minutes, the participant uses their own computer and their own Codex. They name a few things they like, Codex creates one small local artifact, and the participant changes it once in their own words.
-
-The central experience is:
-
-> Something small that did not exist is created from my words, then changes once because of my words.
-
-No programming, Git, or terminal knowledge is required. The participant does not run commands or organize files. Codex owns the technical routine work.
-
-The artifact stays local. The trial does not use external publication, payment, API keys, login, or a database.
-
-All of these are valid outcomes:
-
-- continue;
-- hold for later;
-- not interested.
-
-Short, vague, or casual initial answers are acceptable. The tutorial does not require the participant to prove enthusiasm or produce a detailed idea before seeing an artifact.
-
-### Canonical Status and Boundary
-
-- Current status: internal canonical and governance surface for this Pre-Tutorial.
-- Promotion authority: explicit owner authorization for this bounded documentation task.
-- Evidence basis: internal Trial 001 evidence plus the approved Remote Self-Run topology and distribution-package design.
-- Validation status: artifact completion is documented; external effectiveness is not yet validated.
-- Countercondition: if participant-side Codex cannot reliably create, preview, validate, scrub, and package the artifact without returning technical work to the participant, Remote Self-Run remains `HOLD`.
-- Downgrade condition: if external use shows material privacy, ownership, environment, or coercion problems, mark this document historical or `HOLD` and remove its current-execution link from `docs/codex_tutorial_guide.md`.
-
-This document does not authorize participant recruitment, Trial 002 execution, publication, release, or external-effectiveness claims.
-
-## 2. Participant Invitation
+## この体験について
 
 こんにちは。生成AIは使ったことがあるけれど、Vibe codingはほぼ未経験という方向けに、小さな体験を用意しています。
 
@@ -57,19 +17,17 @@ programming、Git、terminalの知識は必要ありません。操作、file作
 
 終了後に返すのは、匿名の`trial-T002-P01.zip`だけです。名前、住所、連絡先などは保存しません。
 
-参加してみたい場合は、下のpromptを自分のCodexの新規チャットへ一度だけ貼ってください。
-
-## 3. How to Start
+## 始め方
 
 1. 自分のCodexで新しいチャットを開く。
-2. 次の`Participant-Side Codex Prompt`全体を、一度だけcopyして貼る。
+2. 下のPrompt全体をCopyする。
 3. Codexの質問へ短く答える。
 
 repo作成、terminal、Git操作は必要ありません。
 
 Codexが`PREFLIGHT BLOCK`を返した場合は、環境修復や再実施をせず、その短いfailure reportだけを返してください。
 
-## 4. Single Participant-Side Codex Prompt
+## Copy This Prompt
 
 ```text
 あなたは、Aspire-First Codex Pre-TutorialをparticipantのPC上で実施するparticipant-side Codexです。
@@ -455,7 +413,7 @@ screenshot、chat全文、個人情報は送らないでください。
 新しいartifact、二度目の変更、別Trialを開始してはいけません。
 ```
 
-## 5. Return Instruction
+## Trial終了後
 
 Trialへのご協力ありがとうございました。
 
@@ -470,107 +428,3 @@ zipが作れなかった場合は、Codexが表示した`PREFLIGHT BLOCK`、`PRI
 この案内を受け取ったのと同じ私的な連絡手段で、zipまたはfailure reportを添付してください。
 
 返却後のfile検査、hash照合、整理、signal判定は受信側で行います。
-
-## 6. Operator and Receiver Appendix
-
-This appendix is not participant-facing tutorial content.
-
-### Trial Owner Responsibilities
-
-After separate authorization, the Trial owner may:
-
-- send the Invitation and complete Prompt to one participant;
-- receive the zip or failure report;
-- pass the return package to the receiving AI;
-- decide whether externalization or evidence storage is authorized.
-
-The Trial owner does not:
-
-- operate the participant's PC;
-- provide terminal support;
-- join by screen share;
-- repair the artifact;
-- organize returned files;
-- calculate hashes;
-- create the zip;
-- perform routine cleanup;
-- suggest ideas during the Trial.
-
-### Participant-Side Codex Responsibilities
-
-Participant-side Codex owns:
-
-- preflight and consent flow;
-- Aspire exploration;
-- artifact generation and preview;
-- validation and one visible change;
-- minimal observation capture;
-- privacy scrub and participant review;
-- hash, manifest, zip, and Completion Report;
-- stop reporting when the environment is not viable.
-
-### Receiving AI Responsibilities
-
-The receiving AI treats the zip as untrusted input and owns:
-
-- archive inventory and path-traversal inspection before extraction;
-- unexpected-file detection;
-- static HTML and script inspection before execution;
-- privacy, credential, external-communication, and absolute-path scans;
-- SHA-256 comparison with the manifest;
-- separation of participant-spontaneous, prompted, and Codex-derived ideas;
-- signal judgment and Missing Closure;
-- routine file inspection and cleanup without returning it to the Trial owner.
-
-The receiving AI must not write the evidence to a repository unless separately authorized.
-
-## 7. Completion and Validation Boundary
-
-### Tutorial Artifact Completion
-
-`COMPLETE`
-
-Meaning:
-
-- a participant-only Handout exists at `docs/aspire_first_codex_pre_tutorial_participant.md`;
-- the Handout contains one complete copy-paste Participant-Side Prompt;
-- participants do not need to read this internal canonical document;
-- Remote Self-Run ownership is explicit;
-- Return Package and privacy boundaries are explicit;
-- Trial owner and receiving AI responsibilities are separated;
-- participant recruitment or execution is not implied.
-
-### Effectiveness Validation
-
-`NOT YET VALIDATED`
-
-Meaning:
-
-- Trial 002 has not been run with an external beginner;
-- spontaneous idea expansion has not been reproduced externally;
-- participant-side Codex environment differences are untested;
-- preview, privacy scrub, packaging, and return behavior are untested in the target environment.
-
-Tutorial completion must not be presented as effectiveness validation.
-
-### Historical Evidence
-
-Trial 001 remains unchanged at:
-
-- `examples/aspire_first_trial_001/trial_record.md`
-- `examples/aspire_first_trial_001/index.html`
-
-Trial 001 is internal primary evidence, not proof of external effectiveness.
-
-### Current Gate
-
-- Canonical Pre-Tutorial document: `PASS`
-- Participant recruitment: `HOLD`
-- Trial 002 execution: `HOLD`
-- Publication or release: `HOLD`
-- Character-count corpus work: unchanged
-- Next branch: `none`
-
-### Completion Line
-
-The Aspire-First Codex Pre-Tutorial is complete as an internal canonical and governance surface plus one participant-facing share surface with a participant Invitation, one copy-paste Prompt, Return Instruction, ownership map, privacy boundary, and explicit separation between artifact completion and unvalidated external effectiveness.

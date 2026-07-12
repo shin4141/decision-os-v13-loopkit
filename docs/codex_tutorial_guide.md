@@ -6,11 +6,11 @@ This is not a theory document, README rewrite, or AGENTS rule. It is an instruct
 
 ## Aspire-First Pre-Tutorial
 
-For the current Aspire-First experience for an external Vibe coding beginner, use only:
+For the current Aspire-First experience for an external Vibe coding beginner, share only:
 
-[`docs/aspire_first_codex_pre_tutorial.md`](aspire_first_codex_pre_tutorial.md)
+[`docs/aspire_first_codex_pre_tutorial_participant.md`](aspire_first_codex_pre_tutorial_participant.md)
 
-That file is the single current execution surface for the Aspire-First Codex Pre-Tutorial. Do not reconstruct execution instructions from Trial 001 evidence, prior chat drafts, or the historical delta below.
+That file is the single participant-facing share surface for the Aspire-First Codex Pre-Tutorial. The internal canonical and governance surface remains [`docs/aspire_first_codex_pre_tutorial.md`](aspire_first_codex_pre_tutorial.md); do not send its full contents to participants. Do not reconstruct participant instructions from Trial 001 evidence, prior chat drafts, or the historical delta below.
 
 This guide remains the current LoopKit onboarding guide. Its menu and first-response contract are not replaced by the Aspire-First Pre-Tutorial.
 
@@ -280,7 +280,7 @@ Do not edit files unless I explicitly approve.
 
 ## Forward-Only Delta: Aspire-First Codex Magic Trial 001
 
-Status: historical evidence context / superseded for Aspire-First execution by `docs/aspire_first_codex_pre_tutorial.md`.
+Status: historical evidence context / superseded for participant execution by `docs/aspire_first_codex_pre_tutorial_participant.md` and governed by `docs/aspire_first_codex_pre_tutorial.md`.
 
 As-of 2026-07-12, one internal primary-user trial produced the following observed sequence:
 
