@@ -8,6 +8,47 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Cleaner v0.1 RETIRE Semantics Delta - 2026-07-12
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Record location:
+
+```text
+field_notes/121_intergenerational_reentry_compounding.md
+Forward-Only Addendum: Cleaner v0.1 Change Propagation Gate — RETIRE Semantics
+```
+
+State:
+
+```text
+Cleaner v0.1 Core: CLOSED / unchanged
+RETIRE semantics refinement: ACCEPTED AS FORWARD-ONLY DELTA
+Implementation / automation / publication: HOLD
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the RETIRE semantics record. Implementation and automation remain HOLD.
+```
+
+Completion Line:
+
+The accepted forward-only RETIRE semantics delta is recorded at the location above; Cleaner v0.1 Core remains unchanged.
+
 ## Current Field Note 123 Model-Independent Enforcement - 2026-07-11
 
 This section is the current restart anchor and supersedes older operational state statements below.

@@ -63,6 +63,51 @@ Where relevant, a reusable artifact should preserve:
 
 An artifact's existence alone is not a completed handoff.
 
+## Forward-Only Addendum: Cleaner v0.1 Change Propagation Gate — RETIRE Semantics
+
+Addendum status:
+
+```text
+Cleaner v0.1 Core: CLOSED / unchanged
+RETIRE semantics refinement: ACCEPTED AS FORWARD-ONLY DELTA
+Implementation / automation / publication: HOLD
+```
+
+This addendum refines the existing `KEEP / REVALIDATE / RETIRE / UNKNOWN` Change Propagation Gate. It is not an independent Cleaner v0.2 feature, does not add a new concept, and does not alter the broader verification-pending status of this Field Note.
+
+### RETIRE Semantics — Causal Provenance Preservation
+
+`RETIRE` is not complete merely because a surface is removed from current authority.
+
+The classification becomes `RETIRE` only when the record preserves:
+
+- **Retired Surface:** the surface removed from current authority;
+- **As-of:** when it was valid through;
+- **Why It Existed:** the incident, constraint, branch, or other cause that made it necessary at the time;
+- **Why Retired:** why it is no longer used as current authority;
+- **Dependent Decisions / Guards:** decisions, constraints, or guards that were established from that surface;
+- **Evidence Anchor:** a reconnection path to the originating record, commit, SHA, snapshot, or log;
+- **Re-entry Condition:** the condition under which the surface should be evaluated again.
+
+Decision rule:
+
+```text
+Required causal and evidence fields present -> RETIRE
+Evidence exists but requires renewed confirmation -> REVALIDATE
+Causality, evidence, or dependencies are insufficient -> UNKNOWN
+Only "old" or "conflicts with current state," without reason or evidence -> RETIRE not allowed
+```
+
+Invariants:
+
+- Do not delete or overwrite historical evidence merely to make the present state internally consistent.
+- Preserve prior branches, options, incidents, and the reasons guards were introduced.
+- Removing a surface from current authority must not erase why it was valid or which decisions depended on it.
+- Preserve the causal connection from the originating record to the current state, not only the original artifact.
+- If causality is unknown, do not fill it through inference; classify it as `UNKNOWN`.
+
+The purpose is to prevent current-state cleanup from erasing the history, incidents, branches, constraints, or guard rationale that made the current state necessary.
+
 ## Boundary and Non-Claims
 
 Do not claim that:
