@@ -4,6 +4,16 @@ Use this guide to onboard a fork user to LoopKit like a first-run tutorial.
 
 This is not a theory document, README rewrite, or AGENTS rule. It is an instruction guide for Codex.
 
+## Aspire-First Pre-Tutorial
+
+For the current Aspire-First experience for an external Vibe coding beginner, use only:
+
+[`docs/aspire_first_codex_pre_tutorial.md`](aspire_first_codex_pre_tutorial.md)
+
+That file is the single current execution surface for the Aspire-First Codex Pre-Tutorial. Do not reconstruct execution instructions from Trial 001 evidence, prior chat drafts, or the historical delta below.
+
+This guide remains the current LoopKit onboarding guide. Its menu and first-response contract are not replaced by the Aspire-First Pre-Tutorial.
+
 ## Read First
 
 Before explaining, read:
@@ -269,6 +279,8 @@ Do not edit files unless I explicitly approve.
 ```
 
 ## Forward-Only Delta: Aspire-First Codex Magic Trial 001
+
+Status: historical evidence context / superseded for Aspire-First execution by `docs/aspire_first_codex_pre_tutorial.md`.
 
 As-of 2026-07-12, one internal primary-user trial produced the following observed sequence:
 
