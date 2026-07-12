@@ -2,7 +2,7 @@
 
 Start here:
 
-`examples/cap.v12_handoff_review.json`
+[`examples/cap.v12_handoff_review.json`](cap.v12_handoff_review.json)
 
 Why:
 
