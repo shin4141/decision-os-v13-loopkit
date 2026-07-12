@@ -10,4 +10,4 @@ This example shows completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded 
 
 Also useful:
 
-`examples/residue_recommendation_ladder.md` shows how a coding agent can report reusable residue with bounded Owner choices.
+[`examples/residue_recommendation_ladder.md`](residue_recommendation_ladder.md) shows how a coding agent can report reusable residue with bounded Owner choices.
