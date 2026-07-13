@@ -378,3 +378,63 @@ This one-target result is not statistical proof and does not authorize publicati
 Completion Line:
 
 One fresh AI entered through V13's thin surface, selected four relevant Field Notes, inherited their causal judgment, proposed one target-native handoff delta, rejected irrelevant V13 imports, and stopped without modifying the target or returning selection burden to the Decision Owner.
+
+## Forward-Only Addendum: Target-Native Patch Conversion — Forward Use 004
+
+Date: 2026-07-13
+
+Status:
+
+```text
+READY_FOR_RETURN
+Independent patch conversion: COMPLETE
+Gate: GO
+```
+
+Record:
+
+```text
+examples/aspire_gap_forward_use_004/
+```
+
+Reused foundation:
+
+```text
+Reused foundation: Forward Use 003
+Remaining delta: independent target-native patch conversion and validation
+```
+
+A fresh execution context received only the target authority/completion surfaces, the four Field Notes already selected by Forward Use 003, and one bounded patch instruction. It did not receive the full Field Note corpus or authority to select another improvement.
+
+The executor replaced only the stale completed-work command in the target canonical handoff with a target-native HOLD and explicit target/scope re-entry condition. It preserved the target's Completed Work, Gate, Decision Owner, Missing Closure, Completion Line, and prohibited scope.
+
+Observed result:
+
+```text
+Target files changed: 1
+Target diff: 1 insertion / 1 deletion
+Human clarification: 0
+Human correction: 0
+Additional V13 machinery: none
+Target commit / push: PASS
+```
+
+Observed Gate:
+
+```text
+GO
+```
+
+This one-target result does not prove general adoption and does not authorize another Forward Use, automation, publication, or target expansion.
+
+Next exposed Aspire Gap:
+
+```text
+Can target-native patch conversion remain correct on another independently evidenced stale-authority case without preselecting the patch?
+```
+
+This question is exposed only. It is not active or authorized.
+
+Completion Line:
+
+One fresh execution AI converted the Field-Note-supported recommendation from Forward Use 003 into one correct target-native patch, preserving the target's authority, Completed Work, Gate, and restartability without importing additional V13 machinery.

@@ -8,6 +8,77 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Forward Use 004 — Target-Native Patch Conversion - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+Forward Use 004: COMPLETE
+Gate: GO
+```
+
+Record location:
+
+```text
+examples/aspire_gap_forward_use_004/
+field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md
+Forward-Only Addendum: Target-Native Patch Conversion — Forward Use 004
+```
+
+Result:
+
+```text
+Target files changed: 1
+Target diff: 1 insertion / 1 deletion
+Human clarification: 0
+Human correction: 0
+Additional V13 machinery: none
+Target commit / push: PASS
+```
+
+One fresh execution context converted the fixed Forward Use 003 recommendation into a target-native HOLD plus explicit target/scope re-entry condition. The target's Completed Work, Gate, ownership, Missing Closure, Completion Line, and prohibited scope were preserved.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Next owner:
+
+```text
+Originating AI — receive the report and close the chat-side handoff step.
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded patch-conversion test.
+
+Generalization beyond one preselected target remains unproven and unauthorized.
+```
+
+Next exposed Aspire Gap:
+
+```text
+Can target-native patch conversion remain correct on another independently evidenced stale-authority case without preselecting the patch?
+```
+
+This question is exposed only. It is not active or authorized.
+
+Completion Line:
+
+One fresh execution AI converted the Field-Note-supported recommendation from Forward Use 003 into one correct target-native patch, preserving the target's authority, Completed Work, Gate, and restartability without importing additional V13 machinery.
+
 ## Current Triggered Field-Note Adoption Validation - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.
