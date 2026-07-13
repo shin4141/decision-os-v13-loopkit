@@ -8,6 +8,70 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Aspire Gap Closure — Autonomous Handoff Discovery - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+Fresh receiver test: COMPLETE
+```
+
+Record location:
+
+```text
+field_notes/119_self_report_preflight_before_ai_write_authority.md
+Forward-Only Addendum: Autonomous Handoff Discovery — Forward Use 002
+
+examples/aspire_gap_forward_use_002/
+```
+
+Result:
+
+```text
+Gate: GO
+Manual path hints: 0
+Copied handoff text: no
+Clarification questions: 0
+Human corrections: 0
+Canonical handoff discovered autonomously: yes
+Ownership accepted: yes
+```
+
+Next exposed Aspire Gap:
+
+```text
+Can a fresh receiver surface the exact canonical path, active-branch state, and Decision Owner boundary in one concise first-time-user final explanation without receiving V13 terminology or path hints?
+```
+
+This question is exposed only and is not active.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded autonomous-discovery test.
+
+The receiver did not print the literal handoff path or Active Branch label in its concise final answer. This residual is preserved as the next exposed question, not active work.
+```
+
+Completion Line:
+
+One fresh receiver received only a repository root and minimal request, autonomously discovered the authority and handoff state, accepted preservation ownership, and stopped without human path reconstruction or correction.
+
 ## Current Aspire Gap Closure — First Forward Use Validation - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.

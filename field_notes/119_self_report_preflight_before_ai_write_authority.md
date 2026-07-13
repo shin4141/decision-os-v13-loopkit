@@ -208,3 +208,80 @@ This question is exposed only. It is not an active branch or authorized next act
 Completion Line:
 
 One real operator-owned repo produced a fair read-only Before / After re-entry comparison: the V13 condition preserved the safe stop achieved by ordinary context while improving ownership boundary, authority-path completeness, and next-action precision without human correction.
+
+## Forward-Only Addendum: Autonomous Handoff Discovery — Forward Use 002
+
+Date: 2026-07-13
+
+Status:
+
+```text
+READY_FOR_RETURN
+Fresh receiver test: COMPLETE
+Automation / transport / activation: HOLD
+```
+
+Record:
+
+```text
+examples/aspire_gap_forward_use_002/
+```
+
+Reused foundation:
+
+```text
+Forward Use 001
+```
+
+Forward Use 001 was not rerun. This test isolated its next delta: autonomous authority discovery and receiver-side ownership acceptance.
+
+One fresh Codex receiver with no inherited conversation history received only:
+
+- the operator-local target repository root;
+- a minimal ordinary request to determine current state and state what it owned next;
+- a read-only / no-execution boundary.
+
+It did not receive the canonical handoff path, `AGENTS.md` hint, authority order, prior result, scoring sheet, or expected answer.
+
+Observed user-first measures:
+
+```text
+Manual path hints: 0
+Copied handoff text: no
+Clarification questions: 0
+Human corrections: 0
+Canonical handoff discovered autonomously: yes
+Ownership accepted: yes
+```
+
+The receiver identified `AGENTS.md` as canon, used the canonical handoff, reused `audit_021`, recovered HOLD/BLOCK state, verified the completed clean/pushed state, accepted B-side restartability/gate-preservation ownership, and chose STOP/WAIT rather than activating work.
+
+Observed Gate:
+
+```text
+GO
+```
+
+The result closes the bounded question:
+
+```text
+repo root + minimal request → correct authority discovery and ownership acceptance
+```
+
+Residual:
+
+The receiver's concise final answer did not print the literal canonical handoff path or `Active Branch: none`, although autonomous handoff discovery and the equivalent no-active-execution state were visible in its progress finding.
+
+Next exposed Aspire Gap:
+
+```text
+Can a fresh receiver surface the exact canonical path, active-branch state, and Decision Owner boundary in one concise first-time-user final explanation without receiving V13 terminology or path hints?
+```
+
+This question is exposed only. It is not an active branch or authorized next action.
+
+This one-receiver result is not statistical proof. It does not authorize automation, transport, hooks, validators, MCP, plugins, target modification, another receiver test, or Canon promotion.
+
+Completion Line:
+
+One fresh receiver accepted only a repository root and a minimal request, autonomously discovered the governing authority and handoff state, reused completed work, accepted B-side preservation ownership, and stopped without human path reconstruction or correction.
