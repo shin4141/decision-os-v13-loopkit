@@ -4,10 +4,13 @@ Date: 2026-07-13
 
 ## Lifecycle Status
 
-- Status: Candidate / verification pending
+- Current status: Canon-promoted
+- Original status: Candidate / verification pending
 - Learning direction: Forward-only operational learning
-- Canon promotion: HOLD
-- Implementation / automation: HOLD
+- Operational validation: complete — [validation record](../validation/field_note_125_operational_validation.md)
+- Canon location: [`AGENTS.md` — Continuation Proof Selection](../AGENTS.md#continuation-proof-selection)
+- Runtime implementation: not implemented
+- Automation: HOLD
 - Publication: HOLD
 
 ## Layer
@@ -22,7 +25,7 @@ Adjacent layers:
 
 ## Evidence Basis
 
-This Candidate is grounded in the verified `output-surface-integrity-report` workspace at local commit `7d54394e64c268b7a4035e4fa11140f0b1338071`.
+The original Candidate was grounded in the verified `output-surface-integrity-report` workspace at local commit `7d54394e64c268b7a4035e4fa11140f0b1338071`.
 
 Inspected evidence surfaces:
 
@@ -117,7 +120,9 @@ The Bundle transports evidence; it does not expand authority, repair missing pro
 
 This note does not create a transport framework or implementation.
 
-## Validation Status
+## Candidate Validation Status — Historical
+
+At Candidate creation, the validation status was:
 
 ```text
 Candidate / verification pending
@@ -129,7 +134,80 @@ Minimum future validation:
 2. Chat-specific unpersisted judgment correctly requires Destination Identity in addition to relevant artifact provenance.
 3. Proof failure produces a precise, restartable BLOCK without human cleanup.
 
-Until all three cases are observed under bounded conditions, this rule remains a Candidate and must not be treated as Canon.
+At Candidate creation, this rule was required to remain a Candidate until all three categories were observed under bounded conditions. Case 3 later separated into transport failure and historical path reconciliation.
+
+The required categories and both Case 3 paths are now complete in the [operational validation record](../validation/field_note_125_operational_validation.md). This closes the Candidate validation condition without rewriting the earlier state.
+
+## Forward-Only Canon Adoption
+
+Date: 2026-07-13
+
+Decision Owner approval: explicit and bounded to the validated core and Path Reconciliation Rule.
+
+Promotion evidence:
+
+- Case 1 — Artifact-sufficient continuation: `PASS`;
+- Case 2 — Unpersisted context-specific judgment: `PASS`;
+- Case 3A — Transport proof failure: `PASS`;
+- Case 3B — Historical path reconciliation: `PASS / RECONCILIATION SUFFICIENT`;
+- evidence record: [`validation/field_note_125_operational_validation.md`](../validation/field_note_125_operational_validation.md).
+
+The rule is no longer only a hypothesis because the three required validation categories changed later operational handling: persisted evidence enabled continuation without chat identity, unpersisted judgment required Destination Identity, missing proof produced a restartable stop, and uniquely proven one-level relocation supported bounded reconciliation.
+
+### Canon Core Adopted
+
+Use the minimum sufficient proof required by the continuation dependency. Fixed artifacts are the default source of authority. Destination Identity is added only when authorized continuation depends on genuinely unpersisted, context-specific judgment.
+
+If sufficient proof cannot be established, `BLOCK` before modification, identify the exact missing or mismatched proof, and do not return routine recovery to the Decision Owner.
+
+The three outcomes remain:
+
+1. `Artifact Provenance Guard`;
+2. `Artifact Provenance + Destination Identity Guard`;
+3. `BLOCK — sufficient proof unavailable`.
+
+Destination Identity does not replace relevant Artifact Provenance. A result that may exist but cannot be traced and registered from the receiving surface remains:
+
+```text
+PENDING HANDOFF ASSERTION — NOT CANONICALLY VERIFIED
+```
+
+### Bounded Path Reconciliation Rule Adopted
+
+When an authorized task names a missing artifact path, the execution AI may reconcile it without returning routine path work to the Decision Owner when:
+
+- one current canonical root is registered;
+- exactly one role-matching artifact exists within a directly explainable child directory;
+- current canonical records bind its role and identity;
+- freshness and uniqueness are established;
+- the requested operation is independently authorized.
+
+Record the expected and resolved paths and continue only inside the authorized scope.
+
+`BLOCK` when identity, uniqueness, freshness, authority, or relocation remains ambiguous.
+
+Artifact existence alone never grants execution authority.
+
+This rule does not authorize broad path guessing, fuzzy matching as authority, cross-repository substitution, or version substitution.
+
+### Transport Clarification
+
+Transport failure is not evidence failure.
+
+When transport prevents proof access, promote no claim, preserve the exact missing proof and re-entry condition, resume only after artifact identity becomes verifiable, and do not return routine transport repair to the Decision Owner.
+
+This remains subordinate to proof selection and does not create a transport framework.
+
+### Falsifier, Countercondition, and Downgrade
+
+Downgrade or narrow this Canon routing if later evidence shows that it:
+
+- permits an incorrect artifact or context to control authority;
+- hides ambiguity in identity, freshness, uniqueness, ownership, or authorization;
+- causes bounded path reconciliation to substitute across repositories or versions;
+- adds default-path burden without changing operational decisions.
+
+Rollback is a Forward-only lifecycle downgrade from `Canon-promoted` to the appropriate verification-pending, superseded, or archived status, with the triggering evidence and replacement authority recorded. Do not erase the Candidate, validation, or adoption history.
 
 ## Non-Claims and Boundaries
 
@@ -139,7 +217,9 @@ Until all three cases are observed under bounded conditions, this rule remains a
 - This note does not implement a validator, hook, automation, transport system, MCP surface, or plugin.
 - This note does not authorize publication, report-body drafting, productization, or a new execution branch.
 
-## Current Gate
+## Historical Candidate Gate
+
+At Candidate creation, the Gate was:
 
 ```text
 Field Note Candidate record: PASS
@@ -149,6 +229,20 @@ Implementation / automation: HOLD
 Publication: HOLD
 ```
 
-## Completion Line
+## Current Canon Gate
+
+```text
+Canon adoption: PASS
+Operational validation: COMPLETE
+Runtime implementation: NOT IMPLEMENTED
+Automation: HOLD
+Publication: HOLD
+```
+
+## Historical Candidate Completion Line
 
 V13 preserves Execution Context Proof Selection as an evidence-backed but unvalidated Field Note Candidate. Artifact Provenance remains the default when fixed artifacts are sufficient; Destination Identity is added only for genuinely unpersisted context-specific judgment. No implementation, Canon promotion, or next branch is activated.
+
+## Current Completion Line
+
+Field Note 125 is adopted as V13 Canon through a bounded Forward-only delta. V13 defaults to persisted Artifact Provenance, adds Destination Identity only when continuation depends on unpersisted context-specific judgment, and permits bounded AI-owned path reconciliation only when identity, uniqueness, freshness, and independent authorization are all established.

@@ -92,6 +92,38 @@ Use `HOLD` or `CAP` until the required judgment reference is checked or the miss
 
 AGENTS.md must not treat these field notes as optional background when making these judgments. Their lifecycle status is `Canon-promoted`, and they remain operational origin references for the routed judgments unless canonical text explicitly replaces that routing.
 
+## Continuation Proof Selection
+
+Before modifying files or authority during a continuation, use the minimum sufficient proof required by the continuation dependency.
+
+Use one of:
+
+1. `Artifact Provenance Guard`
+   Use when persisted files, manifests, hashes, state records, and handoffs sufficiently reconstruct identity, validity, and authority.
+2. `Artifact Provenance + Destination Identity Guard`
+   Add Destination Identity only when authorized continuation depends on genuinely unpersisted context-specific judgment. Destination Identity does not replace relevant Artifact Provenance.
+3. `BLOCK — sufficient proof unavailable`
+   Stop before modification when identity, ownership, validity, freshness, or authority remains unproven. Identify the exact missing or mismatched proof and do not return routine recovery to the Decision Owner.
+
+When a result may exist but cannot be traced and registered from the receiving surface, preserve:
+
+```text
+PENDING HANDOFF ASSERTION — NOT CANONICALLY VERIFIED
+```
+
+When an authorized task names a missing artifact path, the agent may reconcile it only when one current canonical root is registered, exactly one role-matching artifact exists in a directly explainable child directory, current canonical records bind its role and identity, freshness and uniqueness are established, and the requested operation is independently authorized.
+
+Record the expected and resolved paths and continue only inside the authorized scope. `BLOCK` when identity, uniqueness, freshness, authority, or relocation remains ambiguous. Artifact existence alone never grants execution authority.
+
+Do not use broad path guessing, fuzzy matching as authority, cross-repository substitution, or version substitution.
+
+Transport failure is not evidence failure. When transport prevents proof access, promote no claim, preserve the exact missing proof and re-entry condition, resume only after artifact identity becomes verifiable, and do not return routine transport repair to the Decision Owner.
+
+Operational origin and validation:
+
+- [Field Note 125](field_notes/125_execution_context_proof_selection.md)
+- [Field Note 125 operational validation](validation/field_note_125_operational_validation.md)
+
 ## V13 Lite Footer / Canonical Base Report
 
 At the end of each ordinary bounded task, include one canonical base report.

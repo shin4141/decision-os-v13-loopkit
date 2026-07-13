@@ -8,6 +8,38 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 125 Canon Adoption - 2026-07-13
+
+Status:
+
+```text
+Field Note 125: CANON-PROMOTED
+Operational validation: COMPLETE
+Minimum-sufficient-proof selection: ADOPTED
+Bounded Path Reconciliation Rule: ADOPTED
+Runtime implementation: NOT IMPLEMENTED
+Automation / publication: HOLD
+Output Surface Integrity workspace changed: no
+```
+
+Canon authority:
+
+```text
+AGENTS.md — Continuation Proof Selection
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current Field Note 125 Operational Validation - 2026-07-13
 
 Validation record:
