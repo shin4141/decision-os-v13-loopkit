@@ -8,6 +8,74 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Triggered Field-Note Adoption Validation - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+Forward Use 003: COMPLETE
+Gate: GO
+Target modification / public adoption claim: HOLD
+```
+
+Record location:
+
+```text
+field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md
+Forward-Only Addendum: Triggered Field-Note Adoption Validation — Forward Use 003
+
+examples/aspire_gap_forward_use_003/
+```
+
+Result:
+
+```text
+Field Note path hints: 0
+Clarification questions: 0
+Human corrections: 0
+Relevant Field Notes selected: 4
+Target-native deltas proposed: 1
+Irrelevant V13 imports rejected: yes
+Full-corpus load: no
+```
+
+The receiver recommended one stale-handoff `Next One Action` correction in the target's native B surface. The recommendation was not implemented and target authority remains controlling.
+
+Next exposed Aspire Gap:
+
+```text
+Can a separate AI, under explicit target-repository authority, convert the recommendation into the correct target-native patch while using only the selected causal notes and importing no additional V13 machinery?
+```
+
+This question is exposed only and is not active.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded adoption-judgment test.
+
+The recommended target patch remains unauthorized and unimplemented.
+```
+
+Completion Line:
+
+One fresh AI used V13's thin entry and four relevant Field Notes to derive one target-native handoff recommendation, reject irrelevant imports, and stop without target modification or human selection correction.
+
 ## Current Capability Boundary Map and Deep-Read Rule - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.

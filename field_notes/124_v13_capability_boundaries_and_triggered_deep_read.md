@@ -283,3 +283,98 @@ Adjacent Forward Use: HOLD
 ## Completion Line
 
 V13 preserves its future technical limits as PARKED Integrity Gaps rather than an automatic maintenance backlog. It distinguishes a thin first-time entry surface from the triggered Field Note deep-read required for AI forks and operational changes, while leaving execution authority with the active branch, next authorized action, current gate, and canonical authority.
+
+## Forward-Only Addendum: Triggered Field-Note Adoption Validation — Forward Use 003
+
+Date: 2026-07-13
+
+Status:
+
+```text
+READY_FOR_RETURN
+Triggered adoption judgment: COMPLETE
+Target modification / public adoption claim: HOLD
+```
+
+Record:
+
+```text
+examples/aspire_gap_forward_use_003/
+```
+
+Reused foundation:
+
+```text
+Forward Use 001 / Forward Use 002 / Field Note 124
+```
+
+Prior experiments were not rerun. One fresh receiver with no inherited conversation history received only the V13 root, one operator-owned private target root, and a minimal request to use V13 only where relevant.
+
+The receiver received no Field Note number/path, expected finding, scoring sheet, preselected rule, prior result, or handoff hint.
+
+Target-native issue found:
+
+```text
+The target canonical handoff still points to an already-completed audit_021 commit/push as its Next One Action.
+```
+
+The receiver selected only:
+
+- Field Note 021 — earliest missing required intermediate node;
+- Field Note 022 — prior `PASS` does not automatically authorize new `GO`;
+- Field Note 024 — durable restart anchor and single safest next action;
+- Field Note 025 — reject report/footer inflation.
+
+The deep-read inherited causal judgment rather than only note names:
+
+- action-selection alternatives based on convenience or momentum were rejected;
+- the `PASS / DELAY` activation boundary was preserved;
+- stale next action was recognized as a re-entry failure;
+- full V13 report machinery was rejected as unnecessary target burden.
+
+One recommended delta:
+
+```text
+Replace only the stale Next One Action in the target's existing handoff with HOLD plus an explicit target/scope re-entry condition.
+```
+
+The receiver explicitly rejected:
+
+- full V13 footer/report machinery;
+- broad Aspire/Carrier and V12→V13 vocabulary import;
+- provisional preflight as implementation or automation;
+- cross-repo or protected-surface modification authority.
+
+Observed user-first measures:
+
+```text
+Field Note path hints: 0
+Clarification questions: 0
+Human corrections: 0
+Field Notes selected: 4
+Selected notes relevant: yes
+Target-native delta: yes
+Full-corpus load: no
+```
+
+Observed Gate:
+
+```text
+GO
+```
+
+The proposed target patch was not authorized, implemented, or validated. Target authority and native B terminology remain controlling.
+
+Next exposed Aspire Gap:
+
+```text
+Can a separate AI, under explicit target-repository authority, convert the recommendation into the correct target-native patch while using only the selected causal notes and importing no additional V13 machinery?
+```
+
+This question is exposed only. It is not active or authorized.
+
+This one-target result is not statistical proof and does not authorize publication, promotion, universal Field Note loading, or an adoption claim.
+
+Completion Line:
+
+One fresh AI entered through V13's thin surface, selected four relevant Field Notes, inherited their causal judgment, proposed one target-native handoff delta, rejected irrelevant V13 imports, and stopped without modifying the target or returning selection burden to the Decision Owner.
