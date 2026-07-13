@@ -285,3 +285,152 @@ This one-receiver result is not statistical proof. It does not authorize automat
 Completion Line:
 
 One fresh receiver accepted only a repository root and a minimal request, autonomously discovered the governing authority and handoff state, reused completed work, accepted B-side preservation ownership, and stopped without human path reconstruction or correction.
+
+## Forward-Only Addendum: Aspire-Gap Compounding and Goal-Directed Traversal
+
+Date: 2026-07-13
+
+Status:
+
+```text
+READY_FOR_RETURN
+Forward-only theoretical self-definition: RECORDED
+New framework / Canon promotion: none
+Runtime / mechanical enforcement: HOLD
+```
+
+Reused foundation:
+
+```text
+Forward Use 001 / Forward Use 002
+```
+
+Forward Use 001/002 were not rerun. This addendum records the constructive theoretical role exposed by their completed evidence.
+
+This is a self-definition of the existing Compound Loop / Forward Use structure. It is not a new independent framework.
+
+### Fixed Distinction
+
+> Goal-directed traversal optimizes progress within an already selected branch.
+> Aspire-Gap Compounding selects and closes evidence-bearing gaps that expand
+> what becomes reachable while preserving the Carrier, returnability, and stop
+> authority. The former is an execution mode; the latter is a governance
+> mechanism for evolution.
+
+> ゴール指向のTraversalは、すでに選ばれた分岐の中で前進を最適化する。
+> Aspire-Gap Compoundingは、Carrier・Returnability・停止権限を保ちながら、
+> 証拠によって未接続点を閉じ、到達可能になる範囲を拡張する。
+> 前者は実行モードであり、後者は進化を統治する機構である。
+
+Also preserve:
+
+> V13 does not merely optimize arrival at a supplied destination. It governs
+> which bounded destination should be selected next from the current relation
+> between Aspire, Completed Work, viable routes, and Missing Closure.
+
+Aspire is a long-horizon direction that cannot be exhausted by one fixed Goal. It may be expressed through multiple goals, routes, and rescaled trajectories.
+
+Aspire-Gap Compounding therefore asks which evidence-bearing gap should be closed next to expand what becomes reachable under Aspire. It must preserve:
+
+- Carrier;
+- Returnability;
+- stop authority;
+- branch boundaries;
+- evidence discipline.
+
+It must not optimize expansion without bounds.
+
+Goal-Directed Traversal begins only after a branch and bounded target have already been selected. It may investigate, compare, experiment, or execute inside that branch. It does not independently choose Aspire, activate adjacent branches, or replace V13 governance.
+
+### Nested Relationship
+
+The roles are nested, not competing:
+
+1. Aspire-Gap Compounding selects the next evidence-bearing gap.
+2. Goal-Directed Traversal closes or tests that selected gap.
+3. The result exposes the next reachable question.
+4. V13 evaluates whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
+
+This is the constructive relation to Reachable-Branch Compounding:
+
+```text
+closing one required evidence gap can make a previously unreachable question reachable
+```
+
+### Forward Use 001 / 002
+
+The observed sequence was:
+
+```text
+Gap 1:
+Does a V13 restart packet improve the next starting state?
+
+Forward Use 001:
+A bounded goal-directed comparison produced GO.
+
+New reachable Gap:
+Can a first-time receiver discover the authority surface without a path hint?
+
+Forward Use 002:
+A bounded fresh-receiver test produced GO.
+
+Result:
+One closed gap made the next evidence question reachable.
+```
+
+Neither test weakened Carrier, Returnability, branch boundaries, or stop authority. Forward Use 002 did not exist as a grounded next question until Forward Use 001 had closed the earlier evidence gap.
+
+### Forward Selection Modes
+
+#### Decision-Owner-Directed
+
+This is the public-safe role label for the user-directed mode specified in this task.
+
+When the Decision Owner specifies the destination or desired future state, the AI must:
+
+- preserve that direction;
+- identify common and route-specific unavoidable points;
+- close AI-owned `UNKNOWN`s;
+- return only Human-Seat decisions to the Decision Owner;
+- select the next bounded gap inside the authorized direction.
+
+#### AI-Selected
+
+When route selection is delegated, prefer:
+
+1. a common unavoidable point across multiple viable routes;
+2. an upstream condition blocking later work;
+3. a gap that opens the largest number of future routes;
+4. a gap that produces strong evidence at bounded cost;
+5. a reversible action that preserves the Carrier.
+
+These are short selection preferences, not a scoring system or new template.
+
+### Forward / Review / Maintenance Boundary
+
+- Forward Lane is the default when no hard repair trigger exists.
+- Review or Maintenance opens only from actual failure, authority break, validation failure, irreversible risk, or a scheduled review boundary.
+- Maintenance completion does not activate another maintenance search.
+- Searching for another small defect is not Forward Use.
+- A maintenance delta counts as compounding only when it identifies which future Forward Loop cost or failure probability it materially reduces.
+
+Candidate 5–8 remain completed historical maintenance evidence and are not reopened or reinterpreted here.
+
+### UNKNOWN and Rollback
+
+- AI-owned `UNKNOWN` → investigate and produce evidence.
+- Human-Seat `UNKNOWN` → stop and return one bounded Decision Packet.
+- Low-impact reversible `UNKNOWN` → proceed only under an explicit `CAP` and recheck condition.
+- If a missing upstream condition appears later, return authority to the last valid checkpoint rather than discarding Completed Work.
+
+This rule does not authorize runtime implementation.
+
+### Boundary
+
+This addendum does not create a new Field Note, framework, Canon rule, runtime, automation, hook, validator, MCP, plugin, transport, publication, product surface, experiment, or active Forward branch.
+
+Forward Use 001/002 remain completed evidence. Forward Use 003 is not activated. Runtime and mechanical enforcement remain `HOLD`.
+
+Completion Line:
+
+V13 now records that Goal-Directed Traversal is the bounded execution mode inside an already selected branch, while Aspire-Gap Compounding governs which evidence-bearing gap should be selected and closed next. Forward Use 001/002 ground this distinction as an observed constructive loop: one closed gap made the next question reachable without weakening Carrier, Returnability, or stop authority.

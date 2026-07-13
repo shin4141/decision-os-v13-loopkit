@@ -8,6 +8,62 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Theoretical Self-Definition — Aspire-Gap Compounding - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+Aspire-Gap Compounding: RECORDED AS FORWARD-ONLY THEORETICAL SELF-DEFINITION
+New framework / Canon promotion: none
+Runtime / mechanical enforcement: HOLD
+```
+
+Record location:
+
+```text
+field_notes/119_self_report_preflight_before_ai_write_authority.md
+Forward-Only Addendum: Aspire-Gap Compounding and Goal-Directed Traversal
+```
+
+Evidence foundation:
+
+```text
+Forward Use 001 / Forward Use 002
+```
+
+The addendum records the constructive role of the existing Compound Loop / Forward Use structure. It does not create a new independent framework.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Next exposed Aspire Gap:
+
+```text
+Preserved from Forward Use 002; not automatically activated.
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded theoretical record.
+```
+
+Completion Line:
+
+Goal-Directed Traversal is recorded as bounded execution inside an already selected branch; Aspire-Gap Compounding is recorded as governance over which evidence-bearing gap should be selected and closed next, grounded by Forward Use 001/002.
+
 ## Current Aspire Gap Closure — Autonomous Handoff Discovery - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.
