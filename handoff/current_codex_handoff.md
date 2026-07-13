@@ -8,6 +8,36 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 125 Operational Validation - 2026-07-13
+
+Validation record:
+
+```text
+validation/field_note_125_operational_validation.md
+```
+
+Status:
+
+```text
+Three required validation categories: COMPLETE
+Case 3A / Case 3B: COMPLETE / COMPLETE
+Field Note 125: Canon Candidate / validation complete
+Canon adoption: separately authorized / not executed
+Current Gate: HOLD
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current README Entry — Let Your AI Read V13 - 2026-07-13
 
 Status:
