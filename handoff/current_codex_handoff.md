@@ -8,6 +8,30 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current README Entry — Let Your AI Read V13 - 2026-07-13
+
+Status:
+
+```text
+README entry: COMPLETE
+Evidence foundation: Forward Use 003/004
+Claim status: bounded evidence only
+Universal adoption claim: none
+SNS / publication branch activated: no
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current Execution Context Proof Selection Candidate - 2026-07-13
 
 Field Note:

@@ -122,6 +122,36 @@ If this repo looks relevant, fork it and ask your own AI to interpret it inside 
 
 This README is the entry point. Your own AI can explain the useful parts more accurately after seeing your actual repo, workflow, constraints, and failure traces.
 
+## Let Your AI Read V13
+
+You do not need to understand the entire V13 Field Note corpus before using this repository.
+
+Let your AI begin from the thin entry surface:
+
+1. this README;
+2. [`AGENTS.md`](AGENTS.md);
+3. the [canonical current handoff](handoff/current_codex_handoff.md).
+
+When the task involves governance, handoff, branch control, rollback, context health, authority, or a repeated operational failure, ask the AI to identify and deep-read only the relevant Field Notes.
+
+The AI should explain:
+
+- what may be worth adopting;
+- why the recorded incident or causal rationale applies;
+- what should not be imported;
+- the expected benefit and added operating cost;
+- what still requires the Decision Owner's judgment.
+
+Field Notes are not execution authority. `Active Branch`, `Next Authorized Action`, `Current Gate`, and the target repository's own authority continue to control action.
+
+In one bounded private-repository evidence path, fresh AI contexts selected relevant Field Notes, preserved target-native authority, rejected unnecessary V13 machinery, and converted one recommendation into a validated target-native patch without human correction. See [Forward Use 003](examples/aspire_gap_forward_use_003/results.md), [Forward Use 004](examples/aspire_gap_forward_use_004/results.md), and [Field Note 124](field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md).
+
+This is bounded evidence, not proof across all models or repositories. Final adoption authority remains with the Decision Owner.
+
+Example prompt:
+
+> Review my repository's current operational problem. Use V13 only where relevant. Identify the Field Notes that directly apply, explain what may be worth adopting, and state what should not be imported. Do not modify files or start execution.
+
 ## Example: documented does not always mean restartable
 
 A long-running AI-agent repo was checked with the Workspace Health Check.
