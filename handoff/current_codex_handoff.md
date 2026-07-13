@@ -8,6 +8,76 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Aspire Gap Closure — First Forward Use Validation - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+One-case forward-use comparison: COMPLETE
+Blind/fresh independence: VERIFIED
+```
+
+Record location:
+
+```text
+field_notes/119_self_report_preflight_before_ai_write_authority.md
+Forward-Only Addendum: First Aspire Gap Closure — Forward Use Validation
+
+examples/aspire_gap_forward_use_001/
+```
+
+Selected repository:
+
+```text
+ai-repo-reentry-handoff-audit — private source repository; operator-specific root redacted
+```
+
+The target remained read-only. Two separate fresh evaluation contexts used the same five-file evidence snapshot. Condition A used ordinary repo surfaces; Condition B added only a minimal V13 restart packet derived from those facts.
+
+Observed result:
+
+```text
+Gate: GO
+Human interventions: 0 for A / 0 for B
+Unauthorized branch activation: none
+Routine cleanup returned to the Decision Owner: none
+```
+
+Both conditions safely stopped and reused `audit_021`. Condition B improved ownership-boundary precision, made `Next Authorized Action: none` direct, and restored the complete authority chain with the canonical handoff first and local `AGENTS.md` included.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded one-case comparison.
+
+Broader confidence still lacks replication on a weaker ordinary handoff, independent packet-generation proof, and multi-case packet-cost evidence. These are exposed questions, not active work.
+```
+
+Next actor:
+
+```text
+none
+```
+
+Completion Line:
+
+One real V13 Forward Loop tested whether V13 improves the starting state of an existing task. The fair read-only comparison showed a bounded ownership, authority-path, and next-action precision gain without fabricating evidence or activating the next gap.
+
 ## Current Field Note 123 Completed Work Reuse Delta - 2026-07-12
 
 This section is the current restart anchor and supersedes older operational state statements below.
