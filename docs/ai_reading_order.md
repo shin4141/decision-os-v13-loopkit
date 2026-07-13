@@ -30,6 +30,20 @@ Ask the user's AI to read these files in order, then recommend how V13 should fi
 
    Understand adoption modes for repos that already have their own instruction surface.
 
+## Triggered Operational Deep Read
+
+The reading order above is a thin first-time adoption path. Do not load the full Field Note corpus for every task.
+
+Before an AI forks the operating structure, modifies governance, changes branch/handoff/gate/rollback/context-health/authority rules, investigates a repeated failure, or continues work whose rationale lives in Field Notes:
+
+1. identify the active branch or proposed operational change;
+2. locate the Field Notes relevant to that branch, rule family, incident, or capability boundary;
+3. read those notes before changing the operational contract.
+
+See [`field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md`](../field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md).
+
+Field Notes preserve causal judgment but do not authorize execution. `Active Branch`, `Next Authorized Action`, `Current Gate`, and canonical authority still control action.
+
 ## Ask The AI To Answer
 
 1. What problem does V13 solve for this repo?

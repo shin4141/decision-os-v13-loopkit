@@ -8,6 +8,68 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Capability Boundary Map and Deep-Read Rule - 2026-07-13
+
+This section is the current restart anchor and supersedes older operational state statements below.
+
+Status:
+
+```text
+READY_FOR_RETURN
+Capability boundaries: RECORDED
+Integrity Gaps A/B/C: PARKED
+Implementation / mechanical enforcement: HOLD
+```
+
+Record location:
+
+```text
+field_notes/124_v13_capability_boundaries_and_triggered_deep_read.md
+```
+
+Parked Integrity Gaps:
+
+```text
+A — Independent Verification Gap
+B — Runtime Enforcement Gap
+C — Branch-Density Observability Gap
+```
+
+These gaps are not an automatic maintenance queue. A gap activates only when it is an evidenced, unavoidable condition for a selected Forward Route and the work can preserve Carrier, Returnability, and stop authority.
+
+Deep-read rule:
+
+```text
+Thin README / authority / handoff surfaces enable first entry.
+Relevant Field Notes must be read before AI forks or operational-contract changes.
+Full-corpus loading is not universally required.
+Field Notes do not authorize execution.
+```
+
+Independent verification, runtime enforcement, branch-density detection, automation, hooks, MCP, plugins, and Canon promotion remain `HOLD`.
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+None for the bounded capability-boundary and deep-read record.
+```
+
+Completion Line:
+
+V13 now preserves future technical limits as PARKED Integrity Gaps and requires only triggered, relevant Field Note deep-read for AI forks and operational changes, while keeping execution authority with the active branch, next authorized action, current gate, and canonical authority.
+
 ## Current Theoretical Self-Definition — Aspire-Gap Compounding - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.
