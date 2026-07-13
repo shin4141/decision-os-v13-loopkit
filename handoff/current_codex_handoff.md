@@ -8,6 +8,47 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Execution Context Proof Selection Candidate - 2026-07-13
+
+Field Note:
+
+```text
+field_notes/125_execution_context_proof_selection.md
+```
+
+Status:
+
+```text
+Candidate / verification pending
+Current Gate: HOLD
+```
+
+Proof-selection outcomes:
+
+```text
+1. Artifact Provenance Guard
+2. Artifact Provenance + Destination Identity Guard
+3. BLOCK — sufficient proof unavailable
+```
+
+Validation:
+
+```text
+pending
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current Forward Use 004 — Target-Native Patch Conversion - 2026-07-13
 
 This section is the current restart anchor and supersedes older operational state statements below.
