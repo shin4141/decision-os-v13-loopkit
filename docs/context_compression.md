@@ -149,6 +149,127 @@ Restart From:
 <file, commit, handoff, or section>
 ```
 
+## Compact Restart Surface Mode
+
+Compact Restart Surface Mode replaces unnecessary full-history reload with the minimum decision-relevant state required for the next human or AI to continue safely.
+
+It is a conditional output mode inside the existing Context Compression / Handoff workflow. It is not a new Skill and does not replace the ordinary compression signal or ownership transfer.
+
+### Use This Mode When
+
+* a long or high-context history is becoming expensive to reload
+* the next loop needs current operating state rather than full chronology
+* a handoff or capsule can preserve restart-equivalent judgment state
+* deeper source pointers remain available
+* omitted history contains no unresolved rationale that can change the Protected Object, ownership, Gate, authority, or next action
+
+Do not use it when:
+
+* the current decision remains unresolved
+* the original rationale is not yet captured
+* ownership or authority is unclear
+* a high-impact unknown would be compressed away
+* the next action depends on detailed evidence missing from the compact surface
+* omission would upgrade uncertainty into permission
+
+### Required Operating State
+
+The compact surface must preserve:
+
+* current direction or goal
+* Protected Object when it differs from the surface task
+* current source of truth
+* latest accepted or pushed state
+* current Gate
+* active ownership
+* one Next Authorized Action
+* prohibited actions
+* unresolved branches that can still change the next action
+* exact restart point and required source pointers
+* recheck or reopening conditions
+* Completion Line
+* known mistaken-assumption pointer when relevant
+
+It must also state what was safely omitted or deprioritized, why that material is not required for the current restart, and when full history must be reopened.
+
+Use `UNKNOWN` when a required value cannot be established. A smaller output with missing decision-critical state is not a successful Compact Restart Surface.
+
+### Compact Restart Surface Output
+
+```text
+Compact Restart Surface:
+
+Current Direction:
+Protected Object:
+Current Source of Truth:
+Latest Accepted / Pushed State:
+
+Current Gate:
+Current Owner:
+Next Authorized Action:
+Not Authorized:
+
+Unresolved Branches That Can Change the Next Action:
+Required Source Pointers:
+Restart From:
+Reopen Full History If:
+
+Safely Omitted / Deprioritized:
+Completion Line:
+```
+
+### Compression Accounting — Conditional
+
+Include Compression Accounting only when measurement or required-item retention accounting is materially relevant. It is not a universal footer and is not required for ordinary handoffs.
+
+```text
+Compression Accounting:
+
+Source Surface:
+Restart-Item Register / Checklist Source:
+
+Full Character Count:
+Capsule Character Count:
+Character Reduction:
+
+Required Restart Items:
+Required Items Retained:
+
+Safely Omitted Material:
+Restart From:
+
+Evaluation Scope:
+Measurement Status: MEASURED / NOT MEASURED / UNKNOWN
+Claim Boundary:
+```
+
+Accounting rules:
+
+1. Never invent a reduction percentage.
+2. `NOT MEASURED` is a valid ordinary state.
+3. Use `MEASURED` only when both Full and Compact character counts were actually measured.
+4. Character reduction must not be renamed token reduction.
+5. Character reduction must not be presented as time saving or external performance equivalence without separate evidence.
+6. `Required Restart Items` must cite a register, checklist, schema, or declared source that fixes the denominator.
+7. Required-item retention must not be inferred from fluent similarity.
+8. A smaller capsule fails if any decision-critical required restart item is lost.
+9. `Safely Omitted Material` must state why the omitted material is unnecessary for the current restart.
+10. Reopen full history when the compact surface cannot establish direction, Protected Object, ownership, Gate, authority, binding rationale, or the next safe action.
+11. Compression success means less material with restart-equivalent operating state, not merely fewer characters.
+
+### Relationship to Existing V13 Surfaces
+
+* Context Compression decides whether to `KEEP / COMPRESS / HANDOFF`.
+* Compact Restart Surface is one output mode used after `COMPRESS` or `HANDOFF` is selected.
+* Handoff transfers ownership and next-loop authority.
+* Compact Restart Surface reduces the material that must be read for that transfer to remain valid.
+* 0.01 Update Check may record reduced restart burden as a future-loop improvement, but does not validate compression by itself.
+* V11 owns the underlying reconnectable-forgetting theory.
+* V12 owns restartable completion and handoff validity.
+* V13 owns activation timing, next-loop connection, Gate, owner, next action, and the decision to reopen full history.
+
+Omission does not itself prove restartability. The mode succeeds only when the compact surface preserves restart-equivalent operating state.
+
 ## Gate Meanings
 
 ### KEEP

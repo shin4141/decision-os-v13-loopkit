@@ -8,6 +8,38 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Compact Restart Surface Mode Integration - 2026-07-20
+
+Status:
+
+```text
+OSI return architecture: SELECTED
+Compact Restart Surface Mode: INTEGRATED INTO CONTEXT COMPRESSION / HANDOFF
+Compression Accounting: CONDITIONAL
+New Skill: none
+OSI / Pain / Entry Window Radar changed: no
+Runtime / API / automation / public expansion: unauthorized
+```
+
+Record:
+
+```text
+docs/context_compression.md — Compact Restart Surface Mode
+AGENTS.md — Context Compression Footer routing
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current Output Surface Integrity Case Study - 2026-07-14
 
 Status:

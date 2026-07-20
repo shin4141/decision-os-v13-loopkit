@@ -422,6 +422,10 @@ Rules:
 * Use `HANDOFF` when starting another major task without compressed anchors would create restart risk.
 * If this extension is triggered but compression is not yet needed, use `KEEP`.
 * If uncertain before a large task, prefer `COMPRESS` over silent continuation.
+* After `COMPRESS` or `HANDOFF` is selected, use [Compact Restart Surface Mode](docs/context_compression.md#compact-restart-surface-mode) when a long or high-context continuation should restart from decision-relevant state rather than full history.
+* Include Compression Accounting only when measurement or required-item retention accounting is materially relevant. No measurement is required for an ordinary handoff; `NOT MEASURED` is valid.
+* Omission does not itself prove restartability. Do not call the mode successful if direction, Protected Object, ownership, Gate, authority, source pointers, or the next safe action is missing.
+* This routing is conditional and adds no universal report block.
 
 ## Agent Rule
 
