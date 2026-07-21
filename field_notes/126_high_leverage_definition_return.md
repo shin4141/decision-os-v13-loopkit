@@ -357,3 +357,87 @@ Runtime / automation: BLOCK
 ```
 
 Case 001 propagated the Human Seat answer into four independent decision surfaces inside FN126: activation eligibility, the bounded-question contract, post-answer discovery ownership, and result/verification classification. Later evidence of reduced downstream ambiguity and total Human Carrier burden remains open.
+
+## Forward-Only Addendum — Human-Seat Distinguishability
+
+Date: 2026-07-21
+
+Source As-of: `af34776c51289da01299168d0b009f9bbaba8656`
+
+Source response:
+
+> 任せる。これはどれも俺には一緒で選べない。
+
+The original FN126 text and Case 001 addendum remain preserved at their own As-of. This addendum fixes the later distinction exposed when operationally different routes were not meaningfully different to the Decision Owner.
+
+### Human-Seat Distinguishability
+
+Operational difference is not automatically Human-Seat difference.
+
+A residual choice belongs to Human Seat only when the alternatives remain materially distinguishable in at least one dimension such as:
+
+- value direction;
+- risk tolerance;
+- Protected Object priority;
+- ownership or authority;
+- public exposure;
+- irreversible commitment;
+- a trade-off the Decision Owner can meaningfully rank.
+
+Differences limited to the following usually remain AI-owned when established context and current gates can rank them:
+
+- implementation sequence;
+- evidence order;
+- validation route;
+- file organization;
+- bounded reversible method;
+- which admissible proof is run first;
+- routine operational cleanup;
+- selection among routes equivalent under the Decision Owner's declared values and constraints.
+
+### Residual Human-Seat Test
+
+Before returning alternatives to the Decision Owner, apply:
+
+```text
+After applying established context, current gates, Roadmap Anchors, authority,
+risk, and Protected Object, does a human-distinguishable choice remain?
+```
+
+- `YES`: return one bounded Human Seat question.
+- `NO`: select the highest-EV bounded and reversible route without asking.
+- `UNKNOWN` with material consequence: `HOLD` and state the exact unresolved human distinction.
+- `UNKNOWN` without material consequence: choose the safest bounded option.
+
+### Delegation Interpretation
+
+When the Decision Owner states that alternatives are equivalent and delegates the choice:
+
+- treat the operational selection as AI-owned;
+- do not return the same menu again;
+- apply established context, current gates, and Roadmap Anchors;
+- state the selected route and reason;
+- preserve Human Seat for later value, risk, authority, public, or irreversible decisions.
+
+Delegation does not authorize unrelated expansion.
+
+### Menu Burden Rule
+
+Do not create a Decision Packet or option menu merely because several operationally valid routes exist.
+
+A menu is justified only when the Decision Owner can meaningfully distinguish the residual alternatives at the Human Seat level. Otherwise the menu transfers comparison and selection burden without adding decision value.
+
+### Case 002 Result
+
+Validation record: [FN126 Case 002 — Human-Seat Distinguishability](../validation/field_note_126_case_002_human_seat_distinguishability.md)
+
+```text
+Case classification: REALIZED HIGH-LEVERAGE RETURN — PARTIAL
+Selected route: B — Proof-to-Adoption Bridge
+Route state: PARKED / not active
+FN126 lifecycle: Prior adopted / verification pending
+Canon promotion: HOLD
+Runtime / automation: BLOCK
+```
+
+The Human Seat response propagated into five independent decision surfaces: Human Seat eligibility, option-menu permission, delegation interpretation, AI-owned route selection from established gates, and the condition under which a Decision Packet is unnecessary. Immediate comparison burden was reduced in this case; later avoidance of similar menus and long-term Human Carrier reduction remain unverified.
