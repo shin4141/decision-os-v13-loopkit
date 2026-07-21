@@ -17,15 +17,16 @@ A loop can be safe but still useless.
 
 A loop can be productive locally but irrelevant to the upper objective.
 
-A loop can generate activity without moving toward adoption, stars, revenue, or operationalization.
+A loop can generate activity without improving the system's operating condition or producing external evidence.
 
 Therefore, V13 must distinguish:
 
 - loops that protect the Carrier
 - loops that reduce friction
-- loops that move toward stars or adoption
+- loops that improve Human-Seat-preserving autonomous compounding
 - loops that observe real data
 - loops that convert observed gaps into 0.01 improvements
+- loops that produce external reuse, adoption, or sustainability evidence
 - loops that must stop until Carrier recovers
 
 ## Phase Model
@@ -50,12 +51,12 @@ Once defense is stable, move toward Aspire.
 
 Examples:
 
-- reduce first-use friction
-- make AGENTS.md copy-paste useful
-- make the README easier to understand
-- create a simple demo
-- clarify the first star-acquisition path
-- make the tool usable without requiring humans to manually write Loop Records
+- detect one exposed high-value gap
+- close AI-owned ambiguity from established context
+- return only an irreducible Human-Seat judgment
+- apply authorized Forward-only propagation
+- validate authority, As-of, Protected Object, and stopping conditions
+- reduce future correction, rereading, re-explanation, or supervision burden
 
 ### Phase 3: Observation
 
@@ -70,6 +71,11 @@ Examples:
 - issues
 - comments
 - external reuse
+- successful fresh re-entry
+- correction reduction
+- rereading reduction
+- re-explanation reduction
+- Human supervision burden
 - README confusion
 - user drop-off
 - repeated questions
@@ -88,6 +94,8 @@ A 0.01 loop should be created when a gap is exposed by:
 - public misunderstanding
 - insufficient conversion
 - missing decision surface
+- repeated correction or re-explanation
+- avoidable Human supervision burden
 - observed metric weakness
 
 Do not create speculative work only because something might be useful later.
@@ -115,20 +123,27 @@ It is a required condition for compounding.
 |---|---|---:|---|
 | Defense Loop | prevent damage and false completion | High | GO |
 | Proof Loop | create real-task evidence | High | GO / CAP |
+| Human-Seat-Preserving Compounding Proof | test one bounded detect-route-propagate-validate-stop loop | High | GO / CAP |
+| 0.01 Correction Loop | close one exposed gap that improves the next starting condition | High | GO / CAP |
 | Friction Reduction Loop | reduce first-use effort | High | GO / CAP |
-| Star Acquisition Loop | increase public adoption signal | High | CAP |
 | Observation Loop | collect evidence from real use | High | GO |
-| Conversion Loop | turn attention into adoption | Medium / High | CAP |
+| Star Acquisition / Public Adoption Loop | collect or pursue public validation without displacing proof | Medium / High | CAP / HOLD |
+| Conversion Loop | turn demonstrated value into adoption | Medium / High | CAP / HOLD |
+| External Posting Loop | create new public exposure | Conditional | CAP / HOLD |
 | Revenue Loop | move toward monetization | High | HOLD until evidence |
 | Carrier Recovery Loop | protect long-term continuation | High | GO when needed |
-| Feature Growth Loop | add capability | Conditional | HOLD unless exposed gap |
-| V1 Paper Loop | formalize theory | High later | HOLD until evidence |
+| Feature Growth Loop | add capability required by an exposed compounding gap | Conditional | HOLD unless required |
+| V1 Paper Loop | formalize theory after stronger operating evidence | High later | HOLD |
+| Broad Runtime Automation | automate execution across surfaces | Unsafe now | BLOCK |
+| Automatic Authority / Canon / Public Action | transfer or mutate protected authority automatically | Unsafe now | BLOCK |
 
 ## Current Aspire-Oriented Map
 
 Declared short-term Aspire:
 
-> Make V13 LoopKit understandable and useful enough that people can star, reuse, or recognize it as an AI-agent post-completion signal layer.
+> Make V13 capable of producing and validating bounded autonomous-compounding loops that preserve Human Seat and reduce future correction, rereading, re-explanation, and supervision burden.
+
+Adoption, reuse, stars, comments, forks, and external task evidence remain downstream validation. They are necessary checks against a closed self-confirming loop, but no longer define the primary operating direction by themselves.
 
 Current map:
 
@@ -136,13 +151,23 @@ Current map:
 |---|---:|---|
 | Defense Loop | GO | V12/V13/Loop Map/Decision Packet protections exist |
 | Proof Loop | GO / CAP | Continue only through concrete real-task proof |
-| Friction Reduction Loop | GO / CAP | V13 must become copy-paste usable like V12 |
-| Star Acquisition Loop | CAP | Needed for Aspire, but avoid reaction-chasing |
-| Observation Loop | GO | Watch stars, comments, reuse, confusion, and drop-off |
-| Revenue Loop | HOLD | Too early until adoption signal appears |
-| Feature Growth Loop | HOLD | Only allow features that reduce exposed friction |
-| V1 Paper Loop | HOLD | Wait for more operating-surface evidence |
+| Human-Seat-Preserving Compounding Proof | GO / CAP | Test one bounded manual detect-route-propagate-validate-stop loop |
+| 0.01 Correction Loop | GO / CAP | Close exposed gaps that improve the next loop's starting condition |
+| Observation Loop | GO | Observe internal burden change and external task/reuse/adoption signals |
+| Friction Reduction Loop | GO / CAP | Act only when actual use exposes friction |
 | Carrier Recovery Loop | GO when needed | Stop if overwork, overposting, or overbuilding appears |
+| Star Acquisition / Public Adoption | CAP / HOLD | Useful external validation; must not displace the primary proof direction |
+| Conversion Work | CAP / HOLD | Requires demonstrated value and a bounded route |
+| External Posting | CAP / HOLD | Separate public Gate; no momentum-based exposure |
+| Revenue Loop | HOLD | Wait for evidence supporting a bounded offer or paid operational value |
+| Feature Growth Loop | HOLD | Require an exposed autonomous-compounding gap |
+| V1 Paper Loop | HOLD | Wait for stronger evidence of the operating mechanism |
+| Broad Runtime Automation | BLOCK | No runtime architecture or implementation is authorized |
+| Automatic Canon Rewriting | BLOCK | Canon changes retain explicit authority and promotion gates |
+| Automatic Authority Transfer | BLOCK | Human Seat and ownership boundaries cannot transfer automatically |
+| Automatic Public Action | BLOCK | Public action remains explicitly gated |
+| Uncontrolled Dependency Propagation | BLOCK | Propagation remains authorized, bounded, and validated |
+| Self-Modification Without Rollback / Human Seat | BLOCK | Self-evolution claims require rollback and Human-Seat boundaries |
 
 ## Example: V13 Lite Footer
 
@@ -156,7 +181,7 @@ Exposed gap:
 
 Aspire contribution:
 
-> High. It reduces first-use friction and makes the tool easier to star, reuse, and understand.
+> High. It reduces manual reporting burden and improves the next governed loop's starting condition. Reuse, understanding, and stars remain possible downstream validation.
 
 Gate:
 
@@ -167,10 +192,11 @@ Gate:
 A 0.01 loop is valid when:
 
 1. The gap has been exposed by use, user reaction, real task, or observed data.
-2. The improvement moves toward declared Aspire.
-3. The change does not damage Carrier.
+2. The improvement strengthens Human-Seat-preserving autonomous compounding.
+3. The change does not damage Carrier or take the Human Seat.
 4. The change does not violate the current Loop Map.
 5. The change improves the next loop's starting condition.
+6. Its claimed value remains open to external evidence or falsification.
 
 One-line rule:
 

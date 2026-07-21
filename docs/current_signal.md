@@ -2,27 +2,21 @@
 
 ## Signal
 
-- 🟢 BLUE / CORE-RESTARTABLE
-- 🟢 BLUE / MANUAL-RECONNECTION-SURFACE
-- 🟡 YELLOW / FEATURE-GROWTH-HOLD
+- 🟢 BLUE / ROADMAP-REBASELINED
+- 🟢 BLUE / HUMAN-SEAT-PRESERVING-COMPOUNDING-DIRECTION
+- 🟢 BLUE / MANUAL-COMPOUNDING-CASES-RECORDED
+- 🟡 YELLOW / MINIMUM-AUTONOMOUS-LOOP-DESIGN-NOT-ACTIVE
+- 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
-- 🔴 RED / RUNTIME-AUTOMATION-BLOCK
+- 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
 ## Meaning
 
-V13 has moved from isolated field notes into reusable manual reconnection surfaces.
+V13 remains in a manual governed-loop phase. Its primary direction is now Human-Seat-Preserving Autonomous Compounding rather than direct star acquisition.
 
-The strongest current artifact is:
+FN126 Cases 001–003 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, and adaptive question depth can be executed manually under bounded authority.
 
-```text
-templates/v13_reconnection_packet_template.md
-```
-
-This is still a manual governance and restartability phase.
-
-This does not mean runtime automation is approved.
-
-This does not mean README/product redesign is active.
+This does not mean autonomous learning, runtime implementation, automatic propagation, or self-evolution already exists.
 
 ## Current V12 State
 
@@ -32,11 +26,11 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-CAP for bounded surface reconciliation and manual governance use.
+GO / CAP for research and bounded manual proof toward Human-Seat-preserving autonomous compounding.
 
-The repo can continue through concrete restartability, handoff, and signal-surface repairs.
+A minimum autonomous-loop specification is a future candidate. It is `PARKED / not active` and requires separate activation.
 
-It should not expand into runtime, automation, hooks, MCP, pluginization, execution engine work, or external posting.
+The repo must not expand from this signal into runtime implementation, broad automation, automatic learning from user behavior, automatic Canon modification, automatic authority transfer, or automatic public action.
 
 ## Current Artifacts
 
@@ -48,31 +42,37 @@ The current prototype includes:
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
 - `templates/v13_reconnection_packet_template.md`
-- `field_notes/` through Field Note 123
+- `field_notes/` through Field Note 126
+- `validation/field_note_126_case_001_latent_propagation.md`
+- `validation/field_note_126_case_002_human_seat_distinguishability.md`
+- `validation/field_note_126_case_003_adaptive_human_seat_question_depth.md`
 - launch capsules and acceptance audit records
 - exposure and current-signal docs
 
 ## Recent Pattern
 
-Recent field notes show:
+Current manual cases show:
 
-- handoff responsibility transfer
-- session size as Context Risk
-- child repo governance signal surface
-- Quest Snapshot as reconnection surface
-- runtime/reset is not progress; residue is progress
+- latent propagation may be discovered after an irreducible Human-Seat answer;
+- operationally different routes do not automatically create a Human-Seat choice;
+- question depth can rise or fall by person × domain × state × consequence;
+- propagation and validation remain AI-owned within authorized scope;
+- challenge visibility, historical As-of, Protected Object, and stop authority must remain intact.
 
 ## Current Gate Split
 
 | Object | Gate | Meaning |
 |---|---:|---|
-| V13 core repo | PASS / maintained | Current surfaces are usable when bounded |
-| Manual reconnection packet | PASS | Use for restartable transfer of V13 work |
-| README major redesign | HOLD | Do not rewrite entry surface from momentum |
-| Feature growth | HOLD | Do not add new product surface without evidence |
-| Runtime automation / hooks / MCP / pluginization / execution engine | BLOCK | Not approved by current signal |
-| External posting | HOLD | No new outreach or public push from this signal |
-| Derived repo work | Separate gate | Govern through its own launch capsule / status |
+| Roadmap rebaseline | PASS | Current primary direction is fixed |
+| Bounded manual compounding proof | GO / CAP | Continue only through one authorized evidence-bearing loop |
+| External validation observation | GO | Observe reuse, task evidence, stars, comments, corrections, and re-explanation |
+| Minimum autonomous-loop specification | PARKED | Requires separate activation before design |
+| Feature growth | HOLD | Allow only when required by an exposed compounding gap |
+| README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
+| Revenue / paid operational value | HOLD | Require sufficient evidence and a bounded offer decision |
+| Runtime implementation | HOLD / BLOCK | No implementation authority follows from this rebaseline |
+| Broad automation / automatic learning | BLOCK | No automatic behavior inference or propagation |
+| Automatic Canon / authority / public action | BLOCK | Human Seat and explicit authority remain required |
 
 ## Allowed Next Actions
 
@@ -80,9 +80,10 @@ Allowed:
 
 - use `templates/v13_reconnection_packet_template.md` to close or transfer handoff-sensitive V13 work
 - refresh stale current surfaces when they would mislead a future AI
-- run one bounded concrete proof or audit
+- run one separately authorized bounded manual proof or audit
 - record new field notes only when a new observed result appears
-- keep human Seat, Gate, Completion Line, and blocked scope visible
+- observe stars, adoption, reuse, comments, task evidence, correction, rereading, re-explanation, and Human supervision burden
+- keep Human Seat, Protected Object, historical As-of, Gate, Completion Line, challenge visibility, and blocked scope visible
 
 ## Not Allowed
 
@@ -93,16 +94,19 @@ Not allowed from this signal:
 - add MCP
 - add pluginization
 - add an execution engine
+- design or activate the minimum autonomous loop without separate authority
+- add automatic learning from user behavior
+- modify Canon or transfer authority automatically
 - start external posting
 - treat README redesign as active
 - turn launch capsules into implementation approval
 
 ## Current Lesson
 
-V13 is not just a prompt collection.
+V13's primary direction is to improve the operating condition of later loops while preserving Human Seat, Carrier, historical As-of, rollback, and challenge visibility.
 
-It is a manual governance layer for keeping AI-agent work restartable, bounded, and transferable.
+Stars and adoption remain important external signals. They are neither removed nor sufficient by themselves. Internal coherence is also insufficient without external evidence.
 
 In one line:
 
-> Continue manual reconnection proof, keep runtime automation blocked, and use the reconnection packet when future AI restartability matters.
+> Continue bounded manual evidence toward Human-Seat-Preserving Autonomous Compounding, keep the minimum autonomous-loop design parked, and keep broad runtime automation blocked.

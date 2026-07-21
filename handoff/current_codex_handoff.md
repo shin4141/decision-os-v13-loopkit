@@ -8,6 +8,46 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Autonomous Compounding Roadmap Rebaseline - 2026-07-22
+
+Status:
+
+```text
+Roadmap rebaseline: COMPLETE
+Prior star-first line: preserved as historical As-of
+Primary direction: Human-Seat-Preserving Autonomous Compounding
+External outcomes: reuse / adoption / stars / comments / task evidence
+Sustainability: revenue after sufficient evidence
+Higher Aspire: self-improving Decision-OS approaching bounded self-evolution evaluation
+FN126 Cases 001–003: verification-pending evidence
+Minimum autonomous-loop design: PARKED / not active
+```
+
+Authority boundary:
+
+```text
+Research and bounded manual proof: GO / CAP
+Runtime implementation: HOLD / BLOCK
+Broad automation: BLOCK
+Automatic learning / Canon modification / authority transfer: BLOCK
+Automatic public action: BLOCK
+README expansion / external posting: separate Gate
+Stars / adoption observation: GO
+Star-chasing as primary branch: HOLD
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current FN126 Case 003 - 2026-07-21
 
 Record:

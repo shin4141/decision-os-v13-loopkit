@@ -64,9 +64,9 @@ Anchor 3:
 Life / Aspire target
 ```
 
-## Example Anchor Line
+## Prior As-of Roadmap
 
-For this project, the current user-defined line is:
+The previous user-defined line was:
 
 ```text
 Stars / adoption
@@ -76,6 +76,8 @@ Revenue
 Enjoy life
 ```
 
+This roadmap was valid while V13's immediate problem was public understanding, first-use friction, and recognition. It remains preserved as historical As-of rather than being characterized as a mistake.
+
 Meaning:
 
 * stars are not the final goal
@@ -83,17 +85,88 @@ Meaning:
 * revenue is the sustainability layer
 * enjoying life is the higher Aspire
 
-Therefore, a 0.01 repair should be judged by whether it helps move along this line without damaging Carrier.
+## Current Roadmap — Forward-Only Rebaseline 2026-07-22
+
+```text
+Primary Direction:
+Human-Seat-Preserving Autonomous Compounding
+
+Near-Term Operating Objective:
+One bounded loop in which AI:
+1. detects an exposed high-value gap;
+2. closes AI-owned ambiguity from established context;
+3. returns only an irreducible Human-Seat judgment;
+4. calibrates question depth to person × domain × state × consequence;
+5. maps dependencies after the answer;
+6. applies only authorized Forward-only propagation;
+7. validates authority, historical As-of, and Protected Object;
+8. records whether correction, rereading, re-explanation, or Carrier burden
+   decreased;
+9. stops at the current Gate.
+
+External Validation:
+real reuse / successful fresh re-entry / reduced rereading / reduced
+re-explanation / reduced correction / reduced Human supervision burden / stars /
+comments / forks / adoption / external task evidence
+
+Sustainability:
+Revenue or paid operational value after sufficient evidence.
+
+Higher Aspire:
+A Decision-OS that can improve its own operating conditions while preserving
+Human Seat, historical As-of, rollback, and challenge visibility, and that may
+later support bounded self-evolution evaluation.
+```
+
+The causal order is now:
+
+```text
+stronger internal compounding
+→ real operational value and evidence
+→ reuse / adoption / stars
+→ sustainability / revenue
+→ higher Aspire
+```
+
+This does not remove stars or adoption. It moves them from the primary operating direction to external validation and downstream outcome. Internal coherence alone is also insufficient; external evidence remains necessary to prevent a closed self-confirming loop.
+
+Current distinction:
+
+```text
+Primary internal direction:
+Human-Seat-Preserving Autonomous Compounding
+
+External falsification / validation:
+reuse, task evidence, adoption, stars, comments, correction reduction,
+re-explanation reduction
+
+Downstream sustainability:
+revenue
+
+Higher Aspire:
+self-improvement that may approach bounded self-evolution evaluation without
+losing Human Seat
+```
 
 ## How Codex Should Use Anchors
 
 Before selecting a 0.01 repair, Codex should ask:
 
-1. Which roadmap anchor does this repair support?
-2. Does it move toward the next anchor or only improve local polish?
-3. Does it preserve Carrier?
-4. Does it violate any current CAP / HOLD / BLOCK?
-5. Is this the highest-EV exposed gap relative to the anchor line?
+1. Does this repair improve the system's ability to detect, route, propagate, validate, and retain a beneficial `1.01` delta?
+2. Does it keep routine work AI-owned without taking the Human Seat?
+3. Does it move toward the next anchor or only improve local polish?
+4. Does it preserve Carrier, historical As-of, rollback, challenge visibility, and Re-entry?
+5. Does it violate any current `CAP / HOLD / BLOCK`?
+6. Is this the highest-EV exposed gap relative to the current line?
+7. Does the resulting improvement produce or strengthen external evidence, reuse, adoption, or sustainability?
+
+Current operational questions:
+
+> Does this loop improve the system's ability to detect, route, propagate, validate, and retain a beneficial 1.01 delta without returning routine burden or taking the Human Seat?
+
+Then:
+
+> Does the resulting improvement produce or strengthen external evidence, reuse, adoption, or sustainability?
 
 ## If Anchors Are Missing
 
@@ -149,9 +222,11 @@ Without anchors, external discovery increases options but not direction.
 With anchors, external discovery can be filtered:
 
 ```text
-Does this external opportunity help stars/adoption?
-Does it help revenue?
-Does it preserve the higher Aspire?
+Does this external signal test a claimed compounding improvement?
+Does it show reuse, reduced correction, reduced re-explanation, or task value?
+Does it strengthen adoption or stars without becoming star-chasing?
+Does it create a credible path toward sustainability or revenue?
+Does it preserve Human Seat and the higher Aspire?
 Does it create Carrier load?
 ```
 
