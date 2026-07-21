@@ -8,6 +8,37 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current High-Leverage Definition Return Candidate - 2026-07-21
+
+Field Note:
+
+```text
+field_notes/126_high_leverage_definition_return.md
+```
+
+Status:
+
+```text
+Independent Candidate: REGISTERED
+Lifecycle: Prior adopted / verification pending
+Current Gate: HOLD — verification pending
+Canon / AGENTS.md promotion: HOLD
+Runtime / automated detection / automatic propagation: BLOCK
+Public claim / model comparison: HOLD
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current Compact Restart Surface Mode Integration - 2026-07-20
 
 Status:
