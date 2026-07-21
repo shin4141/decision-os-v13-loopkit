@@ -8,6 +8,42 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current FN126 Case 003 - 2026-07-21
+
+Record:
+
+```text
+Case path: validation/field_note_126_case_003_adaptive_human_seat_question_depth.md
+Case classification: REALIZED HIGH-LEVERAGE RETURN — PARTIAL
+Adaptive Human-Seat Question Depth: ADOPTED AS FORWARD-ONLY FN126 ADDENDUM
+Calibration object: person × domain × state × consequence
+Fixed user classification: prohibited
+CHALLENGE REQUIRED: independent of question depth
+FN126 lifecycle: Prior adopted / verification pending
+```
+
+Authority boundary:
+
+```text
+Canon / AGENTS.md promotion: HOLD
+Runtime / automated adaptation / profiling: BLOCK
+Public claim / publication: HOLD
+B fresh-receiver proof: PARKED / not active
+Adjacent experiment: not activated
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
 ## Current FN126 Case 002 - 2026-07-21
 
 Record:

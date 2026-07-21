@@ -441,3 +441,187 @@ Runtime / automation: BLOCK
 ```
 
 The Human Seat response propagated into five independent decision surfaces: Human Seat eligibility, option-menu permission, delegation interpretation, AI-owned route selection from established gates, and the condition under which a Decision Packet is unnecessary. Immediate comparison burden was reduced in this case; later avoidance of similar menus and long-term Human Carrier reduction remain unverified.
+
+## Forward-Only Addendum: Adaptive Human-Seat Question Depth
+
+Date: 2026-07-21
+
+Source As-of: `1b07d73b6c8061250ff6bba6ba50324c7f881c9c`
+
+Human Seat decision: `ADOPT ADAPTIVE HUMAN-SEAT QUESTION DEPTH`
+
+The original FN126 text and Case 001 / Case 002 addenda remain preserved at their own As-of. This addendum changes how an already-justified Human Seat question is presented; it does not make asking mandatory or create a permanent user category.
+
+### Core Rule
+
+Human-Seat question depth is not fixed by a permanent user label. It is calibrated for the current combination of:
+
+```text
+person × domain × current state × decision consequence
+```
+
+Begin from the minimum sufficient depth. Increase depth only after evidence that prior questions produced useful definitions, improved future starting conditions, and did not impose disproportionate Human Carrier cost.
+
+Reduce depth, narrow scope, or change question form when the question creates confusion, passive agreement, repeated equivalent-choice responses, reconstruction burden, fatigue, or low propagation value.
+
+Expected propagation value informs the calibration, but does not convert speculative value into evidence.
+
+### No Fixed Person Classification
+
+Do not classify a person as:
+
+- advanced or weak;
+- a `1.01 person` or `0.99 person`;
+- capable or incapable of difficult questions.
+
+The same person may need different depth across familiar and unfamiliar domains, healthy and fatigued states, reversible and irreversible choices, local and system-wide decisions, and low and high reconstruction burdens.
+
+### Human-Seat Question Ladder
+
+#### Level 1 — Recognition
+
+Use a concrete example and ask which outcome feels wrong or preferable.
+
+Example:
+
+> Which result would bother you more?
+
+Use when the domain is unfamiliar, no stable preference has been expressed, or abstraction would create unnecessary burden.
+
+#### Level 2 — Correction
+
+Propose a provisional interpretation and ask the human to correct only the wrong part.
+
+Example:
+
+> I understand your preference as X. What part is wrong?
+
+Use when established context exists and the AI can reduce reconstruction burden.
+
+#### Level 3 — Trade-off
+
+Ask which value becomes the floor when two values cannot both be maximized.
+
+Example:
+
+> If both cannot be maximized, which one must not be lost?
+
+Use only when a genuine Human Seat conflict remains after applying established context and gates.
+
+#### Level 4 — Definition
+
+Allow the Decision Owner to reject the AI's framing and create a third principle.
+
+Example:
+
+> A/B are provisional. If the framing itself is wrong, redefine the split.
+
+Use when prior answers show independent judgment, the original menu may constrain the real answer, and a new definition has high propagation value.
+
+#### Level 5 — Propagation Boundary
+
+Ask how broadly an already-understood principle should apply.
+
+Example:
+
+> Does this apply only to this repo, to all handoffs, or only under named conditions?
+
+Use only when propagation scope materially changes authority, risk, Protected Object, or long-term operation and cannot be safely inferred.
+
+### Depth-Increase Conditions
+
+A deeper question is permitted when prior evidence shows one or more of:
+
+- the user generated a definition outside the AI's menu;
+- the answer improved multiple independent decision surfaces;
+- later correction or re-explanation decreased;
+- the user explicitly found the question valuable;
+- the answer clarified Aspire or value direction;
+- the user retained Seat rather than passively adopting the AI recommendation;
+- Human Carrier cost remained proportionate to propagation value.
+
+Where practical, increase only one material axis at a time:
+
+- abstraction;
+- impact range;
+- irreversibility;
+- value conflict;
+- required reconstruction.
+
+A successful prior question does not justify raising every axis at once.
+
+### Depth-Reduction and Reformulation Conditions
+
+Reduce depth, narrow scope, or change form when:
+
+- equivalent-choice or “any option is fine” responses recur;
+- alternatives are operationally different but Human-Seat equivalent;
+- delegation signals that the distinction has no value to the user;
+- the question requires unnecessary system reconstruction;
+- the answer merely mirrors the AI recommendation;
+- fatigue, impatience, confusion, or disengagement appears;
+- the task is blocked without corresponding propagation value;
+- the human must compare files, rules, or technical evidence the AI could compress first;
+- the same question must be repeatedly explained.
+
+Available adjustments include:
+
+- move from abstraction to a concrete example;
+- ask one dimension only;
+- offer a provisional interpretation for correction;
+- reduce propagation scope;
+- separate the current decision from future generalization;
+- preserve `UNKNOWN`;
+- stop asking and choose the bounded reversible route when Human Seat is not required.
+
+### Selective Human Auditability and CHALLENGE REQUIRED
+
+Question simplification must not hide material risk or remove Human Seat.
+
+```text
+MUST READ
+Human decisions, authority changes, Protected Object choices, public or
+irreversible commitments, and other material judgments the Decision Owner must
+personally understand.
+
+CHALLENGE REQUIRED
+Material contradictions, irreversible risks, authority conflicts, Protected
+Object damage, or evidence that could change the Decision Owner's judgment.
+
+AI-OWNED
+Low-decision-value technical detail, routine comparison, propagation,
+validation, cleanup, and other authorized operational work.
+
+REOPEN IF
+Named evidence, contradiction, consequence, or scope change makes an AI-owned
+detail material to Human Seat.
+```
+
+At lower question depth, reduce explanation burden without reducing importance. State the consequence plainly and identify the decision required. `CHALLENGE REQUIRED` remains independent of question depth.
+
+### Relationship to FN120 and FN126
+
+```text
+FN120:
+Should the AI ask?
+
+FN126:
+Which high-leverage upstream judgment belongs to Human Seat?
+
+Adaptive Human-Seat Question Depth:
+At what depth and in what form should the justified question be asked now?
+```
+
+### Case 003 Result
+
+Validation record: [FN126 Case 003 — Adaptive Human-Seat Question Depth](../validation/field_note_126_case_003_adaptive_human_seat_question_depth.md)
+
+```text
+Case classification: REALIZED HIGH-LEVERAGE RETURN — PARTIAL
+FN126 lifecycle: Prior adopted / verification pending
+Fixed user profiling: prohibited
+Canon promotion: HOLD
+Runtime / automation: BLOCK
+```
+
+Case 003 records a movement from an abstract trade-off through concrete reformulation to a third definition and a propagation-boundary insight. Future calibration accuracy, proactive downshifting, Human Carrier reduction, challenge preservation, and generalization remain unverified.
