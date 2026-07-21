@@ -250,3 +250,110 @@ A bounded real case satisfying all eight verification criteria. Until then, this
 ## Completion Line
 
 High-Leverage Definition Return is preserved as a verification-pending V13 mechanism for returning only high-propagation-value upstream definition gaps to the Human Seat and converting one bounded answer into AI-owned Forward-only improvements across future loops.
+
+## Forward-Only Addendum — Latent Propagation Activation and Post-Answer Discovery
+
+Date: 2026-07-21
+
+Source As-of: `f36b4bad718a5d058f3354df6a65e7c62095dc6d`
+
+Human Seat decision: `YES`
+
+The original Candidate wording above remains preserved at its own As-of. This addendum fixes the later Decision Owner judgment without retroactively claiming that latent dependencies were already known or realized.
+
+### Pre-Answer Activation Basis
+
+FN126 may activate from either:
+
+```text
+KNOWN PROPAGATION VALUE
+```
+
+or:
+
+```text
+REASONABLE LATENT PROPAGATION POTENTIAL
+```
+
+`KNOWN PROPAGATION VALUE` means that two or more concrete dependent judgments or surfaces are already known before asking.
+
+`REASONABLE LATENT PROPAGATION POTENTIAL` may apply when only one concrete effect is visible before asking, but all of the following hold:
+
+- the ambiguity sits in an upstream definition, authority joint, Protected Object, ownership rule, Completion Line, or another governing concept;
+- at least one real dependent judgment is visible;
+- a plausible dependency path exists;
+- the Human Seat question is irreducible;
+- unseen future dependencies are not claimed as proven.
+
+A definition sounding important is not sufficient evidence of latent propagation potential.
+
+### Bounded-Question Delta
+
+When activation relies on latent potential, the bounded question must distinguish:
+
+- impact already known before the answer;
+- propagation that is only plausible before the answer;
+- the post-answer discovery the AI will own.
+
+The `Downstream impact` field must not present latent possibilities as realized dependencies. The `After answer` field must include bounded Propagation Discovery in addition to authorized wording, validation, and handoff work.
+
+### Post-Answer Propagation Discovery
+
+After the Human Seat answers, the AI must:
+
+1. fix the bounded meaning inside the authorized scope;
+2. inspect actual dependency paths;
+3. identify independently affected judgments;
+4. distinguish discovered dependencies from speculative possibilities;
+5. apply only authorized Forward-only propagation;
+6. list unauthorized dependencies without editing them;
+7. validate that unrelated authority and historical As-of remain unchanged;
+8. update restart and handoff state.
+
+The Decision Owner must not be asked to search for dependent files, compare surfaces, or perform propagation.
+
+### Result Classifications
+
+```text
+LOCAL DEFINITION RETURN
+```
+
+The answer resolves a valid upstream or important local ambiguity, but post-answer discovery finds only one independently affected decision surface. This is useful but does not verify the FN126 Compound Loop claim.
+
+```text
+LATENT PROPAGATION CANDIDATE
+```
+
+Post-answer discovery identifies additional plausible or real dependencies, but propagation is not yet authorized, completed, or validated. Preserve exact re-entry conditions and keep verification on `HOLD`.
+
+```text
+REALIZED HIGH-LEVERAGE RETURN
+```
+
+The answer is propagated to at least two independently affected decision surfaces, unrelated authority and historical As-of are preserved, and the propagation is validated. This may become an FN126 verification candidate, but full verification still requires later evidence of reduced ambiguity, correction, re-explanation, or Human Carrier burden.
+
+### Verification Boundary Clarification
+
+The original eight verification criteria remain unchanged.
+
+- Multiple dependent surfaces need not be visible before asking.
+- Realized propagation is evaluated after the answer.
+- File count is not the metric.
+- Two judgments inside one file count only when they are genuinely independent decision surfaces.
+- Repeated wording locations expressing one identical judgment count as one.
+- Speculative future branches do not count.
+- Human burden reduction must be observed, not assumed.
+
+### Case 001 Result
+
+Validation record: [FN126 Case 001 — Latent Propagation](../validation/field_note_126_case_001_latent_propagation.md)
+
+```text
+Case status: FIRST BOUNDED REAL CASE — PARTIAL
+Propagation classification: REALIZED HIGH-LEVERAGE RETURN
+FN126 lifecycle: Prior adopted / verification pending
+Canon promotion: HOLD
+Runtime / automation: BLOCK
+```
+
+Case 001 propagated the Human Seat answer into four independent decision surfaces inside FN126: activation eligibility, the bounded-question contract, post-answer discovery ownership, and result/verification classification. Later evidence of reduced downstream ambiguity and total Human Carrier burden remains open.
