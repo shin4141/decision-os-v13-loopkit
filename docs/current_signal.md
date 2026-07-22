@@ -7,7 +7,8 @@
 - 🟢 BLUE / MANUAL-COMPOUNDING-CASES-RECORDED
 - 🟢 BLUE / ASPIRE-ANCHORED-INDEPENDENT-EVOLUTION-EVALUATION-FIXED
 - 🟡 YELLOW / FN126-CASE-004-VERIFICATION-PENDING
-- 🟡 YELLOW / MINIMUM-AUTONOMOUS-LOOP-DESIGN-NOT-ACTIVE
+- 🟢 BLUE / MINIMUM-AUTONOMOUS-LOOP-V0.1-SPECIFICATION-COMPLETE
+- 🟡 YELLOW / FRESH-ISOLATED-VALIDATION-NOT-ACTIVE
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
@@ -19,6 +20,12 @@ V13 remains in a manual governed-loop phase. Its primary direction is now Human-
 FN126 Cases 001–004 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, adaptive question depth, and Aspire-anchored independent evolution evaluation can be executed manually under bounded authority.
 
 Case 004 fixes the invariant function for later self-evolution evaluation. A claimed self-update must expand reachable paths toward the Decision Owner's Aspire and remain independently comparable, falsifiable, rejectable, and reconnectable rather than validating itself only through its own new criteria.
+
+Minimum Autonomous Loop v0.1 is now a complete specification for the Read-Only Gap Routing Loop. Runtime implementation has not started. Fresh isolated validation has not started and remains `PARKED / not active`. Specification completion is not proof of automated operation.
+
+Historical As-of:
+
+> Before commit `b01edd8c80e5b8a63406ceaf84f03e9344289ed7`, minimum autonomous-loop design was `PARKED / not active`.
 
 This does not mean autonomous learning, runtime implementation, automatic propagation, or self-evolution already exists.
 
@@ -32,9 +39,9 @@ The repository is restartable from the public GitHub state and current local han
 
 GO / CAP for research and bounded manual proof toward Human-Seat-preserving autonomous compounding.
 
-A minimum autonomous-loop specification is a future candidate. It is `PARKED / not active` and requires separate activation.
+Minimum Autonomous Loop v0.1 specification is complete. Fresh isolated validation remains `PARKED / not active`, and runtime implementation remains `BLOCK`.
 
-The repo must not expand from this signal into runtime implementation, broad automation, automatic learning from user behavior, automatic Canon modification, automatic authority transfer, or automatic public action.
+The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
 
 ## Current Artifacts
 
@@ -45,6 +52,7 @@ The current prototype includes:
 - `AGENTS.md` / `CLAUDE.md` instruction surfaces
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
+- `docs/minimum_autonomous_loop_v0_1.md`
 - `templates/v13_reconnection_packet_template.md`
 - `field_notes/` through Field Note 126
 - `validation/field_note_126_case_001_latent_propagation.md`
@@ -74,11 +82,12 @@ Current manual cases show:
 | Evolution evaluation invariant | HOLD | Definition fixed; operational verification pending for Aspire-directed reachability plus independent comparison, falsification, refusal, and reconnection |
 | Bounded manual compounding proof | GO / CAP | Continue only through one authorized evidence-bearing loop |
 | External validation observation | GO | Observe reuse, task evidence, stars, comments, corrections, and re-explanation |
-| Minimum autonomous-loop specification | PARKED | Requires separate activation before design |
+| Minimum Autonomous Loop v0.1 specification | PASS | Read-Only Gap Routing specification complete |
+| Fresh isolated validation | PARKED | Requires separate explicit activation |
+| Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
 | README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
 | Revenue / paid operational value | HOLD | Require sufficient evidence and a bounded offer decision |
-| Runtime implementation | HOLD / BLOCK | No implementation authority follows from this rebaseline |
 | Broad automation / automatic learning | BLOCK | No automatic behavior inference or propagation |
 | Automatic Canon / authority / public action | BLOCK | Human Seat and explicit authority remain required |
 | V7 modification / self-evolution implementation | PARKED / BLOCK | Case 004 supplies an evaluation input only; it does not authorize theory or runtime changes |
@@ -103,7 +112,7 @@ Not allowed from this signal:
 - add MCP
 - add pluginization
 - add an execution engine
-- design or activate the minimum autonomous loop without separate authority
+- run fresh isolated validation or implement the minimum autonomous loop without separate authority
 - add automatic learning from user behavior
 - modify Canon or transfer authority automatically
 - start external posting
@@ -118,4 +127,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Continue bounded manual evidence toward Human-Seat-Preserving Autonomous Compounding, keep the minimum autonomous-loop design parked, and keep broad runtime automation blocked.
+> Continue bounded manual evidence toward Human-Seat-Preserving Autonomous Compounding, preserve the completed Minimum Autonomous Loop v0.1 specification, keep fresh validation parked, and keep runtime automation blocked.
