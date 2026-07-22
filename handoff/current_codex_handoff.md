@@ -50,6 +50,27 @@ Next authorized action:
 none
 ```
 
+## Current MAL v0.1 Validation Run 001 Packet Freeze — 2026-07-22
+
+Receipt:
+
+```text
+MAL v0.1 Validation Run 001 packet: FROZEN
+Evaluation As-of: b01edd8c80e5b8a63406ceaf84f03e9344289ed7
+Evaluator packet: validation/minimum_autonomous_loop_v0_1_run_001_packet.md
+Preregistration: validation/minimum_autonomous_loop_v0_1_run_001_preregistration.md
+Packet SHA-256: 51267b817bcf7f2c56927cef508d84f198a6957af775880f2e2c8ad16f647f8c
+Preregistration SHA-256: d81e2b2019244b4b02f77aae486d8782ca149162a1fbf4ca0558afcfe8c063bf
+Evaluator: NOT STARTED
+Fresh receiver chat: NOT CREATED
+Scoring: NOT STARTED
+Runtime / implementation: BLOCK
+Active Branch: none
+Next Authorized Action: none
+```
+
+The blind evaluator packet and separate scoring authority are frozen before receiver creation. Evaluator execution, scoring, runtime, implementation, and adjacent branches remain inactive.
+
 ## Current Cross-Surface Signal Reconciliation — 2026-07-22
 
 Receipt:
