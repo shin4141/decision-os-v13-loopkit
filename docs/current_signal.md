@@ -8,7 +8,9 @@
 - 🟢 BLUE / ASPIRE-ANCHORED-INDEPENDENT-EVOLUTION-EVALUATION-FIXED
 - 🟡 YELLOW / FN126-CASE-004-VERIFICATION-PENDING
 - 🟢 BLUE / MINIMUM-AUTONOMOUS-LOOP-V0.1-SPECIFICATION-COMPLETE
-- 🟡 YELLOW / FRESH-ISOLATED-VALIDATION-NOT-ACTIVE
+- 🟢 BLUE / MAL-V0.1-RUN-001-PASS
+- 🟡 YELLOW / MAL-V0.1-GENERALIZATION-NOT-ESTABLISHED
+- 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
@@ -21,13 +23,13 @@ FN126 Cases 001–004 provide verification-pending evidence that exposed-gap det
 
 Case 004 fixes the invariant function for later self-evolution evaluation. A claimed self-update must expand reachable paths toward the Decision Owner's Aspire and remain independently comparable, falsifiable, rejectable, and reconnectable rather than validating itself only through its own new criteria.
 
-Minimum Autonomous Loop v0.1 is now a complete specification for the Read-Only Gap Routing Loop. Runtime implementation has not started. Fresh isolated validation has not started and remains `PARKED / not active`. Specification completion is not proof of automated operation.
+Minimum Autonomous Loop v0.1 is a complete specification for the Read-Only Gap Routing Loop. One frozen fresh isolated run passed for the Cross-Surface Minimum-Loop Status Drift case. It supports routing and stop reproducibility for that case only. No second run is active, and runtime implementation remains unauthorized.
 
 Historical As-of:
 
 > Before commit `b01edd8c80e5b8a63406ceaf84f03e9344289ed7`, minimum autonomous-loop design was `PARKED / not active`.
 
-This does not mean autonomous learning, runtime implementation, automatic propagation, or self-evolution already exists.
+Run 001 does not establish broad question accuracy, generalization, autonomous learning, runtime reliability, automatic propagation, Human Carrier burden reduction, or self-evolution.
 
 ## Current V12 State
 
@@ -37,9 +39,9 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-GO / CAP for research and bounded manual proof toward Human-Seat-preserving autonomous compounding.
+HOLD after the bounded Run 001 scoring and closure.
 
-Minimum Autonomous Loop v0.1 specification is complete. Fresh isolated validation remains `PARKED / not active`, and runtime implementation remains `BLOCK`.
+Minimum Autonomous Loop v0.1 specification is complete and its first frozen fresh isolated validation case passed. Generalization is `NOT ESTABLISHED`; no second run or runtime branch is active, and runtime implementation remains `BLOCK`.
 
 The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
 
@@ -83,7 +85,9 @@ Current manual cases show:
 | Bounded manual compounding proof | GO / CAP | Continue only through one authorized evidence-bearing loop |
 | External validation observation | GO | Observe reuse, task evidence, stars, comments, corrections, and re-explanation |
 | Minimum Autonomous Loop v0.1 specification | PASS | Read-Only Gap Routing specification complete |
-| Fresh isolated validation | PARKED | Requires separate explicit activation |
+| MAL v0.1 Validation Run 001 | PASS | Fresh isolated routing and stop reproduction for the cross-surface status-drift case only |
+| MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
+| Second validation run | HOLD | Not active; requires separate explicit authorization |
 | Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
 | README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
@@ -127,4 +131,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Continue bounded manual evidence toward Human-Seat-Preserving Autonomous Compounding, preserve the completed Minimum Autonomous Loop v0.1 specification, keep fresh validation parked, and keep runtime automation blocked.
+> Preserve the completed specification and Run 001 PASS as bounded evidence for one case; generalization is not established, no second run is active, and runtime automation remains blocked.
