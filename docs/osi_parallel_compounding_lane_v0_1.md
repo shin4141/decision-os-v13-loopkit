@@ -3,21 +3,28 @@
 ## Current Status
 
 ```text
-OSI Parallel Compounding Lane v0.1: AVAILABLE / OPTIONAL EVIDENCE INPUT
+V13: PARENT GOVERNANCE LAYER
+OSI: V13 CHILD / ACTIVE OPERATING SURFACE
 OSI pilot owner: GPT chat 12-33
 OSI public repository: shin4141/output-surface-integrity
 V13 receiver: Codex 13-9
 OSI event received: no
-V13 waiting for OSI: no
-Authority to accept one qualifying event: preserved
+OSI local authority: preserved within delegated operational scope
+OSI evidence return: AVAILABLE / OPTIONAL ONE-EVENT INTAKE
+V13 waiting exclusively for OSI: no
+V13 parent authority: Aspire direction, Loop Gate, cross-child evaluation, compounding direction
 Automatic monitoring: BLOCK
 Automatic OSI intervention: BLOCK
 OSI repository modification: BLOCK
 Runtime / learning / self-modification: BLOCK
-Effect on V13 native progress: none
+Detected drift: CHILD-GATED PARENT PROGRESS DRIFT — CORRECTED
 ```
 
-The lane remains available as one optional external evidence input. Its absence does not pause, hold, or determine V13-native development. Accepting a later packet requires a separately confirmed intake Gate.
+OSI remains a V13 child and active operating surface. What is optional is one future bounded evidence return from that child, not OSI's place in the V13 lineage. The V13 parent does not pause, hold, or determine its progress exclusively from the next event of one child. Accepting a later packet requires a separately confirmed intake Gate.
+
+## Historical As-of — commit `e406f7bce39e857a28b8e7418246a909234e012a`
+
+OSI waiting dependency had been removed, while the lineage framing placed OSI outside the V13 parent–child structure. The dependency decoupling remains valid. This Forward-only correction supersedes only that lineage framing and restores OSI as a V13 child operating surface.
 
 ## Historical As-of — commit `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`
 
@@ -31,15 +38,15 @@ That activation correctly established:
 - no OSI rescore or modification;
 - automatic monitoring and intervention `BLOCK`.
 
-Forward-only correction: the optional lane must not hold the V13 roadmap open while waiting for OSI. V13 continues from its own real exposed gaps whether or not an OSI event arrives.
+Forward-only correction: the child lane must not hold the V13 parent roadmap open while waiting for OSI. V13 continues from real parent-level gaps or evidence returned by any child whether or not the next OSI event arrives.
 
-The OSI source is one substantive Forward-only multi-day field pilot owned by 12-33. It is not a rerun, repair, replacement, or extension of the closed 18-case Formal Run. OSI scoring, closure, protocol, and repository authority remain inside the OSI lane.
+The OSI child surface is one substantive Forward-only multi-day field pilot owned by 12-33. It is not a rerun, repair, replacement, or extension of the closed 18-case Formal Run. OSI scoring, closure, protocol, and repository authority remain inside its delegated local scope.
 
 ## Purpose
 
-The lane lets V13 optionally use one real operational event from the substantive OSI multi-day field pilot as bounded live evidence. OSI remains the system that tests actual restart, compression, handoff, and operation. If separately admitted, V13 reads one transported event packet, routes one exposed gap, evaluates the route against Shin's Aspire, and stops before execution.
+The lane lets one real operational event return from the OSI child to the V13 parent as optional bounded live evidence. OSI remains the active operating surface that tests actual restart, compression, handoff, and operation. If separately admitted, V13 reads one transported event packet, routes one exposed gap, evaluates the route against Shin's Aspire, and stops before execution.
 
-OSI success or failure is judged by OSI criteria. V13 success or failure is judged by V13 criteria. OSI supplies real operational evidence; it does not supply proof that V13 is correct.
+OSI success or failure is judged by OSI criteria within delegated local authority. V13 parent-level success or failure is judged by V13 criteria. Child evidence does not by itself prove that V13 is correct.
 
 For one qualifying event, a later V13 evaluation may test whether it can:
 
@@ -55,9 +62,9 @@ For one qualifying event, a later V13 evaluation may test whether it can:
 
 This is a manual evidence lane, not runtime learning, automatic observation, automatic propagation, or self-modification.
 
-## Separation Contract
+## Parent–Child Delegation Contract
 
-### OSI Owns
+### OSI Child Local Authority
 
 - OSI pilot design and execution;
 - OSI case facts;
@@ -66,7 +73,7 @@ This is a manual evidence lane, not runtime learning, automatic observation, aut
 - OSI repository modification;
 - whether an OSI intervention is permitted.
 
-### V13 Owns
+### V13 Parent Authority
 
 - reading one transported OSI event packet;
 - identifying one V13-relevant gap;
@@ -77,7 +84,7 @@ This is a manual evidence lane, not runtime learning, automatic observation, aut
 - recording later V13 evidence inside the V13 repository;
 - stopping before execution.
 
-### Neither Lane May Silently Do the Other's Work
+### Neither Parent Nor Child May Silently Take the Other's Work
 
 V13 must not:
 
@@ -287,32 +294,25 @@ This lane authorizes exactly one future live event evaluation. It does not autho
 
 After the first event result, stop and reassess.
 
-## V13-Native Compounding Sources
+## V13 Parent Compounding Sources
 
-V13 may independently develop from real evidence arising from:
+V13 parent compounding may proceed from real evidence arising from:
 
-- its own current repository surfaces;
+- V13 parent-state inconsistency;
+- OSI or another V13 child returning real evidence;
 - Field Note Missing Closure;
-- handoff and restart failures;
-- authority or source-of-truth conflicts;
-- Human Seat distinguishability failures;
-- unnecessary Human Carrier burden;
-- missed `CHALLENGE REQUIRED`;
-- question-depth failures;
-- local repair drift;
-- fresh-receiver evaluation;
+- handoff, authority, Carrier, challenge, or question-depth failure;
 - real Shin–AI decision episodes;
-- contradictions between current V13 operating surfaces.
 
-OSI provenance is not required for a V13-native gap. Do not manufacture a gap.
+OSI evidence is not required, and OSI evidence must not be excluded merely because OSI is a child. Do not manufacture a gap.
 
-A qualifying V13-native gap must:
+A qualifying parent-level or child-returned gap must:
 
 - be based on an actual persisted inconsistency, unresolved Missing Closure, observed burden, or real operating event;
 - affect the next V13 decision;
 - remain unresolved at capture;
 - fit inside one bounded analysis;
-- not require OSI evidence;
+- not require OSI evidence while remaining able to accept real child-returned evidence;
 - not be created merely to keep V13 moving.
 
 If no qualifying gap exists, return:
@@ -328,24 +328,26 @@ Next Authorized Action:
 none
 ```
 
-Do not reactivate OSI waiting as a fallback.
+Do not reactivate exclusive OSI waiting as a fallback.
 
 ## Current Gate
 
 ```text
 V13 Gate: GO / CAP
-CAP axis: at most one qualifying non-OSI-dependent V13 gap
+CAP axis: at most one real V13-level or child-returned exposed gap
 CAP limit: one read-only MAL v0.1 evaluation, then stop before execution
-OSI lane: AVAILABLE / OPTIONAL EVIDENCE INPUT
-V13 waiting for OSI: no
-Native gap selected: no
+V13: PARENT GOVERNANCE LAYER
+OSI: V13 CHILD / ACTIVE OPERATING SURFACE
+OSI evidence return: AVAILABLE / OPTIONAL ONE-EVENT INTAKE
+V13 waiting exclusively for OSI: no
+Gap selected: no
 Live case created: no
-Active Branch: V13 / Native Compounding Proof 001 — FIRST GAP PENDING
-Next Authorized Action: Inspect current V13 persisted state and recent real Decision-OS operating evidence, identify at most one qualifying non-OSI-dependent exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
+Active Branch: V13 / Parent Compounding Proof 001 — FIRST GAP PENDING
+Next Authorized Action: Identify at most one real V13-level or child-returned exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
 ```
 
 This authorization covers gap discovery and read-only routing only. It does not authorize execution of any action proposed by Minimum Autonomous Loop v0.1.
 
 ## Completion Line
 
-V13 no longer depends on an OSI event to progress. OSI remains available as one bounded external evidence source, while V13 resumes independent Aspire-directed development from its own real exposed gaps.
+V13 no longer waits exclusively for an OSI event, while OSI remains correctly preserved as a V13 child operating surface whose bounded evidence may return to the parent loop.

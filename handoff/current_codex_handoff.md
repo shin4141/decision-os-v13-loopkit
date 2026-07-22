@@ -25,8 +25,10 @@ Minimum Autonomous Loop v0.1 specification: COMPLETE
 MAL v0.1 Validation Run 001: PASS / one frozen fresh isolated case only
 MAL v0.1 generalization: NOT ESTABLISHED
 Read-Only Gap Routing Loop implementation: NOT STARTED / BLOCK
-OSI Parallel Compounding Lane v0.1: AVAILABLE / OPTIONAL EVIDENCE INPUT
-V13 native compounding: INDEPENDENT / FIRST GAP PENDING
+V13: PARENT GOVERNANCE LAYER
+OSI: V13 CHILD / ACTIVE OPERATING SURFACE
+OSI evidence return: AVAILABLE / OPTIONAL ONE-EVENT INTAKE
+V13 parent compounding: FIRST GAP PENDING
 ```
 
 Authority boundary:
@@ -45,16 +47,74 @@ Star-chasing as primary branch: HOLD
 Active branch:
 
 ```text
-V13 / Native Compounding Proof 001 — FIRST GAP PENDING
+V13 / Parent Compounding Proof 001 — FIRST GAP PENDING
 ```
 
 Next authorized action:
 
 ```text
-Inspect current V13 persisted state and recent real Decision-OS operating evidence, identify at most one qualifying non-OSI-dependent exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
+Identify at most one real V13-level or child-returned exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
 ```
 
-## Current OSI Dependency Decoupling — 2026-07-22
+## Current V13–OSI Parent–Child Relation Correction — 2026-07-22
+
+Receipt:
+
+```text
+Parent–child relation correction:
+COMPLETE
+
+V13:
+PARENT GOVERNANCE LAYER
+
+OSI:
+V13 CHILD / ACTIVE OPERATING SURFACE
+
+OSI local authority:
+preserved within delegated operational scope
+
+OSI evidence return:
+AVAILABLE / OPTIONAL ONE-EVENT INTAKE
+
+V13 waiting exclusively for OSI:
+no
+
+V13 parent authority:
+Aspire direction, Loop Gate, cross-child evaluation, compounding direction
+
+Detected drift:
+CHILD-GATED PARENT PROGRESS DRIFT — CORRECTED
+
+OSI event received:
+no
+
+Case created:
+no
+
+Active Branch:
+V13 / Parent Compounding Proof 001 — FIRST GAP PENDING
+
+Next Authorized Action:
+Identify at most one real V13-level or child-returned exposed gap, apply
+Minimum Autonomous Loop v0.1 once, and stop before execution.
+
+Automatic monitoring / intervention / modification:
+BLOCK
+
+Runtime / automatic learning / self-modification:
+BLOCK
+
+Execution of an action returned by MAL:
+NOT AUTHORIZED
+```
+
+Qualifying evidence may arise from a V13 parent-state inconsistency, OSI or another V13 child returning real evidence, Field Note Missing Closure, a handoff, authority, Carrier, challenge, or question-depth failure, or a real Shin–AI operating episode. OSI evidence is neither required nor excluded. A gap must be real, unresolved, decision-relevant, bounded, and not manufactured.
+
+Completion Line:
+
+V13 no longer waits exclusively for an OSI event, while OSI remains correctly preserved as a V13 child operating surface whose bounded evidence may return to the parent loop.
+
+## Historical As-of — OSI Dependency Decoupling at `e406f7bce39e857a28b8e7418246a909234e012a`
 
 Receipt:
 
@@ -65,17 +125,17 @@ COMPLETE
 Prior lane activation:
 preserved as historical As-of
 
-OSI current role:
-optional external evidence input
+OSI lineage at this As-of:
+outside-parent framing / superseded Forward-only
 
-V13 waiting for OSI:
+V13 waiting exclusively for OSI:
 no
 
 OSI event authority:
 one qualifying event remains available
 
-V13 primary development source:
-V13-native exposed gaps and real Decision-OS operating evidence
+V13 development at this As-of:
+dependency-decoupled / parent–child correction pending
 
 Native gap selected:
 no
@@ -97,16 +157,16 @@ Execution of an action returned by MAL:
 NOT AUTHORIZED
 ```
 
-Current OSI lane status:
+OSI lane status at this As-of:
 
 ```text
-OSI Parallel Compounding Lane v0.1:
-AVAILABLE / OPTIONAL EVIDENCE INPUT
+OSI evidence-return authority:
+one qualifying event preserved
 
 OSI event received:
 no
 
-V13 waiting for OSI:
+V13 waiting exclusively for OSI:
 no
 
 Authority to accept one qualifying event:
@@ -121,15 +181,15 @@ BLOCK
 OSI repository modification:
 BLOCK
 
-Effect on V13 native progress:
+Effect on V13 progress:
 none
 ```
 
-V13 may independently develop from persisted V13 inconsistencies, unresolved Missing Closure, handoff or restart failures, authority conflicts, Human Seat distinguishability failures, Human Carrier burden, missed `CHALLENGE REQUIRED`, question-depth failures, local repair drift, fresh-receiver evidence, real Shin–AI decisions, and contradictions between current operating surfaces. A gap must be real, unresolved, decision-relevant, bounded, and not manufactured to keep V13 moving.
+At this As-of, V13 progress no longer waited for OSI and could use persisted V13 inconsistencies, unresolved Missing Closure, handoff or restart failures, authority conflicts, Human Seat distinguishability failures, Human Carrier burden, missed `CHALLENGE REQUIRED`, question-depth failures, local repair drift, fresh-receiver evidence, real Shin–AI decisions, and contradictions between current operating surfaces. The parent–child lineage framing remained pending correction.
 
 Completion Line:
 
-V13 no longer depends on an OSI event to progress. OSI remains available as one bounded external evidence source, while V13 resumes independent Aspire-directed development from its own real exposed gaps.
+At this As-of, V13 no longer depended on an OSI event to progress; the dependency correction was preserved while OSI lineage remained pending Forward-only correction.
 
 ## Historical As-of — Initial OSI Parallel Compounding Lane Activation at `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`
 

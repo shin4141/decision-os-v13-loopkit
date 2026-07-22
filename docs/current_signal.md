@@ -11,9 +11,10 @@
 - 🟢 BLUE / MAL-V0.1-RUN-001-PASS
 - 🟡 YELLOW / MAL-V0.1-GENERALIZATION-NOT-ESTABLISHED
 - 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
-- 🟢 BLUE / V13-NATIVE-COMPOUNDING-INDEPENDENT
-- 🟢 BLUE / OSI-OPTIONAL-EVIDENCE-LANE-AVAILABLE
-- 🟡 YELLOW / FIRST-V13-NATIVE-LIVE-GAP-PENDING
+- 🟢 BLUE / V13-PARENT-GOVERNANCE-LAYER
+- 🟢 BLUE / OSI-V13-CHILD-ACTIVE-OPERATING-SURFACE
+- 🟢 BLUE / OSI-OPTIONAL-ONE-EVENT-EVIDENCE-RETURN-AVAILABLE
+- 🟡 YELLOW / FIRST-V13-PARENT-LIVE-GAP-PENDING
 - 🔴 RED / AUTOMATIC-OSI-OBSERVATION-AND-INTERVENTION-BLOCK
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
@@ -35,13 +36,19 @@ Historical As-of:
 
 Run 001 does not establish broad question accuracy, generalization, autonomous learning, runtime reliability, automatic propagation, Human Carrier burden reduction, or self-evolution.
 
-V13 now progresses independently from real gaps exposed by its own persisted surfaces and Decision-OS operation. [OSI Parallel Compounding Lane v0.1](osi_parallel_compounding_lane_v0_1.md) remains available for one optional bounded external event, but OSI is not V13's engine, owner, clock, authority, or activation condition. V13 does not wait for OSI.
+V13 is the parent governance layer. [OSI Parallel Compounding Lane v0.1](osi_parallel_compounding_lane_v0_1.md) is a V13 child and active operating surface with delegated local execution and scoring authority. One future OSI event may optionally return as bounded child evidence; the V13 parent does not wait exclusively for that event and does not take over the child's local authority.
+
+V13 retains parent authority for Aspire direction, Loop Gate, cross-child evaluation, and compounding direction. `CHILD-GATED PARENT PROGRESS DRIFT` is corrected.
+
+Historical As-of — commit `e406f7bce39e857a28b8e7418246a909234e012a`:
+
+> OSI waiting dependency had been removed, while the lineage framing placed OSI outside the V13 parent–child structure. Decoupling remains preserved; only that lineage framing is superseded Forward-only.
 
 Historical As-of — commit `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`:
 
 > The OSI lane was initially activated with `FIRST EVENT PENDING` as the current V13 branch. That state established authority separation, one-event intake, transport-only handling, and automatic observation/intervention blocks.
 
-No V13-native gap has yet been selected, and no new Case has been created. Run 001 remains one-case validation only; runtime and generalized autonomy remain unproven.
+No parent-level or child-returned gap has yet been selected, and no new Case has been created. Run 001 remains one-case validation only; runtime and generalized autonomy remain unproven.
 
 ## Current V12 State
 
@@ -51,9 +58,9 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-GO / CAP for discovery and read-only routing of at most one qualifying non-OSI-dependent V13-native gap.
+GO / CAP for discovery and read-only routing of at most one real V13-level or child-returned gap.
 
-The active branch is `V13 / Native Compounding Proof 001 — FIRST GAP PENDING`. OSI remains an optional bounded evidence source with one-event authority preserved. Its absence does not produce `HOLD` for V13-native development. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
+The active branch is `V13 / Parent Compounding Proof 001 — FIRST GAP PENDING`. OSI remains a V13 child; its next evidence return is optional and capped at one event. OSI absence does not produce `HOLD` for parent progress. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
 The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
 
@@ -101,8 +108,8 @@ Current manual cases show:
 | MAL v0.1 Validation Run 001 | PASS | Fresh isolated routing and stop reproduction for the cross-surface status-drift case only |
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
-| V13 Native Compounding Proof 001 | GO / CAP | Identify at most one real non-OSI-dependent gap, apply MAL v0.1 once, and stop before execution |
-| OSI Parallel Compounding Lane v0.1 | CAP | Optional input only: one qualifying external event may be admitted through a separately confirmed intake Gate; V13 does not wait for it |
+| V13 Parent Compounding Proof 001 | GO / CAP | Identify at most one real V13-level or child-returned gap, apply MAL v0.1 once, and stop before execution |
+| OSI child / active operating surface | CAP | Delegated local authority is preserved; one qualifying child evidence return may be admitted through a separately confirmed intake Gate |
 | Automatic OSI observation or intervention | BLOCK | No monitoring, intake, protocol change, repository modification, or pilot intervention authority |
 | Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
@@ -119,7 +126,7 @@ Allowed:
 - use `templates/v13_reconnection_packet_template.md` to close or transfer handoff-sensitive V13 work
 - refresh stale current surfaces when they would mislead a future AI
 - run one separately authorized bounded manual proof or audit
-- inspect persisted V13 state and recent real Decision-OS evidence, identify at most one qualifying non-OSI-dependent gap, apply MAL v0.1 once, and stop before execution
+- identify at most one real V13-level or child-returned exposed gap, apply MAL v0.1 once, and stop before execution
 - record new field notes only when a new observed result appears
 - observe stars, adoption, reuse, comments, task evidence, correction, rereading, re-explanation, and Human supervision burden
 - keep Human Seat, Protected Object, historical As-of, Gate, Completion Line, challenge visibility, and blocked scope visible
@@ -141,7 +148,7 @@ Not allowed from this signal:
 - turn launch capsules into implementation approval
 - monitor, rescore, modify, or intervene in OSI automatically
 - collect multiple OSI events or create a Case before a qualifying event is received
-- treat the absence of an OSI event as a reason to hold V13-native development
+- treat the absence of an OSI event as a reason to hold V13 parent progress
 
 ## Current Lesson
 
@@ -151,4 +158,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Develop from at most one real V13-native exposed gap without waiting for OSI; preserve OSI as optional bounded evidence, apply the read-only loop once, and stop before execution.
+> Develop from at most one real V13-level or child-returned gap without waiting exclusively for OSI; preserve OSI as a child operating surface, apply the read-only loop once, and stop before execution.
