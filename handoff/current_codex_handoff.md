@@ -24,6 +24,16 @@ Evolution evaluation invariant: Aspire-directed reachability plus independent co
 Minimum Autonomous Loop v0.1 specification: COMPLETE
 MAL v0.1 Validation Run 001: PASS / one frozen fresh isolated case only
 MAL v0.1 generalization: NOT ESTABLISHED
+MAL v0.2 Lineage-Aware Gap Routing specification: COMPLETE
+MAL v0.1: PRESERVED / PRIOR VALIDATION SCOPE UNCHANGED
+Decision Lineage Reconnection: REQUIRED BEFORE HUMAN SEAT RETURN
+First lineage binding: PIC
+PIC classification: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+PIC Human Seat question: none
+Automatic lineage scan: BLOCK
+Automatic Canon propagation: BLOCK
+Fresh v0.2 validation: NOT STARTED / PARKED
+Runtime: BLOCK
 Read-Only Gap Routing Loop implementation: NOT STARTED / BLOCK
 V13: PARENT GOVERNANCE LAYER
 OSI: V13 CHILD / ACTIVE OPERATING SURFACE
@@ -57,6 +67,81 @@ Next authorized action:
 ```text
 none
 ```
+
+## Current MAL v0.2 Decision Lineage Reconnection Specification — 2026-07-22
+
+Receipt:
+
+```text
+MAL v0.2 Lineage-Aware Gap Routing specification:
+COMPLETE
+
+MAL v0.1:
+PRESERVED / PRIOR VALIDATION SCOPE UNCHANGED
+
+Decision Lineage Reconnection:
+REQUIRED BEFORE HUMAN SEAT RETURN
+
+First lineage binding:
+PIC
+
+PIC classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+PIC Human Seat question:
+none
+
+Automatic lineage scan:
+BLOCK
+
+Automatic Canon propagation:
+BLOCK
+
+Fresh v0.2 validation:
+NOT STARTED / PARKED
+
+Runtime:
+BLOCK
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+```
+
+Artifacts:
+
+```text
+Specification: docs/minimum_autonomous_loop_v0_2.md
+Lineage register: docs/decision_lineage_reconnection_register_v0_1.md
+Preserved predecessor: docs/minimum_autonomous_loop_v0_1.md
+```
+
+The mandatory pre-question order is current local authority, current explicit
+Human Seat decisions, later Forward-only deltas, authoritative Decision-OS
+lineage source, historical As-of, and only then labeled AI inference. PIC is
+the first bounded binding. Its V13 witnesses are Order Independence,
+Idempotence, Monotone Safety Preservation, and Canonical Reconnection. For V13
+evaluation, `PIC BROKEN` if any one witness fails at the commitment boundary;
+uncommitted frontier candidates remain outside that conservative merge scope.
+
+The binding closes the semantic-source gap only. No new Human Seat question was
+selected, no fresh v0.2 validation ran, and no runtime, automatic source scan,
+Canon propagation, or source modification was implemented.
+
+Completion Line:
+
+Minimum Autonomous Loop v0.2 now distinguishes locally missing knowledge from
+lineage-defined knowledge and genuinely unanswered Human Seat questions. PIC
+is the first verified lineage binding, while automatic search, fresh
+validation, runtime, and new-question generation remain inactive.
 
 ## Current Parent Compounding Proof 001 No-Gap Closure — 2026-07-22
 
@@ -488,7 +573,8 @@ Evolution evaluation invariant: FIXED AS FORWARD-ONLY DELTA
 Invariant core: Aspire-directed reachability plus independent comparison / falsification / refusal / reconnection
 Current protective forms: revisable only while required functions remain
 Aspire change: separate Forward-only Human Seat judgment
-PIC: Decision Owner term / not locally defined by V13
+PIC at Case 004 As-of: Decision Owner term / not locally defined by V13
+Current Forward-only status: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED; see docs/decision_lineage_reconnection_register_v0_1.md
 FN126 lifecycle: Prior adopted / verification pending
 ```
 

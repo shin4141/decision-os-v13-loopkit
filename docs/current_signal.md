@@ -11,6 +11,10 @@
 - 🟢 BLUE / MAL-V0.1-RUN-001-PASS
 - 🟡 YELLOW / MAL-V0.1-GENERALIZATION-NOT-ESTABLISHED
 - 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
+- 🟢 BLUE / MAL-V0.2-LINEAGE-AWARE-SPECIFICATION-COMPLETE
+- 🟢 BLUE / PIC-LINEAGE-BINDING-REGISTERED
+- 🟡 YELLOW / MAL-V0.2-FRESH-VALIDATION-NOT-STARTED
+- 🔴 RED / AUTOMATIC-LINEAGE-SCAN-AND-CANON-WRITE-BLOCK
 - 🟢 BLUE / V13-PARENT-GOVERNANCE-LAYER
 - 🟢 BLUE / OSI-V13-CHILD-ACTIVE-OPERATING-SURFACE
 - 🟢 BLUE / OSI-OPTIONAL-ONE-EVENT-EVIDENCE-RETURN-AVAILABLE
@@ -30,6 +34,8 @@ FN126 Cases 001–004 provide verification-pending evidence that exposed-gap det
 Case 004 fixes the invariant function for later self-evolution evaluation. A claimed self-update must expand reachable paths toward the Decision Owner's Aspire and remain independently comparable, falsifiable, rejectable, and reconnectable rather than validating itself only through its own new criteria.
 
 Minimum Autonomous Loop v0.1 is a complete specification for the Read-Only Gap Routing Loop. One frozen fresh isolated run passed for the Cross-Surface Minimum-Loop Status Drift case. It supports routing and stop reproducibility for that case only. No second run is active, and runtime implementation remains unauthorized.
+
+Minimum Autonomous Loop v0.2 is a Forward-only successor to v0.1. MAL v0.1 remains preserved and its prior Run 001 validation scope is unchanged. v0.2 adds Decision Lineage Reconnection before Human Seat return. PIC is the first registered binding and is classified `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; the previously proposed PIC question is AI-owned, and no new Human Seat question has been selected. Fresh v0.2 validation has not run and is parked. Runtime, automatic lineage scanning, and automatic Canon propagation remain blocked.
 
 Historical As-of:
 
@@ -63,9 +69,11 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after Parent Compounding Proof 001 completed as `PASS — NO-GAP STOP`.
+HOLD after Minimum Autonomous Loop v0.2 specification and the first PIC lineage binding completed.
 
-Active Branch is `none`, and Next Authorized Action is `none`. OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
+Active Branch is `none`, and Next Authorized Action is `none`. Fresh v0.2 validation is `NOT STARTED / PARKED`. No new Human Seat question, runtime, automatic lineage scan, or automatic Canon propagation is authorized.
+
+OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
 The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
 
@@ -79,6 +87,8 @@ The current prototype includes:
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
+- `docs/minimum_autonomous_loop_v0_2.md`
+- `docs/decision_lineage_reconnection_register_v0_1.md`
 - `docs/osi_parallel_compounding_lane_v0_1.md`
 - `templates/v13_reconnection_packet_template.md`
 - `field_notes/` through Field Note 126
@@ -113,6 +123,10 @@ Current manual cases show:
 | Minimum Autonomous Loop v0.1 specification | PASS | Read-Only Gap Routing specification complete |
 | MAL v0.1 Validation Run 001 | PASS | Fresh isolated routing and stop reproduction for the cross-surface status-drift case only |
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
+| MAL v0.2 specification | PASS | Forward-only successor adds mandatory Decision Lineage Reconnection before Human Seat return |
+| PIC lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
+| MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
+| Automatic lineage scan / Canon propagation | BLOCK | No automated lineage search or authority write |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
 | V13 Parent Compounding Proof 001 | PASS | No qualifying gap; MAL returned `STOP / HOLD` without asking, proposing action, or executing work |
 | Irreducible Human Seat recognition | HOLD | Next strategic validation target; parked and not active |
@@ -165,4 +179,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Preserve Parent Compounding Proof 001 as a no-gap stop: do not rescan unchanged state or activate the parked Human Seat recognition target; OSI remains a child operating surface and runtime remains blocked.
+> Use MAL v0.2 lineage reconnection before any Human Seat return: PIC is lineage-closed and its bounded local binding is AI-owned; v0.1's prior scope is preserved, while fresh validation, automatic scan/write, runtime, and new-question generation remain inactive.
