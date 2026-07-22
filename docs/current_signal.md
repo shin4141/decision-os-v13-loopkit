@@ -5,6 +5,8 @@
 - 🟢 BLUE / ROADMAP-REBASELINED
 - 🟢 BLUE / HUMAN-SEAT-PRESERVING-COMPOUNDING-DIRECTION
 - 🟢 BLUE / MANUAL-COMPOUNDING-CASES-RECORDED
+- 🟢 BLUE / ASPIRE-ANCHORED-INDEPENDENT-EVOLUTION-EVALUATION-FIXED
+- 🟡 YELLOW / FN126-CASE-004-VERIFICATION-PENDING
 - 🟡 YELLOW / MINIMUM-AUTONOMOUS-LOOP-DESIGN-NOT-ACTIVE
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
@@ -14,7 +16,9 @@
 
 V13 remains in a manual governed-loop phase. Its primary direction is now Human-Seat-Preserving Autonomous Compounding rather than direct star acquisition.
 
-FN126 Cases 001–003 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, and adaptive question depth can be executed manually under bounded authority.
+FN126 Cases 001–004 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, adaptive question depth, and Aspire-anchored independent evolution evaluation can be executed manually under bounded authority.
+
+Case 004 fixes the invariant function for later self-evolution evaluation. A claimed self-update must expand reachable paths toward the Decision Owner's Aspire and remain independently comparable, falsifiable, rejectable, and reconnectable rather than validating itself only through its own new criteria.
 
 This does not mean autonomous learning, runtime implementation, automatic propagation, or self-evolution already exists.
 
@@ -46,6 +50,7 @@ The current prototype includes:
 - `validation/field_note_126_case_001_latent_propagation.md`
 - `validation/field_note_126_case_002_human_seat_distinguishability.md`
 - `validation/field_note_126_case_003_adaptive_human_seat_question_depth.md`
+- `validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md`
 - launch capsules and acceptance audit records
 - exposure and current-signal docs
 
@@ -58,12 +63,15 @@ Current manual cases show:
 - question depth can rise or fall by person × domain × state × consequence;
 - propagation and validation remain AI-owned within authorized scope;
 - challenge visibility, historical As-of, Protected Object, and stop authority must remain intact.
+- current protective forms may change only while their Aspire-line comparison, non-circular justification, refusal, counterevidence, historical reconnection, and stable self-recursion functions remain;
+- capability gains without expanded Aspire-directed reachability are not sufficient evidence of self-evolution.
 
 ## Current Gate Split
 
 | Object | Gate | Meaning |
 |---|---:|---|
 | Roadmap rebaseline | PASS | Current primary direction is fixed |
+| Evolution evaluation invariant | HOLD | Definition fixed; operational verification pending for Aspire-directed reachability plus independent comparison, falsification, refusal, and reconnection |
 | Bounded manual compounding proof | GO / CAP | Continue only through one authorized evidence-bearing loop |
 | External validation observation | GO | Observe reuse, task evidence, stars, comments, corrections, and re-explanation |
 | Minimum autonomous-loop specification | PARKED | Requires separate activation before design |
@@ -73,6 +81,7 @@ Current manual cases show:
 | Runtime implementation | HOLD / BLOCK | No implementation authority follows from this rebaseline |
 | Broad automation / automatic learning | BLOCK | No automatic behavior inference or propagation |
 | Automatic Canon / authority / public action | BLOCK | Human Seat and explicit authority remain required |
+| V7 modification / self-evolution implementation | PARKED / BLOCK | Case 004 supplies an evaluation input only; it does not authorize theory or runtime changes |
 
 ## Allowed Next Actions
 
@@ -103,7 +112,7 @@ Not allowed from this signal:
 
 ## Current Lesson
 
-V13's primary direction is to improve the operating condition of later loops while preserving Human Seat, Carrier, historical As-of, rollback, and challenge visibility.
+V13's primary direction is to improve the operating condition of later loops while preserving the functions that keep change comparable to Aspire, independently falsifiable, rejectable by the Decision Owner, historically reconnectable, and able to return to stable self-recursion.
 
 Stars and adoption remain important external signals. They are neither removed nor sufficient by themselves. Internal coherence is also insufficient without external evidence.
 

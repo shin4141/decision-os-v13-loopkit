@@ -118,6 +118,23 @@ Human Seat, historical As-of, rollback, and challenge visibility, and that may
 later support bounded self-evolution evaluation.
 ```
 
+### Forward-Only Aspire-Anchored Independent Evolution Evaluation — 2026-07-22
+
+The Decision Owner fixed the invariant comparison core for later bounded self-evolution evaluation:
+
+> A self-update must expand reachable paths toward the Decision Owner's Aspire
+> without breaking Guard, PIC, or stable self-recursion, and must remain
+> independently comparable, falsifiable, rejectable, and reconnectable from
+> outside the update's own newly proposed criteria.
+
+Current forms of Human Seat, historical As-of, rollback, and challenge visibility may later be improved through separately authorized Forward-only change. Their functions must remain: Aspire-line comparison, non-circular justification, Decision Owner refusal, historical reconnection, visible material counterevidence, and return to a stable self-recursive point.
+
+Capability, speed, autonomy, reuse, or burden reduction without expanded Aspire-directed reachability is capability expansion or adaptation, not sufficient evidence of self-evolution. Movement away from Aspire, self-ratification, hidden counterevidence, lost refusal, lost reconnection, or broken stable self-recursion is drift or self-distortion.
+
+Changing Aspire itself is a separate Forward-only Human Seat judgment. It must preserve the old Aspire, reason for change, gains, losses, and re-evaluation condition. A self-update must not use its newly created Aspire to justify changing the prior Aspire inside the same update.
+
+`PIC` remains a Decision Owner term without a local V13 definition. This roadmap records the term without inventing its semantics.
+
 The causal order is now:
 
 ```text
@@ -167,6 +184,10 @@ Current operational questions:
 Then:
 
 > Does the resulting improvement produce or strengthen external evidence, reuse, adoption, or sustainability?
+
+For a future self-update claim, also ask:
+
+> Can the claimed improvement be compared, falsified, rejected, and reconnected from a position independent of the update's own new criteria, and does it expand reachable paths toward the preserved Aspire?
 
 ## If Anchors Are Missing
 

@@ -625,3 +625,94 @@ Runtime / automation: BLOCK
 ```
 
 Case 003 records a movement from an abstract trade-off through concrete reformulation to a third definition and a propagation-boundary insight. Future calibration accuracy, proactive downshifting, Human Carrier reduction, challenge preservation, and generalization remain unverified.
+
+## Forward-Only Addendum — Aspire-Anchored Independent Evolution Evaluation
+
+Date: 2026-07-22
+
+Source As-of: `f20ba80c115b94b7737d814348d46015b7eebcf1`
+
+Human Seat decision: `FIX ASPIRE-ANCHORED, UPDATE-INDEPENDENT EVOLUTION EVALUATION`
+
+The original FN126 text and Cases 001–003 remain preserved at their own As-of. This addendum fixes the Human Seat answer produced by the bounded Current Reachable Ceiling Question Discovery. It does not authorize self-modification, runtime learning, V7 modification, or automatic Aspire change.
+
+### Invariant Comparison Core
+
+The invariant is not the current form of an individual rule or implementation.
+
+An update may qualify as self-evolution only when it:
+
+```text
+expands reachable paths toward the Decision Owner's Aspire
+while preserving Guard, PIC, and stable self-recursion
+and remains independently comparable, falsifiable, rejectable, and reconnectable
+from outside the update's own newly proposed criteria
+```
+
+Capability, speed, autonomy, reuse, and burden reduction may all improve without constituting V7-style self-evolution. If the trajectory moves away from Aspire, classify the result as capability expansion, adaptation, or drift rather than self-evolution.
+
+`Guard` and `PIC` are preserved here as Decision Owner terms. V13 does not currently define `PIC`, and this addendum must not invent or silently substitute a definition for it.
+
+### Form / Function Separation
+
+The current forms of Human Seat, historical As-of, rollback, and challenge visibility may later be replaced by better forms through separately authorized Forward-only change.
+
+The functions they carry must remain:
+
+- updates before and after the change can be compared on the Aspire line;
+- an update cannot justify itself only through criteria created by that same update;
+- the Decision Owner can reject a direction change;
+- the old Aspire and old judgments remain reconnectable as historical As-of;
+- material counterevidence and drift cannot be hidden;
+- a stable self-recursive point remains available after the update.
+
+A form change that removes one of these functions is not validated merely because local performance metrics improve.
+
+### Aspire Change Boundary
+
+An update must not use a newly created Aspire to justify changing the prior Aspire inside the same self-update.
+
+Aspire change requires a separate Forward-only Human Seat judgment that preserves:
+
+- the old Aspire;
+- the reason for change;
+- what is gained;
+- what is lost;
+- the re-evaluation condition.
+
+This separates route and capability improvement from value-direction change and prevents circular self-ratification.
+
+### Evaluation Classifications
+
+```text
+SELF-EVOLUTION CANDIDATE
+```
+
+Reachability toward the Decision Owner's current Aspire expands, Guard / PIC / stable self-recursion remain intact, and the update can be independently compared, falsified, rejected, and reconnected.
+
+```text
+CAPABILITY EXPANSION OR ADAPTATION
+```
+
+Capability or operating performance improves, but evidence does not establish expanded reachability toward Aspire.
+
+```text
+DRIFT / SELF-DISTORTION
+```
+
+The update moves away from Aspire, hides material counterevidence, removes refusal or reconnection, breaks stable self-recursion, or validates itself only through its own new criteria.
+
+### Case 004 Result
+
+Validation record: [FN126 Case 004 — Aspire-Anchored Independent Evolution Evaluation](../validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md)
+
+```text
+Case classification: REALIZED HIGH-LEVERAGE RETURN — PARTIAL
+Evolution evaluation invariant: FIXED AS FORWARD-ONLY DELTA
+FN126 lifecycle: Prior adopted / verification pending
+V7 modification: none
+Canon promotion: HOLD
+Runtime / automatic learning / self-modification: BLOCK
+```
+
+Case 004 propagates one Human Seat definition into the self-evolution comparison anchor, the form/function boundary, Aspire-change authority, and result classification. Operational proof that this invariant correctly distinguishes a future improvement from drift remains open.

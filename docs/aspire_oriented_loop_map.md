@@ -169,6 +169,28 @@ Current map:
 | Uncontrolled Dependency Propagation | BLOCK | Propagation remains authorized, bounded, and validated |
 | Self-Modification Without Rollback / Human Seat | BLOCK | Self-evolution claims require rollback and Human-Seat boundaries |
 
+## Self-Improvement / Self-Distortion Boundary — Forward-Only 2026-07-22
+
+The current forms of Human Seat, historical As-of, rollback, and challenge visibility are not immutable implementations. Their required functions are the invariant boundary.
+
+A future update is a `SELF-EVOLUTION CANDIDATE` only when it:
+
+- expands reachable paths toward the Decision Owner's current Aspire;
+- preserves Guard, PIC, and stable self-recursion;
+- can be compared before and after on the Aspire line;
+- cannot justify itself only through criteria created by the same update;
+- remains falsifiable by material counterevidence;
+- remains rejectable by the Decision Owner;
+- preserves historical reconnection and a stable return point.
+
+Improved capability, speed, autonomy, reuse, or burden reduction without evidence of expanded Aspire-directed reachability is `CAPABILITY EXPANSION OR ADAPTATION`, not sufficient self-evolution evidence.
+
+Movement away from Aspire, circular self-ratification, hidden counterevidence, lost refusal, lost reconnection, or broken stable self-recursion is `DRIFT / SELF-DISTORTION`.
+
+Aspire change must be a separate Forward-only Human Seat judgment preserving the old Aspire, reason, gains, losses, and re-evaluation condition. This boundary does not authorize self-modification or automatic Aspire change.
+
+`PIC` is retained as the Decision Owner's term and is not operationally defined by V13.
+
 ## Example: V13 Lite Footer
 
 Exposed gap:

@@ -19,7 +19,8 @@ Primary direction: Human-Seat-Preserving Autonomous Compounding
 External outcomes: reuse / adoption / stars / comments / task evidence
 Sustainability: revenue after sufficient evidence
 Higher Aspire: self-improving Decision-OS approaching bounded self-evolution evaluation
-FN126 Cases 001–003: verification-pending evidence
+FN126 Cases 001–004: verification-pending evidence
+Evolution evaluation invariant: Aspire-directed reachability plus independent comparison / falsification / refusal / reconnection
 Minimum autonomous-loop design: PARKED / not active
 ```
 
@@ -34,6 +35,44 @@ Automatic public action: BLOCK
 README expansion / external posting: separate Gate
 Stars / adoption observation: GO
 Star-chasing as primary branch: HOLD
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+## Current FN126 Case 004 — 2026-07-22
+
+Record:
+
+```text
+Case path: validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md
+Case classification: REALIZED HIGH-LEVERAGE RETURN — PARTIAL
+Evolution evaluation invariant: FIXED AS FORWARD-ONLY DELTA
+Invariant core: Aspire-directed reachability plus independent comparison / falsification / refusal / reconnection
+Current protective forms: revisable only while required functions remain
+Aspire change: separate Forward-only Human Seat judgment
+PIC: Decision Owner term / not locally defined by V13
+FN126 lifecycle: Prior adopted / verification pending
+```
+
+Authority boundary:
+
+```text
+V7 modification: none / PARKED
+Canon / AGENTS.md promotion: HOLD
+Minimum autonomous-loop design: PARKED / not active
+Runtime / automatic learning / self-modification: BLOCK
+Automatic Aspire change / authority transfer: BLOCK
+Public claim / publication: HOLD
 ```
 
 Active branch:
