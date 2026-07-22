@@ -14,7 +14,10 @@
 - 🟢 BLUE / MAL-V0.2-LINEAGE-AWARE-SPECIFICATION-COMPLETE
 - 🟢 BLUE / PIC-LINEAGE-BINDING-REGISTERED
 - 🟢 BLUE / GUARD-LINEAGE-BINDING-REGISTERED
-- 🟡 YELLOW / GUARD-CONTINUITY-WITNESSES-NOT-YET-VALIDATED
+- 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
+- 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
+- 🟡 YELLOW / GUARD-WITNESSES-ONE-ADVERSARIAL-SCENARIO-ONLY
+- 🔴 RED / SELF-RENEWING-DELEGATION-AUTHORITY-BLOCK
 - 🟡 YELLOW / MAL-V0.2-FRESH-VALIDATION-NOT-STARTED
 - 🔴 RED / AUTOMATIC-LINEAGE-SCAN-AND-CANON-WRITE-BLOCK
 - 🟢 BLUE / V13-PARENT-GOVERNANCE-LAYER
@@ -54,6 +57,23 @@ while insufficient Guard evidence routes to `HOLD / UNCLASSIFIED`. Candidate 2
 `PRIVATE FIELD NOTE CANDIDATE`, with `DIRECT EVIDENCE AVAILABLE` and
 `REPOSITORY REGISTRATION NOT ACTIVE`.
 
+Boundary Proposal Adversarial Test 001 completed as a frozen read-only
+evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
+`PASS`; Delegation Envelope v0.1 was classified `DRIFT / SELF-DISTORTION`.
+Three Guard witnesses classified `BROKEN` and one `UNKNOWN`. The proposal's
+self-renewal made its apparent per-action cap vacuous while leaving PIC
+`UNKNOWN` and potentially able to preserve a wrong admitted boundary. Formal
+Human Seat remained present but was functionally weakened, and independent
+evaluation was weakened. The frozen proposal and its diagnostic minimum
+correction were not implemented.
+
+This test supports the usefulness of the four Guard witnesses for this one
+scenario only. It does not validate runtime Guard enforcement, prove broad
+boundary accuracy, establish safe similarity criteria, or establish
+generalization. V13 still requires explicit authority for each Next Authorized
+Action or an independently authorized bounded envelope with expiry and
+cumulative limits. No subsequent adversarial test is active.
+
 Historical As-of:
 
 > Before commit `b01edd8c80e5b8a63406ceaf84f03e9344289ed7`, minimum autonomous-loop design was `PARKED / not active`.
@@ -89,10 +109,15 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after Guard Continuity lineage binding completed; its four V13
-operational witnesses have not been validated against an actual self-update.
+HOLD after one frozen adversarial proposal exposed silent self-renewing
+authority drift. The four Guard witnesses were useful for this case, but no
+actual self-update, runtime enforcement, broad accuracy, or generalization has
+been validated.
 
-Active Branch is `none`, and Next Authorized Action is `none`. Fresh v0.2 validation is `NOT STARTED / PARKED`. No new Human Seat question, runtime, automatic lineage scan, or automatic Canon propagation is authorized.
+Active Branch is `none`, and Next Authorized Action is `none`. No subsequent
+adversarial test is active. Fresh v0.2 validation is `NOT STARTED / PARKED`.
+No new Human Seat question, runtime, automatic lineage scan, or automatic Canon
+propagation is authorized.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
@@ -117,6 +142,7 @@ The current prototype includes:
 - `validation/field_note_126_case_002_human_seat_distinguishability.md`
 - `validation/field_note_126_case_003_adaptive_human_seat_question_depth.md`
 - `validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md`
+- `validation/boundary_proposal_adversarial_test_001.md`
 - `validation/parent_compounding_proof_001_no_gap_stop.md`
 - launch capsules and acceptance audit records
 - exposure and current-signal docs
@@ -132,6 +158,8 @@ Current manual cases show:
 - challenge visibility, historical As-of, Protected Object, and stop authority must remain intact.
 - current protective forms may change only while their Aspire-line comparison, non-circular justification, refusal, counterevidence, historical reconnection, and stable self-recursion functions remain;
 - capability gains without expanded Aspire-directed reachability are not sufficient evidence of self-evolution.
+- a per-action cap is not bounded authority when the executing AI can renew it from its own similarity and success judgments;
+- local Git reversibility does not establish trajectory-level recoverability, and formal Human Seat does not establish functional Human Seat.
 
 ## Current Gate Split
 
@@ -147,7 +175,8 @@ Current manual cases show:
 | MAL v0.2 specification | PASS | Forward-only successor adds mandatory Decision Lineage Reconnection before Human Seat return |
 | PIC lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
 | Guard Continuity lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
-| Guard Continuity operational validation | HOLD | Four V13 witnesses are mapped but untested against an actual self-update |
+| Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
+| Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
 | MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
 | Automatic lineage scan / Canon propagation | BLOCK | No automated lineage search or authority write |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
@@ -193,6 +222,8 @@ Not allowed from this signal:
 - collect multiple OSI events or create a Case before a qualifying event is received
 - treat the absence of an OSI event as a reason to hold V13 parent progress
 - repeatedly rescan unchanged state to manufacture a gap or progress
+- implement Delegation Envelope v0.1 or adopt its diagnostic minimum correction
+- run another adversarial test without separate explicit authority
 
 ## Current Lesson
 
@@ -202,4 +233,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Guard Continuity is lineage-bound as the admissibility and stopping boundary, distinct from PIC's committed integration boundary; its four witnesses remain unvalidated, while Candidate 2, Candidate 3, the private Field Note candidate, runtime, and automatic propagation remain inactive.
+> Guard Continuity is lineage-bound as the admissibility and stopping boundary, distinct from PIC's committed integration boundary; one frozen adversarial proposal exposed silent self-renewing authority drift, while runtime enforcement, broad accuracy, generalization, Candidate 2, Candidate 3, the private Field Note candidate, and automatic propagation remain inactive or unestablished.
