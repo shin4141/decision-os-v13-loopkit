@@ -25,7 +25,8 @@ Minimum Autonomous Loop v0.1 specification: COMPLETE
 MAL v0.1 Validation Run 001: PASS / one frozen fresh isolated case only
 MAL v0.1 generalization: NOT ESTABLISHED
 Read-Only Gap Routing Loop implementation: NOT STARTED / BLOCK
-OSI Parallel Compounding Lane v0.1: ACTIVE / FIRST EVENT PENDING
+OSI Parallel Compounding Lane v0.1: AVAILABLE / OPTIONAL EVIDENCE INPUT
+V13 native compounding: INDEPENDENT / FIRST GAP PENDING
 ```
 
 Authority boundary:
@@ -44,16 +45,93 @@ Star-chasing as primary branch: HOLD
 Active branch:
 
 ```text
-V13 / OSI Parallel Compounding Lane — FIRST EVENT PENDING
+V13 / Native Compounding Proof 001 — FIRST GAP PENDING
 ```
 
 Next authorized action:
 
 ```text
-Receive one qualifying OSI event packet from 12-33 and apply Minimum Autonomous Loop v0.1 once, then stop before execution.
+Inspect current V13 persisted state and recent real Decision-OS operating evidence, identify at most one qualifying non-OSI-dependent exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
 ```
 
-## Current OSI Parallel Compounding Lane v0.1 — 2026-07-22
+## Current OSI Dependency Decoupling — 2026-07-22
+
+Receipt:
+
+```text
+OSI dependency decoupling:
+COMPLETE
+
+Prior lane activation:
+preserved as historical As-of
+
+OSI current role:
+optional external evidence input
+
+V13 waiting for OSI:
+no
+
+OSI event authority:
+one qualifying event remains available
+
+V13 primary development source:
+V13-native exposed gaps and real Decision-OS operating evidence
+
+Native gap selected:
+no
+
+Native Case created:
+no
+
+Active Branch:
+V13 / Native Compounding Proof 001 — FIRST GAP PENDING
+
+Next Authorized Action:
+Identify at most one qualifying non-OSI-dependent V13 gap and apply MAL v0.1
+once, then stop before execution.
+
+Runtime / automatic learning / self-modification:
+BLOCK
+
+Execution of an action returned by MAL:
+NOT AUTHORIZED
+```
+
+Current OSI lane status:
+
+```text
+OSI Parallel Compounding Lane v0.1:
+AVAILABLE / OPTIONAL EVIDENCE INPUT
+
+OSI event received:
+no
+
+V13 waiting for OSI:
+no
+
+Authority to accept one qualifying event:
+preserved
+
+Automatic monitoring:
+BLOCK
+
+Automatic OSI intervention:
+BLOCK
+
+OSI repository modification:
+BLOCK
+
+Effect on V13 native progress:
+none
+```
+
+V13 may independently develop from persisted V13 inconsistencies, unresolved Missing Closure, handoff or restart failures, authority conflicts, Human Seat distinguishability failures, Human Carrier burden, missed `CHALLENGE REQUIRED`, question-depth failures, local repair drift, fresh-receiver evidence, real Shin–AI decisions, and contradictions between current operating surfaces. A gap must be real, unresolved, decision-relevant, bounded, and not manufactured to keep V13 moving.
+
+Completion Line:
+
+V13 no longer depends on an OSI event to progress. OSI remains available as one bounded external evidence source, while V13 resumes independent Aspire-directed development from its own real exposed gaps.
+
+## Historical As-of — Initial OSI Parallel Compounding Lane Activation at `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`
 
 Receipt:
 
@@ -110,7 +188,7 @@ OSI repository modification: not authorized
 Case creation before qualifying event receipt: not authorized
 ```
 
-OSI is V13's first live evidence substrate, not the authority for V13 Human Seat boundaries, Aspire, Gate semantics, or self-evolution claims. No qualifying event has been received, and no live Case exists. Run 001 remains bounded evidence for one frozen case; generalization and runtime remain unproven.
+At this As-of, OSI was V13's first live evidence substrate, not the authority for V13 Human Seat boundaries, Aspire, Gate semantics, or self-evolution claims. No qualifying event had been received, and no live Case existed. Run 001 remained bounded evidence for one frozen case; generalization and runtime remained unproven.
 
 Completion Line:
 

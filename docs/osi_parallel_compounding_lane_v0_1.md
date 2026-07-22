@@ -1,28 +1,43 @@
 # OSI Parallel Compounding Lane v0.1
 
-## Status
+## Current Status
 
 ```text
-Lane: ACTIVE
-Mode: LIVE MANUAL EVIDENCE
+OSI Parallel Compounding Lane v0.1: AVAILABLE / OPTIONAL EVIDENCE INPUT
 OSI pilot owner: GPT chat 12-33
 OSI public repository: shin4141/output-surface-integrity
 V13 receiver: Codex 13-9
-Event received: no
-Live case created: no
-Authorized event count: 1
+OSI event received: no
+V13 waiting for OSI: no
+Authority to accept one qualifying event: preserved
 Automatic monitoring: BLOCK
 Automatic OSI intervention: BLOCK
+OSI repository modification: BLOCK
 Runtime / learning / self-modification: BLOCK
+Effect on V13 native progress: none
 ```
 
-This setup activates one bounded lane and stops before event intake or evaluation. It does not create Run 002, a validation case, runtime, automatic observation, or an OSI intervention.
+The lane remains available as one optional external evidence input. Its absence does not pause, hold, or determine V13-native development. Accepting a later packet requires a separately confirmed intake Gate.
+
+## Historical As-of — commit `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`
+
+The lane was initially activated with `FIRST EVENT PENDING` as the current V13 branch.
+
+That activation correctly established:
+
+- OSI / V13 authority separation;
+- a one-event maximum;
+- transport-only handling;
+- no OSI rescore or modification;
+- automatic monitoring and intervention `BLOCK`.
+
+Forward-only correction: the optional lane must not hold the V13 roadmap open while waiting for OSI. V13 continues from its own real exposed gaps whether or not an OSI event arrives.
 
 The OSI source is one substantive Forward-only multi-day field pilot owned by 12-33. It is not a rerun, repair, replacement, or extension of the closed 18-case Formal Run. OSI scoring, closure, protocol, and repository authority remain inside the OSI lane.
 
 ## Purpose
 
-The lane lets V13 use one real operational event from the substantive OSI multi-day field pilot as bounded live evidence. OSI remains the system that tests actual restart, compression, handoff, and operation. V13 reads one transported event packet, routes one exposed gap, evaluates the route against Shin's Aspire, and stops before execution.
+The lane lets V13 optionally use one real operational event from the substantive OSI multi-day field pilot as bounded live evidence. OSI remains the system that tests actual restart, compression, handoff, and operation. If separately admitted, V13 reads one transported event packet, routes one exposed gap, evaluates the route against Shin's Aspire, and stops before execution.
 
 OSI success or failure is judged by OSI criteria. V13 success or failure is judged by V13 criteria. OSI supplies real operational evidence; it does not supply proof that V13 is correct.
 
@@ -178,7 +193,7 @@ The packet must not contain a V13 answer or expected classification. Shin's role
 
 ## Future V13 Processing Contract
 
-When the first qualifying packet is later received, V13 13-9 will:
+If one qualifying packet later arrives and its intake Gate is separately confirmed, V13 13-9 will:
 
 1. verify the packet identity and bounded evidence;
 2. apply Minimum Autonomous Loop v0.1 once;
@@ -190,7 +205,7 @@ When the first qualifying packet is later received, V13 13-9 will:
 8. state one proposed AI-owned action or none;
 9. stop before any OSI or V13 modification.
 
-No event evaluation is authorized during lane setup.
+No event evaluation is authorized by the dependency-decoupling task.
 
 ## Aspire Evaluation
 
@@ -272,18 +287,65 @@ This lane authorizes exactly one future live event evaluation. It does not autho
 
 After the first event result, stop and reassess.
 
+## V13-Native Compounding Sources
+
+V13 may independently develop from real evidence arising from:
+
+- its own current repository surfaces;
+- Field Note Missing Closure;
+- handoff and restart failures;
+- authority or source-of-truth conflicts;
+- Human Seat distinguishability failures;
+- unnecessary Human Carrier burden;
+- missed `CHALLENGE REQUIRED`;
+- question-depth failures;
+- local repair drift;
+- fresh-receiver evaluation;
+- real Shin–AI decision episodes;
+- contradictions between current V13 operating surfaces.
+
+OSI provenance is not required for a V13-native gap. Do not manufacture a gap.
+
+A qualifying V13-native gap must:
+
+- be based on an actual persisted inconsistency, unresolved Missing Closure, observed burden, or real operating event;
+- affect the next V13 decision;
+- remain unresolved at capture;
+- fit inside one bounded analysis;
+- not require OSI evidence;
+- not be created merely to keep V13 moving.
+
+If no qualifying gap exists, return:
+
+```text
+Gap:
+none
+
+V13 Gate:
+HOLD
+
+Next Authorized Action:
+none
+```
+
+Do not reactivate OSI waiting as a fallback.
+
 ## Current Gate
 
 ```text
 V13 Gate: GO / CAP
-CAP axis: one transported qualifying OSI event packet
+CAP axis: at most one qualifying non-OSI-dependent V13 gap
 CAP limit: one read-only MAL v0.1 evaluation, then stop before execution
-Event received: no
+OSI lane: AVAILABLE / OPTIONAL EVIDENCE INPUT
+V13 waiting for OSI: no
+Native gap selected: no
 Live case created: no
-Active Branch: V13 / OSI Parallel Compounding Lane — FIRST EVENT PENDING
-Next Authorized Action: Receive one qualifying packet from 12-33 and apply MAL v0.1 once.
+Active Branch: V13 / Native Compounding Proof 001 — FIRST GAP PENDING
+Next Authorized Action: Inspect current V13 persisted state and recent real Decision-OS operating evidence, identify at most one qualifying non-OSI-dependent exposed gap, apply Minimum Autonomous Loop v0.1 once, and stop before execution.
 ```
+
+This authorization covers gap discovery and read-only routing only. It does not authorize execution of any action proposed by Minimum Autonomous Loop v0.1.
 
 ## Completion Line
 
-V13 now has a bounded parallel lane that can learn from one real OSI pilot event without controlling, rescoring, or modifying OSI; the event has not yet occurred or been evaluated, and runtime remains blocked.
+V13 no longer depends on an OSI event to progress. OSI remains available as one bounded external evidence source, while V13 resumes independent Aspire-directed development from its own real exposed gaps.
