@@ -11,6 +11,9 @@
 - 🟢 BLUE / MAL-V0.1-RUN-001-PASS
 - 🟡 YELLOW / MAL-V0.1-GENERALIZATION-NOT-ESTABLISHED
 - 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
+- 🟢 BLUE / OSI-PARALLEL-COMPOUNDING-LANE-V0.1-ACTIVE
+- 🟡 YELLOW / FIRST-LIVE-OSI-EVENT-PENDING
+- 🔴 RED / AUTOMATIC-OSI-OBSERVATION-AND-INTERVENTION-BLOCK
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
 - 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
@@ -31,6 +34,8 @@ Historical As-of:
 
 Run 001 does not establish broad question accuracy, generalization, autonomous learning, runtime reliability, automatic propagation, Human Carrier burden reduction, or self-evolution.
 
+V13 and OSI now progress concurrently through [OSI Parallel Compounding Lane v0.1](osi_parallel_compounding_lane_v0_1.md). OSI is the first live evidence substrate, not the authority for V13. The lane authorizes one future read-only evaluation of one qualifying OSI event; no event has been received, no Case record has been created, and no automatic observation or intervention is authorized.
+
 ## Current V12 State
 
 PASS
@@ -39,9 +44,9 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after the bounded Run 001 scoring and closure.
+GO / CAP for one qualifying OSI event packet and one read-only Minimum Autonomous Loop v0.1 evaluation.
 
-Minimum Autonomous Loop v0.1 specification is complete and its first frozen fresh isolated validation case passed. Generalization is `NOT ESTABLISHED`; no second run or runtime branch is active, and runtime implementation remains `BLOCK`.
+The active branch is `V13 / OSI Parallel Compounding Lane — FIRST EVENT PENDING`. Run 001 remains bounded evidence for one frozen case. Generalization and runtime remain unproven; automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
 The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
 
@@ -55,6 +60,7 @@ The current prototype includes:
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
+- `docs/osi_parallel_compounding_lane_v0_1.md`
 - `templates/v13_reconnection_packet_template.md`
 - `field_notes/` through Field Note 126
 - `validation/field_note_126_case_001_latent_propagation.md`
@@ -88,6 +94,8 @@ Current manual cases show:
 | MAL v0.1 Validation Run 001 | PASS | Fresh isolated routing and stop reproduction for the cross-surface status-drift case only |
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
+| OSI Parallel Compounding Lane v0.1 | GO / CAP | Receive one qualifying transported event packet, apply MAL v0.1 once, and stop before execution |
+| Automatic OSI observation or intervention | BLOCK | No monitoring, intake, protocol change, repository modification, or pilot intervention authority |
 | Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
 | README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
@@ -103,6 +111,7 @@ Allowed:
 - use `templates/v13_reconnection_packet_template.md` to close or transfer handoff-sensitive V13 work
 - refresh stale current surfaces when they would mislead a future AI
 - run one separately authorized bounded manual proof or audit
+- receive one qualifying OSI event packet from 12-33, apply MAL v0.1 once, and stop before execution
 - record new field notes only when a new observed result appears
 - observe stars, adoption, reuse, comments, task evidence, correction, rereading, re-explanation, and Human supervision burden
 - keep Human Seat, Protected Object, historical As-of, Gate, Completion Line, challenge visibility, and blocked scope visible
@@ -122,6 +131,8 @@ Not allowed from this signal:
 - start external posting
 - treat README redesign as active
 - turn launch capsules into implementation approval
+- monitor, rescore, modify, or intervene in OSI automatically
+- collect multiple OSI events or create a Case before a qualifying event is received
 
 ## Current Lesson
 
@@ -131,4 +142,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Preserve the completed specification and Run 001 PASS as bounded evidence for one case; generalization is not established, no second run is active, and runtime automation remains blocked.
+> Receive at most one real OSI event as transported evidence, apply the read-only loop once, preserve separate OSI and V13 authority, and stop before execution; no event has yet been received and runtime remains blocked.

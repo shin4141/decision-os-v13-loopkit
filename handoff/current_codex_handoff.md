@@ -25,6 +25,7 @@ Minimum Autonomous Loop v0.1 specification: COMPLETE
 MAL v0.1 Validation Run 001: PASS / one frozen fresh isolated case only
 MAL v0.1 generalization: NOT ESTABLISHED
 Read-Only Gap Routing Loop implementation: NOT STARTED / BLOCK
+OSI Parallel Compounding Lane v0.1: ACTIVE / FIRST EVENT PENDING
 ```
 
 Authority boundary:
@@ -43,14 +44,77 @@ Star-chasing as primary branch: HOLD
 Active branch:
 
 ```text
-none
+V13 / OSI Parallel Compounding Lane — FIRST EVENT PENDING
 ```
 
 Next authorized action:
 
 ```text
-none
+Receive one qualifying OSI event packet from 12-33 and apply Minimum Autonomous Loop v0.1 once, then stop before execution.
 ```
+
+## Current OSI Parallel Compounding Lane v0.1 — 2026-07-22
+
+Receipt:
+
+```text
+OSI Parallel Compounding Lane v0.1:
+ACTIVE
+
+Purpose:
+One real OSI pilot event may be used as a bounded V13 live evidence case.
+
+OSI owner:
+GPT 12-33
+
+V13 receiver:
+Codex 13-9
+
+Event received:
+no
+
+Live case created:
+no
+
+Authorized event count:
+1
+
+Automatic monitoring:
+BLOCK
+
+Automatic OSI intervention:
+BLOCK
+
+Runtime / learning / self-modification:
+BLOCK
+
+Active Branch:
+V13 / OSI Parallel Compounding Lane — FIRST EVENT PENDING
+
+Next Authorized Action:
+Receive and evaluate one qualifying OSI event packet from 12-33 using
+Minimum Autonomous Loop v0.1, then stop before execution.
+```
+
+Contract:
+
+```text
+Lane document: docs/osi_parallel_compounding_lane_v0_1.md
+OSI pilot owner: GPT chat 12-33
+OSI public repository: shin4141/output-surface-integrity
+OSI repository authority: OSI lane only
+Shin role: transport only / no summary, interpretation, or scoring required
+V13 authority: one transported packet / one read-only evaluation / no execution
+OSI result rescoring: not authorized
+OSI repository modification: not authorized
+Case creation before qualifying event receipt: not authorized
+```
+
+OSI is V13's first live evidence substrate, not the authority for V13 Human Seat boundaries, Aspire, Gate semantics, or self-evolution claims. No qualifying event has been received, and no live Case exists. Run 001 remains bounded evidence for one frozen case; generalization and runtime remain unproven.
+
+Completion Line:
+
+V13 now has a bounded parallel lane that can learn from one real OSI pilot event without controlling, rescoring, or modifying OSI; the event has not yet occurred or been evaluated, and runtime remains blocked.
 
 ## Current MAL v0.1 Validation Run 001 Result — 2026-07-22
 
