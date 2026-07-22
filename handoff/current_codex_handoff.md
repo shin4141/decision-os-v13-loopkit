@@ -30,6 +30,12 @@ Decision Lineage Reconnection: REQUIRED BEFORE HUMAN SEAT RETURN
 First lineage binding: PIC
 PIC classification: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
 PIC Human Seat question: none
+Second lineage binding: Guard Continuity
+Guard Continuity lineage binding: COMPLETE
+Guard classification: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+Guard Human Seat question: none
+Guard operational witnesses: 4 / NOT YET VALIDATED
+Guard / PIC distinction: PRESERVED
 Automatic lineage scan: BLOCK
 Automatic Canon propagation: BLOCK
 Fresh v0.2 validation: NOT STARTED / PARKED
@@ -67,6 +73,88 @@ Next authorized action:
 ```text
 none
 ```
+
+## Current Guard Continuity Local Binding 001 — 2026-07-22
+
+Receipt:
+
+```text
+Guard Continuity lineage binding:
+COMPLETE
+
+Guard classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Human Seat question:
+none
+
+Operational witnesses:
+4
+
+Guard break route:
+DRIFT / SELF-DISTORTION
+
+Guard unknown route:
+HOLD
+
+Runtime validation:
+NOT STARTED
+
+Candidate 2 — V10 Goal-Length:
+PARKED / not active
+
+Candidate 3 — V9.1 Condition-Bound Reuse:
+PARKED / not active
+
+Lineage Reconnection Burden Transfer:
+PRIVATE FIELD NOTE CANDIDATE
+
+Direct evidence:
+AVAILABLE
+
+Repository registration:
+NOT ACTIVE
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Reason:
+Guard is lineage-bound for Case 004, but its V13 operational witnesses have
+not been validated against an actual self-update.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+```text
+Lineage register: docs/decision_lineage_reconnection_register_v0_1.md
+Case 004 binding:
+validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md
+```
+
+Guard is the invariant admissibility and stopping boundary. PIC is the
+non-destructive committed-integration and canonical-convergence boundary.
+Guard preservation is necessary but not sufficient for a self-evolution
+candidate. No actual self-update, fresh validation, runtime Guard check,
+automatic lineage scan, Canon propagation, or new Human Seat question was
+started.
+
+Completion Line:
+
+V13 now has a source-grounded Guard Continuity binding distinct from PIC: four
+observable V13 witnesses, a minimum Guard break rule, and an UNKNOWN route to
+HOLD, without redefining Guard or claiming runtime verification.
 
 ## Current MAL v0.2 Decision Lineage Reconnection Specification — 2026-07-22
 

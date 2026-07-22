@@ -13,6 +13,8 @@
 - 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
 - 🟢 BLUE / MAL-V0.2-LINEAGE-AWARE-SPECIFICATION-COMPLETE
 - 🟢 BLUE / PIC-LINEAGE-BINDING-REGISTERED
+- 🟢 BLUE / GUARD-LINEAGE-BINDING-REGISTERED
+- 🟡 YELLOW / GUARD-CONTINUITY-WITNESSES-NOT-YET-VALIDATED
 - 🟡 YELLOW / MAL-V0.2-FRESH-VALIDATION-NOT-STARTED
 - 🔴 RED / AUTOMATIC-LINEAGE-SCAN-AND-CANON-WRITE-BLOCK
 - 🟢 BLUE / V13-PARENT-GOVERNANCE-LAYER
@@ -37,6 +39,21 @@ Minimum Autonomous Loop v0.1 is a complete specification for the Read-Only Gap R
 
 Minimum Autonomous Loop v0.2 is a Forward-only successor to v0.1. MAL v0.1 remains preserved and its prior Run 001 validation scope is unchanged. v0.2 adds Decision Lineage Reconnection before Human Seat return. PIC is the first registered binding and is classified `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; the previously proposed PIC question is AI-owned, and no new Human Seat question has been selected. Fresh v0.2 validation has not run and is parked. Runtime, automatic lineage scanning, and automatic Canon propagation remain blocked.
 
+Guard Continuity is the second bounded Case 004 lineage binding and is
+classified `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; no Human Seat question
+was required. Boundary Persistence / Non-Vacuity, Human-Governed
+Irreversibility, Inner-Guard Non-Capture, and Recursive Enforceability /
+Recoverable Control are V13 operational mappings, not source axioms. No actual
+self-update or runtime has validated them. Guard governs admissibility and
+stopping; PIC governs non-destructive committed integration and canonical
+convergence. Guard preservation is necessary but not sufficient for a
+self-evolution candidate. Guard break routes to `DRIFT / SELF-DISTORTION`,
+while insufficient Guard evidence routes to `HOLD / UNCLASSIFIED`. Candidate 2
+— V10 Goal-Length and Candidate 3 — V9.1 Condition-Bound Reuse remain
+`PARKED / not active`. Lineage Reconnection Burden Transfer remains
+`PRIVATE FIELD NOTE CANDIDATE`, with `DIRECT EVIDENCE AVAILABLE` and
+`REPOSITORY REGISTRATION NOT ACTIVE`.
+
 Historical As-of:
 
 > Before commit `b01edd8c80e5b8a63406ceaf84f03e9344289ed7`, minimum autonomous-loop design was `PARKED / not active`.
@@ -55,7 +72,10 @@ Historical As-of — commit `09053a2f0ec5489f4c0bfcd37bc5d9dc626bb876`:
 
 > The OSI lane was initially activated with `FIRST EVENT PENDING` as the current V13 branch. That state established authority separation, one-event intake, transport-only handling, and automatic observation/intervention blocks.
 
-No parent-level or child-returned gap has yet been selected, and no new Case has been created. Run 001 remains one-case validation only; runtime and generalized autonomy remain unproven.
+At Parent Compounding Proof 001's historical As-of, no parent-level or
+child-returned gap had been selected, and no new Case had been created. Run 001
+remains one-case validation only; runtime and generalized autonomy remain
+unproven.
 
 Parent Compounding Proof 001 inspected the synchronized current parent state and returned no qualifying gap. MAL correctly used `STOP / HOLD`, asked no Human Seat question, proposed no action, and caused no Case, propagation, or repository/external execution. This is `PASS — NO-GAP STOP` conformance evidence with Aspire direction `NEUTRAL`, not a `1.01 EVIDENCE` or burden-reduction claim.
 
@@ -69,7 +89,8 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after Minimum Autonomous Loop v0.2 specification and the first PIC lineage binding completed.
+HOLD after Guard Continuity lineage binding completed; its four V13
+operational witnesses have not been validated against an actual self-update.
 
 Active Branch is `none`, and Next Authorized Action is `none`. Fresh v0.2 validation is `NOT STARTED / PARKED`. No new Human Seat question, runtime, automatic lineage scan, or automatic Canon propagation is authorized.
 
@@ -125,6 +146,8 @@ Current manual cases show:
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
 | MAL v0.2 specification | PASS | Forward-only successor adds mandatory Decision Lineage Reconnection before Human Seat return |
 | PIC lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
+| Guard Continuity lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
+| Guard Continuity operational validation | HOLD | Four V13 witnesses are mapped but untested against an actual self-update |
 | MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
 | Automatic lineage scan / Canon propagation | BLOCK | No automated lineage search or authority write |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
@@ -179,4 +202,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Use MAL v0.2 lineage reconnection before any Human Seat return: PIC is lineage-closed and its bounded local binding is AI-owned; v0.1's prior scope is preserved, while fresh validation, automatic scan/write, runtime, and new-question generation remain inactive.
+> Guard Continuity is lineage-bound as the admissibility and stopping boundary, distinct from PIC's committed integration boundary; its four witnesses remain unvalidated, while Candidate 2, Candidate 3, the private Field Note candidate, runtime, and automatic propagation remain inactive.

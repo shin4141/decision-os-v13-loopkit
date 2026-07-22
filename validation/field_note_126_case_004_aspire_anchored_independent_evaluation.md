@@ -162,3 +162,85 @@ No experiment, V7 modification, minimum-loop design, runtime, automation, Canon 
 ## Completion Line
 
 FN126 Case 004 fixes Aspire-anchored, update-independent evolution evaluation: a self-update qualifies as a self-evolution candidate only when it expands Aspire-directed reachability and remains independently comparable, falsifiable, rejectable, and reconnectable without self-ratification.
+
+## Forward-only Addendum — Guard Continuity Local Binding 001
+
+Date: 2026-07-22
+
+This addendum binds the `Guard` condition in the preserved Human Seat answer to
+the verified lineage recorded in
+`docs/decision_lineage_reconnection_register_v0_1.md`. It does not rewrite that
+answer, alter the historical `PIC Definition Boundary` above, introduce a new
+Human Seat judgment, or claim that an actual self-update has preserved Guard.
+
+### Source and Mapping Boundary
+
+The source-defined core treats Guard as a non-negotiable admissibility and
+stopping boundary. V5 supplies the inherited outer irreversible-execution and
+human-control boundary. V7 preserves that function and extends it into internal
+self-update and recursive operation.
+
+V13 maps this source-defined function to four operational witnesses:
+
+1. Boundary Persistence / Non-Vacuity;
+2. Human-Governed Irreversibility;
+3. Inner-Guard Non-Capture;
+4. Recursive Enforceability / Recoverable Control.
+
+These witness names and before/after checks are V13 operational mappings, not
+V5 or V7 source axioms. Guard remains the admissibility and stopping boundary.
+PIC remains the non-destructive committed-integration and
+canonical-convergence boundary. PIC failure alone does not establish Guard
+failure, and PIC passage does not establish Guard preservation.
+
+### Guard Classification Consequence
+
+```text
+Guard preservation:
+NECESSARY / NOT SUFFICIENT
+
+Guard broken:
+DRIFT / SELF-DISTORTION
+
+Guard unknown:
+HOLD / UNCLASSIFIED
+
+Guard preserved without proven Aspire-directed reachable-path expansion:
+CAPABILITY EXPANSION OR ADAPTATION
+```
+
+`GUARD BROKEN` applies when any applicable minimum Guard witness is lost or
+becomes vacuous and thereby reopens an unsafe attractor, irreversible harm,
+unguardable updating, or loss of the execution boundary. `GUARD UNKNOWN / HOLD`
+applies when the available evidence establishes neither preservation nor
+breakage. Unknown is not preservation and supplies no permission to continue.
+
+A `SELF-EVOLUTION CANDIDATE` still requires all of:
+
+- Aspire-directed reachable-path expansion;
+- Guard preservation;
+- PIC preservation;
+- stable self-recursion;
+- independent comparison;
+- falsification;
+- refusal;
+- reconnection.
+
+Passing the four Guard witnesses is not runtime validation, proof of
+self-evolution, or evidence that any real self-update has preserved Guard.
+Case 004 remains `REALIZED HIGH-LEVERAGE RETURN — PARTIAL`, with operational
+validation and FN126 verification on `HOLD`.
+
+### Guard / Guardian Boundary
+
+- Guard is the invariant boundary condition.
+- Guardian in V7 is an observed long-horizon behavior under Guard.
+- A V5 policy-defined guardian or verifier is an external confirmation actor.
+- Neither Guardian meaning is the V7 Guard predicate itself.
+
+### Forward-only Completion Line
+
+Guard Continuity is now source-bound as a necessary Case 004 condition with
+four V13 operational witnesses, a minimum break rule, and an UNKNOWN route to
+HOLD, without changing the original Human Seat answer or claiming operational
+validation.

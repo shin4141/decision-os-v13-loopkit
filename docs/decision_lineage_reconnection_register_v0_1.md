@@ -4,8 +4,9 @@
 
 ```text
 Register specification: COMPLETE
-Registered bindings: 1
+Registered bindings: 2
 First binding: PIC
+Second binding: Guard Continuity
 Automatic lineage scan: BLOCK
 Automatic Canon propagation: BLOCK
 Runtime: BLOCK
@@ -54,6 +55,11 @@ UNKNOWN
 `UNKNOWN` routes to `SOURCE-PROOF-INSUFFICIENT / HOLD` in MAL v0.2. A
 lineage-closed entry may require bounded local binding, but it does not require
 another Human Seat answer.
+
+`/ LOCAL-BINDING-REQUIRED` is an operational routing suffix, not a sixth
+lineage classification value. It may qualify `LINEAGE-CLOSED` when the source
+meaning is closed but bounded current-layer witnesses, falsifiers, or source
+binding are still required.
 
 ## Verified Source Authority for PIC
 
@@ -342,8 +348,180 @@ The binding closes the semantic source gap. It does not validate FN126 Case
 fresh validation, implement runtime, or permit automatic lineage scanning or
 Canon propagation.
 
+## Entry 002 — Guard Continuity
+
+```text
+Term / Joint:
+Guard Continuity for Case 004
+
+Current Local Use:
+Necessary condition in self-update evaluation in
+validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md
+
+Lineage Classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Authoritative Source:
+1. Current explicit Human Seat / Forward-only delta preserved in FN126 Case
+   004;
+2. Decision-OS V7 Final EN v1.0, DOI 10.5281/zenodo.20422099,
+   gateway path notes/v7-final/Decision-OS_V7_Final_EN_v1.0.pdf,
+   Git blob 1892d785d7d6b824355b9996bdee8e2a69f0f448;
+3. Decision-OS V7 Core, DOI 10.5281/zenodo.17932554,
+   gateway path notes/Decision_OS_V7__Aspire_Intelligence_for_AGI__EN_Core.pdf,
+   Git blob 13e60a16cd69e2dc9f31e8e9dcd14237ce70a820;
+4. Decision-OS V5 Revised, DOI 10.5281/zenodo.19828435,
+   gateway path notes/v5/Decision_OS_V5_Revised_SiriusA2_2026-04-28.pdf,
+   Git blob c6163eddb58a1bb94154608e511cb1c0e641e124,
+   only for the explicitly inherited outer irreversible-execution and
+   human-control boundary.
+
+Source As-of / Version:
+FN126 Case 004 Forward-only Human Seat delta / 2026-07-22;
+V7 Final EN v1.0;
+V7 Core;
+V5 Revised SiriusA2 / 2026-04-28;
+gateway retrieval commit 07f20eb5bbea1e49d0b5f60fc4962c45ddcd3704
+
+Later Forward-only Deltas:
+The current explicit Human Seat / FN126 Case 004 delta has first precedence.
+V7 Final is the current authoritative V7 formulation; V7 Core is preserved as
+its earlier formulation. V5 Revised is consulted only for the outer boundary
+that V7 inherits. No older source may overwrite the current Human Seat delta,
+and no V13 mapping may be restated as a V5 or V7 source axiom.
+
+Source-Defined Core:
+Guard is a non-negotiable and constitutive admissibility boundary. It inherits
+from V5 an outer irreversible-execution and human-control boundary and is
+extended by V7 into internal self-update and recursive operation. Guard
+determines how far updating may proceed and where it must stop, and remains
+distinct from Guardian and PIC.
+
+The bounded V5 outer boundary preserves only: life-first orientation; human
+final consent and responsibility; Hold-first confirmation; rejection and
+revoke availability; no bypass into protected irreversible execution; no
+automatic execution without required confirmation; and no score-only Stop or
+Freeze without an independent non-score condition.
+
+The bounded V7 inner boundary preserves only: prevention of short-horizon noise
+and reward capture; unsafe optimization and uncontrolled divergence;
+self-preserving closure becoming the recursive objective; loss of external
+anchoring or safety-signal visibility; Carrier-destroying and non-recoverable
+recursive regimes; and loss of the proceed/stop boundary under recursion.
+
+Current-Layer Operational Mapping:
+V13 maps the source-defined Guard core to four operational witnesses: Boundary
+Persistence / Non-Vacuity, Human-Governed Irreversibility, Inner-Guard
+Non-Capture, and Recursive Enforceability / Recoverable Control. These are V13
+evaluation mappings, not V5 or V7 source axioms. Passing them is necessary, not
+sufficient, for Case 004; it is neither runtime validation nor proof of
+self-evolution.
+
+Minimum Witnesses:
+- Boundary Persistence / Non-Vacuity: every applicable proceed/stop boundary
+  remains explicit before and after the update, is not silently weakened, and
+  retains an operative witness, mechanism, or downstream Gate.
+- Human-Governed Irreversibility: protected irreversible execution cannot
+  bypass Human Seat, confirmation, Hold, rejection, or revoke. Stop or Freeze
+  cannot be justified by a score alone when an independent non-score condition
+  is required.
+- Inner-Guard Non-Capture: short-horizon reward, local optimization,
+  self-preservation, self-expansion, or narrative coherence cannot justify
+  bypassing Guard, hiding safety evidence, destroying the Carrier, or refusing
+  independent anchoring.
+- Recursive Enforceability / Recoverable Control: after repeated or
+  internalized updating, Guard still blocks prohibited paths and preserves
+  refusal, control, recovery, rollback, or safe stabilization before a
+  non-recoverable regime.
+
+Falsifiers / Break Conditions:
+- Boundary Persistence / Non-Vacuity fails when an applicable proceed/stop
+  boundary disappears, is silently weakened, or lacks an operative witness,
+  mechanism, or downstream Gate.
+- Human-Governed Irreversibility fails when protected irreversible execution
+  bypasses Human Seat, confirmation, Hold, rejection, or revoke, or when a
+  score alone produces Stop or Freeze despite a required independent non-score
+  condition.
+- Inner-Guard Non-Capture fails when a listed short-horizon or self-preserving
+  driver is accepted as justification for Guard bypass, hidden safety evidence,
+  Carrier destruction, or refusal of independent anchoring.
+- Recursive Enforceability / Recoverable Control fails when recursion or
+  internalization makes Guard unable to block a prohibited path or removes
+  refusal, control, recovery, rollback, or safe stabilization before a
+  non-recoverable regime.
+- GUARD BROKEN when any applicable minimum Guard witness is lost or becomes
+  vacuous and thereby reopens at least one source-grounded failure region:
+  unsafe attractor, irreversible harm, unguardable update, or loss of execution
+  boundary.
+- GUARD UNKNOWN / HOLD when evidence is insufficient to establish preservation
+  or breakage. Unknown is not preservation and is not permission.
+
+Required Distinctions:
+Guard is the invariant boundary condition. Guardian in V7 is an observed
+long-horizon behavior under Guard. A V5 policy-defined guardian or verifier is
+an external confirmation actor. Neither Guardian meaning is the V7 Guard
+predicate itself.
+
+Guard is the admissibility and stopping boundary. PIC is non-destructive
+committed integration and canonical convergence. A Guard failure is not
+inferred from PIC failure alone, and a PIC pass does not imply Guard
+preservation.
+
+Import Boundary:
+Import from V5 only the explicitly inherited outer-boundary functions listed
+above. Do not import the full SiriusA architecture, V5 scoring, duress model,
+UI, ZK, multisig, deployment details, or the full C1–C9 failure map. Do not turn
+V13 guard-like mechanisms into source definitions, invent numeric thresholds,
+or claim runtime verification.
+
+Reopen If:
+A later explicit Human Seat / Forward-only delta changes Guard semantics or the
+outer/inner boundary precedence; an authoritative source identity, artifact
+blob, or gateway As-of no longer verifies; source proof becomes insufficient;
+two materially valid authoritative meanings remain after As-of precedence;
+evidence falsifies one of the four V13 witness mappings or shows that a witness
+is vacuous; or an authorized real self-update exposes that preservation versus
+breakage cannot be classified without revising the bounded mapping. UNKNOWN
+routes to HOLD and never supplies permission.
+
+Human Seat Required:
+no
+```
+
+## Entry 002 Routing Receipt
+
+```text
+Guard lineage classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Established Context Check:
+CLOSED
+
+Decision Route:
+AI-OWNED
+
+Human Seat Question:
+none
+
+Guard break rule:
+GUARD BROKEN when any applicable minimum witness is lost or becomes vacuous
+and reopens a source-grounded failure region
+
+Guard unknown rule:
+GUARD UNKNOWN / HOLD
+
+Propagation:
+NOT EXECUTED BY THIS REGISTER
+```
+
+This binding closes the Guard semantic and local-binding gap only. It does not
+prove Guard preservation for an actual self-update, validate the four
+witnesses, run Case 004, establish self-evolution, authorize runtime, or permit
+automatic lineage scanning or Canon propagation.
+
 ## Completion Line
 
-PIC is now reconnectable from its V13 use to verified V6, V7 Addendum, V8, and
-V11 source identities, while its source definition remains separate from the
-four bounded V13 operational witnesses and no Human Seat question is returned.
+PIC and Guard Continuity are now reconnectable from their V13 uses to verified
+lineage sources. Their source definitions remain separate from their bounded
+V13 operational witnesses, and neither binding returns a Human Seat question
+or claims runtime validation.
