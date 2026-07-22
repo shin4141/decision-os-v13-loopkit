@@ -21,7 +21,8 @@ Sustainability: revenue after sufficient evidence
 Higher Aspire: self-improving Decision-OS approaching bounded self-evolution evaluation
 FN126 Cases 001–004: verification-pending evidence
 Evolution evaluation invariant: Aspire-directed reachability plus independent comparison / falsification / refusal / reconnection
-Minimum autonomous-loop design: PARKED / not active
+Minimum Autonomous Loop v0.1 specification: COMPLETE
+Read-Only Gap Routing Loop implementation / validation: NOT STARTED
 ```
 
 Authority boundary:
@@ -48,6 +49,67 @@ Next authorized action:
 ```text
 none
 ```
+
+## Current Minimum Autonomous Loop v0.1 Specification — 2026-07-22
+
+Record:
+
+```text
+Specification path: docs/minimum_autonomous_loop_v0_1.md
+Loop name: Read-Only Gap Routing Loop
+Specification: COMPLETE
+Runtime implementation: NOT STARTED
+Validation: NOT STARTED
+Fresh isolated test: PARKED / not active
+FN126 Cases 001–004: design evidence only
+```
+
+Loop boundary:
+
+```text
+Reads current governed state
+Detects at most one consequential gap
+Uses established context before asking
+Routes to AI-OWNED / HUMAN-SEAT / EVIDENCE-RECOVERY / STOP
+Returns zero or one Human Seat question
+Assigns GO / HOLD / CAP / BLOCK
+Stops before execution
+```
+
+Authority boundary:
+
+```text
+Runtime / automation implementation: BLOCK
+Automatic learning / self-modification: BLOCK
+Answer-driven propagation: BLOCK
+Canon / authority / Aspire / Protected Object change: BLOCK
+Automatic public or external action: BLOCK
+Fresh isolated validation: PARKED / separate activation required
+```
+
+Active branch:
+
+```text
+none
+```
+
+Next authorized action:
+
+```text
+none
+```
+
+Remaining Missing Closure:
+
+```text
+No fresh isolated receiver has validated the specification.
+No runtime or automated operation exists.
+Burden reduction, authority accuracy, question accuracy, and challenge preservation remain unmeasured in automated use.
+```
+
+Completion Line:
+
+Minimum Autonomous Loop v0.1 now specifies one read-only gap-routing result that may identify at most one consequential gap, route it to AI ownership or one irreducible Human Seat question, assign one V13 Gate, and stop before execution.
 
 ## Current FN126 Case 004 — 2026-07-22
 
