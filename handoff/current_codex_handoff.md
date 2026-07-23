@@ -8,6 +8,77 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Bounded Operational Authority Window v0.1 Proposal
+
+Date:
+`2026-07-24`
+
+Starting canonical `main`:
+`4cdc7af52e943954951949fc1263860592858a37`
+
+Current AI execution subject:
+`Codex`
+
+Receipt:
+
+```text
+Bounded Operational Authority Window v0.1:
+COMPLETE ON BRANCH / PR PENDING
+
+BOAW-001:
+NOT ACTIVE
+
+Run 002:
+NOT STARTED
+
+Activation authority:
+SHIN ONLY
+
+Current Gate:
+HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+```
+
+Authority proposal:
+
+- at most three completed loops;
+- one active branch at a time;
+- one PR per loop;
+- one primary variable per loop;
+- repository-only changes in the listed permitted classes;
+- zero external actions;
+- zero Human questions unless a true Human Seat decision is encountered;
+- loop-specific validation, target-surface verification, PR-head verification,
+  and named rollback identity before merge;
+- one bounded correction attempt per loop;
+- automatic exhaustion after three completed loops or any immediate-stop
+  condition; and
+- no self-extension, criteria modification, standing permission, or automatic
+  renewal.
+
+The full proposal is
+[Bounded Operational Authority Window v0.1](../docs/bounded_operational_authority_window_v0_1.md).
+
+Merge approval does not activate BOAW-001. Activation requires Shin's separate
+exact statement:
+
+```text
+I activate BOAW-001 for Run 002.
+```
+
+Stress Run 001 remains `FAIL / CLOSED`. Its evidence branches and Draft PRs
+remain non-merge evidence. No Run 001 score, artifact, or evaluation is
+rewritten, and Iteration 01 is not retroactively validated. Run 002 remains
+unstarted.
+
+Every lower Run 001 pre-start or execution-authority receipt remains historical
+at its recorded As-of and grants no current authority. The only next Decision
+Owner action is approval or rejection of the completed authority PR. PR merge,
+BOAW-001 activation, and Run 002 execution remain separate events.
+
+Completion Line:
+
+BOAW-001の承認面を作り、mergeとactivationを分離した状態で停止する。
+
 ## V13 — Load-Bearing Evidence Merge Closure
 
 Date:
