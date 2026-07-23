@@ -8,7 +8,138 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V13 — Implementation-Load Priority Reversal and Load-Bearing Improvement Evidence
+## V13 — Load-Bearing Evidence Merge Closure
+
+Date:
+`2026-07-23`
+
+Completed merge-closure execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Receipt:
+
+```text
+PR #3:
+MERGED / COMPLETE
+
+Approved PR head:
+9901e490f16abf7068823b0eb1f2bd289b476631
+
+PR merge commit:
+5b77007d6a4d9cc23d70571294c453b63142c0dc
+
+Implementation-Load Priority Reversal:
+MERGED / AVAILABLE ON MAIN
+
+Load-Bearing Compliance Test:
+MERGED / AVAILABLE ON MAIN
+
+Successor Debt:
+MERGED AS OPTIONAL NEXT-LOOP DEFERRED-COST FIELD
+
+Evidence status:
+SPECIFICATION AND SCHEMA INTEGRATION COMPLETE /
+OPERATIONAL VALIDATION NOT YET STARTED
+
+Merge Gate:
+PASS / COMPLETE
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+V13 system-level state:
+GO — AUTONOMOUS 1.01 STRESS RUN MAY BE SEPARATELY STARTED ONLY BY ITS
+EXISTING AUTHORIZED PACKET
+
+Current Gate:
+GO — AUTONOMOUS 1.01 STRESS RUN MAY BE SEPARATELY STARTED ONLY BY ITS
+EXISTING AUTHORIZED PACKET
+
+Autonomous 1.01 Selection Stress Run 001:
+NOT STARTED
+
+Stress Run authority effect:
+CANONICAL-MEASUREMENT PRECONDITION SATISFIED ONLY /
+RUN NOT ACTIVATED
+
+Decision Owner:
+Shin
+```
+
+PR #3 merged the exact reviewed head through merge commit
+`5b77007d6a4d9cc23d70571294c453b63142c0dc`. The approved implementation
+history remains visible rather than being squashed.
+
+The seven merged implementation files now on `main` are:
+
+1. `docs/implementation_load_priority_reversal_and_successor_debt_v0_1.md`
+2. `templates/v13_loop_record.md`
+3. `schema/v13_loop_record.schema.json`
+4. `prompts/v13_loop_review.md`
+5. `docs/loop_map.md`
+6. `docs/current_signal.md`
+7. `handoff/current_codex_handoff.md`
+
+Post-merge state synchronization changes only:
+
+1. `docs/current_signal.md`
+2. `handoff/current_codex_handoff.md`
+
+The merge approval does not start Autonomous 1.01 Selection Stress Run 001.
+It satisfies only the run's requirement that the measurement structure be
+canonical on `main`. Starting that run remains a separate execution governed
+only by its existing authorized packet, including fresh preflight,
+preregistration, evidence-branch, iteration, stop, no-question,
+no-external-action, and no-merge limits.
+
+Validation performed:
+
+- repository and `shin4141` authentication verified;
+- PR #3 was `OPEN / READY / MERGEABLE / CLEAN` at the exact approved head
+  before merge;
+- PR #3 is `MERGED`, and GitHub records the approved head as its merged head;
+- all seven implementation files are present on `main`;
+- the schema and all 12 existing JSON Loop Records remain valid under the
+  repository's no-dependency validation method;
+- post-merge diff scope is limited to the two state-sync files;
+- no runtime, automation, research paper, Revenue price, outreach, follow-up,
+  or V7 Canon surface changed;
+- no Stress Run branch, preregistration, iteration, result, or draft PR was
+  created.
+
+State-sync commit identity boundary:
+
+> The enclosing state-sync commit cannot embed its own SHA. Its exact identity
+> is the current `main` head recorded by local Git, `origin/main`, and GitHub
+> after push.
+
+This receipt is the sole current execution-control state. Every lower dated
+`Current` or `Historical` receipt is evidence at its own As-of and grants no
+standing branch succession or execution outside its explicit authority.
+
+Completion Line:
+
+PR #3 is merged and its load-bearing measurement structure is canonical on
+`main`, while operational validation remains unstarted, Revenue and V7
+boundaries remain unchanged, and the Autonomous 1.01 Stress Run remains a
+separate packet-governed action that this merge did not activate.
+
+## Historical As-of — V13 Implementation-Load Priority Reversal and Load-Bearing Improvement Evidence pre-merge at `9901e490f16abf7068823b0eb1f2bd289b476631`
 
 Date:
 `2026-07-23`
@@ -200,9 +331,9 @@ What remains unproven:
 - necessity of third-party AI;
 - unknown-accident resistance.
 
-This receipt is the sole current execution-control state. Every lower dated
-`Current` or `Historical` receipt is evidence at its own As-of and grants no
-standing `GO`, active branch succession, or AI next action.
+At this historical As-of, this receipt was the sole current
+execution-control state. It now grants no standing `GO`, active branch
+succession, or AI next action.
 
 Completion Line:
 

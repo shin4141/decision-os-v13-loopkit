@@ -6,9 +6,10 @@
 - 🟢 BLUE / IMPLEMENTATION-LOAD-PRIORITY-REVERSAL-BOUND
 - 🟢 BLUE / LOAD-BEARING-COMPLIANCE-TEST-BOUND
 - 🟢 BLUE / SUCCESSOR-DEBT-OPTIONAL-FIELD-BOUND
-- 🟢 BLUE / V13-STRUCTURE-SELECTION-INTEGRATION-COMPLETE-ON-BRANCH
+- 🟢 BLUE / V13-STRUCTURE-SELECTION-INTEGRATION-MERGED-ON-MAIN
 - 🟡 YELLOW / LOAD-BEARING-OPERATIONAL-VALIDATION-NOT-YET
-- 🟡 YELLOW / PR-3-MERGE-DECISION-PENDING
+- 🟢 BLUE / PR-3-MERGE-DECISION-PASS-COMPLETE
+- 🟡 YELLOW / AUTONOMOUS-1.01-STRESS-RUN-NOT-STARTED
 - 🟢 BLUE / HUMAN-SEAT-PRESERVING-COMPOUNDING-DIRECTION
 - 🟢 BLUE / MANUAL-COMPOUNDING-CASES-RECORDED
 - 🟢 BLUE / ASPIRE-ANCHORED-INDEPENDENT-EVOLUTION-EVALUATION-FIXED
@@ -99,8 +100,85 @@ capability must now be converted into real, repeatable income that supports
 Shin's continued life and work without erasing the prior research or Aspire
 history.
 
-Forward-only receipt — V13 Implementation-Load Priority Reversal and
-Load-Bearing Improvement Evidence Integration:
+Forward-only receipt — V13 Load-Bearing Evidence Merge Closure:
+
+```text
+PR #3:
+MERGED / COMPLETE
+
+Approved PR head:
+9901e490f16abf7068823b0eb1f2bd289b476631
+
+PR merge commit:
+5b77007d6a4d9cc23d70571294c453b63142c0dc
+
+Implementation-Load Priority Reversal:
+MERGED / AVAILABLE ON MAIN
+
+Load-Bearing Compliance Test:
+MERGED / AVAILABLE ON MAIN
+
+Successor Debt:
+MERGED AS OPTIONAL NEXT-LOOP DEFERRED-COST FIELD
+
+Evidence status:
+SPECIFICATION AND SCHEMA INTEGRATION COMPLETE /
+OPERATIONAL VALIDATION NOT YET STARTED
+
+Merge Gate:
+PASS / COMPLETE
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+V13 system-level state:
+GO — AUTONOMOUS 1.01 STRESS RUN MAY BE SEPARATELY STARTED ONLY BY ITS
+EXISTING AUTHORIZED PACKET
+
+Current Gate:
+GO — AUTONOMOUS 1.01 STRESS RUN MAY BE SEPARATELY STARTED ONLY BY ITS
+EXISTING AUTHORIZED PACKET
+
+Autonomous 1.01 Stress Run 001:
+NOT STARTED
+
+Stress Run authority effect of this merge:
+CANONICAL-MEASUREMENT PRECONDITION SATISFIED ONLY /
+RUN NOT ACTIVATED
+```
+
+PR #3 merged the exact approved head through a history-preserving merge
+commit. The bounded document, optional schema objects, Loop Record template,
+review prompt, Loop Map integration, Current Signal, and canonical handoff are
+now present on `main`.
+
+The merge approval does not start Autonomous 1.01 Selection Stress Run 001.
+It satisfies only that run's canonical-measurement precondition. A later
+execution must begin from the existing authorized packet, repeat its
+preflight, create its own evidence branch, and obey its eight-iteration,
+zero-question, zero-external-action, and no-merge limits.
+
+The Revenue reply route remains `HOLD — WAIT FOR MARKET RESPONSE`; new outreach
+remains `HOLD — NOT AUTHORIZED`; V7 publication and Canon remain `CAP —
+UNCHANGED`. These route and publication limits do not create a system-level
+HOLD.
+
+Historical As-of — repository commit
+`9901e490f16abf7068823b0eb1f2bd289b476631` — V13
+Implementation-Load Priority Reversal and Load-Bearing Improvement Evidence
+Integration pre-merge receipt:
 
 ```text
 Starting main:
@@ -1141,8 +1219,10 @@ Current manual cases show:
 | Implementation-Load Priority Reversal definition | PASS | Bounded observable priority-selection definition recorded without motive, universal, or literal-Aspire-reversal claims |
 | Load-Bearing Compliance Test | PASS | Statement-only understanding receives no improvement credit; case-bounded credit requires comparable-load changed behavior and preserved protected objects |
 | Successor Debt Loop Record integration | PASS | Optional schema/template field distinguishes valid accepted transfer from unowned or concealed next-loop restoration cost |
-| Load-bearing operational validation | HOLD | Specification and schema integration only; comparable-load behavior, cross-model, cross-domain, and generalization evidence remain absent |
-| PR #3 merge decision | HOLD | PR #3 is open and ready for substantive review; merge approval or rejection belongs to Shin |
+| Load-bearing specification and schema integration | PASS | Implementation-Load Priority Reversal, Load-Bearing Compliance Test, and optional Successor Debt fields are merged and available on `main` |
+| Load-bearing operational validation | HOLD | `NOT YET STARTED`; comparable-load behavior, cross-model, cross-domain, and generalization evidence remain absent |
+| PR #3 merge decision | PASS | PR #3 merged the exact approved head as merge commit `5b77007d...` |
+| Autonomous 1.01 Stress Run 001 | GO / NOT STARTED | Its canonical-measurement precondition is satisfied, but only its existing authorized packet may separately start the run |
 | Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
@@ -1207,11 +1287,10 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> V13's bounded structure-selection path has integrated
-> Implementation-Load Priority Reversal, the Load-Bearing Compliance Test, and
-> an optional Successor Debt field on
-> `docs/implementation-load-priority-reversal-v0-1`; evidence remains
-> specification-only, PR #3 merge review is `HOLD` for Shin, the Revenue reply
-> route remains separately `HOLD` without placing V13 in system-level stasis,
-> new outreach remains unauthorized, V7 publication remains `CAP`, and Codex
-> has no remaining action after PR creation.
+> PR #3 is merged and complete, making Implementation-Load Priority Reversal,
+> the Load-Bearing Compliance Test, and optional Successor Debt fields
+> available on `main`; operational validation remains `NOT YET STARTED`, the
+> Revenue reply route remains separately `HOLD`, new outreach remains
+> unauthorized, V7 publication remains `CAP`, Active Branch is `none`, and the
+> Autonomous 1.01 Stress Run may be started only by its existing separate
+> packet rather than by this merge approval.
