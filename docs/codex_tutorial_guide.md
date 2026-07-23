@@ -106,7 +106,7 @@ Keep file paths, command-like labels, and gate names unchanged:
 - `handoff/current_codex_handoff.md`
 - `examples/`
 - `GO / HOLD / CAP / BLOCK`
-- `PASS / DELAY / BLOCK`
+- `PASS / DELAY / BLOCK / UNKNOWN`
 - `BLUE / YELLOW / RED`
 
 If the user asks in Japanese, present the tutorial menu and explanations in Japanese, while preserving the original English file names and gate labels.
