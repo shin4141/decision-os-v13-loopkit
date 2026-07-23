@@ -2,7 +2,93 @@
 
 ## Three-Loop Repository Effect Authority for V13 Validation
 
-## Status
+## Forward-only Post-Exhaustion Closure Tail
+
+```text
+CANONICAL SPECIFICATION / RUN 002 CLOSED / AUTHORITY EXHAUSTED
+
+Bounded Operational Authority Window v0.1:
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
+
+Activation:
+EXPLICIT SHIN ACTIVATION RECEIVED FOR RUN 002
+
+Run 002:
+COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Required Loop Receipts:
+PR #7 / PR #8 / PR #9 BODIES — CLOSED
+
+Run 002 final operational main:
+e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047
+
+Post-Exhaustion Closure rollback identity:
+e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047
+
+Rollback execution:
+NOT AUTHORIZED WITHOUT NEW EXPLICIT SHIN AUTHORITY
+
+Post-Exhaustion Closure:
+COMPLETE / CANONICAL ON MAIN
+
+BOAW-001:
+EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Loop 04:
+BLOCK
+
+Further main write under BOAW-001:
+BLOCK
+
+Further loop selection under BOAW-001:
+BLOCK
+
+Reactivation:
+REQUIRES NEW EXPLICIT SHIN APPROVAL
+
+Current Gate:
+BLOCK — BOAW-001 EXHAUSTED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+```
+
+Shin issued the exact separate activation statement for Run 002; the three
+permitted loops then completed and exhausted BOAW-001. Stress Run 001 remains
+`FAIL / CLOSED`, and its evidence is not rewritten. Exhaustion is scoped to
+this authority window and is not evidence of a system-level V13 failure.
+
+## Post-Exhaustion Closure Authority
+
+After exhaustion, Shin separately authorized one Forward-only synchronization
+of exactly these three state documents:
+
+1. `docs/bounded_operational_authority_window_v0_1.md`
+2. `docs/current_signal.md`
+3. `handoff/current_codex_handoff.md`
+
+This closure tail records already-completed events only. It does not change the
+BOAW criteria, rewrite the PR #7–#9 receipts, reactivate BOAW-001, authorize
+Loop 04, or create a new operational change. The one-time authority is consumed
+when this three-file closure reaches `main`. The enclosing Git commit and merge
+record supply the closure transport identity because a commit cannot embed its
+own SHA. Each loop claim remains case-bounded exactly as recorded; this closure
+adds no buyer, Revenue, adoption, general-reliability, or self-evolution claim.
+
+## Historical As-of — Status at `0eb6cc6464b788d1d766a795175d5b156ddd0545`
+
+The following PR #6 merge-closure snapshot is preserved as historical evidence.
+It is superseded by the Forward-only closure tail above and grants no current
+authority.
 
 ```text
 CANONICAL SPECIFICATION / NOT ACTIVE
@@ -38,9 +124,9 @@ Codex Next Authorized Action:
 none
 ```
 
-This document defines the bounded authority specification now canonical on
+At that As-of, this document defined the bounded authority specification on
 `main`. Its merge did not activate the authority window, start Run 002, or
-grant standing permission to write to `main`. An inactive BOAW has no standing
+grant standing permission to write to `main`. An inactive BOAW had no standing
 authority.
 
 ## Core Rule
@@ -318,7 +404,7 @@ REQUIRES NEW EXPLICIT SHIN APPROVAL
 A partially used authority window is not standing permission. Codex cannot
 renew, reinterpret, extend, or transfer the remaining authority.
 
-## Run 001 Relationship
+## Historical As-of — Run 001 Relationship at `0eb6cc6464b788d1d766a795175d5b156ddd0545`
 
 - Stress Run 001 remains `FAIL / CLOSED`;
 - its evidence branches and Draft PRs remain non-merge evidence;
@@ -328,9 +414,22 @@ renew, reinterpret, extend, or transfer the remaining authority.
 - the rule does not retroactively validate Iteration 01; and
 - Run 002 remains unstarted.
 
-## Existing Surface State
+## Run 002 Closure
 
-The current state is also recorded in the
+| Loop | PR | Verified head | Merge SHA | Receipt |
+|---:|---:|---|---|---|
+| 01 | #7 | `9b1a2fbac1aa0949b147663c5ad5536bd1056932` | `a7c4f49f38966faf3d2e739d6de664dc8bb1456e` | CLOSED |
+| 02 | #8 | `804f960f87af92146c7417056e103bd040bc4e79` | `07b085390ac37655a49271e636d701fa5d18e6e7` | CLOSED |
+| 03 | #9 | `76ed421d4a4b51c50623d72d3b9f37a6c828dd8a` | `e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047` | CLOSED |
+
+The complete required receipts remain in the three PR bodies. The third
+closure reduced the remaining-loop count to zero. Loop 04 and further
+BOAW-001 writes are `BLOCK`; reactivation requires a new explicit Shin
+approval.
+
+## Historical As-of — Existing Surface State at `0eb6cc6464b788d1d766a795175d5b156ddd0545`
+
+The pre-activation state at that As-of was recorded in the
 [Loop Map](loop_map.md), [Current Signal](current_signal.md), and
 [current Codex handoff](../handoff/current_codex_handoff.md):
 
@@ -366,8 +465,12 @@ Codex Next Authorized Action:
 none
 ```
 
-Completion Line:
+Historical Completion Line:
 
 Bounded Operational Authority Window v0.1は`main`上でcanonicalになったが、
 BOAW-001はinactive、Run 002はunstartedのままであり、Shinの別個のactivation
 判断まで停止する。
+
+The `Loop Map` block remains an unmodified historical pre-activation snapshot;
+it is outside the separately authorized three-file closure and grants no
+current authority.
