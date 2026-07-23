@@ -127,7 +127,7 @@ exact statement: `I activate BOAW-001 for Run 002.`
 Shin has not issued that activation statement in this merge closure. An
 inactive BOAW has no standing authority.
 
-## Authority Sufficiency Preflight v0.1 — Stage 0 Proposal / PR Pending
+## Authority Sufficiency Preflight v0.1 — Canonical / No New Run Authority
 
 The preceding BOAW pre-activation block remains an unchanged historical
 snapshot; current Run 002 exhaustion and closure state is recorded below.
@@ -137,34 +137,54 @@ and its
 [manual template](../templates/v13_authority_sufficiency_preflight.md) define a
 read-only Stage 0 for future bounded autonomous runs.
 
+PR #11 merged the exact approved head
+`020e79ae1e6562ea3696bd49be669b2842501e60` through merge commit
+`66b9abbbb0b222f1d2f1ca57a6af4d633a02cd72`.
+
 ```text
 Authority Sufficiency Preflight v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #11:
+PASS / COMPLETE
 
 Manual template:
-COMPLETE ON BRANCH
+AVAILABLE ON MAIN
 
-Future bounded autonomous runs:
-HOLD — STAGE 0 NOT YET CANONICAL
+Stage 0:
+REQUIRED BEFORE FUTURE BOUNDED RUN AUTHORITY
+
+Stage 0 execution:
+NOT STARTED FOR ANY NEW RUN
 
 Run 003:
 NOT STARTED
+
+Run 003 authority:
+NONE
 
 BOAW-001:
 EXHAUSTED / UNCHANGED
 
 Run 002:
+PASS / COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Post-Exhaustion Closure:
 PASS / COMPLETE / UNCHANGED
 
 Current Gate:
-HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+HOLD — NO NEW RUN AUTHORITY
 
 Active Branch:
-docs/authority-sufficiency-preflight-v0-1
+none
 
 Codex Next Authorized Action:
-none after PR creation
+none
 ```
+
+The merge made Stage 0 canonical. It did not execute Stage 0 for Run 003,
+create an authority envelope, rank or select a Run 003 candidate, or grant
+future integration or merge authority.
 
 The Forward-only operating sequence is:
 
@@ -184,6 +204,9 @@ Aspire / Roadmap
 Stage 0 precedes autonomous selection execution and is read-only. It proposes
 an authority envelope but does not grant it, activate a run, or authorize
 implementation.
+
+Every future bounded run must complete Stage 0 before an activation decision is
+presented to Shin.
 
 Before every implementation loop, the highest-priority grounded candidate is
 named before authority filtering and receives an explicit

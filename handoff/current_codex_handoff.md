@@ -8,86 +8,106 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V13 — Authority Sufficiency Preflight v0.1 Branch Proposal
+## V13 — Authority Sufficiency Preflight v0.1 Merge Closure
 
 Date:
 `2026-07-24`
 
-Starting canonical `main`:
+Pre-merge canonical `main`:
 `4b3b771b2d4f747c0bc6cf8e250e235bb1be7570`
 
-Execution subject:
+Approved PR #11 head:
+`020e79ae1e6562ea3696bd49be669b2842501e60`
+
+PR #11 merge commit:
+`66b9abbbb0b222f1d2f1ca57a6af4d633a02cd72`
+
+Completed execution subject:
 `Codex 13-9`
 
-Branch-state receipt:
+Current AI execution subject:
+`none`
+
+Canonical receipt:
 
 ```text
 Authority Sufficiency Preflight v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #11:
+PASS / COMPLETE
 
 Manual template:
-COMPLETE ON BRANCH
+AVAILABLE ON MAIN
 
-Future bounded autonomous runs:
-HOLD — STAGE 0 NOT YET CANONICAL
+Stage 0:
+REQUIRED BEFORE FUTURE BOUNDED RUN AUTHORITY
+
+Stage 0 execution:
+NOT STARTED FOR ANY NEW RUN
 
 Run 003:
 NOT STARTED
+
+Run 003 authority:
+NONE
 
 BOAW-001:
 EXHAUSTED / UNCHANGED
 
 Run 002:
+PASS / COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Post-Exhaustion Closure:
 PASS / COMPLETE / UNCHANGED
 
-Stress Run 001:
-FAIL / CLOSED / UNCHANGED
-
-PR merge:
-NOT AUTHORIZED
-
 Current Gate:
-HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+HOLD — NO NEW RUN AUTHORITY
 
 Active Branch:
-docs/authority-sufficiency-preflight-v0-1
+none
 
 Codex Next Authorized Action:
-none after PR creation
+none
 ```
 
-New branch artifacts:
+Merged PR #11 artifacts available on canonical `main`:
 
 1. `docs/authority_sufficiency_preflight_v0_1.md`
 2. `templates/v13_authority_sufficiency_preflight.md`
 
-Forward-only integration surfaces:
+Post-merge Forward-only state-sync files:
 
-1. `docs/loop_map.md`
-2. `docs/current_signal.md`
-3. `handoff/current_codex_handoff.md`
+1. `docs/authority_sufficiency_preflight_v0_1.md`
+2. `docs/loop_map.md`
+3. `docs/current_signal.md`
+4. `handoff/current_codex_handoff.md`
 
-Stage 0 occurs before Shin activates a future bounded run. It is read-only,
-consumes no loop, proposes one complete authority envelope, ranks candidates
-before authority filtering, requires every implementation loop to declare
-`Authority Match: YES / NO`, and reserves a non-discretionary closure-only
-tail.
+Merging PR #11 made Stage 0 canonical. It did not perform a Stage 0 preflight
+for Run 003, create an authority envelope, or grant future integration or merge
+authority. Every future bounded run must complete Stage 0 before an activation
+decision is presented to Shin.
 
-A matched in-envelope loop does not require repeated Shin approval. A mismatch
-stops before branch, artifact, PR, or implementation creation, consumes zero
-loops, and receives no improvement credit. The closure-only tail has no
-candidate-selection, criteria-change, extension, renewal, or Loop N+1
-authority.
+Every implementation loop must declare `Authority Match: YES / NO`.
+Candidate ranking occurs before authority filtering. A matched in-envelope
+loop does not require repeated Shin approval; a mismatch stops before
+implementation and consumes zero loops. A closure-only tail must be reserved
+before run activation and has no candidate-selection or Loop N+1 authority.
 
-The Stage 0 result classes map to existing V13 Gates and create no fifth Gate.
-This proposal does not establish autonomous generalization and grants no
-authority for Run 003, another BOAW, an operational loop, or PR merge.
+No fifth V13 Gate was created. BOAW-001 remains exhausted, and Stress Run 001
+and Run 002 evidence, PR #4/#5 Draft evidence, and PR #7–#10 receipts remain
+unchanged.
+
+The manual template remains byte-identical to the approved PR #11 version at
+blob `647afb94b9f598b7efdbd6672ade13810678f155`. The enclosing state-sync
+commit supplies its own transport identity because a commit cannot embed its
+own SHA.
 
 Completion Line:
 
-Authority Sufficiency Preflight v0.1は、future runの実装前にauthority envelope
-とclosure-only tailを明示するStage 0 proposalとしてbranch上で完了し、Run 003
-を開始せずnon-draft review PRで停止する。
+Authority Sufficiency Preflight v0.1はfuture bounded runのactivation判断前に
+必須のStage 0として正本化され、Stage 0実行、新authority envelope、Run 003
+authorityを作らず、`HOLD — NO NEW RUN AUTHORITY`で停止した。
 
 ## V13 — BOAW-001 Run 002 Post-Exhaustion Closure
 

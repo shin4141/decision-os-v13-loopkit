@@ -6,19 +6,25 @@
 
 ```text
 Authority Sufficiency Preflight v0.1:
-FORWARD-ONLY V13 OPERATING PROPOSAL
+MERGED / CANONICAL ON MAIN
 
-Stage:
-0 / PRE-EXECUTION / READ-ONLY
+PR #11:
+PASS / COMPLETE
 
-Canonical status:
-COMPLETE ON BRANCH / PR PENDING
+Manual template:
+AVAILABLE ON MAIN
 
-Run authority:
-NONE
+Stage 0:
+REQUIRED BEFORE FUTURE BOUNDED RUN AUTHORITY
+
+Stage 0 execution:
+NOT STARTED FOR ANY NEW RUN
 
 Run 003:
 NOT STARTED
+
+Run 003 authority:
+NONE
 
 BOAW-001:
 EXHAUSTED / UNCHANGED
@@ -26,13 +32,39 @@ EXHAUSTED / UNCHANGED
 Run 002:
 PASS / COMPLETE / 3 OF 3 LOOPS CLOSED
 
+Post-Exhaustion Closure:
+PASS / COMPLETE / UNCHANGED
+
 Current Gate:
-HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+HOLD — NO NEW RUN AUTHORITY
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
-This proposal defines authority routing before a bounded autonomous run or
-implementation loop. It does not grant authority, activate a run, authorize
-implementation, or create a new V13 Gate.
+This canonical specification defines authority routing before a bounded
+autonomous run or implementation loop. It does not grant authority, activate a
+run, authorize implementation, or create a new V13 Gate.
+
+## Canonical Merge Boundary
+
+Merging PR #11 made Stage 0 canonical. It did not perform a Stage 0 preflight
+for Run 003, create an authority envelope, or grant integration or merge
+authority for a future loop.
+
+Every future bounded run must complete Stage 0 before an activation decision is
+presented to Shin. Every implementation loop must declare
+`Authority Match: YES / NO`; a matched in-envelope loop does not require
+repeated Shin approval, while a mismatch stops before implementation and
+consumes zero loops.
+
+Candidate ranking occurs before authority filtering, and a closure-only tail
+must be reserved before run activation. These rules use the existing V13
+`HOLD / BLOCK` routes and create no fifth Gate. BOAW-001 remains exhausted,
+and Stress Run 001 and Run 002 evidence remain unchanged.
 
 ## Purpose
 
@@ -498,7 +530,7 @@ CONTINUE / AUTHORITY ESCALATION / HUMAN SEAT / STOP
 
 ## Boundary
 
-This proposal does not authorize:
+This specification does not authorize:
 
 - Run 003 or another bounded run;
 - a new BOAW or BOAW-001 renewal/reactivation;
@@ -516,6 +548,7 @@ manual authority-routing surfaces only.
 
 ## Completion Line
 
-Authority Sufficiency Preflight v0.1 is complete as a Stage 0 proposal when a
-future bounded run must prove its full authority envelope, including its
-closure-only tail, before implementation can begin.
+Authority Sufficiency Preflight v0.1 is canonical as the required Stage 0
+before a future bounded run may be presented for activation; this merge
+executed no preflight, created no authority envelope, and authorized no Run
+003.

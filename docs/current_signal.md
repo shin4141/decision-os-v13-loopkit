@@ -2,11 +2,13 @@
 
 ## Signal
 
-- 🟢 BLUE / AUTHORITY-SUFFICIENCY-PREFLIGHT-V0.1-COMPLETE-ON-BRANCH-PR-PENDING
-- 🟢 BLUE / AUTHORITY-SUFFICIENCY-MANUAL-TEMPLATE-COMPLETE-ON-BRANCH
-- 🟡 YELLOW / FUTURE-BOUNDED-AUTONOMOUS-RUNS-HOLD-STAGE-0-NOT-CANONICAL
+- 🟢 BLUE / AUTHORITY-SUFFICIENCY-PREFLIGHT-V0.1-MERGED-CANONICAL-ON-MAIN
+- 🟢 BLUE / PR-11-MERGE-PASS-COMPLETE
+- 🟢 BLUE / AUTHORITY-SUFFICIENCY-MANUAL-TEMPLATE-AVAILABLE-ON-MAIN
+- 🟢 BLUE / STAGE-0-REQUIRED-BEFORE-FUTURE-BOUNDED-RUN-AUTHORITY
+- 🟡 YELLOW / STAGE-0-EXECUTION-NOT-STARTED-FOR-ANY-NEW-RUN
 - 🟡 YELLOW / RUN-003-NOT-STARTED
-- 🔴 RED / STAGE-0-PROPOSAL-GRANTS-NO-RUN-AUTHORITY
+- 🔴 RED / RUN-003-AUTHORITY-NONE
 - 🟢 BLUE / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-MERGED-CANONICAL-ON-MAIN
 - 🟢 BLUE / PR-6-MERGE-DECISION-PASS-COMPLETE
 - 🟢 BLUE / BOAW-001-ACTIVATED-FOR-RUN-002-BY-EXPLICIT-SHIN-STATEMENT
@@ -102,48 +104,59 @@
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
-## Authority Sufficiency Preflight v0.1 — Branch Proposal
+## Authority Sufficiency Preflight v0.1 — Merge Closure
 
-The current branch-state proposal is:
+PR #11 merged the exact approved head
+`020e79ae1e6562ea3696bd49be669b2842501e60` through merge commit
+`66b9abbbb0b222f1d2f1ca57a6af4d633a02cd72`.
 
 ```text
 Authority Sufficiency Preflight v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #11:
+PASS / COMPLETE
 
 Manual template:
-COMPLETE ON BRANCH
+AVAILABLE ON MAIN
 
-Future bounded autonomous runs:
-HOLD — STAGE 0 NOT YET CANONICAL
+Stage 0:
+REQUIRED BEFORE FUTURE BOUNDED RUN AUTHORITY
+
+Stage 0 execution:
+NOT STARTED FOR ANY NEW RUN
 
 Run 003:
 NOT STARTED
+
+Run 003 authority:
+NONE
 
 BOAW-001:
 EXHAUSTED / UNCHANGED
 
 Run 002:
+PASS / COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Post-Exhaustion Closure:
 PASS / COMPLETE / UNCHANGED
 
 Stress Run 001:
 FAIL / CLOSED / UNCHANGED
 
-PR merge:
-NOT AUTHORIZED
-
 Current Gate:
-HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+HOLD — NO NEW RUN AUTHORITY
 
 Active Branch:
-docs/authority-sufficiency-preflight-v0-1
+none
 
 Codex Next Authorized Action:
-none after PR creation
+none
 ```
 
-The proposal is defined in
-[Authority Sufficiency Preflight v0.1](authority_sufficiency_preflight_v0_1.md)
-and its
+The canonical specification is defined in
+[Authority Sufficiency Preflight v0.1](authority_sufficiency_preflight_v0_1.md).
+Its manual template is available at the
 [manual template](../templates/v13_authority_sufficiency_preflight.md).
 
 Stage 0 is read-only, consumes no loop, and grants no run or implementation
@@ -155,10 +168,16 @@ The result classes `AUTHORITY SUFFICIENT`, `AUTHORITY ENVELOPE REQUIRED`,
 `AUTHORITY MISMATCH`, `HUMAN SEAT REQUIRED`, and `NO QUALIFYING RUN` route to
 the existing V13 Gates; they do not create a fifth Gate.
 
-This branch changes no prior score, receipt, or evaluation. BOAW-001 remains
+The merge made Stage 0 canonical. It did not perform a Run 003 preflight,
+create an authority envelope, or grant future integration or merge authority.
+Every future bounded run must complete Stage 0 before an activation decision is
+presented to Shin. A matched in-envelope loop does not require repeated Shin
+approval; a mismatch stops before implementation and consumes zero loops.
+
+This closure changes no prior score, receipt, or evaluation. BOAW-001 remains
 exhausted, Run 002 remains closed, Loop 04 remains blocked, and Run 003 remains
-unstarted. Merge of the review PR would make Stage 0 canonical only; it would
-not activate or authorize a run.
+unstarted. Stress Run 001 and Run 002 evidence, PR #4/#5 Draft evidence, and PR
+#7–#10 receipts remain unchanged.
 
 ## BOAW-001 Run 002 — Post-Exhaustion Closure
 
