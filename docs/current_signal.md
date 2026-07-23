@@ -53,6 +53,11 @@
 - 🟢 BLUE / PUBLIC-SALES-ANCHOR-COMPLETE
 - 🟢 BLUE / README-PAID-PILOT-ENTRY-VISIBLE
 - 🟢 BLUE / PUBLIC-OFFER-PAGE-LINKED
+- 🟢 BLUE / REVENUE-PILOT-SAMPLE-001-COMPLETE-ON-BRANCH
+- 🟢 BLUE / ROUTE-HOLD-AND-SYSTEM-MOTION-SEPARATED
+- 🟢 BLUE / ACTIVE-ASPIRE-RESTART-BLOCK-CREATED
+- 🟢 BLUE / SAMPLE-001-PR-OPEN
+- 🟡 YELLOW / SAMPLE-001-MERGE-DECISION-PENDING
 - 🟢 BLUE / REVENUE-PILOT-WAVE-1-FIVE-SENT
 - 🟡 YELLOW / MARKET-REPLIES-PENDING
 - 🟡 YELLOW / UNRELATED-PUBLIC-CAMPAIGN-HOLD
@@ -87,6 +92,94 @@ Revenue Aspire is `ACTIVE`. Decision-OS and Shin's demonstrated AI-operation
 capability must now be converted into real, repeatable income that supports
 Shin's continued life and work without erasing the prior research or Aspire
 history.
+
+Forward-only receipt — Revenue Pilot 001 Public Sample Audit:
+
+```text
+Revenue Pilot 001 public sample:
+COMPLETE ON BRANCH / PR OPEN / PENDING MERGE
+
+New proof surface:
+services/ai_agent_handoff_audit_sample_001.md
+
+Evidence boundary:
+BOUNDED COMPOSITE DEMONSTRATION /
+NOT PAID-CLIENT EVIDENCE /
+NOT A TESTIMONIAL /
+NOT A MEASURED PRODUCTIVITY OR CONVERSION RESULT
+
+Branch:
+docs/revenue-pilot-sample-001
+
+Primary implementation commit:
+43547b3e83a6c8c6ad0601b916dde0aa4c25dea5
+
+Pull request:
+#2 / https://github.com/shin4141/decision-os-v13-loopkit/pull/2
+
+PR state:
+OPEN / READY FOR REVIEW / NOT MERGED
+
+Public review state:
+REVIEWABLE ON THE PR /
+NOT CANONICAL ON MAIN UNTIL MERGE
+
+Aspire-serving public-proof implementation Gate:
+GO — AUTHORIZED, CONSUMED, AND COMPLETE
+
+Sample implementation path:
+PASS
+
+Reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Merge Gate:
+HOLD — SHIN APPROVAL OR REJECTION PENDING
+
+V13 Next Loop Gate:
+HOLD — PR MERGE DECISION PENDING
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Active Branch:
+docs/revenue-pilot-sample-001
+
+Next Authorized Action:
+SHIN REVIEWS AND APPROVES OR REJECTS THE PR MERGE
+
+Codex Next Authorized Action:
+none
+
+Decision Packet Required:
+yes — THE PR IS THE DECISION SURFACE
+```
+
+The external-reply route remains validly held, but that route-level `HOLD`
+did not imply a system-level `HOLD`. The authorized alternative path created
+one complete buyer-visible audit sample, linked it from the README, offer, and
+sales packet, and stopped at a ready-for-review PR. The implementation `GO` is
+now consumed; it does not remain standing authority after completion.
+
+The sample reconstructs a real GPT 13-8 to GPT 13-9 responsibility lineage
+together with a later Revenue Pilot state. It discloses that composite
+chronology and does not claim that the later 5 / 5 Wave 1 state existed at the
+original handoff.
+
+Revenue replies remain `PENDING`; confirmed fit checks and paid acceptances
+remain `0`; revenue remains `0`. Prices and the first-three-paid-client total
+capacity are unchanged. No new outreach, follow-up, fit check, diagnosis,
+payment handling, or client work occurred.
+
+Human burden is not inherently a failure. Low-value burden return is a
+failure. High-value human judgment may be intentionally used when it advances
+Revenue Aspire, public discovery, Stars, or external validation. Routine
+drafting, repository integration, link placement, verification, commit, push,
+and PR creation remained AI-owned; Shin's only remaining action is the
+high-value public merge decision.
 
 FN126 Cases 001–004 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, adaptive question depth, and Aspire-anchored independent evolution evaluation can be executed manually under bounded authority.
 
@@ -631,8 +724,9 @@ Progress Preservation Gate remains `CAP` for separately authorized bounded
 manual application. Revenue Pilot Gate is `CAP`; Active Branch is `none`; Next
 Authorized Action is `none until review`; Decision Packet Required is `no`.
 
-Current Forward-only state — V7 Aspire-Serving Motion Obligation and Revenue
-Wave 1 Closure:
+Historical As-of — repository commit
+`849565203c9948fbca9040f5845b47cc50df3656` — V7 Aspire-Serving Motion
+Obligation and Revenue Wave 1 Closure:
 
 ```text
 V7 Forward-only delta:
@@ -755,6 +849,7 @@ The current prototype includes:
 - `templates/one_paste_codex_execution_packet_v0_1.md`
 - `validation/real_compound_proof_001_single_paste_execution.md`
 - `services/ai_agent_handoff_audit_offer.md`
+- `services/ai_agent_handoff_audit_sample_001.md`
 - `services/revenue_pilot_001_sales_packet.md`
 - `docs/v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md`
 - `docs/progress_preservation_principle_v0_1.md`
@@ -860,7 +955,9 @@ Current manual cases show:
 | README redesign / unrelated external posting | HOLD | Do not expand beyond the approved bounded sales anchor |
 | Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
 | Revenue Pilot price architecture | PASS | Standard US$200 / 30,000 JPY; pilot US$100 / 15,000 JPY; first 3 paid clients total; standard returns after pilot unless explicitly changed |
-| Revenue Pilot 001 | HOLD | Wave 1 is complete at 5 / 5 sent; replies are pending and the observation state is `WAIT FOR MARKET RESPONSE` |
+| Revenue Pilot public-sample implementation | PASS | The authorized Aspire-serving `GO` was consumed by one bounded sample, three direct discovery links, branch push, and PR creation |
+| Sample 001 PR merge | HOLD | PR #2 is open and ready for review; the sample is reviewable on the PR but not canonical on `main` until Shin approves or rejects merge |
+| Revenue Pilot 001 reply route | HOLD | Wave 1 is complete at 5 / 5 sent; replies are pending and the observation state is `WAIT FOR MARKET RESPONSE`; this route-level HOLD does not imply system-level inactivity |
 | Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
@@ -898,7 +995,7 @@ Not allowed from this signal:
 - run fresh isolated validation or implement the minimum autonomous loop without separate authority
 - add automatic learning from user behavior
 - modify Canon or transfer authority automatically
-- post publicly outside the approved README and offer-page sales anchor
+- post publicly outside the approved README, offer, and Sample 001 proof surfaces
 - expand the README beyond the approved bounded paid-pilot entry
 - turn launch capsules into implementation approval
 - monitor, rescore, modify, or intervene in OSI automatically
@@ -925,10 +1022,10 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Revenue Pilot 001 now has a repository-visible sales anchor with standard
-> `US$200 / 30,000 JPY` and first-3-total pilot `US$100 / 15,000 JPY` pricing;
-> Wave 1 is complete at five sent messages, replies are pending, follow-up and
-> any new outreach wave remain unauthorized, the Revenue Pilot Gate is HOLD
-> while the system waits passively for market response, the private V7 delta is
-> CAP pending a later publication decision, and the V13 Overall Gate remains
-> HOLD.
+> Revenue Pilot 001 now has a complete bounded Sample 001 on
+> `docs/revenue-pilot-sample-001`, publicly reviewable through PR #2 and linked
+> from the README, offer, and sales packet; the authorized proof-creation `GO`
+> is consumed, the reply route remains `HOLD` without freezing every
+> Aspire-serving path, prices and evidence counts remain unchanged, new
+> outreach remains unauthorized, V7 publication remains `CAP`, and the V13
+> Next Loop Gate is `HOLD` only for Shin's PR merge decision.

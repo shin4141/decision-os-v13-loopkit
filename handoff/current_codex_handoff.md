@@ -8,7 +8,164 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V7 Aspire-Serving Motion Obligation and Revenue Wave 1 Closure
+## Revenue Pilot 001 — Public Sample Audit and Conversion Path
+
+Date:
+`2026-07-23`
+
+Completed implementation execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Receipt:
+
+```text
+Revenue Pilot 001 public sample implementation:
+COMPLETE ON BRANCH / PR OPEN / PENDING MERGE
+
+New public-proof surface:
+services/ai_agent_handoff_audit_sample_001.md
+
+Branch:
+docs/revenue-pilot-sample-001
+
+Primary implementation commit:
+43547b3e83a6c8c6ad0601b916dde0aa4c25dea5
+
+Pull request:
+#2
+
+Pull request URL:
+https://github.com/shin4141/decision-os-v13-loopkit/pull/2
+
+Pull request state:
+OPEN / READY FOR REVIEW / NOT MERGED
+
+Public review status:
+REVIEWABLE ON PR / NOT CANONICAL ON MAIN UNTIL MERGE
+
+Aspire-serving public-proof implementation Gate:
+GO — AUTHORIZED, CONSUMED, AND COMPLETE
+
+Sample implementation path:
+PASS
+
+Reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Current Gate:
+HOLD — SAMPLE 001 PR MERGE DECISION PENDING
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD — PR MERGE DECISION PENDING
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Active Branch:
+docs/revenue-pilot-sample-001
+
+Next external action:
+SHIN REVIEWS AND APPROVES OR REJECTS THE PR MERGE
+
+Codex Next Authorized Action:
+none
+
+Decision Packet Required:
+yes — THE PR IS THE DECISION SURFACE
+
+Decision Owner:
+Shin
+```
+
+This newest receipt is the sole current execution-control state. Every lower
+dated `Current` or `Historical` receipt is evidence at its own As-of and grants
+no standing `GO`, active branch succession, or AI next action.
+
+Created:
+
+- [AI Agent Handoff Audit — Sample 001](../services/ai_agent_handoff_audit_sample_001.md)
+- a prominent Sample 001 link beside the paid offer in
+  [README](../README.md#paid-pilot--ai-agent-handoff-audit);
+- a buyer-facing sample link and evidence boundary in the
+  [public offer](../services/ai_agent_handoff_audit_offer.md);
+- a reusable proof-asset link with an unchanged authorization boundary in the
+  [Revenue Pilot sales packet](../services/revenue_pilot_001_sales_packet.md);
+- the current receipt in [Current Signal](../docs/current_signal.md).
+
+Sample 001 demonstrates how a handoff can preserve state while failing to keep
+the active objective moving. It diagnoses `Route-HOLD → System-Stasis
+Collapse`, with `Burden-Avoidance Priority Inversion` as a contributing
+failure, and introduces one linked operational fix: the `ACTIVE ASPIRE RESTART
+BLOCK`, which combines an Aspire Motion Obligation with Priority-Aware
+Resource Allocation.
+
+The sample is a bounded composite reconstruction across preserved As-of
+states. The GPT 13-8 to GPT 13-9 responsibility lineage preceded the later
+Revenue Pilot 5 / 5 Wave 1 state; the sample does not claim those events were
+simultaneous. It is not a paid-client result, client testimonial, verbatim
+transcript, measured productivity result, measured conversion improvement, or
+pricing validation.
+
+The reply route remains `HOLD`, but route-level `HOLD` does not imply
+system-level `HOLD`. One other admissible Revenue-Aspire-serving path received
+bounded `GO`, produced the sample and discovery links, and stopped before
+merge. That implementation authority is consumed. PR review is now the only
+active decision surface.
+
+Resource rule:
+
+> Human burden is not inherently a failure. Low-value burden return is a
+> failure. High-value human judgment may be intentionally used when it
+> advances Revenue Aspire, public discovery, Stars, or external validation.
+
+Codex owned drafting, repository integration, link placement, consistency
+checks, commit, push, PR creation, and state synchronization. No Git command,
+cleanup, conflict resolution, link repair, formatting decision, file
+placement, wording reconstruction, or routine verification remains for Shin.
+
+Prices remain `US$200 / 30,000 JPY` standard and `US$100 / 15,000 JPY` for the
+first 3 paid clients total. Revenue replies remain `PENDING`; confirmed fit
+checks and paid acceptances remain `0`; revenue remains `0`. No outreach,
+follow-up, fit check, diagnosis, payment handling, or client work occurred.
+
+Commit identity boundary:
+
+> `43547b3e83a6c8c6ad0601b916dde0aa4c25dea5` is the exact primary
+> implementation commit containing the public sample and its three discovery
+> links. The enclosing state-synchronization commit cannot embed its own SHA;
+> its exact identity is the current PR head recorded by Git and GitHub.
+
+What belongs to Shin:
+
+> Review and approve or reject the PR merge.
+
+What remains unproven:
+
+- paid-client demand or conversion improvement;
+- pricing or pilot-capacity validity;
+- productivity improvement or quantified Human Carrier reduction;
+- general effectiveness outside this one bounded demonstration;
+- V7 publication, runtime behavior, or automated Aspire-path selection.
+
+Completion Line:
+
+Sample 001 now provides a PR-reviewable public audit surface showing how a
+state-complete handoff can collapse a route-level HOLD into system stasis and
+how one Active Aspire Restart Block restores an admissible alternative motion;
+conversion, paid-client outcomes, measured productivity, and generalization
+remain unproven, and Shin owns only the decision to approve or reject the PR
+merge.
+
+## Historical As-of — V7 Aspire-Serving Motion Obligation and Revenue Wave 1 Closure at `849565203c9948fbca9040f5845b47cc50df3656`
 
 Date:
 `2026-07-23`

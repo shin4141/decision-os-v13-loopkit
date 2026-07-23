@@ -46,6 +46,15 @@ execution evidence. They do not establish customer results, testimonials,
 paid-delivery outcomes, general productivity gains, or quantified Human
 Carrier reduction.
 
+## Public sample proof asset
+
+Here is a complete sample showing the exact audit format:
+[AI Agent Handoff Audit — Sample 001](ai_agent_handoff_audit_sample_001.md)
+
+This proof asset may be used only in a separately authorized one-to-one reply
+or outreach. Its publication does not authorize outreach, a follow-up, a fit
+check, diagnosis, payment handling, or client work.
+
 ## B. Direct outreach message — English
 
 Status:

@@ -90,6 +90,13 @@ becomes restartable afterward.
 One bounded follow-up clarification is available after delivery. It covers the
 delivered audit and asset; it does not expand the accepted scope.
 
+## See a complete sample audit
+
+[AI Agent Handoff Audit — Sample 001](ai_agent_handoff_audit_sample_001.md)
+
+The sample demonstrates the audit format and reasoning process. It is not a
+client testimonial or paid-delivery result.
+
 ## Why this audit is credible
 
 The offer is grounded in public, inspectable operating assets rather than a

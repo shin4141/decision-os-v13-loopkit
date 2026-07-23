@@ -148,6 +148,13 @@ payment.
 Read the [full public offer](services/ai_agent_handoff_audit_offer.md) for the
 deliverables, boundaries, and pilot-price explanation.
 
+See a complete sample audit:
+[AI Agent Handoff Audit — Sample 001](services/ai_agent_handoff_audit_sample_001.md)
+
+A real project handoff can preserve the state and still stall the objective.
+This sample shows the friction map, restartability diagnosis, priority fix, and
+copy-paste restart block.
+
 Repository-verifiable examples of the operating approach:
 
 - [Restartable Handoff](copy-paste/restartable-handoff.md);
