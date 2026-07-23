@@ -4,10 +4,15 @@
 
 - 🟢 BLUE / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-MERGED-CANONICAL-ON-MAIN
 - 🟢 BLUE / PR-6-MERGE-DECISION-PASS-COMPLETE
-- 🔴 RED / BOAW-001-NOT-ACTIVE
-- 🟡 YELLOW / RUN-002-NOT-STARTED
-- 🟡 YELLOW / BOAW-001-ACTIVATION-DECISION-NOT-YET-GIVEN
-- 🔴 RED / BOUNDED-MAIN-WRITE-AUTHORITY-NOT-ACTIVE
+- 🟢 BLUE / BOAW-001-ACTIVATED-FOR-RUN-002-BY-EXPLICIT-SHIN-STATEMENT
+- 🟢 BLUE / RUN-002-THREE-OF-THREE-LOOPS-CLOSED
+- 🟢 BLUE / PR-7-8-9-REQUIRED-LOOP-RECEIPTS-CLOSED
+- 🟢 BLUE / RUN-002-FINAL-OPERATIONAL-MAIN-E3F2A3AC
+- 🟢 BLUE / POST-EXHAUSTION-CLOSURE-SYNCHRONIZED
+- 🔴 RED / BOAW-001-EXHAUSTED
+- 🔴 RED / LOOP-04-BLOCK
+- 🔴 RED / FURTHER-BOAW-MAIN-WRITE-AND-LOOP-SELECTION-BLOCK
+- 🟡 YELLOW / REACTIVATION-REQUIRES-NEW-EXPLICIT-SHIN-AUTHORITY
 - 🟢 BLUE / ROADMAP-REBASELINED
 - 🟢 BLUE / IMPLEMENTATION-LOAD-PRIORITY-REVERSAL-BOUND
 - 🟢 BLUE / LOAD-BEARING-COMPLIANCE-TEST-BOUND
@@ -92,9 +97,105 @@
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
-## Bounded Operational Authority Window v0.1 — Merge Closure
+## BOAW-001 Run 002 — Post-Exhaustion Closure
 
 The current authority state is:
+
+```text
+Bounded Operational Authority Window v0.1:
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
+
+Activation decision:
+GIVEN BY SHIN / RUN 002 ONLY
+
+Run 002:
+COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Loop 01:
+PR #7 / HEAD 9b1a2fbac1aa0949b147663c5ad5536bd1056932 /
+MERGE a7c4f49f38966faf3d2e739d6de664dc8bb1456e / RECEIPT CLOSED
+
+Loop 02:
+PR #8 / HEAD 804f960f87af92146c7417056e103bd040bc4e79 /
+MERGE 07b085390ac37655a49271e636d701fa5d18e6e7 / RECEIPT CLOSED
+
+Loop 03:
+PR #9 / HEAD 76ed421d4a4b51c50623d72d3b9f37a6c828dd8a /
+MERGE e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047 / RECEIPT CLOSED
+
+Run 002 final operational main:
+e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047
+
+Post-Exhaustion Closure rollback identity:
+e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047
+
+Rollback execution:
+NOT AUTHORIZED WITHOUT NEW EXPLICIT SHIN AUTHORITY
+
+Post-Exhaustion Closure:
+COMPLETE / CANONICAL ON MAIN
+
+BOAW-001:
+EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Loop 04:
+BLOCK
+
+Further main write / loop selection under BOAW-001:
+BLOCK
+
+Reactivation:
+REQUIRES NEW EXPLICIT SHIN APPROVAL
+
+Post-Exhaustion Closure authority:
+ONE FORWARD-ONLY STATE SYNCHRONIZATION OF EXACTLY THREE DOCUMENTS /
+NO BOAW REACTIVATION / NO NEW OPERATIONAL CHANGE /
+CONSUMED AFTER CLOSURE
+
+Current Gate:
+BLOCK — BOAW-001 EXHAUSTED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+```
+
+The canonical specification is defined in
+[Bounded Operational Authority Window v0.1](bounded_operational_authority_window_v0_1.md).
+The complete required receipts remain in PR #7, PR #8, and PR #9. The
+three-file closure tail records those completed events without changing their
+claims or reopening the exhausted authority. Its enclosing Git commit supplies
+its own identity and therefore cannot self-embed that SHA. Each loop claim
+remains case-bounded exactly as recorded; this closure adds no buyer, Revenue,
+adoption, general-reliability, or self-evolution claim.
+
+Stress Run 001 remains `FAIL / CLOSED`; its evidence branches and Draft PRs
+remain non-merge evidence. BOAW-001 is Forward-only, does not rewrite Run 001,
+and does not retroactively validate Iteration 01. PR #4 and PR #5 remain open
+Draft non-merge evidence PRs and were not modified by this closure.
+
+The BOAW block in `docs/loop_map.md` remains an unmodified historical
+pre-activation snapshot because it is outside this exact three-file authority.
+It does not override this current signal or grant present authority.
+
+BOAW exhaustion is scoped to BOAW-001. Revenue reply `HOLD`, new-outreach
+`HOLD`, and V7 publication / Canon `CAP` remain unchanged; exhaustion is not a
+system-level V13 failure classification.
+
+Every lower receipt remains historical at its recorded As-of. It cannot
+override this closure tail or grant current execution authority.
+
+## Historical As-of — BOAW v0.1 Merge Closure at `0eb6cc6464b788d1d766a795175d5b156ddd0545`
+
+The pre-activation authority state recorded at that As-of was:
 
 ```text
 Bounded Operational Authority Window v0.1:
@@ -134,22 +235,15 @@ Codex Next Authorized Action:
 none
 ```
 
-The canonical specification is defined in
-[Bounded Operational Authority Window v0.1](bounded_operational_authority_window_v0_1.md).
-PR #6 merged the exact approved head through a history-preserving merge.
-Merge approval did not activate BOAW-001. Shin has not issued the separate
-activation statement. The exact activation condition remains:
-`I activate BOAW-001 for Run 002.` An inactive BOAW has no standing authority.
-Run 002 has no branch, preregistration, loop, PR, merge, or receipt.
+At that As-of, PR #6 had merged the exact approved head through a
+history-preserving merge. Merge approval had not activated BOAW-001, Shin had
+not yet issued `I activate BOAW-001 for Run 002.`, and Run 002 had no branch,
+loop, PR, merge, or receipt.
 
-Stress Run 001 remains `FAIL / CLOSED`; its evidence branches and Draft PRs
-remain non-merge evidence. BOAW-001 is Forward-only, does not rewrite Run 001,
-and does not retroactively validate Iteration 01. PR #4 and PR #5 remain open
-Draft non-merge evidence PRs and were not modified by this closure.
-
-Earlier Run 001 pre-start and execution-authority lines below remain historical
-at their recorded As-of. They do not authorize Run 001, Run 002, BOAW-001
-activation, or a write to `main`.
+Stress Run 001 was already `FAIL / CLOSED`; its evidence branches and Draft PRs
+remained non-merge evidence. The later Run 002 closure does not rewrite that
+history or retroactively validate Iteration 01. This historical block is
+superseded by the Forward-only closure above and grants no current authority.
 
 ## Meaning
 
@@ -1287,7 +1381,9 @@ Current manual cases show:
 | Load-bearing specification and schema integration | PASS | Implementation-Load Priority Reversal, Load-Bearing Compliance Test, and optional Successor Debt fields are merged and available on `main` |
 | Load-bearing operational validation | HOLD | `NOT YET STARTED`; comparable-load behavior, cross-model, cross-domain, and generalization evidence remain absent |
 | PR #3 merge decision | PASS | PR #3 merged the exact approved head as merge commit `5b77007d...` |
-| Autonomous 1.01 Stress Run 001 | GO / NOT STARTED | Its canonical-measurement precondition is satisfied, but only its existing authorized packet may separately start the run |
+| Autonomous 1.01 Stress Run 001 | FAIL / CLOSED | Its evidence branches and Draft PRs remain non-merge historical evidence |
+| BOAW-001 Run 002 | PASS / CLOSED | Three of three loops completed with required receipts in PR #7–#9; final operational main `e3f2a3ac...` |
+| Further BOAW-001 write or Loop 04 | BLOCK / EXHAUSTED | Remaining authorized loops are zero; new explicit Shin authority is required |
 | Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
@@ -1352,10 +1448,8 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> PR #3 is merged and complete, making Implementation-Load Priority Reversal,
-> the Load-Bearing Compliance Test, and optional Successor Debt fields
-> available on `main`; operational validation remains `NOT YET STARTED`, the
-> Revenue reply route remains separately `HOLD`, new outreach remains
-> unauthorized, V7 publication remains `CAP`, Active Branch is `none`, and the
-> Autonomous 1.01 Stress Run may be started only by its existing separate
-> packet rather than by this merge approval.
+> BOAW-001 Run 002 completed three of three bounded loops and closed its
+> required receipts in PR #7–#9; the authority is now exhausted, Loop 04 and
+> further BOAW writes are blocked, Active Branch and Next Authorized Action are
+> `none`, and Revenue, outreach, V7, Canon, and broader V13 system gates remain
+> separately governed rather than being changed by this closure.

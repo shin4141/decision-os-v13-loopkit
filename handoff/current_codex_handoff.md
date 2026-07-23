@@ -8,7 +8,122 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V13 — Bounded Operational Authority Window v0.1 Merge Closure
+## V13 — BOAW-001 Run 002 Post-Exhaustion Closure
+
+Date:
+`2026-07-24`
+
+Run 002 final operational `main` before this closure tail:
+`e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047`
+
+Completed execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Receipt:
+
+```text
+Bounded Operational Authority Window v0.1:
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
+
+Activation:
+EXPLICIT SHIN ACTIVATION RECEIVED / RUN 002 ONLY
+
+Run 002:
+COMPLETE / 3 OF 3 LOOPS CLOSED
+
+Loop 01:
+PR #7 / HEAD 9b1a2fbac1aa0949b147663c5ad5536bd1056932 /
+MERGE a7c4f49f38966faf3d2e739d6de664dc8bb1456e / RECEIPT CLOSED
+
+Loop 02:
+PR #8 / HEAD 804f960f87af92146c7417056e103bd040bc4e79 /
+MERGE 07b085390ac37655a49271e636d701fa5d18e6e7 / RECEIPT CLOSED
+
+Loop 03:
+PR #9 / HEAD 76ed421d4a4b51c50623d72d3b9f37a6c828dd8a /
+MERGE e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047 / RECEIPT CLOSED
+
+Post-Exhaustion Closure rollback identity:
+e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047
+
+Rollback execution:
+NOT AUTHORIZED WITHOUT NEW EXPLICIT SHIN AUTHORITY
+
+Post-Exhaustion Closure:
+COMPLETE / CANONICAL ON MAIN
+
+BOAW-001:
+EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Loop 04:
+BLOCK
+
+Further repository write and loop selection under BOAW-001:
+BLOCK
+
+Reactivation:
+REQUIRES NEW EXPLICIT SHIN APPROVAL
+
+Post-Exhaustion Closure authority:
+SEPARATE ONE-SYNC AUTHORITY / EXACTLY THREE DOCUMENTS /
+NO FUNCTIONAL CHANGE / NO REACTIVATION /
+CONSUMED AFTER CLOSURE
+
+Current Gate:
+BLOCK — BOAW-001 EXHAUSTED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+```
+
+The full specification is
+[Bounded Operational Authority Window v0.1](../docs/bounded_operational_authority_window_v0_1.md).
+
+The complete required loop receipts remain in the PR #7, PR #8, and PR #9
+bodies. The final Run 002 operational state is
+`e3f2a3ac705ab1932d94a8c4f01b4e85eeedb047`. The enclosing closure commit
+supplies its own transport identity because a commit cannot embed its own SHA.
+Each loop claim remains case-bounded exactly as recorded; this closure adds no
+buyer, Revenue, adoption, general-reliability, or self-evolution claim.
+
+Stress Run 001 remains `FAIL / CLOSED`. Its evidence branches and Draft PRs
+remain non-merge evidence. No Run 001 score, artifact, or evaluation is
+rewritten, and Iteration 01 is not retroactively validated. PR #4 and PR #5
+remain open Draft non-merge evidence PRs at their original heads and were not
+modified by this closure.
+
+The BOAW block in `docs/loop_map.md` remains an unmodified historical
+pre-activation snapshot because it is outside this exact three-file authority.
+It grants no current authority. Revenue reply `HOLD`, new-outreach `HOLD`, and
+V7 publication / Canon `CAP` remain unchanged. BOAW exhaustion is not a
+system-level V13 failure classification.
+
+Every lower receipt remains historical at its recorded As-of. It cannot
+override this closure tail or grant current execution authority.
+
+Completion Line:
+
+BOAW-001 Run 002は3本のbounded loopとrequired receiptを完了してexhaustし、
+Loop 04、再activation、新規運用変更を開始せず、3ファイルのForward-only
+closure tailだけを正本化して停止した。
+
+## Historical As-of — BOAW v0.1 Specification Merge Closure at `0eb6cc6464b788d1d766a795175d5b156ddd0545`
+
+This entire section recorded the pre-activation PR #6 merge state. It is
+superseded by the Forward-only Run 002 closure above and grants no current
+authority.
 
 Date:
 `2026-07-24`
@@ -19,7 +134,7 @@ Pre-merge canonical `main`:
 Completed merge-closure execution subject:
 `Codex`
 
-Current AI execution subject:
+Current AI execution subject at that As-of:
 `none`
 
 Receipt:
@@ -62,7 +177,7 @@ Codex Next Authorized Action:
 none
 ```
 
-Canonical authority specification:
+Canonical authority specification at that As-of:
 
 - at most three completed loops;
 - one active branch at a time;
@@ -79,37 +194,18 @@ Canonical authority specification:
 - no self-extension, criteria modification, standing permission, or automatic
   renewal.
 
-The full specification is
-[Bounded Operational Authority Window v0.1](../docs/bounded_operational_authority_window_v0_1.md).
+PR #6 merged the exact approved head through a history-preserving merge. Merge
+approval did not activate BOAW-001. At that As-of, Shin had not issued the
+separate activation statement, Run 002 had no branch, loop, PR, merge, or
+receipt, and the historical completion line was:
 
-PR #6 merged the exact approved head through a history-preserving merge.
-Merge approval did not activate BOAW-001. Shin has not issued a separate
-activation statement. The following text is preserved only as the activation
-condition; its presence in this handoff is not a Decision Owner issuance:
+> Bounded Operational Authority Window v0.1は`main`上でcanonicalになったが、
+> BOAW-001はinactive、Run 002はunstartedのままであり、Shinの別個のactivation
+> 判断まで停止する。
 
-```text
-I activate BOAW-001 for Run 002.
-```
-
-An inactive BOAW has no standing authority. Run 002 has no branch,
-preregistration, loop, PR, merge, or receipt.
-
-Stress Run 001 remains `FAIL / CLOSED`. Its evidence branches and Draft PRs
-remain non-merge evidence. No Run 001 score, artifact, or evaluation is
-rewritten, and Iteration 01 is not retroactively validated. Run 002 remains
-unstarted. PR #4 and PR #5 remain open Draft non-merge evidence PRs and were
-not modified by this closure.
-
-Every lower Run 001 pre-start or execution-authority receipt remains historical
-at its recorded As-of and grants no current authority. The only next Decision
-Owner action, if any, is the separate activation or non-activation decision.
-PR merge, BOAW-001 activation, and Run 002 execution remain separate events.
-
-Completion Line:
-
-Bounded Operational Authority Window v0.1は`main`上でcanonicalになったが、
-BOAW-001はinactive、Run 002はunstartedのままであり、Shinの別個のactivation
-判断まで停止する。
+Stress Run 001 remained `FAIL / CLOSED`; PR #4 and PR #5 remained open Draft
+non-merge evidence. The later Forward-only closure does not rewrite that state
+at its recorded As-of.
 
 ## V13 — Load-Bearing Evidence Merge Closure
 
