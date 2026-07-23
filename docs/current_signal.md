@@ -29,6 +29,13 @@
 - 🟡 YELLOW / SHIN-POST-RUN-CORRECTION-CHECK-PENDING
 - 🟡 YELLOW / HUMAN-CARRIER-REDUCTION-ONE-CASE-NOT-QUANTIFIED
 - 🔴 RED / SPLIT-AND-ADDITIVE-INSTRUCTION-DELIVERY-BLOCK
+- 🟢 BLUE / V9.1-CONDITION-BOUND-REUSE-LINEAGE-BINDING-COMPLETE
+- 🟢 BLUE / HISTORICAL-PRESERVATION-CURRENT-APPLICABILITY-JOINT-CLOSED
+- 🟢 BLUE / RECONNECTABLE-NOT-EQUAL-CURRENTLY-REUSABLE
+- 🟡 YELLOW / V9.1-V13-OPERATIONAL-MAPPINGS-NOT-YET-VALIDATED
+- 🟡 YELLOW / CONDITION-CONTINUITY-REAL-CASE-EVIDENCE-NOT-YET
+- 🔴 RED / STALE-HISTORICAL-PASS-AS-CURRENT-AUTHORITY-BLOCK
+- 🔴 RED / AUTOMATIC-CONDITION-MONITORING-BLOCK
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
 - 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
 - 🟡 YELLOW / GUARD-WITNESSES-ONE-ADVERSARIAL-SCENARIO-ONLY
@@ -134,6 +141,42 @@ Repeated use, generalization, and quantified Human Carrier burden reduction are
 delegation authority, or public claim was created. Candidate 3 — V9.1 remains
 `PARKED / not active`; all other V13 bindings and branches remain unchanged.
 
+Forward-only receipt — V9.1 Condition-Bound Judgment Reuse Local Binding 001:
+
+Candidate 3 deep read and bounded local binding are now `COMPLETE`, with
+classification `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`, `Decision Route:
+AI-OWNED`, and `Human Seat Question: none`. Every earlier Candidate 3 `PARKED /
+not active` statement remains valid at its historical As-of; this receipt
+supersedes only Candidate 3's current status. No historical V9, V9.1, or V13
+judgment is rewritten.
+
+V9.1 supplies the condition-bound reusable state `(outcome, residue_key,
+condition)` together with a reconnectable residue record. V13 separately maps
+current reuse through four unvalidated checks: Judgment Identity and Reuse
+Trace; Condition and Evidence Continuity; Scope, Protected Object, Seat, and
+Authority Compatibility; and Forward-only Delta Compatibility. A correct
+source identity proves origin, not current applicability. V11 reconnectability
+does not prove V9.1 reuse eligibility, and PIC-consistent preservation does not
+prove that a reuse condition remains valid.
+
+Only a currently `VALID` condition is reuse-eligible, and eligibility creates
+no authority. An `INVALID`, `STALE`, `UNVERIFIED`, `MATERIALLY CHANGED`, or
+`UNKNOWN` condition downshifts a prior PASS to V9.1 `DELAY` and maps the current
+V13 Gate to `HOLD`; only a separately authorized bounded recheck may use `CAP`.
+A condition-valid historical DELAY remains non-permissive and maps to `HOLD`
+until its recorded recheck; reuse alone cannot upgrade it to PASS or `GO`.
+A condition-valid historical BLOCK remains relevant only within verified
+current scope, and V13 `BLOCK` still requires an independent current hard
+boundary. V9.1 invalidation may trigger V10 re-evaluation but does not decide
+Rescale or Goal-Length change.
+
+No fresh Case 004 validation, real condition-continuity evidence,
+generalization, automatic condition checking, automatic Human Seat answer
+reuse, automatic authority renewal, runtime, or public claim was introduced.
+This binding alone generates no current PASS, GO, or BLOCK. PIC, Guard, V10,
+MAL, Field Note 127, Real Compound Proof 001, OSI, Canon, automation, and public
+surfaces remain otherwise unchanged.
+
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
 `PASS`; Delegation Envelope v0.1 was classified `DRIFT / SELF-DISTORTION`.
@@ -186,6 +229,9 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
+Historical As-of — repository commit
+`307633f19838f8009d918b57d9f4af8a3f40a1c4`:
+
 HOLD after Real Compound Proof 001 completed one receiver-side Single-Paste
 Execution case and created a reusable packet template. Shin post-run correction,
 repeated use, generalization, and quantified Human Carrier burden reduction
@@ -195,6 +241,19 @@ Active Branch is `none`, and Next Authorized Action is `none`. Candidate 3 —
 V9.1 remains `PARKED / not active`. No further proof, runtime, automatic
 authority, automatic Rescale, automatic lineage scan, or automatic Canon
 propagation is authorized.
+
+Current Forward-only state:
+
+HOLD after V9.1 Condition-Bound Judgment Reuse Local Binding 001 closed the
+historical-preservation versus current-applicability joint. The four V13
+operational mappings have not been applied to a fresh case, generalized, or
+implemented at runtime.
+
+Active Branch is `none`, and Next Authorized Action is `none`. Candidate 3 —
+V9.1 is no longer merely parked: its deep read and bounded local binding are
+complete. No validation, runtime, automatic condition monitoring, automatic
+authority renewal, automatic Rescale, automatic lineage scan, or automatic
+Canon propagation is authorized.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
@@ -246,6 +305,11 @@ Current manual cases show:
 - visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update;
 - one complete delivery packet can close one bounded run without proving general reliability or quantified Human Carrier reduction;
 - a reusable packet template does not authorize work without current Human and repository authority.
+- historical preservation and current applicability are distinct;
+- reconnectable, correctly identified, or PIC-consistent judgment is not necessarily currently reusable;
+- prior PASS is reuse-eligible only while its condition, evidence, scope, Seat, authority, and later deltas remain compatible;
+- historical DELAY remains non-permissive and cannot be upgraded to PASS or GO by reuse alone;
+- invalid, stale, unverified, materially changed, or unknown reuse conditions route to DELAY and HOLD rather than permanent permission or automatic BLOCK.
 
 ## Current Gate Split
 
@@ -266,6 +330,9 @@ Current manual cases show:
 | V10 Goal-Length lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Correction versus Rescale joint closed; Human Seat question `none` |
 | V10 / V13 operational mapping | HOLD | Four V13 witnesses are bounded mappings but have not been applied to a fresh real or frozen case |
 | Automatic Protective or Accelerative Rescale | BLOCK | No runtime monitoring, automatic Carrier scoring, or automatic Rescale authority |
+| V9.1 condition-bound reuse lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; historical preservation versus current applicability joint closed; Human Seat question `none` |
+| V9.1 / V13 operational mappings | HOLD | Four bounded mappings are recorded but have not been applied to a fresh real or frozen case |
+| Automatic condition monitoring / current-authority renewal | BLOCK | No automatic expiry, condition checking, historical consent reuse, authority renewal, or BLOCK persistence |
 | Real Compound Proof 001 receiver-side result | PASS | One complete instruction executed without correction, clarification, returned merge work, unauthorized file change, or adjacent branch activation |
 | One-Paste Codex Execution Packet v0.1 | PASS | Reusable one-surface template created; it grants no authority by itself |
 | Shin post-run correction check | HOLD | `PENDING`; requires Shin's evaluation after receiving the result |
@@ -321,6 +388,7 @@ Not allowed from this signal:
 - implement Delegation Envelope v0.1 or adopt its diagnostic minimum correction
 - run another adversarial test without separate explicit authority
 - monitor Carrier state or execute Protective or Accelerative Rescale automatically
+- monitor or expire reuse conditions, renew current authority, reuse historical consent, or persist historical BLOCK automatically
 - deliver split or additive execution instructions that return integration work to Shin
 
 ## Current Lesson
@@ -331,4 +399,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Real Compound Proof 001 passes one receiver-side single-paste case and leaves a reusable one-surface template; Shin post-run correction, repeated-use reliability, generalization, and quantified Human Carrier reduction remain pending or unestablished, so the V13 Gate remains HOLD.
+> V9.1 now closes the historical-preservation versus current-applicability joint: prior judgment is reuse-eligible only while its current condition and full reuse trace remain valid; the four mappings, real-case continuity evidence, generalization, automatic monitoring, and runtime remain unestablished, so the V13 Gate remains HOLD.

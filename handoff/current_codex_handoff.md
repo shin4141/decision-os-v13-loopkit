@@ -8,6 +8,164 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current V9.1 Condition-Bound Judgment Reuse Local Binding 001 — 2026-07-23
+
+Receipt:
+
+```text
+V9.1 Condition-Bound Judgment Reuse Local Binding:
+COMPLETE
+
+Joint:
+Historical preservation versus current applicability
+
+Classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Decision Route:
+AI-OWNED
+
+Human Seat Question:
+none
+
+Operational mappings:
+4
+
+Reusable state:
+(outcome, residue_key, condition) plus reconnectable residue record
+
+Prior PASS:
+Reusable only while trace, condition, evidence, scope, Seat, authority, and
+later delta remain compatible
+
+Prior DELAY:
+Remains non-permissive and maps to V13 HOLD until its recorded recheck;
+bounded CAP requires separate authority
+
+Invalid / stale / unverified / changed / unknown:
+V9.1 DELAY -> V13 HOLD
+
+Bounded recheck:
+CAP only under separate authority
+
+Prior BLOCK:
+Requires current condition validity or an independent current hard boundary
+
+Historical As-of:
+PRESERVED
+
+Validation:
+NOT STARTED
+
+Runtime:
+BLOCK
+
+Automatic condition monitoring:
+BLOCK
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Reason:
+The semantic and local-binding gap is closed, but the four mappings have not
+been applied to a fresh case, generalized, or implemented at runtime.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [Decision Lineage Reconnection Register](../docs/decision_lineage_reconnection_register_v0_1.md)
+- [Case 004 Forward-only binding](../validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md)
+- [Current Signal](../docs/current_signal.md)
+
+Source identity:
+
+```text
+Primary source: Decision-OS V9.1 — Impact-Weighted Release — From
+Continuous-Pass Gates to Condition-Bound Judgment Reuse
+Gateway repository: shin4141/decision-os-paper
+Gateway retrieval commit: 07f20eb5bbea1e49d0b5f60fc4962c45ddcd3704
+Gateway path: notes/v9/Decision__O_S_V9__1_1.pdf
+Git blob: e16911ea5dd131d47a9787b5f08c4a25231f78a4
+DOI: 10.5281/zenodo.19935535
+Verified PDF SHA-256:
+89eb2277fb592d974ba035911eadfb30fb0ae15b12e900dcb2f7bd9eefbe0f60
+
+Earlier V9 comparison source:
+Gateway path: notes/v9/Decision-OS_V9_Impact-Weighted_Release_v1_EN.pdf
+Git blob: 45a57af48c81f4f2c1f870b5a49f96f5049e9e68
+DOI: 10.5281/zenodo.18390432
+Verified PDF SHA-256:
+0424141f65a787b5b59625cab97dcc702a573e940b28b66d20111d7360a7418c
+
+Version rule: filename fragments are not release-version authority
+```
+
+V9.1 preserves a compressed judgment as `(outcome, residue_key, condition)`
+with a reconnectable residue record. The historical outcome, source As-of,
+evidence, capability ceiling, responsibility, and audit trail remain preserved
+after a condition changes. Preservation does not itself grant current
+applicability.
+
+V13 separately binds four operational mappings: Judgment Identity and Reuse
+Trace; Condition and Evidence Continuity; Scope, Protected Object, Seat, and
+Authority Compatibility; and Forward-only Delta Compatibility. Only a
+currently `VALID` condition remains reuse-eligible, and the current action must
+already have independently valid authority. A prior PASS therefore does not
+generate V13 `GO` or renew authority.
+
+An `INVALID`, `STALE`, `UNVERIFIED`, `MATERIALLY CHANGED`, or `UNKNOWN`
+condition removes current reuse eligibility, downshifts to V9.1 `DELAY`, and
+maps to V13 `HOLD`. Source recovery, DFR, or recheck may proceed under `CAP`
+only when separately authorized. A condition-valid historical BLOCK may remain
+relevant within verified scope, but V13 `BLOCK` still requires an independent
+current hard-boundary reason. A condition-unknown historical BLOCK becomes
+neither permanent BLOCK nor silent PASS.
+
+A condition-valid historical DELAY remains non-permissive and maps to V13
+`HOLD` until its recorded recheck condition or window is satisfied. Reuse alone
+cannot upgrade it to PASS or `GO`; only a separately authorized bounded recheck
+may proceed under `CAP`.
+
+V11 reconnectability does not prove current V9.1 reuse eligibility. PIC may
+preserve a judgment and its evidence non-destructively without proving the
+stored condition remains valid. V9.1 condition invalidation may trigger V10
+re-evaluation but does not decide Correction, Rescale, or Goal-Length change.
+The V9.1 Gate does not replace the V13 Gate.
+
+Every earlier statement that Candidate 3 — V9.1 was `PARKED / not active`
+remains preserved at its own historical As-of. This later Forward-only receipt
+supersedes only Candidate 3's current status: Deep Read 003 and the bounded
+local binding are complete. No historical V9 or V9.1 judgment was rewritten.
+
+No fresh Case 004 validation, real condition-continuity evidence,
+generalization, automatic condition expiry or monitoring, automatic Human Seat
+answer reuse, automatic authority renewal, runtime, new Field Note, new Case,
+or public claim was introduced. PIC, Guard, V10, MAL, Field Note 127, Real
+Compound Proof 001, OSI, Canon, automation, and public surfaces remain otherwise
+unchanged.
+
+Completion Line:
+
+V13 now binds V9.1's distinction between preserved historical judgment and
+current applicability: prior judgment remains reuse-eligible only while its
+trace, condition, evidence, scope, Seat, authority, and later deltas remain
+compatible; otherwise it returns to DELAY and V13 HOLD without rewriting the
+past. No Human Seat question remained, fresh validation and real-case evidence
+are absent, runtime and automatic condition monitoring remain blocked, and the
+V13 Gate is `HOLD`.
+
 ## Current Real Compound Proof 001 — Single-Paste Execution — 2026-07-23
 
 Receipt:

@@ -406,3 +406,141 @@ the bounded semantic and local-binding joint without changing its original
 answer, prior bindings, adversarial evidence, FN126 verification state, or
 re-entry authority. Operational validation, real Carrier absorption evidence,
 generalization, runtime monitoring, and automatic Rescale remain absent.
+
+## Forward-only Addendum — V9.1 Condition-Bound Judgment Reuse Local Binding 001
+
+Date: 2026-07-23
+
+This addendum binds the V9.1 condition-bound judgment-reuse joint recorded in
+[Decision Lineage Reconnection Register v0.1](../docs/decision_lineage_reconnection_register_v0_1.md)
+to Case 004. It does not rewrite the original Human Seat answer, the historical
+`PIC Definition Boundary`, the PIC, Guard, or V10 lineage bindings, or the prior
+adversarial evidence. It does not claim that a real self-update has passed this
+mapping, authorize reuse or execution, establish generalization, or introduce
+runtime condition monitoring.
+
+### Source and Mapping Boundary
+
+V9.1 preserves a reusable judgment state as:
+
+```text
+(outcome, residue_key, condition)
+```
+
+The tuple is supported by a residue record containing source As-of, criterion
+hit, evidence, and reuse scope. Judgment Compression preserves a condition-bound
+executable gate state rather than merely a shorter summary.
+
+A later condition failure does not erase or rewrite the historical outcome,
+source As-of, evidence, responsibility, capability ceiling, or audit trail. It
+removes current reuse eligibility. Time passage alone neither validates nor
+invalidates the stored condition, and V9.1 supplies no universal numeric
+staleness threshold.
+
+V13 maps this source-defined distinction through four operational checks:
+
+1. Judgment Identity and Reuse Trace;
+2. Condition and Evidence Continuity;
+3. Scope, Protected Object, Seat, and Authority Compatibility;
+4. Forward-only Delta Compatibility.
+
+These checks are bounded V13 operational mappings, not original V9.1
+terminology or universal axioms. A valid source identity proves origin, not
+current applicability. V11 reconnectability proves that the judgment can be
+re-entered, not that it remains reusable. PIC may preserve the judgment
+non-destructively without proving its condition remains valid. V10 evaluates
+the survivability of the maintained line; V9.1 evaluates whether the judgment
+supporting that line may still be reused.
+
+### Case 004 Consequence
+
+A historical judgment or lineage binding cannot be used in a current
+self-update evaluation merely because it:
+
+- exists in the repository;
+- has a valid hash, DOI, or commit identity;
+- remains reconnectable;
+- was previously classified `PASS`;
+- was previously approved by Shin;
+- remains PIC-consistent.
+
+Each reuse must establish:
+
+- a reconnectable source, As-of, DFR, Residue Criterion hit, residue record,
+  compressed tuple, reuse scope, and reuse-time condition check;
+- a currently `VALID` stored condition, with required evidence still available
+  and materially uncontradicted;
+- compatibility with the current scope, Protected Object, functional Human
+  Seat, capability ceiling, authority boundary, and covered action class;
+- compatibility with every later authoritative Forward-only delta.
+
+Condition validity establishes reuse eligibility only. It creates no new
+authority, consent, `GO`, or `SELF-EVOLUTION CANDIDATE` classification. All
+other Case 004 requirements—including Aspire-directed reachable-path expansion,
+Guard, PIC, stable self-recursion, independent comparison, falsification,
+refusal, reconnection, and applicable V10 survivability conditions—still apply.
+
+### Routing Consequence
+
+```text
+All applicable reuse mappings VALID:
+HISTORICAL JUDGMENT REUSE-ELIGIBLE ONLY /
+OTHER CASE 004 REQUIREMENTS STILL APPLY
+
+Any required mapping INVALID, STALE, UNVERIFIED, MATERIALLY CHANGED, or UNKNOWN:
+V9.1 DELAY /
+V13 HOLD / UNCLASSIFIED /
+RETURN TO DFR, SOURCE RECOVERY, OR BOUNDED RECHECK
+
+Separately authorized bounded recheck:
+V13 CAP LIMITED TO THAT RECHECK
+
+Condition-valid historical DELAY:
+REMAINS NON-PERMISSIVE / V13 HOLD UNTIL RECORDED RECHECK /
+REUSE ALONE CANNOT UPGRADE IT TO PASS OR GO
+
+Condition failure alone:
+DOES NOT ESTABLISH DRIFT / SELF-DISTORTION
+
+Guard BROKEN or another independently established hard failure:
+EXISTING HARD-FAILURE ROUTE APPLIES
+
+Condition-valid historical BLOCK:
+RELEVANT ONLY WITHIN ITS VERIFIED CURRENT SCOPE /
+V13 BLOCK STILL REQUIRES AN INDEPENDENT CURRENT HARD BOUNDARY
+
+Condition-unknown historical BLOCK:
+V13 HOLD / RECHECK /
+NEITHER PERMANENT BLOCK NOR SILENT PASS
+```
+
+A historical `PASS` remains an auditable record of its own As-of. It is not
+current permission unless all applicable reuse conditions are valid and the
+current action already has independent authority. UNKNOWN is not validity and
+supplies no permission to continue.
+
+V9.1 condition invalidation may trigger V10 re-evaluation, but it does not
+automatically decide Correction, Protective Rescale, Accelerative Rescale, or a
+Goal-Length change. The V9.1 Gate does not replace the V13 Gate.
+
+### Human Seat Boundary
+
+A prior Human Seat answer may be reused without asking Shin again only when its
+trace, condition, evidence, scope, Protected Object, functional Seat, authority,
+and later deltas remain compatible. Condition checking, source recovery, DFR,
+and bounded remapping remain AI-owned.
+
+A new Human Seat question requires a genuine current choice involving Aspire,
+Protected Object, authority, risk acceptance, externalization, incompatible
+value branches, or another explicit Human decision right after source and
+condition review. No Human Seat question is required for this semantic binding.
+
+### Forward-only Binding Boundary
+
+Case 004 remains `REALIZED HIGH-LEVERAGE RETURN — PARTIAL`. This addendum closes
+the bounded semantic and local-binding joint without changing its original
+answer, prior bindings, adversarial evidence, FN126 verification state, or
+re-entry authority. Fresh Case 004 validation, real condition-continuity
+evidence, generalization, runtime authority, automatic condition monitoring,
+automatic Human Seat answer reuse, and automatic BLOCK persistence remain
+absent.

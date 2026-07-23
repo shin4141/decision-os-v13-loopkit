@@ -4,10 +4,11 @@
 
 ```text
 Register specification: COMPLETE
-Registered bindings: 3
+Registered bindings: 4
 First binding: PIC
 Second binding: Guard Continuity
 Third binding: V10 Goal-Length Recalculation
+Fourth binding: V9.1 Condition-Bound Judgment Reuse
 Automatic lineage scan: BLOCK
 Automatic Canon propagation: BLOCK
 Runtime: BLOCK
@@ -745,10 +746,286 @@ does not validate the four witnesses, measure a real Carrier, run Case 004,
 establish generalization or burden reduction, authorize Rescale or runtime, or
 permit automatic monitoring, lineage scanning, or Canon propagation.
 
-## Completion Line
+## Entry 003 Historical Completion Line
 
 PIC, Guard Continuity, and V10 Goal-Length Recalculation are now reconnectable
 from their V13 uses to verified lineage sources. V10 distinguishes survivable
 Correction from Goal-Length Rescale when old-line return becomes
 non-survivable; its four V13 mappings remain unvalidated, runtime remains
 blocked, and no Human Seat question was created.
+
+## Entry 004 — V9.1 Condition-Bound Judgment Reuse
+
+```text
+Term / Joint:
+Condition-Bound Reuse of Historical Judgments and Lineage Bindings
+
+Current Local Use:
+Determine whether a prior Human Seat judgment, PASS, DELAY, BLOCK, lineage
+binding, or compressed gate state remains reusable in the current V13 joint.
+
+Lineage Classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Established Context Check:
+CLOSED
+
+Decision Route:
+AI-OWNED
+
+Authoritative Source:
+1. Current Shin Forward-only authorization;
+2. current V13 authority at repository As-of
+   307633f19838f8009d918b57d9f4af8a3f40a1c4;
+3. Decision-OS V9.1, Impact-Weighted Release — From Continuous-Pass Gates to
+   Condition-Bound Judgment Reuse, DOI 10.5281/zenodo.19935535;
+4. earlier Decision-OS V9 only where needed to establish the Forward-only
+   delta into V9.1;
+5. current Case 004 and related V13 operational surfaces.
+
+Primary Source Identity:
+Gateway repository: shin4141/decision-os-paper;
+gateway retrieval commit: 07f20eb5bbea1e49d0b5f60fc4962c45ddcd3704;
+gateway path: notes/v9/Decision__O_S_V9__1_1.pdf;
+Git blob: e16911ea5dd131d47a9787b5f08c4a25231f78a4;
+DOI: 10.5281/zenodo.19935535;
+verified PDF SHA-256:
+89eb2277fb592d974ba035911eadfb30fb0ae15b12e900dcb2f7bd9eefbe0f60.
+
+Earlier V9 Comparison Source:
+Gateway path: notes/v9/Decision-OS_V9_Impact-Weighted_Release_v1_EN.pdf;
+Git blob: 45a57af48c81f4f2c1f870b5a49f96f5049e9e68;
+DOI: 10.5281/zenodo.18390432;
+verified PDF SHA-256:
+0424141f65a787b5b59625cab97dcc702a573e940b28b66d20111d7360a7418c.
+Filename fragments are not release-version authority.
+
+Later Forward-only Deltas:
+Every prior statement that Candidate 3 — V9.1 was PARKED / not active remains
+valid at its historical As-of. Triggered Lineage Deep Read 003 later completed
+and classified the joint LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED. This entry
+records the subsequent bounded local-binding completion without rewriting V9,
+V9.1, an earlier V13 judgment, or any historical PARKED state. Validation and
+runtime remain unstarted.
+
+V9.1 Source-Defined Core:
+Judgment Compression preserves a condition-bound executable gate state rather
+than merely shortening a description. The reusable state is stored as
+(outcome, residue_key, condition), where outcome is PASS, DELAY, or BLOCK. The
+associated residue record carries source_asof, criterion_hit, evidence, and
+reuse_scope.
+
+After DFR, residue is admitted only when it changes at least one of Branching,
+Reversibility, Seat, Dependency, or Non-reconstructability. Irreducible mismatch
+is a candidate signal, not proof, permission, probability, or release authority.
+
+The stored condition is the temporal and operational boundary under which the
+compressed judgment may remain reusable. Time passage alone does not
+automatically validate or invalidate that condition. V9.1 supplies no universal
+numeric staleness threshold.
+
+Historical Preservation:
+Condition failure does not erase or rewrite the prior outcome, source As-of,
+evidence, capability ceiling, responsibility, or audit trail. It removes current
+reuse eligibility. Later evidence and decisions enter through Forward-only
+deltas rather than retroactive injection into the historical state.
+
+Current-Layer Operational Mapping:
+V13 maps the source-defined core through four bounded operational mappings.
+These are not original V9.1 vocabulary or universal axioms.
+
+Mapping 1 — Judgment Identity and Reuse Trace:
+A reusable judgment must reconnect through source identity, source As-of, DFR,
+the Residue Criterion hit, residue record, compressed tuple, reuse scope, and
+the reuse-time condition check. The tuple alone does not prove origin,
+authority, or current applicability. If source identity or the trace cannot be
+reconnected, route SOURCE-PROOF-INSUFFICIENT / HOLD.
+
+Mapping 2 — Condition and Evidence Continuity:
+Check whether the stored context and material dependencies still hold, required
+evidence remains available, newer evidence does not materially contradict the
+residue, and the stored condition can currently be verified. Use exactly VALID,
+INVALID, STALE, UNVERIFIED, MATERIALLY CHANGED, or UNKNOWN. Only VALID remains
+reuse-eligible.
+
+Mapping 3 — Scope, Protected Object, Seat, and Authority Compatibility:
+Check whether the current use remains within the declared reuse scope, relevant
+capability ceiling, current Protected Object, current functional Human Seat,
+current authority boundary, and originally covered action class. Formal Seat
+retention is insufficient when current use functionally changes who may decide,
+refuse, stop, or bear responsibility.
+
+Mapping 4 — Forward-only Delta Compatibility and Conservative Routing:
+Check whether a later authoritative delta supersedes, narrows, remaps, conflicts
+with, or leaves unchanged the historical judgment. A later delta does not
+rewrite the historical As-of; it changes current reuse eligibility or the
+current operational mapping only.
+
+Minimum V13 Reuse Rule:
+A prior judgment may be reused only when all applicable requirements are
+sufficiently established: source and As-of identity are known; the reuse trace
+is reconnectable; the stored condition is VALID; required evidence remains
+available and materially uncontradicted; current scope, Protected Object,
+functional Seat, capability ceiling, authority boundary, and action class
+remain compatible; no later Forward-only delta supersedes, narrows, remaps, or
+conflicts with reuse; and the current action already has independently valid
+authority. Reuse eligibility creates no new authority.
+
+If any required condition is INVALID, STALE, UNVERIFIED, MATERIALLY CHANGED, or
+UNKNOWN, do not reuse a prior PASS. Preserve the historical As-of, downshift to
+V9.1 DELAY, and route to DFR, source recovery, or bounded recheck. The current
+V13 Gate is HOLD. Only a separately authorized bounded recheck may proceed
+under CAP. Incomplete checking or source recovery is not by itself a Human Seat
+question.
+
+Prior PASS Route:
+- Condition-valid prior PASS: reuse-eligible under independently existing
+  current authority; it does not automatically generate V13 GO.
+- Invalid, stale, unverified, materially changed, or unknown prior PASS:
+  V9.1 DELAY -> V13 HOLD.
+
+Prior DELAY Route:
+- Condition-valid historical DELAY remains non-permissive and maps to V13 HOLD
+  until its recorded recheck condition or window is satisfied.
+- Only a separately authorized bounded recheck may proceed under CAP. Reuse
+  alone cannot upgrade historical DELAY to PASS or V13 GO.
+
+Prior BLOCK Route:
+- Condition-valid prior BLOCK: may remain relevant within its verified current
+  scope; V13 BLOCK still requires an independent current hard-boundary reason.
+- Condition-unknown historical BLOCK: must not become permanent current BLOCK
+  or be silently converted into PASS; route HOLD and recheck.
+
+Historical As-of Consequence:
+Historical validity at time T is distinct from current applicability at time
+T+n. Revalidation failure does not retroactively make the original decision
+wrong, and current inapplicability does not erase historical responsibility or
+evidence.
+
+Required Distinctions:
+- V11 asks whether judgment-critical memory is reconnectable to source, As-of,
+  evidence, scope, stop conditions, unresolved deltas, and re-entry path. V9.1
+  asks whether that reconnected judgment remains condition-valid and reusable
+  now. Reconnectable does not mean currently reusable. If V11 source proof
+  fails, route SOURCE-PROOF-INSUFFICIENT / HOLD.
+- PIC governs non-destructive preservation, integration, and canonical
+  convergence of judgment state and evidence. V9.1 governs current validity of
+  the reuse condition. Neither pass proves the other; stale authority may remain
+  perfectly PIC-consistent.
+- V10 asks whether a line remains Returnable and survivable for the Carrier of
+  Aspire. V9.1 asks whether the prior judgment supporting that line remains
+  reusable. V9.1 invalidation may trigger V10 re-evaluation but does not decide
+  Correction, Protective Rescale, Accelerative Rescale, or Goal-Length change.
+
+V9.1 / V13 Gate Mapping:
+- Condition-valid prior PASS: reuse-eligible only; V13 GO still requires current
+  independent authority and all other applicable gates.
+- INVALID, STALE, UNVERIFIED, MATERIALLY CHANGED, or UNKNOWN: V9.1 DELAY ->
+  V13 HOLD.
+- Separately authorized source recovery, DFR, or recheck: bounded V13 CAP.
+- Condition-valid historical BLOCK: relevant evidence, while V13 BLOCK still
+  requires an independent current hard-boundary reason.
+- Condition-unknown historical BLOCK: V13 HOLD.
+
+The V9.1 Gate does not replace the V13 Gate.
+
+Human Seat Boundary:
+AI may reconnect the judgment trace, test stored conditions, classify
+continuity, recover evidence, create DFR, identify later deltas, and route to
+reuse eligibility, DELAY, HOLD, or a bounded recheck proposal. AI may not create
+new consent from historical consent, transfer decision rights through reuse,
+define a new Aspire, expand authority beyond original scope, treat a prior PASS
+as permanent permission, treat a prior BLOCK as permanent prohibition without
+current condition proof, or decide a new value, authority, risk-acceptance, or
+externalization question.
+
+A new Human Seat question is permitted only after source and condition review
+leaves a genuine current choice involving Aspire, Protected Object, authority,
+risk acceptance, externalization, incompatible value branches, or another
+explicit Human decision right.
+
+Import Boundary:
+Do not import Public Tube or MMAR mechanics, marketing or publication rules,
+numeric staleness thresholds, universal retention periods, automatic condition
+expiry, automatic current-authority renewal, automatic Human Seat answer reuse,
+automatic BLOCK persistence, automatic condition monitoring, runtime authority,
+new consent, empirical safety claims, quantified Human Carrier reduction, a new
+Field Note, a new Case, or a new MAL version.
+
+Reopen If:
+A later explicit Human Seat or authoritative source delta changes the meaning;
+source identity, blob, hash, DOI, or gateway As-of no longer verifies; source
+proof becomes insufficient; materially valid meanings conflict after As-of
+precedence; the condition cannot be stated or reconnected; or authorized
+evidence falsifies a V13 mapping. UNKNOWN routes to HOLD and never supplies
+permission.
+
+Human Seat Required:
+no
+```
+
+## Entry 004 Routing Receipt
+
+```text
+V9.1 Condition-Bound Judgment Reuse lineage classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Established Context Check:
+CLOSED
+
+Decision Route:
+AI-OWNED
+
+Human Seat Question:
+none
+
+Operational mappings:
+4
+
+Prior PASS:
+Reuse-eligible only under independently valid current authority
+
+Prior DELAY:
+Remains non-permissive -> V13 HOLD until recheck; CAP requires separate authority
+
+Prior BLOCK:
+Requires current condition validity or an independent current hard boundary
+
+Historical As-of:
+PRESERVED
+
+Invalid / stale / unverified / changed / unknown:
+V9.1 DELAY -> V13 HOLD
+
+Bounded recheck:
+CAP only under separate authority
+
+Validation:
+NOT STARTED
+
+Runtime:
+BLOCK
+
+Automatic condition monitoring:
+BLOCK
+
+Current PASS / GO / BLOCK generated by this binding:
+none
+
+Propagation:
+BOUNDED TO THE FOUR AUTHORIZED V13 SURFACES
+```
+
+This binding closes the V9.1 semantic and bounded local-binding gap only. It
+does not validate the four mappings, apply them to a fresh case, establish
+generalization or burden reduction, authorize automatic reuse or monitoring,
+or introduce runtime authority.
+
+## Completion Line
+
+V9.1 condition-bound reuse is now reconnectable from V13 through four bounded
+mappings: a prior judgment remains reuse-eligible only while its trace,
+condition, evidence, scope, Seat, authority, and later deltas remain compatible;
+otherwise it returns to DELAY and V13 HOLD without rewriting historical As-of.
+No Human Seat question remained, validation has not started, and runtime and
+automatic condition monitoring remain blocked.
