@@ -2,11 +2,19 @@
 
 ## Signal
 
+- 🟢 BLUE / V13-RUNNER-V0.1-MERGED-AVAILABLE-ON-MAIN
+- 🟢 BLUE / PR-12-HISTORY-PRESERVING-MERGE-PASS-COMPLETE
+- 🟢 BLUE / V13-RUNNER-TWO-OF-TWO-OPERATIONAL-LOOPS-CLOSED
+- 🟢 BLUE / V13-RUNNER-READ-ONLY-CLI-34-OF-34-TESTS-PASS
+- 🟢 BLUE / V13-RUNNER-DETERMINISTIC-CHECK-CONTRACT-12-OF-12-COVERED
+- 🟢 BLUE / V13-RUNNER-AUTHORITY-ENVELOPE-CONSUMED
+- 🔴 RED / V13-RUNNER-LOOP-03-NOT-AUTHORIZED
+- 🟡 YELLOW / V13-RUNNER-NEXT-ACTION-NONE
 - 🟢 BLUE / AUTHORITY-SUFFICIENCY-PREFLIGHT-V0.1-MERGED-CANONICAL-ON-MAIN
 - 🟢 BLUE / PR-11-MERGE-PASS-COMPLETE
 - 🟢 BLUE / AUTHORITY-SUFFICIENCY-MANUAL-TEMPLATE-AVAILABLE-ON-MAIN
 - 🟢 BLUE / STAGE-0-REQUIRED-BEFORE-FUTURE-BOUNDED-RUN-AUTHORITY
-- 🟡 YELLOW / STAGE-0-EXECUTION-NOT-STARTED-FOR-ANY-NEW-RUN
+- 🟢 BLUE / V13-RUNNER-V0.1-STAGE-0-COMPLETE
 - 🟡 YELLOW / RUN-003-NOT-STARTED
 - 🔴 RED / RUN-003-AUTHORITY-NONE
 - 🟢 BLUE / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-MERGED-CANONICAL-ON-MAIN
@@ -103,6 +111,90 @@
 - 🟡 YELLOW / EXTERNAL-EVIDENCE-RETURN-PASSIVE
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
+
+## V13 Runner v0.1 — Integration and Closure
+
+PR #12 merged the exact implementation head
+`3702ff311a2f1be5a1b75bc2b7e94b3e3d599a42` through the
+history-preserving merge commit
+`e8814caccd47e03d10671cf1c4c5fa1f41fd2570`.
+
+```text
+V13 Runner v0.1:
+MERGED / AVAILABLE ON MAIN
+
+PR #12:
+PASS / MERGED / COMPLETE
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.1 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.1 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Implementation head:
+3702ff311a2f1be5a1b75bc2b7e94b3e3d599a42
+
+Implementation merge:
+e8814caccd47e03d10671cf1c4c5fa1f41fd2570
+
+Rollback Identity:
+STARTING MAIN d9596f8145d4da6d4445486e7d03884277f7dd94 / IMPLEMENTATION MERGE e8814caccd47e03d10671cf1c4c5fa1f41fd2570
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+PR #12 / 34 OF 34 TESTS PASS / 12 OF 12 CHECKS COVERED
+
+Closure-Only Tail:
+docs/v13_runner_v0_1.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — V13 RUNNER V0.1 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Decision Owner:
+Shin
+```
+
+The implementation run used exactly one branch, one non-draft implementation
+PR, and two operational loops. No Loop 03, package publication, release, CI,
+external communication, runtime automation, Canon, paper, V7, Revenue, or
+outreach change was started. No rollback was required.
+
+This closure does not invent a current V12 State. The first current blocks
+therefore continue to expose `v12_state: UNKNOWN` and exit `4`. Historical V12
+values are not backfilled, and the missing value is not permission to
+continue.
+
+The enclosing closure commit supplies its own transport identity because a
+commit cannot embed its own SHA. This closure-only tail grants no new
+candidate-selection, implementation, correction, branch, PR, merge, or
+runtime authority.
+
+Completion Line:
+
+V13 Runner v0.1はread-only local CLIとして2つのoperational loopとPR #12を
+履歴保存で統合し、34/34 testsと12/12 check coverageを保持したままauthority
+envelopeとclosure-only tailを消費し、Loop 03を開始せず停止した。
 
 ## Authority Sufficiency Preflight v0.1 — Merge Closure
 

@@ -10,6 +10,54 @@ It runs locally without an LLM and emits one deterministic JSON object. It does
 not grant authority, select values, modify a repository, contact a remote
 service, or perform an operational action.
 
+## Canonical Integration Receipt
+
+V13 Runner v0.1 was implemented in exactly two operational loops on
+`codex/v13-runner-v0-1` and merged through PR #12.
+
+```text
+Starting canonical main:
+d9596f8145d4da6d4445486e7d03884277f7dd94
+
+Loop 01:
+22faf66 / READ-ONLY REPOSITORY CHECKS
+
+Loop 02:
+3702ff3 / DETERMINISTIC CLI AND USAGE GUIDE
+
+Approved implementation head:
+3702ff311a2f1be5a1b75bc2b7e94b3e3d599a42
+
+History-preserving merge:
+e8814caccd47e03d10671cf1c4c5fa1f41fd2570
+
+PR:
+#12 / PASS / MERGED / COMPLETE
+
+Validation:
+34 OF 34 TESTS PASS / 12 OF 12 CHECKS COVERED
+
+Operational loops:
+2 OF 2 CONSUMED
+
+Implementation branches:
+1 OF 1 USED
+
+Implementation PRs:
+1 OF 1 USED
+
+Loop 03:
+NOT AUTHORIZED
+
+Rollback:
+NOT EXECUTED
+```
+
+The reserved closure-only tail is limited to this file,
+`docs/current_signal.md`, and `handoff/current_codex_handoff.md`. The enclosing
+closure commit supplies its own transport identity. The tail grants no new
+implementation or integration authority.
+
 ## Five-Minute Local Path
 
 From this repository:
@@ -107,7 +155,10 @@ authority envelope.
 At the starting canonical As-of
 `d9596f8145d4da6d4445486e7d03884277f7dd94`, the first current blocks do not
 contain a V12 State. The Runner therefore returns exit `4`; it deliberately
-does not recover a later historical V12 value.
+does not recover a later historical V12 value. That starting-state result is
+preserved as historical evidence. The Forward-only integration closure adds
+the closed-run receipt but does not invent a current V12 value, so the same CLI
+continues to return exit `4`. This visible gap is not permission to continue.
 
 ## Exit Codes
 

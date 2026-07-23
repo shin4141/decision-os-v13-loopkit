@@ -8,6 +8,115 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Runner v0.1 Integration and Closure
+
+Date:
+`2026-07-24`
+
+Starting canonical `main`:
+`d9596f8145d4da6d4445486e7d03884277f7dd94`
+
+Approved implementation head:
+`3702ff311a2f1be5a1b75bc2b7e94b3e3d599a42`
+
+PR #12 history-preserving merge:
+`e8814caccd47e03d10671cf1c4c5fa1f41fd2570`
+
+Completed execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Canonical receipt:
+
+```text
+V13 Runner v0.1:
+MERGED / AVAILABLE ON MAIN
+
+PR #12:
+PASS / MERGED / COMPLETE
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.1 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.1 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Implementation head:
+3702ff311a2f1be5a1b75bc2b7e94b3e3d599a42
+
+Implementation merge:
+e8814caccd47e03d10671cf1c4c5fa1f41fd2570
+
+Rollback Identity:
+STARTING MAIN d9596f8145d4da6d4445486e7d03884277f7dd94 / IMPLEMENTATION MERGE e8814caccd47e03d10671cf1c4c5fa1f41fd2570
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+PR #12 / 34 OF 34 TESTS PASS / 12 OF 12 CHECKS COVERED
+
+Closure-Only Tail:
+docs/v13_runner_v0_1.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — V13 RUNNER V0.1 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Decision Owner:
+Shin
+```
+
+The implementation run used exactly one branch, one non-draft implementation
+PR, and two operational loops. Loop 01 is commit `22faf66`; Loop 02 is commit
+`3702ff3`. The full suite passed 34 of 34 tests, and all 12 documented
+deterministic check classes are covered.
+
+The repository-local CLI is available as:
+
+```text
+decision-os check <repository>
+```
+
+It performs no package publication, release, CI, external communication,
+runtime automation, merge action, or repository write. The implementation run
+changed exactly the 15 approved files. The closure-only tail changes only
+`docs/v13_runner_v0_1.md`, `docs/current_signal.md`, and this handoff.
+
+This closure does not assert a new current V12 State. The Runner therefore
+continues to return exit `4` with `v12_state: UNKNOWN`; it does not backfill a
+later historical value, and the missing value grants no execution authority.
+
+No rollback was required. The enclosing closure commit supplies its own
+transport identity because a commit cannot embed its own SHA. This tail grants
+no Loop 03, correction, candidate-selection, branch, PR, merge, runtime, Canon,
+paper, V7, Revenue, or outreach authority.
+
+Completion Line:
+
+V13 Runner v0.1はread-only local CLIとして2つのoperational loopとPR #12を
+履歴保存で統合し、34/34 testsと12/12 check coverageを保持したままauthority
+envelopeとclosure-only tailを消費し、Loop 03を開始せず停止した。
+
 ## V13 — Authority Sufficiency Preflight v0.1 Merge Closure
 
 Date:
