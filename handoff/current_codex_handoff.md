@@ -8,7 +8,212 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## Revenue Pilot 001 — Sample 001 Merge Closure
+## V13 — Implementation-Load Priority Reversal and Load-Bearing Improvement Evidence
+
+Date:
+`2026-07-23`
+
+Starting main:
+`dd09e34d7ace3b551d6949bd47c04a6bd58b9be6`
+
+Completed implementation execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Receipt:
+
+```text
+V13 bounded structure integration:
+COMPLETE ON BRANCH / PR OPEN / PENDING MERGE
+
+Branch:
+docs/implementation-load-priority-reversal-v0-1
+
+Primary implementation commit:
+824553d8ce7ffb4048b0f37e29f0e7c7fc1e0e31
+
+Pull request:
+#3
+
+Pull request URL:
+https://github.com/shin4141/decision-os-v13-loopkit/pull/3
+
+Pull request state:
+OPEN / READY FOR REVIEW / NOT MERGED
+
+Adopted:
+- Implementation-Load Priority Reversal
+- Load-Bearing Compliance Test
+
+Limited integration:
+- Successor Debt as an optional next-loop deferred-cost field
+
+Evidence status:
+SPECIFICATION ONLY / NOT OPERATIONALLY VALIDATED
+
+V13 structure-selection implementation path:
+PASS
+
+Current Gate:
+HOLD — SHIN APPROVAL OR REJECTION OF PR #3 PENDING
+
+V13 system-level HOLD:
+no — REVENUE REPLY HOLD REMAINS ROUTE-SPECIFIC
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Active Branch:
+docs/implementation-load-priority-reversal-v0-1
+
+Codex Next Authorized Action:
+none
+
+Next action owner:
+Shin
+
+Next Authorized Action:
+REVIEW AND APPROVE OR REJECT THE SUBSTANTIVE PR MERGE
+
+Decision Packet Required:
+yes — PR IS THE DECISION SURFACE
+
+Decision Owner:
+Shin
+```
+
+Files changed:
+
+1. `docs/implementation_load_priority_reversal_and_successor_debt_v0_1.md`
+2. `templates/v13_loop_record.md`
+3. `schema/v13_loop_record.schema.json`
+4. `prompts/v13_loop_review.md`
+5. `docs/loop_map.md`
+6. `docs/current_signal.md`
+7. `handoff/current_codex_handoff.md`
+
+Adopted structures:
+
+- **Implementation-Load Priority Reversal** identifies priority selection
+  under implementation load without attributing motive, malice, desire, or a
+  literal reversal of Aspire.
+- **Load-Bearing Compliance Test** withholds improvement credit from stated
+  understanding and requires changed behavior under a comparable
+  implementation-load condition.
+
+Limited integration:
+
+- **Successor Debt** is an optional Loop Record field for material deferred
+  restoration or restart cost that worsens the next loop's starting condition
+  and is unowned, unaccepted, undisclosed, or lacks closure or re-evaluation.
+- A disclosed, owned, accepted, priority-aligned, restartable, and
+  closure-bound deferred responsibility remains a valid transfer rather than
+  debt.
+
+Explicit non-adoptions:
+
+- mandatory third-party AI;
+- mandatory external Aspire State or automatic external Gate;
+- universal unknown-accident resistance or pathogen-independent defense;
+- Aspire Reversible Drift as a new V13 core theory;
+- a general AI-growth-versus-human-recovery rule;
+- ASI evolution permission or Aspiring SiriusA Intelligence expansion;
+- parent-child or good-versus-evil intelligence theory;
+- runtime enforcement, automatic scoring, automatic Gate derivation,
+  autonomous learning, or automatic authority change.
+
+Improvement Credit remains an evidence classification. It is not a fifth Gate,
+execution authority, generalization result, or automatic permission to scale.
+A Successor Debt candidate maps to `HOLD` or `CAP` for bounded repair or
+recalculation unless an independent existing hard boundary requires `BLOCK`.
+
+Validation performed:
+
+- repository identity, `shin4141` authentication, clean starting main, exact
+  starting SHA, and PR #2 merge closure verified;
+- JSON schema and all existing examples parsed with `jq`;
+- tailored no-dependency validation checked `12 / 12` existing JSON Loop
+  Records as valid;
+- two in-memory extension cases validated against the optional nested objects;
+- schema root requirements remained unchanged and the new root objects remain
+  optional;
+- introduced Markdown links resolve and changed Markdown fences balance;
+- all ten review questions, the required classification block, and the Loop
+  Map sequence were checked;
+- `git diff --check` passed;
+- no runtime, research paper, V13 Research Note v0.2 main body, published V7,
+  V10/V11/V12/V14, Sample 001, Revenue price, outreach, or follow-up surface
+  changed.
+
+Validation boundary:
+
+> No standalone Draft 2020-12 meta-schema validator is installed. The
+> no-dependency check validates the schema subset used by this repository,
+> every existing example, and the new nested objects; it is not an independent
+> implementation-level proof of every JSON Schema dialect feature.
+
+Primary commit identity:
+
+> `824553d8ce7ffb4048b0f37e29f0e7c7fc1e0e31` is the exact primary
+> implementation commit containing the bounded document, template, schema,
+> prompt, and Loop Map integration. The enclosing state-synchronization commit
+> cannot embed its own SHA; its exact identity is the current PR head recorded
+> by Git and GitHub.
+
+Codex owned and completed:
+
+- repository inspection;
+- documentation integration;
+- schema compatibility work;
+- prompt integration;
+- link placement;
+- validation;
+- commit;
+- push;
+- PR creation;
+- state synchronization and routine cleanup.
+
+Shin owns only:
+
+> Review and approve or reject the substantive PR merge.
+
+Do not return to Shin:
+
+- Git commands, cleanup, conflict handling, file placement, schema repair,
+  link repair, wording reconstruction, or routine verification.
+
+What remains unproven:
+
+- comparable-load operational validation;
+- cross-model generalization;
+- cross-domain generalization;
+- runtime behavior;
+- automatic Successor Debt detection;
+- necessity of third-party AI;
+- unknown-accident resistance.
+
+This receipt is the sole current execution-control state. Every lower dated
+`Current` or `Historical` receipt is evidence at its own As-of and grants no
+standing `GO`, active branch succession, or AI next action.
+
+Completion Line:
+
+V13 LoopKit now records whether claimed learning survives comparable
+implementation load and whether local completion leaves an unowned heavier
+starting condition for a successor, while keeping valid responsibility
+transfer distinct, improvement credit case-bounded and non-authorizing, and
+runtime, generalization, external-gate, ASI, and merge claims outside the
+evidence; PR #3 now leaves only Shin's substantive merge decision.
+
+## Historical As-of — Revenue Pilot 001 Sample 001 Merge Closure at `dd09e34d7ace3b551d6949bd47c04a6bd58b9be6`
 
 Date:
 `2026-07-23`
@@ -101,9 +306,9 @@ checks and paid acceptances remain `0`; revenue remains `0`. No outreach,
 follow-up, fit check, diagnosis, payment handling, or client work occurred
 during merge closure. V7 publication and Canon remain `CAP — UNCHANGED`.
 
-This receipt is the sole current execution-control state. Every lower dated
-`Current` or `Historical` receipt is evidence at its own As-of and grants no
-standing `GO`, active branch succession, or AI next action.
+At this historical As-of, this receipt was the sole current
+execution-control state. It now grants no standing `GO`, active branch
+succession, or AI next action.
 
 Completion Line:
 
