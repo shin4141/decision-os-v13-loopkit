@@ -12,11 +12,39 @@ PASS / DELAY / BLOCK / UNKNOWN
 
 - ...
 
-## 4. Next Variable
+## 4. Load-Bearing Improvement Evidence
+
+- Declared principle or claimed improvement:
+- Comparable implementation-load condition:
+- Observed behavior under load:
+- Protected object preserved:
+- Evidence source:
+- Load-Bearing Compliance:
+  - NOT TESTED / PROVISIONAL / PASS CANDIDATE / FAIL
+- Improvement Credit:
+  - WITHHELD / PROVISIONAL / GRANTED — CASE-BOUNDED
+
+## 5. Deferred Cost / Successor Debt
+
+- Deferred cost left to the next subject:
+- Successor owner:
+- Receipt / acceptance:
+- Effect on next-loop starting condition:
+  - LIGHTER / NEUTRAL / HEAVIER / UNKNOWN
+- Disclosure status:
+- Closure / repayment / re-evaluation condition:
+- Classification:
+  - VALID TRANSFER / SUCCESSOR DEBT CANDIDATE / NONE / UNKNOWN
+
+Do not classify burden as debt merely because another subject must act.
+Classify the transfer by ownership, receipt, priority, restartability, and
+closure conditions.
+
+## 6. Next Variable
 
 ...
 
-## 5. Carrier Impact
+## 7. Carrier Impact
 
 - Fatigue:
 - Money:
@@ -24,20 +52,20 @@ PASS / DELAY / BLOCK / UNKNOWN
 - Credibility:
 - Trust:
 
-## 6. Re-entry Capacity
+## 8. Re-entry Capacity
 
 Preserved / Reduced / Damaged / Unknown
 
 Notes:
 
-## 7. Gate
+## 9. Gate
 
 GO / HOLD / CAP / BLOCK
 
-## 8. Cap or Recheck
+## 10. Cap or Recheck
 
 ...
 
-## 9. Next Loop Command
+## 11. Next Loop Command
 
 ...

@@ -167,6 +167,51 @@ v1.0 was on HOLD, but drafting began.
 
 Loop Map detects this kind of drift.
 
+## Load-Bearing Improvement Evidence Lane
+
+The Loop Map must not treat a loop's claimed learning as proof that the next
+loop begins from an improved condition. Use this bounded evidence lane inside
+the existing review path:
+
+```text
+Loop Result
+↓
+Claimed Learning
+↓
+Load-Bearing Compliance Test
+↓
+Successor Transfer Check
+↓
+Improvement Credit
+↓
+Existing Variable Selection / Loop Gate
+```
+
+Required distinctions:
+
+- correct statement is not implementation evidence;
+- local completion is not next-loop improvement;
+- deferred responsibility is not automatically Successor Debt;
+- case-bounded compliance is not generalization;
+- Improvement Credit is not execution authority.
+
+Statement-layer understanding alone receives no improvement credit. Changed
+behavior under lower, materially different, or not-yet-comparable load remains
+`PROVISIONAL`; only comparable-load evidence may receive `GRANTED —
+CASE-BOUNDED`. A valid deferred responsibility may be substantial when it is
+disclosed, owned, accepted, priority-aligned, restartable, and bound to a
+closure or re-evaluation condition. A Successor Debt candidate does not
+automatically produce `BLOCK`; the existing Gate still depends on current
+evidence, authority, and any independently applicable hard boundary.
+
+This lane does not replace the Loop Map, GOAL Health Overlay, V12 completion
+check, Aspire-directed evaluation, Carrier or Re-entry fields, or the existing
+`GO / HOLD / CAP / BLOCK` decision.
+
+See
+[Implementation-Load Priority Reversal and Successor Debt](implementation_load_priority_reversal_and_successor_debt_v0_1.md)
+for the bounded definitions and evidence classifications.
+
 ## Relationship to Decision Packet
 
 Loop Map detects that a human decision may be needed.

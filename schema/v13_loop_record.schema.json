@@ -21,6 +21,99 @@
         "minLength": 1
       }
     },
+    "load_bearing_improvement": {
+      "type": "object",
+      "description": "Optional case-bounded evidence for whether a claimed improvement changed behavior under implementation load.",
+      "additionalProperties": false,
+      "properties": {
+        "declared_improvement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "comparable_implementation_load": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_behavior_under_load": {
+          "type": "string",
+          "minLength": 1
+        },
+        "protected_object_preserved": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compliance": {
+          "type": "string",
+          "enum": ["NOT TESTED", "PROVISIONAL", "PASS CANDIDATE", "FAIL"]
+        },
+        "improvement_credit": {
+          "type": "string",
+          "enum": ["WITHHELD", "PROVISIONAL", "GRANTED — CASE-BOUNDED"]
+        }
+      },
+      "required": [
+        "declared_improvement",
+        "comparable_implementation_load",
+        "observed_behavior_under_load",
+        "protected_object_preserved",
+        "evidence_source",
+        "compliance",
+        "improvement_credit"
+      ]
+    },
+    "successor_transfer": {
+      "type": "object",
+      "description": "Optional classification of deferred cost by ownership, receipt, next-loop effect, disclosure, and closure conditions.",
+      "additionalProperties": false,
+      "properties": {
+        "deferred_cost": {
+          "type": "string",
+          "minLength": 1
+        },
+        "successor_owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receipt_or_acceptance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_loop_effect": {
+          "type": "string",
+          "enum": ["LIGHTER", "NEUTRAL", "HEAVIER", "UNKNOWN"]
+        },
+        "disclosure_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "closure_or_re_evaluation_condition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "VALID TRANSFER",
+            "SUCCESSOR DEBT CANDIDATE",
+            "NONE",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "deferred_cost",
+        "successor_owner",
+        "receipt_or_acceptance",
+        "next_loop_effect",
+        "disclosure_status",
+        "closure_or_re_evaluation_condition",
+        "classification"
+      ]
+    },
     "next_variable": {
       "type": "string",
       "minLength": 1
