@@ -127,6 +127,81 @@ exact statement: `I activate BOAW-001 for Run 002.`
 Shin has not issued that activation statement in this merge closure. An
 inactive BOAW has no standing authority.
 
+## Authority Sufficiency Preflight v0.1 — Stage 0 Proposal / PR Pending
+
+The preceding BOAW pre-activation block remains an unchanged historical
+snapshot; current Run 002 exhaustion and closure state is recorded below.
+
+[Authority Sufficiency Preflight v0.1](authority_sufficiency_preflight_v0_1.md)
+and its
+[manual template](../templates/v13_authority_sufficiency_preflight.md) define a
+read-only Stage 0 for future bounded autonomous runs.
+
+```text
+Authority Sufficiency Preflight v0.1:
+COMPLETE ON BRANCH / PR PENDING
+
+Manual template:
+COMPLETE ON BRANCH
+
+Future bounded autonomous runs:
+HOLD — STAGE 0 NOT YET CANONICAL
+
+Run 003:
+NOT STARTED
+
+BOAW-001:
+EXHAUSTED / UNCHANGED
+
+Run 002:
+PASS / COMPLETE / UNCHANGED
+
+Current Gate:
+HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+
+Active Branch:
+docs/authority-sufficiency-preflight-v0-1
+
+Codex Next Authorized Action:
+none after PR creation
+```
+
+The Forward-only operating sequence is:
+
+```text
+Aspire / Roadmap
+→ Authority Sufficiency Preflight
+→ Shin approves one bounded authority envelope
+→ Loop-Level Authority Match
+→ Bounded implementation
+→ Operational effect verification
+→ Receipt
+→ Next loop or successful stop
+→ Reserved closure-only tail
+→ Authority exhausted
+```
+
+Stage 0 precedes autonomous selection execution and is read-only. It proposes
+an authority envelope but does not grant it, activate a run, or authorize
+implementation.
+
+Before every implementation loop, the highest-priority grounded candidate is
+named before authority filtering and receives an explicit
+`Authority Match: YES / NO`. A match of `YES` does not require fresh Shin
+approval when the loop remains inside the already approved envelope. A
+mismatch returns before branch, artifact, PR, or implementation creation and
+consumes no loop count.
+
+Every future run envelope must reserve its closure-only tail before activation.
+That tail may record completed facts and synchronize predefined canonical state
+surfaces only. It cannot select a candidate, extend or renew the run, modify
+criteria, or authorize Loop N+1.
+
+The Stage 0 result classes map to `HOLD`; prohibited or unprovable authority
+maps to `BLOCK`. They do not create a fifth V13 Gate. Stress Run 001 remains
+`FAIL / CLOSED`; Run 002 remains `PASS / COMPLETE`; BOAW-001 remains
+`EXHAUSTED`; Loop 04 remains `BLOCK`; and Run 003 remains `NOT STARTED`.
+
 ## Deviation
 
 A deviation occurs when the actual work starts moving a loop beyond its current gate.

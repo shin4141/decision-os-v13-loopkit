@@ -2,6 +2,11 @@
 
 ## Signal
 
+- 🟢 BLUE / AUTHORITY-SUFFICIENCY-PREFLIGHT-V0.1-COMPLETE-ON-BRANCH-PR-PENDING
+- 🟢 BLUE / AUTHORITY-SUFFICIENCY-MANUAL-TEMPLATE-COMPLETE-ON-BRANCH
+- 🟡 YELLOW / FUTURE-BOUNDED-AUTONOMOUS-RUNS-HOLD-STAGE-0-NOT-CANONICAL
+- 🟡 YELLOW / RUN-003-NOT-STARTED
+- 🔴 RED / STAGE-0-PROPOSAL-GRANTS-NO-RUN-AUTHORITY
 - 🟢 BLUE / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-MERGED-CANONICAL-ON-MAIN
 - 🟢 BLUE / PR-6-MERGE-DECISION-PASS-COMPLETE
 - 🟢 BLUE / BOAW-001-ACTIVATED-FOR-RUN-002-BY-EXPLICIT-SHIN-STATEMENT
@@ -96,6 +101,64 @@
 - 🟡 YELLOW / EXTERNAL-EVIDENCE-RETURN-PASSIVE
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
+
+## Authority Sufficiency Preflight v0.1 — Branch Proposal
+
+The current branch-state proposal is:
+
+```text
+Authority Sufficiency Preflight v0.1:
+COMPLETE ON BRANCH / PR PENDING
+
+Manual template:
+COMPLETE ON BRANCH
+
+Future bounded autonomous runs:
+HOLD — STAGE 0 NOT YET CANONICAL
+
+Run 003:
+NOT STARTED
+
+BOAW-001:
+EXHAUSTED / UNCHANGED
+
+Run 002:
+PASS / COMPLETE / UNCHANGED
+
+Stress Run 001:
+FAIL / CLOSED / UNCHANGED
+
+PR merge:
+NOT AUTHORIZED
+
+Current Gate:
+HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+
+Active Branch:
+docs/authority-sufficiency-preflight-v0-1
+
+Codex Next Authorized Action:
+none after PR creation
+```
+
+The proposal is defined in
+[Authority Sufficiency Preflight v0.1](authority_sufficiency_preflight_v0_1.md)
+and its
+[manual template](../templates/v13_authority_sufficiency_preflight.md).
+
+Stage 0 is read-only, consumes no loop, and grants no run or implementation
+authority. It ranks the highest-priority grounded candidate before authority
+filtering, requires an explicit authority match before every implementation
+loop, and requires a predefined closure-only tail before run activation.
+
+The result classes `AUTHORITY SUFFICIENT`, `AUTHORITY ENVELOPE REQUIRED`,
+`AUTHORITY MISMATCH`, `HUMAN SEAT REQUIRED`, and `NO QUALIFYING RUN` route to
+the existing V13 Gates; they do not create a fifth Gate.
+
+This branch changes no prior score, receipt, or evaluation. BOAW-001 remains
+exhausted, Run 002 remains closed, Loop 04 remains blocked, and Run 003 remains
+unstarted. Merge of the review PR would make Stage 0 canonical only; it would
+not activate or authorize a run.
 
 ## BOAW-001 Run 002 — Post-Exhaustion Closure
 
