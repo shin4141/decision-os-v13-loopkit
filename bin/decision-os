@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+script_directory=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repository_root=$(dirname -- "$script_directory")
+
+PYTHONDONTWRITEBYTECODE=1 \
+PYTHONPATH="$repository_root${PYTHONPATH:+:$PYTHONPATH}" \
+exec python3 -B -m decision_os "$@"
