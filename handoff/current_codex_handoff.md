@@ -8,7 +8,212 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## Current Revenue Pilot 001 — AI Agent Handoff Audit Sale-Ready Pack — 2026-07-23
+## Current Progress Preservation Principle Local Binding 001 — 2026-07-23
+
+Receipt:
+
+```text
+Principle:
+COMPLETE / FORWARD-ONLY V13 OPERATIONAL BINDING
+
+Primary failure:
+PROTECTIVE STASIS
+
+Bounded classification:
+PROTECTIVE STASIS CANDIDATE / ASPIRE-SUPPRESSION DRIFT
+
+Core Guard:
+UNCHANGED
+
+Operational Guard:
+MUST USE LEAST-RESTRICTIVE SUFFICIENT CONSTRAINT
+
+Indefinite HOLD:
+NOT PERMITTED WITHOUT PROTECTED OBJECT, HARM, EVIDENCE, OPPORTUNITY COST,
+AND RESTART CONDITION
+
+Reversible Aspire-serving route:
+MUST BE CONSIDERED BEFORE INDEFINITE STOP
+
+Accelerative Rescale:
+EVALUATION MAY BECOME REQUIRED
+EXECUTION NOT AUTOMATIC
+
+Validation:
+NOT STARTED
+
+Runtime:
+BLOCK
+
+Automatic acceleration:
+BLOCK
+
+RTK:
+HUMAN-SEAT MOTIVATING OBSERVATION / NOT FORMAL VALIDATION
+
+Revenue Pilot first outreach:
+SENT / US$100 / REPLY PENDING
+
+Further outreach:
+NOT AUTHORIZED
+
+V12 State:
+PASS
+
+V13 Overall Gate:
+HOLD for runtime, automatic acceleration, generalization, and unrelated
+expansion
+
+Progress Preservation Gate:
+CAP — bounded manual application permitted only under separate authorization
+
+Revenue Pilot Gate:
+CAP — wait for the first reply; no follow-up yet
+
+Active Branch:
+none
+
+Next Authorized Action:
+none until review or external reply
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [Progress Preservation Principle v0.1](../docs/progress_preservation_principle_v0_1.md)
+- [Case 004 Forward-only binding](../validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md)
+- [Current Signal](../docs/current_signal.md)
+
+This receipt records a Forward-only V13 operational principle. It does not
+modify published V7, replace its Guard architecture, or change the original
+Case 004 Human Seat answer. Core Guard remains the non-negotiable boundary
+against unacceptable harm, irreversible execution, loss of Human Seat, or
+equivalent architectural failure. Progress Preservation supplies no authority
+to violate it.
+
+Operational Guard remains contextual and must use the least-restrictive
+sufficient constraint needed to protect its stated object. Before a non-`GO`
+route is created or continued, bounded review must identify the Protected
+Object, proposed Aspire-serving path, reversibility, minimum exposure,
+expected harm, current evidence, hard-Guard state, least-restrictive
+alternative, opportunity cost, restart condition, re-evaluation trigger, and
+any genuine Human Seat remainder.
+
+`PROTECTIVE STASIS CANDIDATE / ASPIRE-SUPPRESSION DRIFT` is a bounded candidate
+diagnosis. It does not become a fifth Gate or automatic `GO`. One cautious
+decision is not automatically Protective Stasis. The candidate requires a
+concrete Aspire-serving path, reversible or safely bounded exposure, no
+established hard Guard break for that path, continued suppression, and an
+incomplete stopping justification. Repeated or materially consequential
+suppression strengthens the candidate.
+
+`Hard Guard: UNKNOWN` remains unknown and supplies no authority to cross the
+uncertain boundary. When no safely bounded path exists, the route remains
+`HOLD` with an explicit evidence or re-evaluation condition. A separately
+authorized evidence-recovery or review `CAP` may proceed only when it does not
+cross that uncertain boundary.
+
+A least-restrictive `CAP` must identify its exact action, exposure, stop
+condition, rollback or reconnection point, observation target, and next review
+condition. `HOLD` without a restart, evidence, or re-evaluation condition,
+removal of every comparison route where a narrower claim boundary is
+sufficient, or repeated `CAP` that prevents its own success condition from
+being observed creates a Protective Stasis candidate. The correction is
+bounded review: restore the minimum Aspire-serving route, provide a sufficient
+hard-boundary justification, or define an observable restart condition.
+
+Opportunity cost does not prove that a risky path should proceed and never
+overrides a proven hard boundary. Ignoring lost comparison, learning,
+counterevidence, timing, differentiation, revenue, Branching, or
+Aspire-directed reachability nevertheless makes a stopping decision incomplete
+when the path is reversible, bounded, and directly Aspire-serving. No
+universal numeric risk or opportunity-cost threshold and no automatic scoring
+are created.
+
+`ACCELERATIVE RESCALE EVALUATION REQUIRED` may apply when credible evidence
+shows reproducible bounded success, equal or lower recovery cost,
+non-increasing Recovery Debt, preserved or expanded Branching, functional
+Human Seat, continued Aspire service, Carrier absorption, and a credible
+possibility that the old Operational Guard is no longer the minimum sufficient
+restriction. The required action is evaluation of path expansion, not
+automatic acceleration, Goal-Length change, authority expansion, or execution.
+
+RTK remains `HUMAN-SEAT MOTIVATING OBSERVATION / NOT FORMAL VALIDATION`. No RTK
+facts were reconstructed and no RTK Case was created. Operational validation,
+generalization, runtime monitoring, automatic opportunity-cost scoring,
+automatic path expansion, automatic acceleration, and automatic `GO` remain
+absent or blocked.
+
+Bounded Revenue Pilot operational receipt:
+
+```text
+Revenue Pilot 001 first outreach:
+SENT
+
+Recipient:
+Reddit user Objective_Law2034
+
+Channel:
+Existing Reddit DM / one-to-one outreach
+
+Outreach count:
+1
+
+Displayed overseas price:
+US$100
+
+Domestic reference price:
+15,000 JPY
+
+Message type:
+Paid pilot invitation with fit check only
+
+Free bespoke diagnosis:
+NOT OFFERED
+
+Reply:
+PENDING
+
+Follow-up:
+NOT AUTHORIZED YET
+
+Current Revenue Action:
+WAIT FOR RESPONSE
+```
+
+The outreach was one external action already explicitly authorized by Shin. It
+does not establish purchase intent, fit acceptance, or revenue. No second
+outreach, follow-up, client diagnosis, or client work is authorized by this
+receipt.
+
+The earlier sale-ready receipt at repository As-of
+`e257031e6a1a33ce42a3e64e2112bff19d0e0360` remains preserved below. This
+Forward-only receipt supersedes only its outreach-execution, reply, follow-up,
+and current-action state. Offer, price, capacity, payment-before-work, fit-check
+boundary, public-launch boundary, and mass or automatic-outreach blocks remain
+unchanged. Every lower pre-`e257031` statement that outreach was not yet sent
+or not yet authorized is historical rather than current authority.
+
+Completion Line:
+
+Progress Preservation adds a bounded obligation to justify stopping as well as
+acting: Protective Stasis becomes a candidate when a reversible,
+Aspire-serving path is suppressed without a complete least-restrictive
+justification or restart condition; Core Guard remains unchanged, and
+Accelerative Rescale evaluation becomes required only when reproducible,
+Carrier-absorbed bounded success plausibly makes the old restriction excessive.
+Operational validation and runtime remain absent, automatic acceleration stays
+blocked, exactly one authorized Revenue Pilot outreach has been sent with its
+reply pending, the Progress Preservation and Revenue Pilot Gates are `CAP`, and
+the V13 Overall Gate remains `HOLD`.
+
+## Historical As-of — Revenue Pilot 001 Sale-Ready Pack at `e257031e6a1a33ce42a3e64e2112bff19d0e0360`
+
+This receipt preserves the sale-ready, pre-outreach state. Its `NOT YET SENT`
+and no-current-outreach-authority fields are superseded only by the
+Forward-only operational receipt above.
 
 Receipt:
 
@@ -2975,7 +3180,7 @@ Parked boundaries:
 - no MCP
 - no pluginization
 - no package/server/CLI surfaces
-- no outreach/public promotion
+- no second outreach or follow-up / no public promotion
 - no release-state change
 - no external repo changes
 - no canonical promotion
@@ -3373,7 +3578,7 @@ Do not:
 - add MCP
 - add pluginization
 - add package/server/CLI surfaces
-- start outreach or public promotion
+- send another outreach or follow-up, or start public promotion
 - change release state
 - modify external repos
 - promote anything else to canonical

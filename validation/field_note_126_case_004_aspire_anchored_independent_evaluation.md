@@ -544,3 +544,153 @@ re-entry authority. Fresh Case 004 validation, real condition-continuity
 evidence, generalization, runtime authority, automatic condition monitoring,
 automatic Human Seat answer reuse, and automatic BLOCK persistence remain
 absent.
+
+## Forward-only Addendum — Progress Preservation Principle Local Binding 001
+
+Date: 2026-07-23
+
+This addendum binds
+[Progress Preservation Principle v0.1](../docs/progress_preservation_principle_v0_1.md)
+to Case 004 as a Forward-only V13 operational requirement. It does not rewrite
+the original Human Seat answer, the historical `PIC Definition Boundary`, the
+PIC, Guard, V10, or V9.1 lineage bindings, or the prior adversarial evidence.
+It does not modify published V7, weaken Guard, establish that a real
+self-update has passed this mapping, authorize path expansion or execution, or
+introduce runtime monitoring.
+
+### Guard and Progress Boundary
+
+For this V13 mapping, Core Guard and Operational Guard remain distinct:
+
+- Core Guard is the non-negotiable boundary against unacceptable harm,
+  irreversible execution, loss of Human Seat, or equivalent architectural
+  failure.
+- Operational Guard is a contextual constraint, cap, observation rule, route
+  limit, or temporary protective mechanism used to preserve safe movement
+  toward Aspire.
+
+The Progress Preservation Principle creates no permission to violate Core
+Guard. It tests whether Operational Guard has expanded beyond the
+least-restrictive sufficient constraint needed to protect its stated object.
+
+Guard exists to stop dangerous progress. It does not exist to stop progress
+itself. A system that preserves Guard by indefinitely suppressing all
+Aspire-serving motion has not preserved the architecture; it has collapsed
+into protective stasis. This is a Forward-only V13 operational warning
+compatible with the V7 architecture, not a modification of published V7.
+
+### Case 004 Consequence
+
+A claimed self-update or governance update cannot qualify as a
+`SELF-EVOLUTION CANDIDATE` merely because it:
+
+- avoids all observed failures;
+- adds more Guard;
+- increases the number of `HOLD` or `CAP` routes;
+- preserves internal consistency;
+- prevents execution;
+- reports no new accident.
+
+It must also remain capable of:
+
+- preserving at least one Aspire-serving path;
+- distinguishing Core Guard from Operational Guard;
+- selecting the least-restrictive sufficient constraint;
+- retaining reversible comparison and challenge routes where admissible;
+- defining restart conditions for `DELAY`;
+- evaluating path expansion after reproducible capability or success evidence;
+- accounting for both action harm and inaction opportunity loss;
+- remaining independently falsifiable if it claims that stopping is necessary.
+
+### Protective Stasis Candidate
+
+`PROTECTIVE STASIS CANDIDATE / ASPIRE-SUPPRESSION DRIFT` applies as a bounded
+candidate diagnosis only when all relevant conditions are present:
+
+1. A concrete Aspire-serving path exists.
+2. The path is reversible, exposure-limited, testable, or safely branchable.
+3. No current hard Guard break has been established for the bounded path.
+4. `HOLD`, `CAP`, route removal, comparison avoidance, or continued `DELAY` is
+   still selected.
+5. At least one required stop justification is absent: a specific Protected
+   Object, expected harm, supporting evidence, least-restrictive alternative,
+   opportunity cost, or restart or re-evaluation condition.
+
+One cautious decision is not automatically Protective Stasis. A single missing
+field creates no `GO` authority; it makes the stopping justification incomplete
+and requires bounded review. Repeated or materially consequential suppression
+strengthens the candidate.
+
+`Hard Guard: UNKNOWN` is not equivalent to `NOT BROKEN` and supplies no
+permission to cross the uncertain boundary. Before an Operational Guard
+creates or continues a non-`GO` route, the evaluation must record the Protected
+Object, proposed path, reversibility, smallest exposure, expected harm,
+evidence, hard-Guard state, least-restrictive alternative, opportunity cost,
+restart condition, re-evaluation trigger, and any genuine Human Seat
+remainder.
+
+### Routing Consequence
+
+```text
+Hard Guard BROKEN:
+EXISTING DRIFT / SELF-DISTORTION ROUTE REMAINS UNCHANGED
+
+Hard Guard UNKNOWN and no safely bounded path can be established:
+HOLD / UNCLASSIFIED WITH AN EXPLICIT EVIDENCE OR RE-EVALUATION CONDITION
+
+Hard Guard not broken and a bounded reversible path exists, but the stopping
+justification is incomplete:
+PROTECTIVE STASIS CANDIDATE / ASPIRE-SUPPRESSION DRIFT
+
+Least-restrictive CAP exists:
+EVALUATE THAT CAP BEFORE INDEFINITE HOLD
+
+Repeated success or an absorbed capability update under the bounded CAP:
+ACCELERATIVE RESCALE EVALUATION REQUIRED
+```
+
+A bounded `CAP` must identify the exact action, exposure, stop condition,
+rollback or reconnection point, observation target, and next review condition.
+`HOLD` without a restart, evidence, or re-evaluation condition is a Protective
+Stasis candidate. Removal of all comparison or challenge routes when a
+narrower claim boundary could protect the object is also a candidate. Repeated
+`CAP` that never permits its own success condition to be observed strengthens
+that candidate.
+
+The correction is bounded review: restore the minimum Aspire-serving route,
+provide a sufficient hard-boundary justification, or define an observable
+restart condition. Protective Stasis does not convert directly into `GO`.
+
+### Opportunity Cost and Accelerative Rescale Boundary
+
+Opportunity cost does not prove that a risky path should proceed and does not
+override a proven hard boundary. Ignoring opportunity cost nevertheless makes
+a stopping decision incomplete when the stopped path is reversible, bounded,
+and directly serves Aspire. No universal numeric risk or opportunity-cost
+threshold is created.
+
+`ACCELERATIVE RESCALE EVALUATION REQUIRED` may apply when credible evidence
+shows reproducible bounded success, recovery cost that is equal or lower, no
+increase in Recovery Debt, preserved or expanded Branching, a functional Human
+Seat, continued Aspire service, Carrier absorption of the increased capability
+or speed, and a credible possibility that the old Operational Guard is no
+longer the minimum required restriction.
+
+The required action is evaluation of path expansion, not automatic
+acceleration. A capability update alone creates no expansion authority, and
+repeated success does not by itself authorize a new Goal-Length, authority
+boundary, or execution.
+
+### Forward-only Binding Boundary
+
+Case 004 remains `REALIZED HIGH-LEVERAGE RETURN — PARTIAL`. No new
+`SELF-EVOLUTION CANDIDATE` classification is granted. Operational validation,
+generalization, runtime monitoring, automatic opportunity-cost scoring,
+automatic acceleration, automatic path expansion, and automatic `GO` remain
+absent or blocked. The RTK observation remains `HUMAN-SEAT MOTIVATING
+OBSERVATION / NOT FORMAL VALIDATION`.
+
+This addendum adds a progress-preservation test to the independent Aspire
+comparison function without changing Core Guard, the original Human Seat
+answer, prior Case 004 evidence, FN126 verification state, or re-entry
+authority.

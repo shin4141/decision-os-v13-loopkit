@@ -24,6 +24,13 @@
 - 🟡 YELLOW / V10-V13-OPERATIONAL-MAPPING-NOT-YET-VALIDATED
 - 🟡 YELLOW / REAL-CASE-CARRIER-ABSORPTION-EVIDENCE-NOT-YET
 - 🔴 RED / AUTOMATIC-RESCALE-BLOCK
+- 🟢 BLUE / PROGRESS-PRESERVATION-PRINCIPLE-BOUND
+- 🟢 BLUE / PROTECTIVE-STASIS-DETECTION-DEFINED
+- 🟢 BLUE / LEAST-RESTRICTIVE-ASPIRE-PATH-REQUIRED
+- 🟡 YELLOW / PROGRESS-PRESERVATION-OPERATIONAL-VALIDATION-NOT-YET
+- 🟡 YELLOW / ACCELERATIVE-RESCALE-EVALUATION-NOT-YET-VALIDATED
+- 🔴 RED / INDEFINITE-DELAY-WITHOUT-RESTART-CONDITION-BLOCK
+- 🔴 RED / AUTOMATIC-ACCELERATION-BLOCK
 - 🟢 BLUE / REAL-COMPOUND-PROOF-001-RECEIVER-SIDE-PASS
 - 🟢 BLUE / ONE-PASTE-EXECUTION-TEMPLATE-CREATED
 - 🟡 YELLOW / SHIN-POST-RUN-CORRECTION-CHECK-PENDING
@@ -38,7 +45,8 @@
 - 🔴 RED / AUTOMATIC-CONDITION-MONITORING-BLOCK
 - 🟢 BLUE / REVENUE-ASPIRE-ACTIVE
 - 🟢 BLUE / REVENUE-PILOT-001-SALE-READY
-- 🟡 YELLOW / EXTERNAL-OUTREACH-NOT-YET-SENT
+- 🟢 BLUE / REVENUE-PILOT-FIRST-OUTREACH-SENT
+- 🟡 YELLOW / REVENUE-PILOT-REPLY-PENDING
 - 🟡 YELLOW / PUBLIC-LAUNCH-SEPARATE-HUMAN-SEAT-DECISION
 - 🔴 RED / FREE-BESPOKE-DIAGNOSIS-BLOCK
 - 🔴 RED / MASS-AND-AUTOMATIC-OUTREACH-BLOCK
@@ -193,7 +201,9 @@ This binding alone generates no current PASS, GO, or BLOCK. PIC, Guard, V10,
 MAL, Field Note 127, Real Compound Proof 001, OSI, Canon, automation, and public
 surfaces remain otherwise unchanged.
 
-Forward-only Human Seat receipt — Revenue Pilot 001:
+Historical As-of — repository commit
+`e257031e6a1a33ce42a3e64e2112bff19d0e0360` — Revenue Pilot 001 sale-ready
+pre-outreach receipt:
 
 ```text
 Revenue Aspire:
@@ -253,6 +263,116 @@ Existing V9.1, V10, Guard, PIC, MAL, Case 004, Real Compound Proof 001, OSI,
 runtime, automation, and public states remain otherwise unchanged. No theory,
 Field Note, Case, runtime, automation, public launch, outreach, client work, or
 customer evidence was created.
+
+The receipt above remains the historical sale-ready and pre-outreach state at
+its own As-of. The Forward-only receipts below supersede only the current
+outreach-execution, reply, follow-up, and next-action state. Offer, price,
+capacity, payment-before-work, free-diagnosis, public-launch, and mass or
+automatic-outreach boundaries remain unchanged.
+
+Forward-only Human Seat receipt — Progress Preservation Principle Local
+Binding 001:
+
+```text
+Principle:
+COMPLETE / FORWARD-ONLY V13 OPERATIONAL BINDING
+
+Primary failure:
+PROTECTIVE STASIS
+
+Bounded classification:
+PROTECTIVE STASIS CANDIDATE / ASPIRE-SUPPRESSION DRIFT
+
+Core Guard:
+UNCHANGED
+
+Operational Guard:
+MUST USE LEAST-RESTRICTIVE SUFFICIENT CONSTRAINT
+
+Operational validation:
+NOT STARTED
+
+Runtime monitoring:
+none
+
+Numeric universal threshold:
+none
+
+Automatic acceleration:
+BLOCK
+
+RTK:
+HUMAN-SEAT MOTIVATING OBSERVATION / NOT FORMAL VALIDATION
+```
+
+Progress Preservation is a Forward-only V13 operational principle compatible
+with the V7 distinction between Core Guard and Operational Guard. It is not a
+published V7 modification. Core Guard remains the non-negotiable boundary
+against unacceptable harm, irreversible execution, loss of Human Seat, or
+equivalent architectural failure. The principle supplies no authority to
+violate it.
+
+Operational Guard must use the least-restrictive sufficient constraint. A
+Protective Stasis classification is a candidate diagnosis, never automatic
+`GO`. For a reversible, bounded, Aspire-serving path, a stopping decision is
+incomplete if it ignores opportunity loss or omits its Protected Object, harm,
+evidence, least-restrictive alternative, and restart or re-evaluation
+condition. Opportunity loss does not override a proven hard boundary.
+
+`Hard Guard: UNKNOWN` remains `HOLD` for path execution and must not be treated
+as `NOT BROKEN`. A separately authorized evidence or review `CAP` may proceed
+only when it does not cross the uncertain boundary. No runtime monitoring,
+automatic opportunity-cost scoring, numeric risk threshold, numeric
+opportunity threshold, or automatic acceleration exists.
+
+Accelerative Rescale evaluation may become required after reproducible bounded
+success or an absorbed capability update plausibly shows that the former
+Operational Guard is no longer the minimum sufficient restriction. Evaluation
+of path expansion is distinct from execution: it grants no new Goal-Length,
+authority, path expansion, or automatic acceleration.
+
+Forward-only operational receipt — Revenue Pilot 001 first outreach:
+
+```text
+Revenue Pilot 001 first outreach:
+SENT
+
+Recipient:
+Reddit user Objective_Law2034
+
+Channel:
+Existing Reddit DM / one-to-one outreach
+
+Outreach count:
+1
+
+Displayed overseas price:
+US$100
+
+Domestic reference price:
+15,000 JPY
+
+Message type:
+Paid pilot invitation with fit check only
+
+Free bespoke diagnosis:
+NOT OFFERED
+
+Reply:
+PENDING
+
+Follow-up:
+NOT AUTHORIZED YET
+
+Current Revenue Action:
+WAIT FOR RESPONSE
+```
+
+This was one external action already explicitly authorized by Shin. It does
+not establish purchase intent, fit acceptance, or revenue. No second outreach
+or follow-up is authorized by this receipt. The Revenue Pilot remains active
+only in the bounded state `WAIT FOR RESPONSE`; unrelated theory expansion
+remains `HOLD`.
 
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
@@ -333,7 +453,8 @@ complete. No validation, runtime, automatic condition monitoring, automatic
 authority renewal, automatic Rescale, automatic lineage scan, or automatic
 Canon propagation is authorized.
 
-Current Forward-only state:
+Historical As-of — repository commit
+`e257031e6a1a33ce42a3e64e2112bff19d0e0360`:
 
 Revenue Aspire is `ACTIVE`. Revenue Pilot 001 — AI Agent Handoff Audit is
 `PILOT READY / NOT YET PUBLICLY LAUNCHED` at `15,000 JPY` for the first 3 paid
@@ -345,6 +466,25 @@ unrelated expansion. Revenue Pilot Gate is `CAP` through the first 3 paid
 pilots, but this completed preparation task grants no external execution
 authority. Active Branch is `none`; Next Authorized Action is `none until
 review`; Decision Packet Required is `no`.
+
+Current Forward-only state:
+
+Progress Preservation Principle Local Binding 001 is `COMPLETE`. Core Guard is
+unchanged. Operational Guard must use the least-restrictive sufficient
+constraint, and indefinite delay without a restart, evidence, or re-evaluation
+condition is not an admissible completed stopping justification. Protective
+Stasis remains a bounded candidate diagnosis rather than automatic `GO`.
+Operational validation is `NOT STARTED`.
+
+V13 Overall Gate is `HOLD` for runtime, automatic acceleration,
+generalization, and unrelated expansion. Progress Preservation Gate is `CAP`
+for bounded manual application only under separate authorization. Revenue
+Pilot Gate is `CAP`: exactly one authorized outreach has been sent at the
+displayed overseas price `US$100`, the reply is `PENDING`, and the current
+action is `WAIT FOR RESPONSE`. No follow-up or second outreach is authorized.
+
+Active Branch is `none`; Next Authorized Action is `none until review or
+external reply`; Decision Packet Required is `no`.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
@@ -363,6 +503,7 @@ The current prototype includes:
 - `validation/real_compound_proof_001_single_paste_execution.md`
 - `services/ai_agent_handoff_audit_offer.md`
 - `services/revenue_pilot_001_sales_packet.md`
+- `docs/progress_preservation_principle_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_2.md`
 - `docs/decision_lineage_reconnection_register_v0_1.md`
@@ -396,6 +537,14 @@ Current manual cases show:
 - local Git reversibility does not establish trajectory-level Returnability, and formal Human Seat does not establish functional Human Seat;
 - Correction preserves the current Goal-Length, while Rescale changes Goal-Length under preserved Aspire when old-line return becomes non-survivable;
 - visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update;
+- Core Guard remains a hard admissibility boundary, while Operational Guard
+  must use the least-restrictive sufficient constraint;
+- incomplete stopping justification creates a Protective Stasis candidate,
+  not automatic `GO`;
+- reversible bounded Aspire-serving paths require explicit opportunity-cost,
+  restart, and re-evaluation treatment before indefinite delay;
+- reproducible bounded success or absorbed capability may require Accelerative
+  Rescale evaluation, but evaluation remains distinct from execution;
 - one complete delivery packet can close one bounded run without proving general reliability or quantified Human Carrier reduction;
 - a reusable packet template does not authorize work without current Human and repository authority.
 - historical preservation and current applicability are distinct;
@@ -433,6 +582,12 @@ Current manual cases show:
 | Split or additive instruction delivery | BLOCK | Use one complete original or explicitly invalidating full replacement packet |
 | Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
 | Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
+| Progress Preservation Principle binding | PASS | Forward-only V13 operational binding complete; published V7 and Core Guard unchanged |
+| Progress Preservation operational validation | HOLD | `NOT STARTED`; no real or frozen application validates the candidate conditions or routing |
+| Protective Stasis manual review | CAP | Bounded manual use only under separate authority; candidate diagnosis never grants automatic GO |
+| Indefinite delay without restart condition | BLOCK | A completed Operational Guard justification must state evidence, restart, or re-evaluation; blocking indefinite delay does not authorize the constrained action |
+| Accelerative Rescale evaluation | HOLD | Trigger semantics defined but not validated; evaluation may become required without authorizing expansion |
+| Automatic acceleration / opportunity scoring | BLOCK | No runtime monitoring, numeric threshold, automatic scoring, path expansion, or execution |
 | MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
 | Automatic lineage scan / Canon propagation | BLOCK | No automated lineage search or authority write |
 | Second validation run | HOLD | Not active; requires separate explicit authorization |
@@ -444,8 +599,8 @@ Current manual cases show:
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
 | README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
 | Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
-| Revenue Pilot 001 | CAP | Sale-ready preparation complete; bounded to first 3 paid clients at 15,000 JPY each; no outreach or client work authorized by this task |
-| External one-to-one outreach | HOLD / NOT YET SENT | May be authorized separately after review; no message has been sent |
+| Revenue Pilot 001 | CAP | First authorized one-to-one outreach sent at displayed overseas price US$100; reply pending; wait for response |
+| External one-to-one outreach | HOLD | One authorized message is sent and its reply is pending; no second outreach or follow-up is authorized, and no purchase intent, fit acceptance, or revenue is established |
 | Public launch | Separate Human Seat decision | Not authorized by sale-ready preparation |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
 | Free bespoke diagnosis | BLOCK | Free step is fit and scope confirmation only |
@@ -487,8 +642,10 @@ Not allowed from this signal:
 - implement Delegation Envelope v0.1 or adopt its diagnostic minimum correction
 - run another adversarial test without separate explicit authority
 - monitor Carrier state or execute Protective or Accelerative Rescale automatically
+- treat a Protective Stasis candidate or incomplete stop justification as GO authority
+- accelerate, expand Goal-Length, score opportunity cost, or restart automatically
 - monitor or expire reuse conditions, renew current authority, reuse historical consent, or persist historical BLOCK automatically
-- begin outreach, public launch, unpaid bespoke diagnosis, client work, or another offer without separate authorization
+- send another outreach or follow-up, begin public launch, unpaid bespoke diagnosis, client work, or another offer without separate authorization
 - expand theory unless a concrete paid-pilot sale or delivery requires it
 - deliver split or additive execution instructions that return integration work to Shin
 
@@ -500,4 +657,9 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Revenue Aspire is now active and Revenue Pilot 001 is sale-ready at 15,000 JPY for the first 3 paid clients; external outreach, public launch, fit-check execution, and client work remain unexecuted, so the Revenue Pilot Gate is CAP and the V13 Overall Gate remains HOLD.
+> Progress Preservation now requires least-restrictive Operational Guard,
+> explicit opportunity-loss and restart treatment, and path-expansion
+> evaluation when bounded success is absorbed, without weakening Core Guard or
+> authorizing automatic acceleration; Revenue Pilot 001 has sent exactly one
+> authorized outreach and now waits for a reply, so both bounded Gates remain
+> CAP while the V13 Overall Gate remains HOLD.
