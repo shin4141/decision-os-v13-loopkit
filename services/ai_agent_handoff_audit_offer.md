@@ -202,7 +202,7 @@ one after a successful delivery; the client is free to decline.
 
 Either:
 
-- [open a GitHub issue in this repository](https://github.com/shin4141/decision-os-v13-loopkit/issues/new)
+- [open the AI Agent Handoff Audit fit-check form](https://github.com/shin4141/decision-os-v13-loopkit/issues/new?template=ai_agent_handoff_audit_fit_check.md)
   containing only a high-level fit-check request; or
 - contact Shin through the channel where this offer was shared.
 
