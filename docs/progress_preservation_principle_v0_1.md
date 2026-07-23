@@ -45,6 +45,21 @@ Guard. V10 supplies the connection to Protective and Accelerative Rescale
 evaluation. V12 supplies the requirement for explicit, restartable closure.
 None of those source definitions is changed here.
 
+## Forward-only V7 Parent Connection
+
+The
+[V7 Forward-only Architectural Delta v0.1 — Aspire-Serving Motion Obligation](v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md)
+supplies the architectural parent obligation to preserve admissible
+Aspire-serving motion. This document remains the V13 operational
+specification; its Protective Stasis detection and least-restrictive constraint
+check are the bounded manual enforcement mapping of that obligation.
+
+This connection is Forward-only and does not alter published V7 at its
+historical As-of. Core Guard remains unchanged and non-negotiable. It
+authorizes no validation, runtime, automatic monitoring, or automatic
+acceleration; path-expansion evaluation does not grant path expansion or
+execution.
+
 ## Problem
 
 Decision-OS can absorb each observed accident by adding Guard while the

@@ -27,6 +27,10 @@
 - 🟢 BLUE / PROGRESS-PRESERVATION-PRINCIPLE-BOUND
 - 🟢 BLUE / PROTECTIVE-STASIS-DETECTION-DEFINED
 - 🟢 BLUE / LEAST-RESTRICTIVE-ASPIRE-PATH-REQUIRED
+- 🟢 BLUE / V7-ASPIRE-SERVING-MOTION-OBLIGATION-BOUND
+- 🟢 BLUE / CORE-GUARD-AND-ADMISSIBLE-MOTION-ASYMMETRY-PRESERVED
+- 🟢 BLUE / PROTECTIVE-STASIS-V7-PARENT-OBLIGATION-RECORDED
+- 🟡 YELLOW / V7-DELTA-NOT-YET-PUBLISHED
 - 🟡 YELLOW / PROGRESS-PRESERVATION-OPERATIONAL-VALIDATION-NOT-YET
 - 🟡 YELLOW / ACCELERATIVE-RESCALE-EVALUATION-NOT-YET-VALIDATED
 - 🔴 RED / INDEFINITE-DELAY-WITHOUT-RESTART-CONDITION-BLOCK
@@ -49,8 +53,8 @@
 - 🟢 BLUE / PUBLIC-SALES-ANCHOR-COMPLETE
 - 🟢 BLUE / README-PAID-PILOT-ENTRY-VISIBLE
 - 🟢 BLUE / PUBLIC-OFFER-PAGE-LINKED
-- 🟢 BLUE / FIRST-WAVE-OUTREACH-2-SENT-HISTORICAL-AS-OF
-- 🟡 YELLOW / REMAINING-WAVE-1-OUTREACH-3-HOLD
+- 🟢 BLUE / REVENUE-PILOT-WAVE-1-FIVE-SENT
+- 🟡 YELLOW / MARKET-REPLIES-PENDING
 - 🟡 YELLOW / UNRELATED-PUBLIC-CAMPAIGN-HOLD
 - 🔴 RED / FREE-BESPOKE-DIAGNOSIS-BLOCK
 - 🔴 RED / MASS-AND-AUTOMATIC-OUTREACH-BLOCK
@@ -66,7 +70,7 @@
 - 🟢 BLUE / PARENT-COMPOUNDING-PROOF-001-NO-GAP-STOP-PASS
 - 🟡 YELLOW / HUMAN-SEAT-RECOGNITION-NOT-YET-VALIDATED
 - 🔴 RED / AUTOMATIC-OSI-OBSERVATION-AND-INTERVENTION-BLOCK
-- 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
+- 🟡 YELLOW / EXTERNAL-EVIDENCE-RETURN-PASSIVE
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
@@ -417,8 +421,9 @@ revenue, delivery, customer status, a testimonial, or paid-result evidence.
 Their original external wording is not rewritten by the current price
 architecture.
 
-Forward-only Human Seat receipt — Revenue Pilot 001 Public Sales Anchor and
-Price Architecture:
+Historical As-of — repository commit
+`344cdaf8cf87291c346518c5d31e9b8a93cc7f9b` — Revenue Pilot 001 Public Sales
+Anchor and Price Architecture receipt:
 
 ```text
 Revenue Pilot price architecture:
@@ -600,7 +605,9 @@ action is `WAIT FOR RESPONSE`. No follow-up or second outreach is authorized.
 Active Branch is `none`; Next Authorized Action is `none until review or
 external reply`; Decision Packet Required is `no`.
 
-Current Forward-only state:
+Historical As-of — repository commit
+`344cdaf8cf87291c346518c5d31e9b8a93cc7f9b` — public sales anchor and
+two-outreach state:
 
 Revenue Pilot price architecture is `COMPLETE`: standard price is `US$200` or
 `30,000 JPY`, and the first-3-paid-client pilot price is `US$100` or
@@ -624,6 +631,114 @@ Progress Preservation Gate remains `CAP` for separately authorized bounded
 manual application. Revenue Pilot Gate is `CAP`; Active Branch is `none`; Next
 Authorized Action is `none until review`; Decision Packet Required is `no`.
 
+Current Forward-only state — V7 Aspire-Serving Motion Obligation and Revenue
+Wave 1 Closure:
+
+```text
+V7 Forward-only delta:
+COMPLETE / PRIVATE / NOT PUBLISHED
+
+Core Guard:
+UNCHANGED / NON-NEGOTIABLE
+
+Architectural obligation:
+PRESERVE AT LEAST ONE ADMISSIBLE ASPIRE-SERVING PATH
+
+Operational Guard:
+LEAST-RESTRICTIVE SUFFICIENT CONSTRAINT
+
+Indefinite HOLD:
+INVALID AS COMPLETED CLOSURE WITHOUT RESTART OR EVIDENCE CONDITION
+
+Accelerative Rescale:
+EVALUATION MAY BECOME REQUIRED
+EXECUTION NOT AUTOMATIC
+
+Progress Preservation:
+V13 ENFORCEMENT MAPPING
+
+Revenue Wave 1:
+COMPLETE / 5 / 5 SENT
+
+Targets:
+1. Existing Reddit DM to Objective_Law2034
+2. MattKilmer/claude-autofix-bot#3
+3. nicsuzor/academicOps#2307
+4. openclaw/openclaw#45390
+5. silverstein/minutes#514
+
+Replies:
+PENDING
+
+Fit checks:
+0 confirmed
+
+Paid acceptance:
+0
+
+Revenue:
+0
+
+Follow-ups:
+NOT SENT / NOT AUTHORIZED
+
+New outreach wave:
+NOT AUTHORIZED
+
+Observation state:
+WAIT FOR MARKET RESPONSE
+
+V12 State:
+PASS
+
+V13 Overall Gate:
+HOLD for runtime, automatic acceleration, generalization, and unrelated
+expansion
+
+V7 Delta Gate:
+CAP — private Forward-only architectural delta recorded; publication requires
+a later Human Seat decision
+
+V7 Delta CAP Axis:
+PUBLICATION / AUTHORITY
+
+V7 Delta CAP Limit:
+PRIVATE FORWARD-ONLY DELTA RECORD ONLY; STOP BEFORE PUBLISHED-V7 REVISION,
+ADDENDUM, SERIES-LEVEL STATEMENT, OR CANON PROMOTION
+
+Revenue Pilot Gate:
+HOLD — Wave 1 complete / wait for market response
+
+Active Branch:
+none
+
+Next Authorized Action:
+none until an external reply or a later Human Seat direction
+
+Decision Packet Required:
+no
+```
+
+The
+[V7 Forward-only Architectural Delta v0.1 — Aspire-Serving Motion Obligation](v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md)
+supplies the private architectural parent obligation. The
+[Progress Preservation Principle v0.1](progress_preservation_principle_v0_1.md)
+remains its V13 bounded manual enforcement mapping. Published V7 and Core Guard
+remain unchanged. No validation, publication, runtime, automatic monitoring,
+automatic acceleration, path expansion, or execution is authorized.
+
+Wave 1 is complete at five sent messages. This does not establish a reply, fit
+acceptance, payment, customer, revenue, delivery, testimonial, or paid result.
+`WAIT FOR MARKET RESPONSE` is a passive re-entry state, not polling,
+automatic monitoring, or outbound authority. An external reply is a re-entry
+trigger only; it does not automatically authorize a response, fit check,
+payment handling, diagnosis, or client work.
+
+All earlier zero-, one-, or two-outreach states, remaining-three fields,
+`none until review` fields, Revenue Pilot `CAP` states, and pre-Wave-closure
+statements remain historical at their recorded As-of and do not override this
+receipt.
+
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
 The repo must not expand from specification completion into runtime implementation, broad automation, automatic learning from user behavior, self-modification, automatic Canon modification, automatic authority transfer, automatic public action, or uncontrolled propagation.
@@ -641,6 +756,7 @@ The current prototype includes:
 - `validation/real_compound_proof_001_single_paste_execution.md`
 - `services/ai_agent_handoff_audit_offer.md`
 - `services/revenue_pilot_001_sales_packet.md`
+- `docs/v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md`
 - `docs/progress_preservation_principle_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_2.md`
@@ -677,6 +793,9 @@ Current manual cases show:
 - visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update;
 - Core Guard remains a hard admissibility boundary, while Operational Guard
   must use the least-restrictive sufficient constraint;
+- the private Forward-only V7 delta supplies the architectural obligation to
+  preserve at least one admissible Aspire-serving path without turning route
+  preservation into execution authority;
 - incomplete stopping justification creates a Protective Stasis candidate,
   not automatic `GO`;
 - reversible bounded Aspire-serving paths require explicit opportunity-cost,
@@ -698,7 +817,7 @@ Current manual cases show:
 | Roadmap rebaseline | PASS | Current primary direction is fixed |
 | Evolution evaluation invariant | HOLD | Definition fixed; operational verification pending for Aspire-directed reachability plus independent comparison, falsification, refusal, and reconnection |
 | Bounded manual compounding proof | GO / CAP | Continue only through one authorized evidence-bearing loop |
-| External validation observation | GO | Observe reuse, task evidence, stars, comments, corrections, and re-explanation |
+| External validation observation | HOLD | `WAIT FOR MARKET RESPONSE`; accept externally arriving evidence as a re-entry trigger only, without polling, automatic monitoring, or outbound action |
 | Minimum Autonomous Loop v0.1 specification | PASS | Read-Only Gap Routing specification complete |
 | MAL v0.1 Validation Run 001 | PASS | Fresh isolated routing and stop reproduction for the cross-surface status-drift case only |
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
@@ -720,7 +839,9 @@ Current manual cases show:
 | Split or additive instruction delivery | BLOCK | Use one complete original or explicitly invalidating full replacement packet |
 | Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
 | Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
-| Progress Preservation Principle binding | PASS | Forward-only V13 operational binding complete; published V7 and Core Guard unchanged |
+| Progress Preservation Principle binding | PASS | V13 bounded manual enforcement mapping now has a private Forward-only V7 architectural parent; published V7 and Core Guard remain unchanged |
+| V7 Aspire-Serving Motion Obligation delta | CAP | Axis: publication / authority; limit: private Forward-only delta record only, stopping before published-V7 revision, addendum, series-level statement, or Canon promotion |
+| Published V7 rewrite / publication | HOLD | Published V7 remains valid at its own As-of; no manuscript, public-series, or Canon promotion authority |
 | Progress Preservation operational validation | HOLD | `NOT STARTED`; no real or frozen application validates the candidate conditions or routing |
 | Protective Stasis manual review | CAP | Bounded manual use only under separate authority; candidate diagnosis never grants automatic GO |
 | Indefinite delay without restart condition | BLOCK | A completed Operational Guard justification must state evidence, restart, or re-evaluation; blocking indefinite delay does not authorize the constrained action |
@@ -739,17 +860,20 @@ Current manual cases show:
 | README redesign / unrelated external posting | HOLD | Do not expand beyond the approved bounded sales anchor |
 | Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
 | Revenue Pilot price architecture | PASS | Standard US$200 / 30,000 JPY; pilot US$100 / 15,000 JPY; first 3 paid clients total; standard returns after pilot unless explicitly changed |
-| Revenue Pilot 001 | CAP | Public anchor complete; two pre-anchor outreach actions preserved historically; remaining Wave 1 count is 3 and HOLD until review |
-| Remaining Wave 1 outreach | HOLD | 3 messages not yet sent; no follow-up, fit check, payment handling, diagnosis, or client work authorized |
+| Revenue Pilot 001 | HOLD | Wave 1 is complete at 5 / 5 sent; replies are pending and the observation state is `WAIT FOR MARKET RESPONSE` |
+| Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
 | Free bespoke diagnosis | BLOCK | Free step is fit and scope confirmation only |
 | Mass / automatic outreach | BLOCK | No scraping, prospecting automation, message sequences, or repeated chasing |
 | Broad automation / automatic learning | BLOCK | No automatic behavior inference or propagation |
 | Automatic Canon / authority / public action | BLOCK | Human Seat and explicit authority remain required |
-| V7 modification / self-evolution implementation | PARKED / BLOCK | Case 004 supplies an evaluation input only; it does not authorize theory or runtime changes |
+| V7 runtime / self-evolution implementation | BLOCK | The private architectural delta supplies no validation, runtime, self-modification, or execution authority |
 
 ## Allowed Next Actions
+
+These are standing categories that may be activated only by a later re-entry
+trigger and applicable authority. None is currently active.
 
 Allowed:
 
@@ -757,7 +881,9 @@ Allowed:
 - refresh stale current surfaces when they would mislead a future AI
 - run one separately authorized bounded manual proof or audit
 - record new field notes only when a new observed result appears
-- observe stars, adoption, reuse, comments, task evidence, correction, rereading, re-explanation, and Human supervision burden
+- receive externally arriving stars, adoption, reuse, comments, task evidence,
+  correction, rereading, re-explanation, and Human supervision burden as
+  re-entry evidence without polling or automatic monitoring
 - keep Human Seat, Protected Object, historical As-of, Gate, Completion Line, challenge visibility, and blocked scope visible
 
 ## Not Allowed
@@ -785,7 +911,9 @@ Not allowed from this signal:
 - treat a Protective Stasis candidate or incomplete stop justification as GO authority
 - accelerate, expand Goal-Length, score opportunity cost, or restart automatically
 - monitor or expire reuse conditions, renew current authority, reuse historical consent, or persist historical BLOCK automatically
-- send any remaining Wave 1 outreach or follow-up, begin an unrelated public campaign, unpaid bespoke diagnosis, client work, or another offer without separate authorization
+- send a Wave 1 follow-up or begin a new outreach wave, unrelated public
+  campaign, unpaid bespoke diagnosis, client work, or another offer without
+  separate authorization
 - expand theory unless a concrete paid-pilot sale or delivery requires it
 - deliver split or additive execution instructions that return integration work to Shin
 
@@ -799,6 +927,8 @@ In one line:
 
 > Revenue Pilot 001 now has a repository-visible sales anchor with standard
 > `US$200 / 30,000 JPY` and first-3-total pilot `US$100 / 15,000 JPY` pricing;
-> two pre-anchor outreach actions remain historical, the remaining three are
-> unsent and HOLD until review, the Revenue Pilot Gate is CAP, and the V13
-> Overall Gate remains HOLD.
+> Wave 1 is complete at five sent messages, replies are pending, follow-up and
+> any new outreach wave remain unauthorized, the Revenue Pilot Gate is HOLD
+> while the system waits passively for market response, the private V7 delta is
+> CAP pending a later publication decision, and the V13 Overall Gate remains
+> HOLD.

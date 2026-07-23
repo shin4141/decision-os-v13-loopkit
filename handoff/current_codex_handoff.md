@@ -8,7 +8,179 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## Revenue Pilot 001 — Public Sales Anchor and Price Architecture
+## V7 Aspire-Serving Motion Obligation and Revenue Wave 1 Closure
+
+Date:
+`2026-07-23`
+
+Receipt:
+
+```text
+V7 Forward-only delta:
+COMPLETE / PRIVATE / NOT PUBLISHED
+
+Core Guard:
+UNCHANGED / NON-NEGOTIABLE
+
+Architectural obligation:
+PRESERVE AT LEAST ONE ADMISSIBLE ASPIRE-SERVING PATH
+
+Operational Guard:
+LEAST-RESTRICTIVE SUFFICIENT CONSTRAINT
+
+Indefinite HOLD:
+INVALID AS COMPLETED CLOSURE WITHOUT RESTART OR EVIDENCE CONDITION
+
+Accelerative Rescale:
+EVALUATION MAY BECOME REQUIRED
+EXECUTION NOT AUTOMATIC
+
+Progress Preservation:
+V13 ENFORCEMENT MAPPING
+
+Revenue Wave 1:
+5 / 5 SENT
+
+Targets:
+1. Existing Reddit DM to Objective_Law2034
+2. MattKilmer/claude-autofix-bot#3
+3. nicsuzor/academicOps#2307
+4. openclaw/openclaw#45390
+5. silverstein/minutes#514
+
+Replies:
+PENDING
+
+Fit checks:
+0 confirmed
+
+Paid acceptance:
+0
+
+Revenue:
+0
+
+Follow-up:
+NOT SENT / NOT AUTHORIZED
+
+New outreach wave:
+NOT AUTHORIZED
+
+Observation state:
+WAIT FOR MARKET RESPONSE
+
+V12 State:
+PASS
+
+V13 Overall Gate:
+HOLD for runtime, automatic acceleration, generalization, and unrelated
+expansion
+
+V7 Delta Gate:
+CAP — private Forward-only architectural delta recorded; publication requires
+a later Human Seat decision
+
+V7 Delta CAP Axis:
+PUBLICATION / AUTHORITY
+
+V7 Delta CAP Limit:
+PRIVATE FORWARD-ONLY DELTA RECORD ONLY; STOP BEFORE PUBLISHED-V7 REVISION,
+ADDENDUM, SERIES-LEVEL STATEMENT, OR CANON PROMOTION
+
+Revenue Pilot Gate:
+HOLD — WAIT FOR MARKET RESPONSE
+
+Active Branch:
+none
+
+Next Authorized Action:
+none until reply or later Human Seat direction
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [V7 Forward-only Architectural Delta v0.1 — Aspire-Serving Motion Obligation](../docs/v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md)
+- [Progress Preservation Principle v0.1](../docs/progress_preservation_principle_v0_1.md)
+- [Current Signal](../docs/current_signal.md)
+
+The private Forward-only V7 delta closes the architectural gap in which
+Decision-OS could appear to preserve Guard by eliminating all motion toward
+Aspire. Core Guard remains the non-negotiable admissibility boundary. Aspire,
+opportunity cost, bounded success, and capability improvement do not override
+it.
+
+Inside the admissible space left by Core Guard, Operational Guard must preserve
+at least one concrete Aspire-serving path, replace it with a safer route that
+retains comparable Aspire-directed reachability, constrain it temporarily with
+an explicit restart condition, or provide sufficient current hard-boundary
+evidence explaining why no admissible path remains. Route preservation is not
+execution permission, and reversibility or limited exposure does not by itself
+prove admissibility.
+
+Indefinite `HOLD` is invalid as a completed closure when it lacks a restart,
+evidence, or re-evaluation condition. Repeated `CAP` that prevents its own
+success condition from becoming observable is not architectural success.
+Neither condition creates automatic `GO`.
+
+When credible current evidence shows repeated or reproducible bounded success,
+equal or lower recovery cost, non-increasing Recovery Debt, preserved
+functional Human Seat, stable or expanded Branching, continued Aspire service,
+and Carrier absorption, the old Operational Guard may no longer be the minimum
+necessary restriction. Use `ACCELERATIVE RESCALE EVALUATION REQUIRED` when
+that possibility is plausibly established. The required action is evaluation,
+not Goal-Length change, acceleration, authority expansion, or execution.
+
+The
+[Progress Preservation Principle v0.1](../docs/progress_preservation_principle_v0_1.md)
+remains the V13 bounded manual enforcement mapping. V10 retains Rescale and
+Goal-Length evaluation; V12 retains restartable non-`GO` closure; V13 retains
+Protective Stasis detection and `GO / HOLD / CAP / BLOCK` routing. The layers
+are not collapsed.
+
+The delta does not silently alter the published V7 As-of. It is a private
+Forward-only candidate for a future V7 revision, addendum, or series-level
+architectural statement. Published V7 remains historically valid. Publication,
+validation, Canon promotion, runtime, automatic monitoring, automatic
+acceleration, and execution remain absent or blocked and require later
+authority where applicable.
+
+Revenue Pilot Wave 1 is complete at five sent messages:
+
+1. existing Reddit DM to `Objective_Law2034`;
+2. [MattKilmer/claude-autofix-bot#3](https://github.com/MattKilmer/claude-autofix-bot/issues/3#issuecomment-5054816982);
+3. [nicsuzor/academicOps#2307](https://github.com/nicsuzor/academicOps/issues/2307#issuecomment-5056307274);
+4. [openclaw/openclaw#45390](https://github.com/openclaw/openclaw/issues/45390#issuecomment-5056315757);
+5. [silverstein/minutes#514](https://github.com/silverstein/minutes/issues/514#issuecomment-5056320508).
+
+Replies are `PENDING`; confirmed fit checks, paid acceptances, and revenue are
+all `0`. No reply, purchase intent, client status, payment, delivery,
+testimonial, or paid result is inferred. Follow-up and a new outreach wave are
+not authorized.
+
+`WAIT FOR MARKET RESPONSE` is passive. It creates no polling, automatic
+monitoring, follow-up, response, fit-check, payment-handling, diagnosis, or
+client-work authority. An external reply is a re-entry trigger only; a later
+Human Seat direction or new explicit authority is still required for the
+resulting action.
+
+Every lower zero-, one-, or two-outreach state, remaining-three field, `none
+until review` field, Revenue Pilot `CAP` state, and pre-Wave-closure statement
+remains historical at its own As-of and cannot override this receipt.
+
+Completion Line:
+
+The private Forward-only V7 delta closes the all-motion-suppression gap while
+leaving Core Guard non-negotiable: Operational Guard must preserve or
+explicitly close at least one admissible Aspire-serving path, credible absorbed
+repeated success may require path-expansion evaluation without automatic
+execution, published V7 and runtime remain unchanged or blocked, Revenue Wave
+1 is complete at 5 / 5 sent with replies pending, and the final Gates are V13
+`HOLD`, V7 Delta `CAP`, and Revenue Pilot `HOLD`.
+
+## Historical As-of — Revenue Pilot 001 Public Sales Anchor and Price Architecture at `344cdaf8cf87291c346518c5d31e9b8a93cc7f9b`
 
 Date:
 `2026-07-23`
@@ -3342,7 +3514,7 @@ Parked boundaries:
 - no MCP
 - no pluginization
 - no package/server/CLI surfaces
-- no remaining Wave 1 outreach or follow-up / no public promotion outside the
+- no Wave 1 follow-up or new outreach wave / no public promotion outside the
   approved repository anchor
 - no release-state change
 - no external repo changes
@@ -3741,8 +3913,8 @@ Do not:
 - add MCP
 - add pluginization
 - add package/server/CLI surfaces
-- send any remaining Wave 1 outreach or follow-up, or start public promotion
-  outside the approved repository anchor
+- send a Wave 1 follow-up or begin a new outreach wave, or start public
+  promotion outside the approved repository anchor
 - change release state
 - modify external repos
 - promote anything else to canonical
