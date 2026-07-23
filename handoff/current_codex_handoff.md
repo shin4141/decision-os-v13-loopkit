@@ -8,6 +8,98 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Field Note 127 — Lineage Reconnection Burden Transfer — 2026-07-23
+
+Receipt:
+
+```text
+Field Note 127:
+Lineage Reconnection Burden Transfer
+
+Registration:
+COMPLETE / PRIVATE
+
+Primary layer:
+V13
+
+Supporting layers:
+V11 / V14
+
+Direct operational case:
+AVAILABLE
+
+Original live transcript identity:
+BOUND where repository-verifiable; otherwise explicitly PARTIALLY UNBOUND
+
+Independent reproduction:
+NOT YET
+
+Generalization:
+NOT ESTABLISHED
+
+Quantified Human Carrier reduction:
+NOT ESTABLISHED
+
+MAL v0.2:
+FORWARD-ONLY PREVENTION STRUCTURE / NOT INDEPENDENT VALIDATION
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Reason:
+Field Note 127 records one direct lineage-reconnection burden-transfer case,
+while exact transcript binding, independent reproduction, generalization, and
+quantified burden reduction remain incomplete.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [Field Note 127](../field_notes/127_lineage_reconnection_burden_transfer.md)
+- [Evidence packet](../validation/field_note_127_lineage_reconnection_burden_transfer_evidence.md)
+- [MAL v0.2](../docs/minimum_autonomous_loop_v0_2.md)
+- [Decision Lineage Reconnection Register](../docs/decision_lineage_reconnection_register_v0_1.md)
+
+The failed PIC worldline remains preserved. Case 004 records that PIC was used
+without a sufficient local V13 definition. Participant evidence records that
+Codex prepared to return the joint to Shin and that Shin redirected the route
+to the Decision-OS lineage. The exact live wording and transcript identity are
+not fully repository-bound and are not presented as verbatim.
+
+Repository evidence at `4ca5e990aea334cf34cbee7193c8cb68308c5962`
+binds the corrected route as `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`,
+`Decision Route: AI-OWNED`, and `Human Seat Question: none`, and records MAL
+v0.2 plus the Lineage Register as later Forward-only prevention structures.
+Their creation is not independent validation. No fresh reproduction, local-
+only control, second-joint comparison, quantitative burden measurement,
+runtime, automatic scan/write, Canon promotion, or public branch is active.
+
+The older Guard Continuity receipt below preserves the candidate state at its
+2026-07-22 As-of. This Forward-only receipt supersedes only that candidate's
+current registration status. Candidate 2 V10 and Candidate 3 V9.1 remain
+parked, and the Guard and Delegation Envelope branches remain unchanged.
+
+Completion Line:
+
+Field Note 127 privately registers the single observed PIC routing failure in
+which local absence was mistaken for a Human-unanswered joint and shifted
+lineage-reconnection work to Shin; repository artifacts bind the corrected
+lineage-closed, AI-owned route but not the complete live transcript, so fresh
+independent reproduction, a local-only control, a second lineage joint, and
+quantified Human Carrier comparison remain Missing Closure, and the V13 Gate
+remains `HOLD`.
+
 ## Current Boundary Proposal Adversarial Test 001 Closure — 2026-07-23
 
 Receipt:
@@ -113,6 +205,12 @@ Decision Lineage Reconnection: REQUIRED BEFORE HUMAN SEAT RETURN
 First lineage binding: PIC
 PIC classification: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
 PIC Human Seat question: none
+Field Note 127: COMPLETE / PRIVATE
+Field Note 127 evidence: ONE DIRECT OPERATIONAL CASE
+Original live transcript identity: PARTIALLY UNBOUND
+Field Note 127 independent reproduction: NOT YET
+Field Note 127 generalization / quantified burden reduction: NOT ESTABLISHED
+MAL v0.2 prevention status: FORWARD-ONLY STRUCTURE / NOT INDEPENDENT VALIDATION
 Second lineage binding: Guard Continuity
 Guard Continuity lineage binding: COMPLETE
 Guard classification: LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED

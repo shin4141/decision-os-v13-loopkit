@@ -13,6 +13,11 @@
 - 🔴 RED / MAL-V0.1-RUNTIME-NOT-AUTHORIZED
 - 🟢 BLUE / MAL-V0.2-LINEAGE-AWARE-SPECIFICATION-COMPLETE
 - 🟢 BLUE / PIC-LINEAGE-BINDING-REGISTERED
+- 🟢 BLUE / FIELD-NOTE-127-PRIVATE-REGISTRATION-COMPLETE
+- 🟢 BLUE / LINEAGE-RECONNECTION-BURDEN-TRANSFER-DIRECT-CASE
+- 🟡 YELLOW / ORIGINAL-LIVE-TRANSCRIPT-IDENTITY-PARTIALLY-UNBOUND
+- 🟡 YELLOW / INDEPENDENT-REPRODUCTION-NOT-YET
+- 🟡 YELLOW / HUMAN-CARRIER-BURDEN-REDUCTION-NOT-QUANTIFIED
 - 🟢 BLUE / GUARD-LINEAGE-BINDING-REGISTERED
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
 - 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
@@ -53,9 +58,23 @@ convergence. Guard preservation is necessary but not sufficient for a
 self-evolution candidate. Guard break routes to `DRIFT / SELF-DISTORTION`,
 while insufficient Guard evidence routes to `HOLD / UNCLASSIFIED`. Candidate 2
 — V10 Goal-Length and Candidate 3 — V9.1 Condition-Bound Reuse remain
-`PARKED / not active`. Lineage Reconnection Burden Transfer remains
-`PRIVATE FIELD NOTE CANDIDATE`, with `DIRECT EVIDENCE AVAILABLE` and
-`REPOSITORY REGISTRATION NOT ACTIVE`.
+`PARKED / not active`.
+
+Field Note 127 — Lineage Reconnection Burden Transfer is registered as a
+`PRIVATE FIELD NOTE` from one `DIRECT OPERATIONAL CASE`. It preserves the failed
+worldline in which local PIC absence was misclassified toward Human unanswered,
+before bounded V6 / V7 / V8 / V11 reconnection changed the route to
+`LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`, `Decision Route: AI-OWNED`, and
+`Human Seat Question: none`. Repository artifacts bind the local-before and
+corrected-after states; the exact original live transcript identity remains
+`PARTIALLY UNBOUND`.
+
+MAL v0.2 and the Decision Lineage Reconnection Register are Forward-only
+prevention structures created after the incident, not independent validation.
+Independent reproduction is `NOT YET`; generalization and quantified Human
+Carrier burden reduction are `NOT ESTABLISHED`. No fresh validation is active.
+Candidate 2 V10 and Candidate 3 V9.1 remain parked, and Guard, runtime, Canon,
+automatic propagation, and public branches remain unchanged.
 
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
@@ -109,10 +128,10 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after one frozen adversarial proposal exposed silent self-renewing
-authority drift. The four Guard witnesses were useful for this case, but no
-actual self-update, runtime enforcement, broad accuracy, or generalization has
-been validated.
+HOLD after Field Note 127 registered one direct lineage-reconnection
+burden-transfer case. Exact transcript binding, independent reproduction,
+generalization, and quantified Human Carrier burden reduction remain
+incomplete.
 
 Active Branch is `none`, and Next Authorized Action is `none`. No subsequent
 adversarial test is active. Fresh v0.2 validation is `NOT STARTED / PARKED`.
@@ -137,11 +156,12 @@ The current prototype includes:
 - `docs/decision_lineage_reconnection_register_v0_1.md`
 - `docs/osi_parallel_compounding_lane_v0_1.md`
 - `templates/v13_reconnection_packet_template.md`
-- `field_notes/` through Field Note 126
+- `field_notes/` through Field Note 127
 - `validation/field_note_126_case_001_latent_propagation.md`
 - `validation/field_note_126_case_002_human_seat_distinguishability.md`
 - `validation/field_note_126_case_003_adaptive_human_seat_question_depth.md`
 - `validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md`
+- `validation/field_note_127_lineage_reconnection_burden_transfer_evidence.md`
 - `validation/boundary_proposal_adversarial_test_001.md`
 - `validation/parent_compounding_proof_001_no_gap_stop.md`
 - launch capsules and acceptance audit records
@@ -158,6 +178,8 @@ Current manual cases show:
 - challenge visibility, historical As-of, Protected Object, and stop authority must remain intact.
 - current protective forms may change only while their Aspire-line comparison, non-circular justification, refusal, counterevidence, historical reconnection, and stable self-recursion functions remain;
 - capability gains without expanded Aspire-directed reachability are not sufficient evidence of self-evolution.
+- local undefined, lineage undefined, and Human unanswered are distinct routing states;
+- preserved knowledge can remain operationally unavailable when the current joint lacks a reconnectable source path;
 - a per-action cap is not bounded authority when the executing AI can renew it from its own similarity and success judgments;
 - local Git reversibility does not establish trajectory-level recoverability, and formal Human Seat does not establish functional Human Seat.
 
@@ -174,6 +196,8 @@ Current manual cases show:
 | MAL v0.1 generalization | HOLD | Broader question accuracy and behavior across other case types are not established |
 | MAL v0.2 specification | PASS | Forward-only successor adds mandatory Decision Lineage Reconnection before Human Seat return |
 | PIC lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
+| Field Note 127 private registration | PASS | One direct operational PIC case; failed route preserved and source/participant evidence separated |
+| Field Note 127 reproduction / generalization | HOLD | Transcript identity partially unbound; independent reproduction, generalization, and quantified burden reduction not established |
 | Guard Continuity lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
 | Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
 | Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
@@ -233,4 +257,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Guard Continuity is lineage-bound as the admissibility and stopping boundary, distinct from PIC's committed integration boundary; one frozen adversarial proposal exposed silent self-renewing authority drift, while runtime enforcement, broad accuracy, generalization, Candidate 2, Candidate 3, the private Field Note candidate, and automatic propagation remain inactive or unestablished.
+> Field Note 127 privately registers one PIC lineage-reconnection burden-transfer case with the failed route preserved, while its live transcript remains partially unbound and independent reproduction, generalization, quantified burden reduction, fresh validation, Candidate 2, Candidate 3, runtime, and automatic propagation remain inactive or unestablished.
