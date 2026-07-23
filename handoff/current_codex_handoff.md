@@ -8,6 +8,87 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Authority Sufficiency Preflight v0.1 Branch Proposal
+
+Date:
+`2026-07-24`
+
+Starting canonical `main`:
+`4b3b771b2d4f747c0bc6cf8e250e235bb1be7570`
+
+Execution subject:
+`Codex 13-9`
+
+Branch-state receipt:
+
+```text
+Authority Sufficiency Preflight v0.1:
+COMPLETE ON BRANCH / PR PENDING
+
+Manual template:
+COMPLETE ON BRANCH
+
+Future bounded autonomous runs:
+HOLD — STAGE 0 NOT YET CANONICAL
+
+Run 003:
+NOT STARTED
+
+BOAW-001:
+EXHAUSTED / UNCHANGED
+
+Run 002:
+PASS / COMPLETE / UNCHANGED
+
+Stress Run 001:
+FAIL / CLOSED / UNCHANGED
+
+PR merge:
+NOT AUTHORIZED
+
+Current Gate:
+HOLD — REVIEW OF AUTHORITY SUFFICIENCY PREFLIGHT PR REQUIRED
+
+Active Branch:
+docs/authority-sufficiency-preflight-v0-1
+
+Codex Next Authorized Action:
+none after PR creation
+```
+
+New branch artifacts:
+
+1. `docs/authority_sufficiency_preflight_v0_1.md`
+2. `templates/v13_authority_sufficiency_preflight.md`
+
+Forward-only integration surfaces:
+
+1. `docs/loop_map.md`
+2. `docs/current_signal.md`
+3. `handoff/current_codex_handoff.md`
+
+Stage 0 occurs before Shin activates a future bounded run. It is read-only,
+consumes no loop, proposes one complete authority envelope, ranks candidates
+before authority filtering, requires every implementation loop to declare
+`Authority Match: YES / NO`, and reserves a non-discretionary closure-only
+tail.
+
+A matched in-envelope loop does not require repeated Shin approval. A mismatch
+stops before branch, artifact, PR, or implementation creation, consumes zero
+loops, and receives no improvement credit. The closure-only tail has no
+candidate-selection, criteria-change, extension, renewal, or Loop N+1
+authority.
+
+The Stage 0 result classes map to existing V13 Gates and create no fifth Gate.
+This proposal does not establish autonomous generalization and grants no
+authority for Run 003, another BOAW, an operational loop, or PR merge.
+
+Completion Line:
+
+Authority Sufficiency Preflight v0.1は、future runの実装前にauthority envelope
+とclosure-only tailを明示するStage 0 proposalとしてbranch上で完了し、Run 003
+を開始せずnon-draft review PRで停止する。
+
 ## V13 — BOAW-001 Run 002 Post-Exhaustion Closure
 
 Date:
