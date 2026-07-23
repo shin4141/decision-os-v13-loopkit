@@ -82,16 +82,20 @@ As of the current prototype state:
 | Decision Packet Loop      |  🟡 DESIGN-ONLY | Examples are allowed; implementation is not |
 | External V13 README Reuse |           🟢 GO | Use as-is for next reader or task           |
 
-## Bounded Operational Authority Window Proposal
+## Bounded Operational Authority Window v0.1 — Canonical / Inactive
 
 The
 [Bounded Operational Authority Window v0.1](bounded_operational_authority_window_v0_1.md)
-defines a repository-only proposal for at most three completed Run 002 loops.
-It does not activate the window or start Run 002.
+defines a repository-only authority window for at most three completed Run 002
+loops. The specification is canonical on `main`; this does not activate the
+window or start Run 002.
 
 ```text
 Bounded Operational Authority Window v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
 
 BOAW-001:
 NOT ACTIVE
@@ -102,12 +106,26 @@ NOT STARTED
 Activation authority:
 SHIN ONLY
 
+Merge approval:
+COMPLETE
+
+Activation decision:
+NOT YET GIVEN
+
 Current Gate:
-HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+HOLD — SEPARATE BOAW-001 ACTIVATION DECISION REQUIRED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
 Merge approval does not activate BOAW-001. Activation requires Shin's separate
 exact statement: `I activate BOAW-001 for Run 002.`
+Shin has not issued that activation statement in this merge closure. An
+inactive BOAW has no standing authority.
 
 ## Deviation
 

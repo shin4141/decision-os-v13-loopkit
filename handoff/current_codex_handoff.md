@@ -8,22 +8,34 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V13 — Bounded Operational Authority Window v0.1 Proposal
+## V13 — Bounded Operational Authority Window v0.1 Merge Closure
 
 Date:
 `2026-07-24`
 
-Starting canonical `main`:
+Pre-merge canonical `main`:
 `4cdc7af52e943954951949fc1263860592858a37`
 
-Current AI execution subject:
+Completed merge-closure execution subject:
 `Codex`
+
+Current AI execution subject:
+`none`
 
 Receipt:
 
 ```text
 Bounded Operational Authority Window v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
+
+Approved PR head:
+3231882efacbb52965d57bee99393bc9b04a9118
+
+PR merge commit:
+c8d2ebc8b698cf014662e539e06ace86d9e11801
 
 BOAW-001:
 NOT ACTIVE
@@ -34,11 +46,23 @@ NOT STARTED
 Activation authority:
 SHIN ONLY
 
+Merge approval:
+COMPLETE
+
+Activation decision:
+NOT YET GIVEN
+
 Current Gate:
-HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+HOLD — SEPARATE BOAW-001 ACTIVATION DECISION REQUIRED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
-Authority proposal:
+Canonical authority specification:
 
 - at most three completed loops;
 - one active branch at a time;
@@ -55,29 +79,37 @@ Authority proposal:
 - no self-extension, criteria modification, standing permission, or automatic
   renewal.
 
-The full proposal is
+The full specification is
 [Bounded Operational Authority Window v0.1](../docs/bounded_operational_authority_window_v0_1.md).
 
-Merge approval does not activate BOAW-001. Activation requires Shin's separate
-exact statement:
+PR #6 merged the exact approved head through a history-preserving merge.
+Merge approval did not activate BOAW-001. Shin has not issued a separate
+activation statement. The following text is preserved only as the activation
+condition; its presence in this handoff is not a Decision Owner issuance:
 
 ```text
 I activate BOAW-001 for Run 002.
 ```
 
+An inactive BOAW has no standing authority. Run 002 has no branch,
+preregistration, loop, PR, merge, or receipt.
+
 Stress Run 001 remains `FAIL / CLOSED`. Its evidence branches and Draft PRs
 remain non-merge evidence. No Run 001 score, artifact, or evaluation is
 rewritten, and Iteration 01 is not retroactively validated. Run 002 remains
-unstarted.
+unstarted. PR #4 and PR #5 remain open Draft non-merge evidence PRs and were
+not modified by this closure.
 
 Every lower Run 001 pre-start or execution-authority receipt remains historical
 at its recorded As-of and grants no current authority. The only next Decision
-Owner action is approval or rejection of the completed authority PR. PR merge,
-BOAW-001 activation, and Run 002 execution remain separate events.
+Owner action, if any, is the separate activation or non-activation decision.
+PR merge, BOAW-001 activation, and Run 002 execution remain separate events.
 
 Completion Line:
 
-BOAW-001の承認面を作り、mergeとactivationを分離した状態で停止する。
+Bounded Operational Authority Window v0.1は`main`上でcanonicalになったが、
+BOAW-001はinactive、Run 002はunstartedのままであり、Shinの別個のactivation
+判断まで停止する。
 
 ## V13 — Load-Bearing Evidence Merge Closure
 

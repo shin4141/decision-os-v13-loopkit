@@ -5,10 +5,13 @@
 ## Status
 
 ```text
-AUTHORITY PROPOSAL ONLY
+CANONICAL SPECIFICATION / NOT ACTIVE
 
 Bounded Operational Authority Window v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
 
 BOAW-001:
 NOT ACTIVE
@@ -19,13 +22,26 @@ NOT STARTED
 Activation authority:
 SHIN ONLY
 
+Merge approval:
+COMPLETE
+
+Activation decision:
+NOT YET GIVEN
+
 Current Gate:
-HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+HOLD — SEPARATE BOAW-001 ACTIVATION DECISION REQUIRED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
-This document defines a bounded authority proposal. Creating, reviewing, or
-merging it does not activate the authority window, start Run 002, or grant
-standing permission to write to `main`.
+This document defines the bounded authority specification now canonical on
+`main`. Its merge did not activate the authority window, start Run 002, or
+grant standing permission to write to `main`. An inactive BOAW has no standing
+authority.
 
 ## Core Rule
 
@@ -82,7 +98,8 @@ requires a new explicit Shin approval
 
 The window is repository-only, temporary, loop-count limited, reversible,
 auditable, and incapable of expanding its own scope. The authority-proposal PR
-is not a loop PR because BOAW-001 is not active and Run 002 has not started.
+that became PR #6 was not a loop PR because BOAW-001 was not active and Run
+002 had not started. Its merge did not consume a loop or activate the window.
 
 ## Activation
 
@@ -93,9 +110,9 @@ I activate BOAW-001 for Run 002.
 ```
 
 Merge approval is not activation. The authority window remains `NOT ACTIVE`
-unless Shin provides that exact separate statement after the authority
-proposal is available for review. No Codex statement, repository event,
-successful validation, PR approval, or merge may substitute for it.
+unless Shin provides that exact separate statement. No Codex statement,
+repository event, successful validation, PR approval, or merge may substitute
+for it.
 
 ## Permitted Change Classes
 
@@ -319,7 +336,10 @@ The current state is also recorded in the
 
 ```text
 Bounded Operational Authority Window v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
 
 BOAW-001:
 NOT ACTIVE
@@ -330,10 +350,24 @@ NOT STARTED
 Activation authority:
 SHIN ONLY
 
+Merge approval:
+COMPLETE
+
+Activation decision:
+NOT YET GIVEN
+
 Current Gate:
-HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+HOLD — SEPARATE BOAW-001 ACTIVATION DECISION REQUIRED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
 Completion Line:
 
-BOAW-001の承認面を作り、mergeとactivationを分離した状態で停止する。
+Bounded Operational Authority Window v0.1は`main`上でcanonicalになったが、
+BOAW-001はinactive、Run 002はunstartedのままであり、Shinの別個のactivation
+判断まで停止する。

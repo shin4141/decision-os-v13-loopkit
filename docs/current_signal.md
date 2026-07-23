@@ -2,10 +2,12 @@
 
 ## Signal
 
-- 🟡 YELLOW / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-COMPLETE-ON-BRANCH-PR-PENDING
+- 🟢 BLUE / BOUNDED-OPERATIONAL-AUTHORITY-WINDOW-V0.1-MERGED-CANONICAL-ON-MAIN
+- 🟢 BLUE / PR-6-MERGE-DECISION-PASS-COMPLETE
 - 🔴 RED / BOAW-001-NOT-ACTIVE
 - 🟡 YELLOW / RUN-002-NOT-STARTED
-- 🔴 RED / BOUNDED-MAIN-WRITE-AUTHORITY-NOT-YET-CANONICAL
+- 🟡 YELLOW / BOAW-001-ACTIVATION-DECISION-NOT-YET-GIVEN
+- 🔴 RED / BOUNDED-MAIN-WRITE-AUTHORITY-NOT-ACTIVE
 - 🟢 BLUE / ROADMAP-REBASELINED
 - 🟢 BLUE / IMPLEMENTATION-LOAD-PRIORITY-REVERSAL-BOUND
 - 🟢 BLUE / LOAD-BEARING-COMPLIANCE-TEST-BOUND
@@ -90,13 +92,22 @@
 - 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
-## Bounded Operational Authority Window Proposal
+## Bounded Operational Authority Window v0.1 — Merge Closure
 
 The current authority state is:
 
 ```text
 Bounded Operational Authority Window v0.1:
-COMPLETE ON BRANCH / PR PENDING
+MERGED / CANONICAL ON MAIN
+
+PR #6:
+PASS / COMPLETE
+
+Approved PR head:
+3231882efacbb52965d57bee99393bc9b04a9118
+
+PR merge commit:
+c8d2ebc8b698cf014662e539e06ace86d9e11801
 
 BOAW-001:
 NOT ACTIVE
@@ -107,18 +118,34 @@ NOT STARTED
 Activation authority:
 SHIN ONLY
 
+Merge approval:
+COMPLETE
+
+Activation decision:
+NOT YET GIVEN
+
 Current Gate:
-HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+HOLD — SEPARATE BOAW-001 ACTIVATION DECISION REQUIRED
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
 ```
 
-The bounded proposal is defined in
+The canonical specification is defined in
 [Bounded Operational Authority Window v0.1](bounded_operational_authority_window_v0_1.md).
-Merge approval does not activate BOAW-001. Activation requires Shin's separate
-exact statement: `I activate BOAW-001 for Run 002.`
+PR #6 merged the exact approved head through a history-preserving merge.
+Merge approval did not activate BOAW-001. Shin has not issued the separate
+activation statement. The exact activation condition remains:
+`I activate BOAW-001 for Run 002.` An inactive BOAW has no standing authority.
+Run 002 has no branch, preregistration, loop, PR, merge, or receipt.
 
 Stress Run 001 remains `FAIL / CLOSED`; its evidence branches and Draft PRs
 remain non-merge evidence. BOAW-001 is Forward-only, does not rewrite Run 001,
-and does not retroactively validate Iteration 01.
+and does not retroactively validate Iteration 01. PR #4 and PR #5 remain open
+Draft non-merge evidence PRs and were not modified by this closure.
 
 Earlier Run 001 pre-start and execution-authority lines below remain historical
 at their recorded As-of. They do not authorize Run 001, Run 002, BOAW-001
