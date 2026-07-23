@@ -165,7 +165,7 @@ The proof record covers one bounded receiver-side execution. It does not
 establish general reliability or customer outcomes.
 
 To request a free fit check, either
-[open a GitHub issue](https://github.com/shin4141/decision-os-v13-loopkit/issues/new)
+[open the AI Agent Handoff Audit fit-check form](https://github.com/shin4141/decision-os-v13-loopkit/issues/new?template=ai_agent_handoff_audit_fit_check.md)
 containing only a high-level request or contact Shin through the channel where
 the offer was shared. You may include a public repository URL, the coding-agent
 tool used, one recurring operational failure, and what the next agent or
