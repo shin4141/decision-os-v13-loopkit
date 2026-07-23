@@ -36,6 +36,12 @@
 - 🟡 YELLOW / CONDITION-CONTINUITY-REAL-CASE-EVIDENCE-NOT-YET
 - 🔴 RED / STALE-HISTORICAL-PASS-AS-CURRENT-AUTHORITY-BLOCK
 - 🔴 RED / AUTOMATIC-CONDITION-MONITORING-BLOCK
+- 🟢 BLUE / REVENUE-ASPIRE-ACTIVE
+- 🟢 BLUE / REVENUE-PILOT-001-SALE-READY
+- 🟡 YELLOW / EXTERNAL-OUTREACH-NOT-YET-SENT
+- 🟡 YELLOW / PUBLIC-LAUNCH-SEPARATE-HUMAN-SEAT-DECISION
+- 🔴 RED / FREE-BESPOKE-DIAGNOSIS-BLOCK
+- 🔴 RED / MASS-AND-AUTOMATIC-OUTREACH-BLOCK
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
 - 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
 - 🟡 YELLOW / GUARD-WITNESSES-ONE-ADVERSARIAL-SCENARIO-ONLY
@@ -54,7 +60,17 @@
 
 ## Meaning
 
+Historical pre-Revenue direction at repository As-of
+`33c6b19ff3b523cb027940bef136ab8cc9a410df`:
+
 V13 remains in a manual governed-loop phase. Its primary direction is now Human-Seat-Preserving Autonomous Compounding rather than direct star acquisition.
+
+Forward-only current priority:
+
+Revenue Aspire is `ACTIVE`. Decision-OS and Shin's demonstrated AI-operation
+capability must now be converted into real, repeatable income that supports
+Shin's continued life and work without erasing the prior research or Aspire
+history.
 
 FN126 Cases 001–004 provide verification-pending evidence that exposed-gap detection, irreducible Human-Seat return, AI-owned propagation, Human-Seat distinguishability, adaptive question depth, and Aspire-anchored independent evolution evaluation can be executed manually under bounded authority.
 
@@ -177,6 +193,67 @@ This binding alone generates no current PASS, GO, or BLOCK. PIC, Guard, V10,
 MAL, Field Note 127, Real Compound Proof 001, OSI, Canon, automation, and public
 surfaces remain otherwise unchanged.
 
+Forward-only Human Seat receipt — Revenue Pilot 001:
+
+```text
+Revenue Aspire:
+ACTIVE
+
+Exact bounded meaning:
+Decision-OS and Shin's AI-operation capability must now be converted into real,
+repeatable income that supports Shin's continued life and work.
+
+Revenue Pilot 001:
+AI Agent Handoff Audit
+
+Pilot price:
+15,000 JPY
+
+Pilot capacity:
+First 3 paid clients
+
+Offer state:
+PILOT READY / NOT YET PUBLICLY LAUNCHED
+
+Revenue branch:
+CAP through the first 3 paid pilots
+
+Theory expansion:
+HOLD unless required to deliver or sell the active pilot
+
+Free bespoke diagnosis:
+BLOCK
+
+Mass outreach:
+BLOCK
+
+Automatic outreach:
+BLOCK
+
+Public launch:
+REQUIRES A SEPARATE HUMAN SEAT DECISION
+
+One-to-one outreach:
+MAY BE AUTHORIZED SEPARATELY AFTER REVIEW / NOT CURRENTLY AUTHORIZED
+```
+
+The current priority order is: first paid client; one delivery that creates
+usable evidence; second and third paid pilots; later price or scope
+recalculation; and theory expansion only when required by paid operation. The
+sale-ready preparation creates no authority to send outreach, publish the
+offer, begin a free diagnosis, accept payment, or start client work.
+
+The pilot deliverable is one Friction Map, one Restartability Diagnosis, one
+Priority Fix, one copy-paste operational asset, one before/after restart check,
+and one bounded clarification round for one repository or bounded workflow.
+Work starts only after scope confirmation and payment, and delivery is within
+3 business days after scope, required materials, and payment are complete.
+
+Existing V9.1, V10, Guard, PIC, MAL, Case 004, Real Compound Proof 001, OSI,
+runtime, automation, and public states remain otherwise unchanged. No theory,
+Field Note, Case, runtime, automation, public launch, outreach, client work, or
+customer evidence was created.
+
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
 `PASS`; Delegation Envelope v0.1 was classified `DRIFT / SELF-DISTORTION`.
@@ -242,7 +319,8 @@ V9.1 remains `PARKED / not active`. No further proof, runtime, automatic
 authority, automatic Rescale, automatic lineage scan, or automatic Canon
 propagation is authorized.
 
-Current Forward-only state:
+Historical As-of — repository commit
+`33c6b19ff3b523cb027940bef136ab8cc9a410df`:
 
 HOLD after V9.1 Condition-Bound Judgment Reuse Local Binding 001 closed the
 historical-preservation versus current-applicability joint. The four V13
@@ -254,6 +332,19 @@ V9.1 is no longer merely parked: its deep read and bounded local binding are
 complete. No validation, runtime, automatic condition monitoring, automatic
 authority renewal, automatic Rescale, automatic lineage scan, or automatic
 Canon propagation is authorized.
+
+Current Forward-only state:
+
+Revenue Aspire is `ACTIVE`. Revenue Pilot 001 — AI Agent Handoff Audit is
+`PILOT READY / NOT YET PUBLICLY LAUNCHED` at `15,000 JPY` for the first 3 paid
+clients. Sale-ready offer preparation is complete; no outreach or public launch
+has occurred.
+
+V13 Overall Gate is `HOLD` for runtime, automation, broad generalization, and
+unrelated expansion. Revenue Pilot Gate is `CAP` through the first 3 paid
+pilots, but this completed preparation task grants no external execution
+authority. Active Branch is `none`; Next Authorized Action is `none until
+review`; Decision Packet Required is `no`.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
@@ -270,6 +361,8 @@ The current prototype includes:
 - `handoff/current_codex_handoff.md`
 - `templates/one_paste_codex_execution_packet_v0_1.md`
 - `validation/real_compound_proof_001_single_paste_execution.md`
+- `services/ai_agent_handoff_audit_offer.md`
+- `services/revenue_pilot_001_sales_packet.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_2.md`
 - `docs/decision_lineage_reconnection_register_v0_1.md`
@@ -350,7 +443,13 @@ Current manual cases show:
 | Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
 | README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
-| Revenue / paid operational value | HOLD | Require sufficient evidence and a bounded offer decision |
+| Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
+| Revenue Pilot 001 | CAP | Sale-ready preparation complete; bounded to first 3 paid clients at 15,000 JPY each; no outreach or client work authorized by this task |
+| External one-to-one outreach | HOLD / NOT YET SENT | May be authorized separately after review; no message has been sent |
+| Public launch | Separate Human Seat decision | Not authorized by sale-ready preparation |
+| Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
+| Free bespoke diagnosis | BLOCK | Free step is fit and scope confirmation only |
+| Mass / automatic outreach | BLOCK | No scraping, prospecting automation, message sequences, or repeated chasing |
 | Broad automation / automatic learning | BLOCK | No automatic behavior inference or propagation |
 | Automatic Canon / authority / public action | BLOCK | Human Seat and explicit authority remain required |
 | V7 modification / self-evolution implementation | PARKED / BLOCK | Case 004 supplies an evaluation input only; it does not authorize theory or runtime changes |
@@ -389,6 +488,8 @@ Not allowed from this signal:
 - run another adversarial test without separate explicit authority
 - monitor Carrier state or execute Protective or Accelerative Rescale automatically
 - monitor or expire reuse conditions, renew current authority, reuse historical consent, or persist historical BLOCK automatically
+- begin outreach, public launch, unpaid bespoke diagnosis, client work, or another offer without separate authorization
+- expand theory unless a concrete paid-pilot sale or delivery requires it
 - deliver split or additive execution instructions that return integration work to Shin
 
 ## Current Lesson
@@ -399,4 +500,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> V9.1 now closes the historical-preservation versus current-applicability joint: prior judgment is reuse-eligible only while its current condition and full reuse trace remain valid; the four mappings, real-case continuity evidence, generalization, automatic monitoring, and runtime remain unestablished, so the V13 Gate remains HOLD.
+> Revenue Aspire is now active and Revenue Pilot 001 is sale-ready at 15,000 JPY for the first 3 paid clients; external outreach, public launch, fit-check execution, and client work remain unexecuted, so the Revenue Pilot Gate is CAP and the V13 Overall Gate remains HOLD.

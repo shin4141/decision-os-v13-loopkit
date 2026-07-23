@@ -8,6 +8,143 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Revenue Pilot 001 — AI Agent Handoff Audit Sale-Ready Pack — 2026-07-23
+
+Receipt:
+
+```text
+Revenue Pilot 001 — AI Agent Handoff Audit Sale-Ready Pack:
+COMPLETE
+
+Human Seat Aspire delta:
+ACTIVE
+
+Aspire:
+Convert Decision-OS and Shin's AI-operation capability into real, repeatable
+income that supports continued life and work.
+
+Reason:
+One year of unpaid work makes income generation a current survival and
+continuation requirement rather than a distant downstream benefit.
+
+Offer:
+AI Agent Handoff Audit — Pilot
+
+Price:
+15,000 JPY
+
+Capacity:
+First 3 paid clients
+
+Free step:
+FIT CHECK ONLY / NO UNPAID BESPOKE DIAGNOSIS
+
+Paid output:
+One Friction Map, one Restartability Diagnosis, one Priority Fix, one
+copy-paste operational asset, one before/after restart check, and one bounded
+clarification round.
+
+Turnaround:
+3 business days after scope confirmation, materials, and payment
+
+Offer status:
+PILOT READY / NOT YET PUBLICLY LAUNCHED
+
+External outreach:
+NOT YET SENT
+
+Theory expansion:
+HOLD unless required to deliver or sell the active pilot
+
+Free bespoke diagnosis:
+BLOCK
+
+Mass outreach:
+BLOCK
+
+Automatic outreach:
+BLOCK
+
+Public launch:
+REQUIRES A SEPARATE HUMAN SEAT DECISION
+
+One-to-one outreach:
+MAY BE AUTHORIZED SEPARATELY AFTER REVIEW / NOT CURRENTLY AUTHORIZED
+
+V12 State:
+PASS
+
+V13 Overall Gate:
+HOLD
+
+Revenue Pilot Gate:
+CAP
+
+Revenue Pilot CAP meaning:
+Sale-ready preparation is complete and the pilot is bounded to the first 3
+paid clients. CAP does not authorize outreach, public launch, or client work.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [AI Agent Handoff Audit offer](../services/ai_agent_handoff_audit_offer.md)
+- [Revenue Pilot 001 sales packet](../services/revenue_pilot_001_sales_packet.md)
+- [Current Signal](../docs/current_signal.md)
+
+This receipt records a Forward-only priority delta. It does not erase the
+prior research, Aspire, autonomous-compounding, revenue, or sustainability
+history. The current priority and Goal-Length now place income generation
+before unrelated theory expansion.
+
+Current priority order:
+
+1. first paid client;
+2. delivery that creates usable evidence;
+3. second and third paid pilots;
+4. later price or scope recalculation;
+5. theory expansion only when required by the paid operation.
+
+The sale-ready offer covers one repository or one bounded AI-agent workflow at
+`15,000 JPY` for each of the first 3 paid clients. The paid output is one
+Friction Map, one Restartability Diagnosis, one Priority Fix, one copy-paste
+operational asset, one before/after restart check, and one bounded clarification
+round. Delivery is within 3 business days after scope confirmation, required
+materials, and payment; audit work begins only after payment.
+
+The free step is a fit check only. It may establish fit, bounded scope, and
+material availability, but it does not include bespoke diagnosis, a friction
+map, an implementation plan, a custom prompt, or an unpaid mini-audit. No
+productivity, revenue, cost-reduction, safety, or zero-drift result is
+guaranteed. No testimonial or customer evidence is assumed.
+
+The offer and sales packet are prepared for review, but no public launch,
+one-to-one outreach, mass outreach, automatic outreach, fit check, payment
+request, client acceptance, client work, or follow-up has occurred. Separate
+authorization is required before any external message or public launch.
+
+Existing V9.1, V10, Guard, PIC, MAL, Case 004, Real Compound Proof 001, OSI,
+runtime, automation, and public states remain otherwise unchanged. No theory,
+Field Note, Case, MAL version, runtime, or automation was created, and no
+public launch announcement or outreach was executed.
+
+Completion Line:
+
+Revenue Pilot 001 makes the AI Agent Handoff Audit sale-ready at 15,000 JPY for
+the first 3 paid clients, with one bounded diagnosis, one priority fix, one
+copy-paste operational asset, a before/after restart check, and one clarification
+round; outreach, public launch, fit checks, payment, and client work remain
+externally unexecuted, so the Revenue Pilot Gate is `CAP` and the V13 Overall
+Gate remains `HOLD`.
+
 ## Current V9.1 Condition-Bound Judgment Reuse Local Binding 001 — 2026-07-23
 
 Receipt:
