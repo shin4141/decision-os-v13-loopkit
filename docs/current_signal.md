@@ -3,6 +3,12 @@
 ## Signal
 
 - 🟢 BLUE / ROADMAP-REBASELINED
+- 🟢 BLUE / IMPLEMENTATION-LOAD-PRIORITY-REVERSAL-BOUND
+- 🟢 BLUE / LOAD-BEARING-COMPLIANCE-TEST-BOUND
+- 🟢 BLUE / SUCCESSOR-DEBT-OPTIONAL-FIELD-BOUND
+- 🟢 BLUE / V13-STRUCTURE-SELECTION-INTEGRATION-COMPLETE-ON-BRANCH
+- 🟡 YELLOW / LOAD-BEARING-OPERATIONAL-VALIDATION-NOT-YET
+- 🟡 YELLOW / PR-3-MERGE-DECISION-PENDING
 - 🟢 BLUE / HUMAN-SEAT-PRESERVING-COMPOUNDING-DIRECTION
 - 🟢 BLUE / MANUAL-COMPOUNDING-CASES-RECORDED
 - 🟢 BLUE / ASPIRE-ANCHORED-INDEPENDENT-EVOLUTION-EVALUATION-FIXED
@@ -93,7 +99,107 @@ capability must now be converted into real, repeatable income that supports
 Shin's continued life and work without erasing the prior research or Aspire
 history.
 
-Forward-only receipt — Revenue Pilot 001 Sample 001 Merge Closure:
+Forward-only receipt — V13 Implementation-Load Priority Reversal and
+Load-Bearing Improvement Evidence Integration:
+
+```text
+Starting main:
+dd09e34d7ace3b551d6949bd47c04a6bd58b9be6
+
+V13 bounded structure integration:
+COMPLETE ON BRANCH / PR OPEN / PENDING MERGE
+
+Branch:
+docs/implementation-load-priority-reversal-v0-1
+
+Primary implementation commit:
+824553d8ce7ffb4048b0f37e29f0e7c7fc1e0e31
+
+Pull request:
+#3 / https://github.com/shin4141/decision-os-v13-loopkit/pull/3
+
+PR state:
+OPEN / READY FOR REVIEW / NOT MERGED
+
+Adopted:
+- Implementation-Load Priority Reversal
+- Load-Bearing Compliance Test
+
+Limited integration:
+- Successor Debt as an optional next-loop deferred-cost field
+
+Not adopted:
+- mandatory third-party AI
+- automatic external gate
+- unknown-accident generalization
+- ASI theory expansion
+- runtime or automation
+
+Evidence status:
+SPECIFICATION ONLY / NOT OPERATIONALLY VALIDATED
+
+Schema compatibility:
+12 / 12 EXISTING LOOP RECORDS VALID
+
+Synthetic extension checks:
+2 / 2 VALID
+
+V13 structure-selection implementation path:
+PASS
+
+Merge Gate:
+HOLD — SHIN APPROVAL OR REJECTION OF PR #3 PENDING
+
+V13 system-level HOLD:
+no — REVENUE REPLY HOLD REMAINS ROUTE-SPECIFIC
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Active Branch:
+docs/implementation-load-priority-reversal-v0-1
+
+Codex Next Authorized Action:
+none after PR creation
+
+Next action owner:
+Shin
+
+Next Authorized Action:
+REVIEW AND APPROVE OR REJECT THE SUBSTANTIVE PR MERGE
+
+Decision Packet Required:
+yes — PR IS THE DECISION SURFACE
+```
+
+The bounded integration defines observable priority selection under
+implementation load, withholds improvement credit from statement-only
+understanding, and records Successor Debt only when material deferred cost
+worsens the next loop's starting condition and is unowned, unaccepted,
+undisclosed, or lacks a closure or re-evaluation condition. Valid disclosed,
+owned, accepted, priority-aligned, restartable, and closure-bound transfer
+remains distinguishable from debt.
+
+Improvement Credit is evidence classification, not a fifth Loop Gate or
+execution authority. The schema change is backward-compatible because both
+new root objects are optional; when used, each object must be complete. The
+existing 12 Loop Records remain valid.
+
+No comparable-load operational validation, cross-model or cross-domain
+generalization, runtime behavior, automatic Successor Debt detection,
+third-party-AI necessity proof, or unknown-accident resistance claim exists.
+No research paper, published V7 surface, Sample 001, Revenue price, outreach,
+follow-up, runtime, or automation surface changed.
+
+Historical As-of — repository commit
+`dd09e34d7ace3b551d6949bd47c04a6bd58b9be6` — Revenue Pilot 001 Sample 001
+Merge Closure:
 
 ```text
 Revenue Pilot 001 public sample:
@@ -924,6 +1030,7 @@ The current prototype includes:
 - `services/ai_agent_handoff_audit_offer.md`
 - `services/ai_agent_handoff_audit_sample_001.md`
 - `services/revenue_pilot_001_sales_packet.md`
+- `docs/implementation_load_priority_reversal_and_successor_debt_v0_1.md`
 - `docs/v7_aspire_serving_motion_obligation_forward_only_delta_v0_1.md`
 - `docs/progress_preservation_principle_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
@@ -1031,7 +1138,11 @@ Current manual cases show:
 | Revenue Pilot public-sample implementation | PASS | The authorized Aspire-serving path produced one bounded sample and three direct discovery links; Sample 001 is merged and public on `main` |
 | Sample 001 PR merge | PASS | PR #2 and its merge decision are complete; approved head `b39955df...` merged as `a96e1517...` |
 | Revenue Pilot 001 reply route | HOLD | Wave 1 is complete at 5 / 5 sent; replies are pending and the observation state is `WAIT FOR MARKET RESPONSE`; this route-level HOLD does not imply system-level inactivity |
-| V13 structure-selection return | GO | Only the separately authorized V13 structure-selection task may become the next bounded work; this closed merge path grants no standing AI action |
+| Implementation-Load Priority Reversal definition | PASS | Bounded observable priority-selection definition recorded without motive, universal, or literal-Aspire-reversal claims |
+| Load-Bearing Compliance Test | PASS | Statement-only understanding receives no improvement credit; case-bounded credit requires comparable-load changed behavior and preserved protected objects |
+| Successor Debt Loop Record integration | PASS | Optional schema/template field distinguishes valid accepted transfer from unowned or concealed next-loop restoration cost |
+| Load-bearing operational validation | HOLD | Specification and schema integration only; comparable-load behavior, cross-model, cross-domain, and generalization evidence remain absent |
+| PR #3 merge decision | HOLD | PR #3 is open and ready for substantive review; merge approval or rejection belongs to Shin |
 | Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
@@ -1096,10 +1207,11 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Revenue Pilot 001 Sample 001 is merged and public on `main`, with the README,
-> offer, and sales packet linked; PR #2 and its merge decision are `PASS /
-> COMPLETE`, the reply route remains `HOLD` without freezing V13 as a system,
-> prices and evidence counts remain unchanged, new outreach remains
-> unauthorized, V7 publication remains `CAP`, Active Branch is `none`, and
-> next work returns only to the separately authorized V13
-> structure-selection task.
+> V13's bounded structure-selection path has integrated
+> Implementation-Load Priority Reversal, the Load-Bearing Compliance Test, and
+> an optional Successor Debt field on
+> `docs/implementation-load-priority-reversal-v0-1`; evidence remains
+> specification-only, PR #3 merge review is `HOLD` for Shin, the Revenue reply
+> route remains separately `HOLD` without placing V13 in system-level stasis,
+> new outreach remains unauthorized, V7 publication remains `CAP`, and Codex
+> has no remaining action after PR creation.
