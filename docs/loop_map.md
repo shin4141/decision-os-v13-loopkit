@@ -82,6 +82,33 @@ As of the current prototype state:
 | Decision Packet Loop      |  🟡 DESIGN-ONLY | Examples are allowed; implementation is not |
 | External V13 README Reuse |           🟢 GO | Use as-is for next reader or task           |
 
+## Bounded Operational Authority Window Proposal
+
+The
+[Bounded Operational Authority Window v0.1](bounded_operational_authority_window_v0_1.md)
+defines a repository-only proposal for at most three completed Run 002 loops.
+It does not activate the window or start Run 002.
+
+```text
+Bounded Operational Authority Window v0.1:
+COMPLETE ON BRANCH / PR PENDING
+
+BOAW-001:
+NOT ACTIVE
+
+Run 002:
+NOT STARTED
+
+Activation authority:
+SHIN ONLY
+
+Current Gate:
+HOLD — REVIEW OF BOUNDED AUTHORITY PR REQUIRED
+```
+
+Merge approval does not activate BOAW-001. Activation requires Shin's separate
+exact statement: `I activate BOAW-001 for Run 002.`
+
 ## Deviation
 
 A deviation occurs when the actual work starts moving a loop beyond its current gate.
