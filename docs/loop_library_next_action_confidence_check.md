@@ -61,7 +61,7 @@ Report:
 - What was verified
 - What was not touched
 - What remains uncertain
-- Is the current task complete? PASS / DELAY / BLOCK
+- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
 - Should the next loop run? GO / HOLD / CAP / BLOCK
 - Reason
 - One allowed next action
