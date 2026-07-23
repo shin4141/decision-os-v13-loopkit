@@ -53,11 +53,11 @@
 - 🟢 BLUE / PUBLIC-SALES-ANCHOR-COMPLETE
 - 🟢 BLUE / README-PAID-PILOT-ENTRY-VISIBLE
 - 🟢 BLUE / PUBLIC-OFFER-PAGE-LINKED
-- 🟢 BLUE / REVENUE-PILOT-SAMPLE-001-COMPLETE-ON-BRANCH
+- 🟢 BLUE / REVENUE-PILOT-SAMPLE-001-MERGED-PUBLIC-ON-MAIN
 - 🟢 BLUE / ROUTE-HOLD-AND-SYSTEM-MOTION-SEPARATED
 - 🟢 BLUE / ACTIVE-ASPIRE-RESTART-BLOCK-CREATED
-- 🟢 BLUE / SAMPLE-001-PR-OPEN
-- 🟡 YELLOW / SAMPLE-001-MERGE-DECISION-PENDING
+- 🟢 BLUE / SAMPLE-001-PR-MERGED
+- 🟢 BLUE / SAMPLE-001-MERGE-DECISION-PASS-COMPLETE
 - 🟢 BLUE / REVENUE-PILOT-WAVE-1-FIVE-SENT
 - 🟡 YELLOW / MARKET-REPLIES-PENDING
 - 🟡 YELLOW / UNRELATED-PUBLIC-CAMPAIGN-HOLD
@@ -93,7 +93,80 @@ capability must now be converted into real, repeatable income that supports
 Shin's continued life and work without erasing the prior research or Aspire
 history.
 
-Forward-only receipt — Revenue Pilot 001 Public Sample Audit:
+Forward-only receipt — Revenue Pilot 001 Sample 001 Merge Closure:
+
+```text
+Revenue Pilot 001 public sample:
+MERGED / PUBLIC ON MAIN
+
+Public proof surface:
+services/ai_agent_handoff_audit_sample_001.md
+
+Pull request:
+#2 / https://github.com/shin4141/decision-os-v13-loopkit/pull/2
+
+Approved PR head:
+b39955df2425aa11b1e95edc22867df4bd914af8
+
+PR merge commit:
+a96e15176fdcadba223b93a81347a00731804a7f
+
+PR state:
+MERGED
+
+PR merge decision:
+PASS / COMPLETE
+
+Sample implementation and publication path:
+PASS / COMPLETE
+
+Reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+V13 Overall Gate:
+GO — ONLY FOR THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Current Gate:
+GO — RETURN TO THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Next work:
+RETURNS TO THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Decision Packet Required:
+no — THIS MERGE PATH IS COMPLETE; THE NEXT TASK RETAINS ITS SEPARATE AUTHORITY
+```
+
+Sample 001 and its README, offer, and sales-packet discovery links are now
+public on `main`. PR #2 and its merge decision are complete. No branch or merge
+action remains active.
+
+The Revenue reply route remains validly `HOLD — WAIT FOR MARKET RESPONSE`, and
+new outreach remains `HOLD — NOT AUTHORIZED`. Those route-specific limits do
+not create a system-level `HOLD`: the next bounded V13 work returns to the
+separately authorized structure-selection task under that task's own scope.
+This merge closure grants no broader execution, outreach, runtime, V7
+publication, or Canon authority.
+
+Revenue replies remain `PENDING`; confirmed fit checks and paid acceptances
+remain `0`; revenue remains `0`. Prices and the first-three-paid-client total
+capacity are unchanged. No outreach, follow-up, fit check, diagnosis, payment
+handling, or client work occurred during merge closure.
+
+Historical As-of — repository commit
+`b39955df2425aa11b1e95edc22867df4bd914af8` — Revenue Pilot 001 Public
+Sample Audit pre-merge receipt:
 
 ```text
 Revenue Pilot 001 public sample:
@@ -955,9 +1028,10 @@ Current manual cases show:
 | README redesign / unrelated external posting | HOLD | Do not expand beyond the approved bounded sales anchor |
 | Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
 | Revenue Pilot price architecture | PASS | Standard US$200 / 30,000 JPY; pilot US$100 / 15,000 JPY; first 3 paid clients total; standard returns after pilot unless explicitly changed |
-| Revenue Pilot public-sample implementation | PASS | The authorized Aspire-serving `GO` was consumed by one bounded sample, three direct discovery links, branch push, and PR creation |
-| Sample 001 PR merge | HOLD | PR #2 is open and ready for review; the sample is reviewable on the PR but not canonical on `main` until Shin approves or rejects merge |
+| Revenue Pilot public-sample implementation | PASS | The authorized Aspire-serving path produced one bounded sample and three direct discovery links; Sample 001 is merged and public on `main` |
+| Sample 001 PR merge | PASS | PR #2 and its merge decision are complete; approved head `b39955df...` merged as `a96e1517...` |
 | Revenue Pilot 001 reply route | HOLD | Wave 1 is complete at 5 / 5 sent; replies are pending and the observation state is `WAIT FOR MARKET RESPONSE`; this route-level HOLD does not imply system-level inactivity |
+| V13 structure-selection return | GO | Only the separately authorized V13 structure-selection task may become the next bounded work; this closed merge path grants no standing AI action |
 | Follow-up / new outreach wave | HOLD | Not sent and not authorized; an external reply is a re-entry trigger, not response or fit-check authority |
 | Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
@@ -1022,10 +1096,10 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Revenue Pilot 001 now has a complete bounded Sample 001 on
-> `docs/revenue-pilot-sample-001`, publicly reviewable through PR #2 and linked
-> from the README, offer, and sales packet; the authorized proof-creation `GO`
-> is consumed, the reply route remains `HOLD` without freezing every
-> Aspire-serving path, prices and evidence counts remain unchanged, new
-> outreach remains unauthorized, V7 publication remains `CAP`, and the V13
-> Next Loop Gate is `HOLD` only for Shin's PR merge decision.
+> Revenue Pilot 001 Sample 001 is merged and public on `main`, with the README,
+> offer, and sales packet linked; PR #2 and its merge decision are `PASS /
+> COMPLETE`, the reply route remains `HOLD` without freezing V13 as a system,
+> prices and evidence counts remain unchanged, new outreach remains
+> unauthorized, V7 publication remains `CAP`, Active Branch is `none`, and
+> next work returns only to the separately authorized V13
+> structure-selection task.

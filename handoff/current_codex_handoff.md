@@ -8,7 +8,112 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## Revenue Pilot 001 — Public Sample Audit and Conversion Path
+## Revenue Pilot 001 — Sample 001 Merge Closure
+
+Date:
+`2026-07-23`
+
+Completed merge-closure execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Receipt:
+
+```text
+Revenue Pilot 001 Sample 001:
+MERGED / PUBLIC ON MAIN
+
+Public proof surface:
+services/ai_agent_handoff_audit_sample_001.md
+
+Pull request:
+#2
+
+Pull request URL:
+https://github.com/shin4141/decision-os-v13-loopkit/pull/2
+
+Approved PR head:
+b39955df2425aa11b1e95edc22867df4bd914af8
+
+PR merge commit:
+a96e15176fdcadba223b93a81347a00731804a7f
+
+Pull request state:
+MERGED
+
+PR merge decision:
+PASS / COMPLETE
+
+Sample implementation and publication path:
+PASS / COMPLETE
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+V13 Overall Gate:
+GO — ONLY FOR THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Current Gate:
+GO — RETURN TO THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Next work:
+RETURNS TO THE SEPARATELY AUTHORIZED V13 STRUCTURE-SELECTION TASK
+
+Decision Packet Required:
+no — THIS MERGE PATH IS COMPLETE; THE NEXT TASK RETAINS ITS SEPARATE AUTHORITY
+
+Decision Owner:
+Shin
+```
+
+Sample 001 is now public on `main`, and its discovery links are live from the
+[README](../README.md#paid-pilot--ai-agent-handoff-audit),
+[public offer](../services/ai_agent_handoff_audit_offer.md), and
+[Revenue Pilot sales packet](../services/revenue_pilot_001_sales_packet.md).
+The approved PR head was merged without change. The sample remains a bounded
+demonstration rather than paid-client evidence, a testimonial, a measured
+productivity result, or a measured conversion result.
+
+The reply route remains `HOLD — WAIT FOR MARKET RESPONSE`; new outreach remains
+`HOLD — NOT AUTHORIZED`. A route-level `HOLD` does not place V13 in
+system-level stasis. With the public-sample path and merge decision complete,
+next work returns to the separately authorized V13 structure-selection task.
+That task must use its own authority and boundaries; this closure grants no
+standing Codex action.
+
+Prices remain `US$200 / 30,000 JPY` standard and `US$100 / 15,000 JPY` for the
+first 3 paid clients total. Revenue replies remain `PENDING`; confirmed fit
+checks and paid acceptances remain `0`; revenue remains `0`. No outreach,
+follow-up, fit check, diagnosis, payment handling, or client work occurred
+during merge closure. V7 publication and Canon remain `CAP — UNCHANGED`.
+
+This receipt is the sole current execution-control state. Every lower dated
+`Current` or `Historical` receipt is evidence at its own As-of and grants no
+standing `GO`, active branch succession, or AI next action.
+
+Completion Line:
+
+Sample 001 is merged and public on `main`, its three discovery paths resolve,
+and PR #2's merge decision is complete; the Revenue reply route remains held
+without holding V13 as a system, no outreach or price change occurred, and
+next work returns only to the separately authorized V13 structure-selection
+task.
+
+## Historical As-of — Revenue Pilot 001 Public Sample Audit pre-merge at `b39955df2425aa11b1e95edc22867df4bd914af8`
 
 Date:
 `2026-07-23`
@@ -86,9 +191,9 @@ Decision Owner:
 Shin
 ```
 
-This newest receipt is the sole current execution-control state. Every lower
-dated `Current` or `Historical` receipt is evidence at its own As-of and grants
-no standing `GO`, active branch succession, or AI next action.
+At this historical As-of, this receipt was the sole current
+execution-control state. It now grants no standing `GO`, active branch
+succession, or AI next action.
 
 Created:
 
