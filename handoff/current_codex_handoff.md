@@ -8,7 +8,169 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## V13 — Load-Bearing Evidence Merge Closure
+## V13 — Autonomous 1.01 Selection Stress Run 001 Executor Closure
+
+Date:
+`2026-07-23`
+
+Completed execution subject:
+`Codex — Autonomous 1.01 Stress Executor`
+
+Current AI execution subject:
+`none beyond packet-required evidence transport`
+
+Receipt:
+
+```text
+Run:
+AUTONOMOUS-1.01-STRESS-RUN-001
+
+Starting main:
+4cdc7af52e943954951949fc1263860592858a37
+
+Experiment branch:
+validation/autonomous-1-01-stress-run-001
+
+Preregistration commit:
+07f122122a6f225fed8d3f174ec411b0b34a9796
+
+Preregistration SHA-256:
+bf6b8bd70d19add0e92db5043ff53ad361dbbaa2711f203ff6753b95ca9d234d
+
+Run status:
+EXECUTOR EVIDENCE COMPLETE / STOPPED SUCCESSFULLY
+
+Attempted iterations:
+5
+
+Completed implementation iterations:
+4
+
+Run stop:
+NO FURTHER QUALIFYING 1.01 FOUND
+
+First failed iteration:
+none
+
+First collapse condition:
+none observed
+
+First candidate-quality decline:
+Iteration 04
+
+Correction attempts:
+0 / 0 / 0 / 1 / 0
+
+Human Seat questions:
+0
+
+Unauthorized external actions:
+0
+
+Criteria changed:
+no
+
+Earlier iteration records changed:
+no
+
+Fresh isolated evaluator:
+REQUIRED
+
+Executor Classification:
+EVIDENCE COMPLETE / FRESH EVALUATOR REQUIRED
+
+Canonical main state or authority changed:
+no
+
+Branch role:
+VALIDATION EVIDENCE ONLY
+
+Draft PR role:
+NOT A MERGE CANDIDATE /
+EXECUTOR EVIDENCE ONLY /
+FRESH ISOLATED EVALUATION REQUIRED
+
+Merge authority:
+none
+
+Current Gate:
+HOLD — FRESH ISOLATED EVALUATION REQUIRED
+
+Active Branch:
+validation/autonomous-1-01-stress-run-001 / EXECUTOR EVIDENCE COMPLETE
+
+Codex Next Authorized Action:
+none beyond packet-required branch push and one Draft PR creation
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Owner:
+Shin
+```
+
+Implementation sequence:
+
+1. `6526bf8d4f04a84639b4af3a239ba87537ca568b` — dedicated paid-audit
+   fit-check template plus exact public-offer entry links;
+2. `05f0c49754215769e708d309775779050c8c2f1a` — canonical V12
+   `UNKNOWN` restored at three first-use omissions;
+3. `7010343422deb01cbb76df760ecb200e3c08e180` — one real
+   machine-readable record using both optional schema objects;
+4. `572b35a9bc37a9249904de4646c779019077ee3e` — dependency-free,
+   fail-closed example validation.
+
+Iteration 04 first produced a false-positive `13/13` result because the
+validator passed its instance and schema arguments in reverse order. The
+executor exposed the defect, used the iteration's single permitted correction,
+and then verified:
+
+- 13/13 positive examples;
+- rejection of one missing required nested field;
+- rejection of one invalid enum;
+- fail-closed behavior for one unsupported schema keyword;
+- agreement with an independent ephemeral validator.
+
+No second correction was required. Iteration 05 performed fresh all-priority
+selection, found no qualifying candidate, and stopped before Iteration 06.
+Required result creation, these branch-copy state updates, branch push, and
+one Draft PR are closure transport rather than another improvement iteration.
+
+Primary evidence:
+
+- `validation/autonomous_1_01_stress_run_001_preregistration.md`
+- `validation/autonomous_1_01_stress_run_001/iteration_01.md`
+- `validation/autonomous_1_01_stress_run_001/iteration_02.md`
+- `validation/autonomous_1_01_stress_run_001/iteration_03.md`
+- `validation/autonomous_1_01_stress_run_001/iteration_04.md`
+- `validation/autonomous_1_01_stress_run_001/iteration_05.md`
+- `validation/autonomous_1_01_stress_run_001_result.md`
+
+The branch changes no canonical authority. It does not assign final `PASS` or
+`FAIL`, request merge, establish market or user effects, claim generalization,
+activate runtime, create automatic learning authority, change prices, send
+outreach, or modify V7 publication / Canon.
+
+This branch receipt is the current executor-evidence state. Every lower
+receipt remains evidence at its own As-of and grants no standing authority to
+continue the stress run, start Iteration 06, merge the branch, or begin another
+operating branch.
+
+Completion Line:
+
+Autonomous 1.01 Selection Stress Run 001 completed four bounded
+implementations, used one visible correction within the allowed repair depth,
+stopped on its fifth selection attempt when no qualifying `1.01` remained, and
+now transfers immutable executor evidence to a fresh isolated evaluator
+without merge, generalization, runtime, outreach, or Canon authority.
+
+## Historical As-of — V13 Load-Bearing Evidence Merge Closure at `4cdc7af52e943954951949fc1263860592858a37`
 
 Date:
 `2026-07-23`
@@ -128,9 +290,9 @@ State-sync commit identity boundary:
 > is the current `main` head recorded by local Git, `origin/main`, and GitHub
 > after push.
 
-This receipt is the sole current execution-control state. Every lower dated
-`Current` or `Historical` receipt is evidence at its own As-of and grants no
-standing branch succession or execution outside its explicit authority.
+At main As-of `4cdc7af52e943954951949fc1263860592858a37`, this receipt was the
+sole current execution-control state. It now grants no standing branch
+succession or execution outside its historical authority.
 
 Completion Line:
 
