@@ -122,6 +122,54 @@ If this repo looks relevant, fork it and ask your own AI to interpret it inside 
 
 This README is the entry point. Your own AI can explain the useful parts more accurately after seeing your actual repo, workflow, constraints, and failure traces.
 
+## Paid Pilot — AI Agent Handoff Audit
+
+The AI Agent Handoff Audit is a bounded professional review for solo builders,
+small teams, and maintainers whose coding-agent workflows lose context, become
+hard to restart, drift across instruction files, produce weak handoffs, or
+report completion without leaving a reliable next-session state.
+
+Pricing:
+
+- standard rate: **US$200** for overseas clients or **30,000 JPY** for domestic
+  clients;
+- current pilot rate: **US$100** for overseas clients or **15,000 JPY** for
+  domestic clients;
+- pilot capacity: the first **3 paid clients total**, not three clients per
+  currency.
+
+After the first 3 paid pilots, the listed standard rate applies unless Shin
+publishes a later explicit Forward-only pricing change.
+
+The scope is one repository or one clearly bounded AI-agent workflow. Delivery
+is within 3 business days after scope confirmation, required materials, and
+payment.
+
+Read the [full public offer](services/ai_agent_handoff_audit_offer.md) for the
+deliverables, boundaries, and pilot-price explanation.
+
+Repository-verifiable examples of the operating approach:
+
+- [Restartable Handoff](copy-paste/restartable-handoff.md);
+- [One-Paste Codex Execution Packet v0.1](templates/one_paste_codex_execution_packet_v0_1.md);
+- [Real Compound Proof 001](validation/real_compound_proof_001_single_paste_execution.md).
+
+The proof record covers one bounded receiver-side execution. It does not
+establish general reliability or customer outcomes.
+
+To request a free fit check, either
+[open a GitHub issue](https://github.com/shin4141/decision-os-v13-loopkit/issues/new)
+containing only a high-level request or contact Shin through the channel where
+the offer was shared. You may include a public repository URL, the coding-agent
+tool used, one recurring operational failure, and what the next agent or
+session needs to understand.
+
+Do not post credentials, secrets, private repository content, customer data,
+or confidential material in a public GitHub issue.
+
+The free fit check confirms only fit, bounded scope, and material availability.
+Bespoke diagnosis begins after scope confirmation and payment.
+
 ## Let Your AI Read V13
 
 You do not need to understand the entire V13 Field Note corpus before using this repository.

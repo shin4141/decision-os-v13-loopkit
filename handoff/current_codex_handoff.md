@@ -8,7 +8,169 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
-## Current Progress Preservation Principle Local Binding 001 — 2026-07-23
+## Revenue Pilot 001 — Public Sales Anchor and Price Architecture
+
+Date:
+`2026-07-23`
+
+Receipt:
+
+```text
+Revenue Pilot price architecture:
+COMPLETE
+
+Standard price:
+US$200 / 30,000 JPY
+
+Pilot price:
+US$100 / 15,000 JPY
+
+Pilot capacity:
+First 3 paid clients total
+
+Post-pilot price:
+Returns to standard rate unless Shin explicitly changes it
+
+Public offer:
+VISIBLE AND REPOSITORY-VERIFIABLE
+
+README link:
+ACTIVE
+
+Concrete evidence links:
+ACTIVE
+
+Existing outreach:
+2 sent / historical As-of preserved
+
+Remaining Wave 1 outreach:
+3 not yet sent
+
+Reason for HOLD:
+Public anchor requires review before remaining outreach uses it
+
+Free bespoke diagnosis:
+BLOCK
+
+Public launch meaning:
+THE REPOSITORY CONTAINS A VISIBLE SERVICE OFFER; NO MASS OUTREACH,
+AUTOMATIC OUTREACH, OR UNRELATED PUBLIC CAMPAIGN IS AUTHORIZED
+
+V12 State:
+PASS
+
+V13 Overall Gate:
+HOLD for runtime, automation, and unrelated expansion
+
+Revenue Pilot Gate:
+CAP
+
+Active Branch:
+none
+
+Next Authorized Action:
+none until review
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [README paid-pilot entry](../README.md#paid-pilot--ai-agent-handoff-audit)
+- [AI Agent Handoff Audit public offer](../services/ai_agent_handoff_audit_offer.md)
+- [Revenue Pilot 001 sales packet](../services/revenue_pilot_001_sales_packet.md)
+- [Current Signal](../docs/current_signal.md)
+
+The standard rate is `US$200` for overseas clients and `30,000 JPY` for
+domestic clients. It represents the intended value of one bounded professional
+audit, not a fake comparison price or temporary marketing anchor.
+
+The first-3-paid-client pilot rate is `US$100` for overseas clients and
+`15,000 JPY` for domestic clients. Capacity is 3 paid clients total across both
+currency paths, not 3 clients per currency. The pilot rate exists to establish
+paid delivery evidence, test the bounded scope, and refine the delivery format.
+It does not make the pilot price the service's standard value.
+
+After the first 3 paid pilots, the listed standard rate applies unless Shin
+publishes a later explicit Forward-only price change.
+
+The README now contains a bounded paid-pilot entry after the repository's
+primary identity and free first-use path. It links to the full offer and to
+public operational assets: Restartable Handoff, One-Paste Codex Execution
+Packet v0.1, and Real Compound Proof 001. The proof record remains one bounded
+receiver-side execution; it does not establish general reliability, customer
+outcomes, productivity gains, or quantified Human Carrier reduction.
+
+The public offer contains the full price architecture, scope, deliverables,
+3-business-day turnaround after scope, materials, and payment, the
+payment-before-work rule, repository-verifiable evidence, and a high-level
+fit-check route.
+Public GitHub issues must not contain credentials, secrets, private repository
+content, customer data, or confidential material. The free fit check confirms
+only fit, bounded scope, and material availability; bespoke diagnosis begins
+after scope confirmation and payment.
+
+Historical first-wave outreach:
+
+```text
+Outreach 1:
+SENT BEFORE PUBLIC SALES ANCHOR /
+EXISTING REDDIT DM /
+US$100 FIT-CHECK-ONLY INVITATION /
+PRESERVED AS-OF
+
+Outreach 2:
+SENT BEFORE PUBLIC SALES ANCHOR /
+TOP-LEVEL GITHUB ISSUE COMMENT BY shin4141 /
+https://github.com/MattKilmer/claude-autofix-bot/issues/3#issuecomment-5054816982 /
+US$100 FIT-CHECK-ONLY INVITATION /
+PRESERVED AS-OF
+
+Historical first-wave outreach count:
+2
+
+Remaining Wave 1 outreach:
+3 / HOLD UNTIL PUBLIC-ANCHOR REVIEW
+```
+
+These historical actions establish only that two outreach messages were sent.
+They do not establish purchase intent, fit acceptance, payment, revenue,
+delivery, customer status, a testimonial, or paid-result evidence. Their
+external wording is not rewritten to match the later public price
+architecture.
+
+The visible repository offer is the bounded public launch authorized by this
+task. It does not authorize the remaining 3 Wave 1 messages, follow-up, mass or
+automatic outreach, unrelated public campaigns, fit-check execution, payment
+handling, diagnosis, client work, another offer, or unrelated theory.
+
+The prior Progress Preservation receipt at repository As-of
+`9305204e59283b3c9650374cb5bab5324ba46ed5` remains preserved below. Its
+Progress Preservation principle and Gates remain unchanged. Its one-outreach,
+reply-pending, wait-for-response, no-second-outreach, and
+`none until review or external reply` fields are historical and superseded by
+this two-outreach, public-anchor, remaining-three-HOLD, `none until review`
+receipt.
+
+Every lower pre-`9305204` statement that no public repository offer exists, no
+outreach has been sent, or exactly one outreach is current remains historical
+rather than current authority. Payment-before-work, fit-check-only,
+free-bespoke-diagnosis, mass or automatic-outreach, runtime, automation, and
+unrelated-expansion blocks remain in force.
+
+Completion Line:
+
+Revenue Pilot 001 now exposes a repository-verifiable sales anchor at standard
+rates of US$200 and 30,000 JPY, with a US$100 or 15,000 JPY pilot rate for the
+first 3 paid clients total so paid delivery evidence, bounded scope, and the
+delivery format can be established; the README and full offer are publicly
+linked, two pre-anchor outreach actions remain historical, the remaining 3
+messages are unsent and unauthorized until review, mass or automatic outreach
+and other external execution remain blocked, and the Revenue Pilot Gate is
+`CAP`.
+
+## Historical As-of — Progress Preservation Principle Local Binding 001 at `9305204e59283b3c9650374cb5bab5324ba46ed5`
 
 Receipt:
 
@@ -3180,7 +3342,8 @@ Parked boundaries:
 - no MCP
 - no pluginization
 - no package/server/CLI surfaces
-- no second outreach or follow-up / no public promotion
+- no remaining Wave 1 outreach or follow-up / no public promotion outside the
+  approved repository anchor
 - no release-state change
 - no external repo changes
 - no canonical promotion
@@ -3578,7 +3741,8 @@ Do not:
 - add MCP
 - add pluginization
 - add package/server/CLI surfaces
-- send another outreach or follow-up, or start public promotion
+- send any remaining Wave 1 outreach or follow-up, or start public promotion
+  outside the approved repository anchor
 - change release state
 - modify external repos
 - promote anything else to canonical

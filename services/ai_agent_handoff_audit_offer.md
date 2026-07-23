@@ -4,27 +4,44 @@
 
 ```text
 PILOT READY
+PUBLIC OFFER PAGE
 FIRST 3 PAID CLIENTS
-NOT YET PUBLICLY LAUNCHED
 ```
 
 ## Primary offer
 
 ### AI Agent Handoff Audit — Pilot
 
-Price:
-`15,000 JPY`
-
-Capacity:
-First 3 paid clients only.
-
-Scope:
-One repository or one clearly bounded AI-agent workflow.
-
 This is a focused audit for builders whose coding-agent work becomes difficult
 to restart, hand off, verify, or continue across sessions. It produces one
 bounded diagnosis and one usable operational improvement rather than a broad
 consulting report.
+
+## Pricing
+
+### Standard rate
+
+- `US$200` for overseas clients;
+- `30,000 JPY` for domestic clients.
+
+### Pilot rate
+
+- `US$100` for overseas clients;
+- `15,000 JPY` for domestic clients.
+
+Pilot capacity:
+First 3 paid clients total, not three clients per currency.
+
+The standard rate represents the intended value of one bounded professional
+audit. The pilot rate exists to establish paid delivery evidence, test the
+bounded scope, and refine the delivery format. It does not mean the service's
+standard value is `US$100`.
+
+After the first 3 paid pilots, the listed standard rate applies unless Shin
+publishes a later explicit Forward-only pricing change.
+
+Scope:
+One repository or one clearly bounded AI-agent workflow.
 
 ## Who this is for
 
@@ -73,6 +90,23 @@ becomes restartable afterward.
 One bounded follow-up clarification is available after delivery. It covers the
 delivered audit and asset; it does not expand the accepted scope.
 
+## Why this audit is credible
+
+The offer is grounded in public, inspectable operating assets rather than a
+claim of guaranteed productivity:
+
+- [Restartable Handoff](../copy-paste/restartable-handoff.md) provides a
+  copy-paste structure for leaving a usable restart state;
+- [One-Paste Codex Execution Packet v0.1](../templates/one_paste_codex_execution_packet_v0_1.md)
+  defines a bounded single-instruction execution and closure surface;
+- [Real Compound Proof 001](../validation/real_compound_proof_001_single_paste_execution.md)
+  records one receiver-side execution case, its observed result, and what that
+  single case does not establish.
+
+These artifacts show the method and its evidence boundary. They do not prove
+general productivity gains, quantified Human Carrier reduction, customer
+results, or universal reliability.
+
 ## Delivery
 
 Format:
@@ -93,13 +127,16 @@ Agreed privately with Shin.
 
 ## Client process
 
-1. The client sends a repository URL, relevant files, or one concrete workflow
-   failure.
-2. Shin confirms whether the case fits the pilot and fixes the accepted scope.
-3. Payment is completed.
-4. The bounded audit is performed.
-5. The deliverables are returned.
-6. One bounded clarification round is available.
+1. The requester sends a high-level fit-check request using a public repository
+   URL or a description of one concrete workflow failure.
+2. Shin confirms fit, bounded scope, and material availability without
+   beginning diagnosis.
+3. Payment and any agreed non-public materials are coordinated through an
+   appropriate private channel.
+4. Payment is completed.
+5. The bounded audit is performed.
+6. The deliverables are returned.
+7. One bounded clarification round is available.
 
 ## Free Fit Check
 
@@ -108,7 +145,6 @@ The free step determines only:
 - whether the case fits the pilot;
 - which repository or workflow is in scope;
 - whether the needed materials are available;
-- whether the client should purchase the audit.
 
 The free fit check does not include:
 
@@ -118,7 +154,9 @@ The free fit check does not include:
 - a custom prompt;
 - an unpaid mini-audit.
 
-The first reply confirms fit and scope. It does not begin audit work.
+The first reply confirms fit, bounded scope, and material availability. It
+does not begin audit work. Bespoke diagnosis begins only after scope
+confirmation and payment.
 
 ## Not included
 
@@ -153,22 +191,36 @@ of productivity, revenue, cost reduction, safety, or elimination of drift.
 A testimonial is not required and is not promised. Shin may separately ask for
 one after a successful delivery; the client is free to decline.
 
-## Primary call to action
+## How to start
 
-Send one of the following:
+Either:
+
+- [open a GitHub issue in this repository](https://github.com/shin4141/decision-os-v13-loopkit/issues/new)
+  containing only a high-level fit-check request; or
+- contact Shin through the channel where this offer was shared.
+
+For a public issue, you may provide:
 
 - one public repository URL;
-- the relevant agent instruction files; or
-- one example where the agent drifted, stopped incorrectly, lost context, or
-  could not restart.
+- the coding-agent tool used;
+- one recurring operational failure;
+- what the next agent or session needs to understand.
 
-The first response will confirm fit, available materials, and the proposed
-scope. It will not provide free bespoke analysis.
+Do not post credentials, secrets, private repository content, customer data,
+or confidential material in a public GitHub issue.
+
+The first response confirms fit, bounded scope, and material availability. It
+does not provide bespoke analysis. Private materials, when appropriate, are
+coordinated only after the public fit-check boundary and must not be posted in
+a public issue.
 
 ## Boundaries
 
-- No public launch has occurred.
-- No outreach is sent by this document.
+- This repository page is the public sales anchor for the bounded offer.
+- Publication of this page does not send or authorize outreach.
 - No mass or automatic outreach is authorized.
-- The pilot is limited to the first 3 paid clients at `15,000 JPY` each.
+- The pilot is limited to the first 3 paid clients total at `US$100` or
+  `15,000 JPY`, according to the applicable client market.
+- After the first 3 paid pilots, the standard `US$200` or `30,000 JPY` rate
+  applies unless Shin makes a later explicit Forward-only pricing change.
 - Work begins only after scope confirmation and payment.

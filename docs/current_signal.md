@@ -45,9 +45,13 @@
 - 🔴 RED / AUTOMATIC-CONDITION-MONITORING-BLOCK
 - 🟢 BLUE / REVENUE-ASPIRE-ACTIVE
 - 🟢 BLUE / REVENUE-PILOT-001-SALE-READY
-- 🟢 BLUE / REVENUE-PILOT-FIRST-OUTREACH-SENT
-- 🟡 YELLOW / REVENUE-PILOT-REPLY-PENDING
-- 🟡 YELLOW / PUBLIC-LAUNCH-SEPARATE-HUMAN-SEAT-DECISION
+- 🟢 BLUE / REVENUE-PILOT-PRICE-ARCHITECTURE-COMPLETE
+- 🟢 BLUE / PUBLIC-SALES-ANCHOR-COMPLETE
+- 🟢 BLUE / README-PAID-PILOT-ENTRY-VISIBLE
+- 🟢 BLUE / PUBLIC-OFFER-PAGE-LINKED
+- 🟢 BLUE / FIRST-WAVE-OUTREACH-2-SENT-HISTORICAL-AS-OF
+- 🟡 YELLOW / REMAINING-WAVE-1-OUTREACH-3-HOLD
+- 🟡 YELLOW / UNRELATED-PUBLIC-CAMPAIGN-HOLD
 - 🔴 RED / FREE-BESPOKE-DIAGNOSIS-BLOCK
 - 🔴 RED / MASS-AND-AUTOMATIC-OUTREACH-BLOCK
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
@@ -63,7 +67,7 @@
 - 🟡 YELLOW / HUMAN-SEAT-RECOGNITION-NOT-YET-VALIDATED
 - 🔴 RED / AUTOMATIC-OSI-OBSERVATION-AND-INTERVENTION-BLOCK
 - 🟡 YELLOW / EXTERNAL-VALIDATION-CONTINUES
-- 🟡 YELLOW / PUBLIC-EXPOSURE-HOLD
+- 🟡 YELLOW / UNRELATED-PUBLIC-EXPOSURE-HOLD
 - 🔴 RED / BROAD-RUNTIME-AUTOMATION-BLOCK
 
 ## Meaning
@@ -266,9 +270,10 @@ customer evidence was created.
 
 The receipt above remains the historical sale-ready and pre-outreach state at
 its own As-of. The Forward-only receipts below supersede only the current
-outreach-execution, reply, follow-up, and next-action state. Offer, price,
+outreach-execution, reply, follow-up, and next-action state. Its offer, price,
 capacity, payment-before-work, free-diagnosis, public-launch, and mass or
-automatic-outreach boundaries remain unchanged.
+automatic-outreach boundaries remained unchanged through `9305204`; the
+newest current receipt below then supersedes its price and public-launch state.
 
 Forward-only Human Seat receipt — Progress Preservation Principle Local
 Binding 001:
@@ -331,7 +336,9 @@ Operational Guard is no longer the minimum sufficient restriction. Evaluation
 of path expansion is distinct from execution: it grants no new Goal-Length,
 authority, path expansion, or automatic acceleration.
 
-Forward-only operational receipt — Revenue Pilot 001 first outreach:
+Historical As-of — repository commit
+`9305204e59283b3c9650374cb5bab5324ba46ed5` — Revenue Pilot 001 first
+outreach receipt:
 
 ```text
 Revenue Pilot 001 first outreach:
@@ -369,10 +376,116 @@ WAIT FOR RESPONSE
 ```
 
 This was one external action already explicitly authorized by Shin. It does
-not establish purchase intent, fit acceptance, or revenue. No second outreach
-or follow-up is authorized by this receipt. The Revenue Pilot remains active
-only in the bounded state `WAIT FOR RESPONSE`; unrelated theory expansion
-remains `HOLD`.
+not establish purchase intent, fit acceptance, or revenue. Its one-message,
+reply-pending, and wait-for-response state remains preserved at this historical
+As-of and is superseded only by the later second-outreach and public-anchor
+receipts below.
+
+Historical first-wave outreach receipt — second action before the public sales
+anchor:
+
+```text
+Revenue Pilot 001 second outreach:
+SENT
+
+Target:
+MattKilmer/claude-autofix-bot#3
+
+Channel:
+Top-level GitHub Issue comment by shin4141
+
+Direct URL:
+https://github.com/MattKilmer/claude-autofix-bot/issues/3#issuecomment-5054816982
+
+Displayed overseas price:
+US$100
+
+Message type:
+Paid pilot invitation with fit check only
+
+Free bespoke diagnosis:
+NOT OFFERED
+
+Public sales anchor at send time:
+ABSENT
+```
+
+The second outreach was separately authorized and verified before this public
+anchor task. Together, the two historical messages establish an outreach count
+of `2`; they do not establish purchase intent, fit acceptance, payment,
+revenue, delivery, customer status, a testimonial, or paid-result evidence.
+Their original external wording is not rewritten by the current price
+architecture.
+
+Forward-only Human Seat receipt — Revenue Pilot 001 Public Sales Anchor and
+Price Architecture:
+
+```text
+Revenue Pilot price architecture:
+COMPLETE
+
+Standard overseas price:
+US$200
+
+Pilot overseas price:
+US$100
+
+Standard domestic price:
+30,000 JPY
+
+Pilot domestic price:
+15,000 JPY
+
+Pilot capacity:
+First 3 paid clients total
+
+Post-pilot price:
+RETURNS TO STANDARD RATE UNLESS SHIN MAKES A LATER EXPLICIT FORWARD-ONLY PRICE
+DECISION
+
+Public sales anchor:
+COMPLETE
+
+README entry:
+PUBLICLY VISIBLE
+
+Public offer page:
+PUBLICLY LINKED
+
+Existing outreach count:
+2
+
+Existing outreach:
+PRESERVED AS HISTORICAL AS-OF
+
+Remaining Wave 1 outreach:
+3 / HOLD until public-anchor review
+
+Free bespoke diagnosis:
+BLOCK
+
+Public launch meaning:
+THE REPOSITORY CONTAINS A VISIBLE SERVICE OFFER; NO MASS OUTREACH,
+AUTOMATIC OUTREACH, OR UNRELATED PUBLIC CAMPAIGN IS AUTHORIZED
+
+Revenue Pilot Gate:
+CAP
+
+Next external action:
+none until review
+```
+
+The standard rate represents the intended value of one bounded professional
+audit. The pilot rate lowers first-client adoption friction while paid delivery
+evidence, bounded scope, and the delivery format are established. It does not
+make `US$100` or `15,000 JPY` the service's standard value.
+
+The first 3 paid clients are one total capacity across both currency paths.
+After those 3, the listed standard rate applies unless Shin publishes a later
+explicit Forward-only price change. The visible repository offer grants no
+authority for the remaining three Wave 1 messages, follow-up, mass or automatic
+outreach, a fit check, payment handling, diagnosis, client work, or an
+unrelated public campaign.
 
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
@@ -467,7 +580,8 @@ pilots, but this completed preparation task grants no external execution
 authority. Active Branch is `none`; Next Authorized Action is `none until
 review`; Decision Packet Required is `no`.
 
-Current Forward-only state:
+Historical As-of — repository commit
+`9305204e59283b3c9650374cb5bab5324ba46ed5`:
 
 Progress Preservation Principle Local Binding 001 is `COMPLETE`. Core Guard is
 unchanged. Operational Guard must use the least-restrictive sufficient
@@ -485,6 +599,30 @@ action is `WAIT FOR RESPONSE`. No follow-up or second outreach is authorized.
 
 Active Branch is `none`; Next Authorized Action is `none until review or
 external reply`; Decision Packet Required is `no`.
+
+Current Forward-only state:
+
+Revenue Pilot price architecture is `COMPLETE`: standard price is `US$200` or
+`30,000 JPY`, and the first-3-paid-client pilot price is `US$100` or
+`15,000 JPY`. Capacity is 3 paid clients total across both currency paths.
+After those 3, the standard rate returns unless Shin publishes a later explicit
+Forward-only price change.
+
+The README paid-pilot entry is publicly visible, and the repository-verifiable
+offer page and concrete evidence links are active. This is the bounded public
+sales anchor. It does not authorize mass outreach, automatic outreach, an
+unrelated public campaign, or any remaining Wave 1 message.
+
+Two outreach actions sent before the public anchor remain preserved as
+historical As-of. No purchase intent, fit acceptance, payment, revenue,
+delivery, customer status, testimonial, or paid result is established. The
+remaining 3 Wave 1 outreach actions are unsent and `HOLD` until public-anchor
+review.
+
+V13 Overall Gate is `HOLD` for runtime, automation, and unrelated expansion.
+Progress Preservation Gate remains `CAP` for separately authorized bounded
+manual application. Revenue Pilot Gate is `CAP`; Active Branch is `none`; Next
+Authorized Action is `none until review`; Decision Packet Required is `no`.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
 
@@ -597,11 +735,13 @@ Current manual cases show:
 | Automatic OSI observation or intervention | BLOCK | No monitoring, intake, protocol change, repository modification, or pilot intervention authority |
 | Runtime implementation | BLOCK | No runtime or automated operation authority |
 | Feature growth | HOLD | Allow only when required by an exposed compounding gap |
-| README redesign / external posting | Separate HOLD / CAP Gate | Do not reopen from roadmap direction alone |
+| README paid-pilot entry / public offer link | PASS | Bounded repository sales anchor is visible with prices, evidence, fit-check boundary, and secret-data warning |
+| README redesign / unrelated external posting | HOLD | Do not expand beyond the approved bounded sales anchor |
 | Revenue Aspire | ACTIVE | Convert Decision-OS and Shin's AI-operation capability into real, repeatable income that supports continued life and work |
-| Revenue Pilot 001 | CAP | First authorized one-to-one outreach sent at displayed overseas price US$100; reply pending; wait for response |
-| External one-to-one outreach | HOLD | One authorized message is sent and its reply is pending; no second outreach or follow-up is authorized, and no purchase intent, fit acceptance, or revenue is established |
-| Public launch | Separate Human Seat decision | Not authorized by sale-ready preparation |
+| Revenue Pilot price architecture | PASS | Standard US$200 / 30,000 JPY; pilot US$100 / 15,000 JPY; first 3 paid clients total; standard returns after pilot unless explicitly changed |
+| Revenue Pilot 001 | CAP | Public anchor complete; two pre-anchor outreach actions preserved historically; remaining Wave 1 count is 3 and HOLD until review |
+| Remaining Wave 1 outreach | HOLD | 3 messages not yet sent; no follow-up, fit check, payment handling, diagnosis, or client work authorized |
+| Public sales anchor | PASS | Repository contains a complete visible bounded offer; mass, automatic, and unrelated public campaigns remain unauthorized |
 | Theory expansion | HOLD | Reopen only when required to sell or deliver the active pilot |
 | Free bespoke diagnosis | BLOCK | Free step is fit and scope confirmation only |
 | Mass / automatic outreach | BLOCK | No scraping, prospecting automation, message sequences, or repeated chasing |
@@ -632,8 +772,8 @@ Not allowed from this signal:
 - run fresh isolated validation or implement the minimum autonomous loop without separate authority
 - add automatic learning from user behavior
 - modify Canon or transfer authority automatically
-- start external posting
-- treat README redesign as active
+- post publicly outside the approved README and offer-page sales anchor
+- expand the README beyond the approved bounded paid-pilot entry
 - turn launch capsules into implementation approval
 - monitor, rescore, modify, or intervene in OSI automatically
 - collect multiple OSI events or create a Case before a qualifying event is received
@@ -645,7 +785,7 @@ Not allowed from this signal:
 - treat a Protective Stasis candidate or incomplete stop justification as GO authority
 - accelerate, expand Goal-Length, score opportunity cost, or restart automatically
 - monitor or expire reuse conditions, renew current authority, reuse historical consent, or persist historical BLOCK automatically
-- send another outreach or follow-up, begin public launch, unpaid bespoke diagnosis, client work, or another offer without separate authorization
+- send any remaining Wave 1 outreach or follow-up, begin an unrelated public campaign, unpaid bespoke diagnosis, client work, or another offer without separate authorization
 - expand theory unless a concrete paid-pilot sale or delivery requires it
 - deliver split or additive execution instructions that return integration work to Shin
 
@@ -657,9 +797,8 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Progress Preservation now requires least-restrictive Operational Guard,
-> explicit opportunity-loss and restart treatment, and path-expansion
-> evaluation when bounded success is absorbed, without weakening Core Guard or
-> authorizing automatic acceleration; Revenue Pilot 001 has sent exactly one
-> authorized outreach and now waits for a reply, so both bounded Gates remain
-> CAP while the V13 Overall Gate remains HOLD.
+> Revenue Pilot 001 now has a repository-visible sales anchor with standard
+> `US$200 / 30,000 JPY` and first-3-total pilot `US$100 / 15,000 JPY` pricing;
+> two pre-anchor outreach actions remain historical, the remaining three are
+> unsent and HOLD until review, the Revenue Pilot Gate is CAP, and the V13
+> Overall Gate remains HOLD.

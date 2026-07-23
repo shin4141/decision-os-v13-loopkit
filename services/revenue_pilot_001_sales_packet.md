@@ -1,36 +1,65 @@
 # Revenue Pilot 001 — AI Agent Handoff Audit Sales Packet
 
-This packet prepares one bounded paid pilot offer. It does not publish the
-offer, send outreach, start a fit check, accept a client, or authorize unpaid
-diagnosis.
+This packet documents the publicly linked bounded offer and prepares messages
+for separately authorized one-to-one use. It does not itself authorize
+outreach, a fit check, payment handling, diagnosis, or client work.
 
 ## A. One-sentence offer
 
 ### English
 
 For solo builders and small teams whose coding-agent workflows lose context or
-become difficult to restart, the 15,000 JPY AI Agent Handoff Audit identifies
-one priority failure and delivers one copy-paste operational fix with a
-before/after restart check.
+become difficult to restart, the AI Agent Handoff Audit identifies one priority
+failure and delivers one copy-paste operational fix with a before/after restart
+check.
 
 ### Japanese
 
-CodexやClaude Codeなどを使う個人開発者・小規模チーム向けに、引き継ぎや再開で起きる最優先の問題を特定し、コピペで使える改善資産と改善前後の再開チェックを15,000 JPYで提供する監査です。
+CodexやClaude Codeなどを使う個人開発者・小規模チーム向けに、引き継ぎや再開で起きる最優先の問題を特定し、コピペで使える改善資産と改善前後の再開チェックを提供する監査です。
+
+## Price architecture
+
+Standard rate:
+
+- overseas clients: `US$200`;
+- domestic clients: `30,000 JPY`.
+
+Current pilot rate:
+
+- overseas clients: `US$100`;
+- domestic clients: `15,000 JPY`.
+
+Pilot capacity:
+First 3 paid clients total across both currency paths, not three clients per
+currency. Outreach does not consume a paid-client slot.
+
+The standard rate is the intended price for one bounded professional audit,
+not a fake comparison anchor. The pilot rate exists to establish paid delivery
+evidence, test the bounded scope, and refine the delivery format. It does not
+mean the service's standard value is `US$100` or `15,000 JPY`.
+
+After the first 3 paid pilots, the listed standard rate applies unless Shin
+publishes a later explicit Forward-only pricing change.
+
+The linked repository artifacts demonstrate the method and its bounded
+execution evidence. They do not establish customer results, testimonials,
+paid-delivery outcomes, general productivity gains, or quantified Human
+Carrier reduction.
 
 ## B. Direct outreach message — English
 
-### Neutral version
+Status:
+`FUTURE USE / SEPARATE ONE-TO-ONE AUTHORIZATION REQUIRED`
 
-Hi — I’m opening three paid pilot slots for an **AI Agent Handoff Audit**.
+### Neutral verified-problem version
 
-For 15,000 JPY, I review one repository or bounded coding-agent workflow,
-identify its highest-impact handoff or restart failure, select one priority
-fix, and deliver one copy-paste operational asset with a before/after restart
-check. Delivery is within 3 business days after scope confirmation, materials,
-and payment, with one clarification round included.
-
-Would you like a free fit check? It only confirms whether the case, scope, and
-materials fit the pilot; it does not begin the diagnosis.
+I saw your issue about `{verified problem}`. I publicly offer a bounded AI
+Agent Handoff Audit for problems like context loss, weak restart state,
+instruction drift, and unclear completion. The offer, deliverables, evidence,
+and pricing are here:
+<https://github.com/shin4141/decision-os-v13-loopkit/blob/main/services/ai_agent_handoff_audit_offer.md>.
+The first three paid clients have a US$100 pilot rate before the standard
+US$200 rate applies. Would you like a fit check?
 
 ### Evidence-only personalization rule
 
@@ -41,18 +70,19 @@ was supplied by the prospect:
 > `{one specific observable fact, with its source}`.
 
 Do not infer a workflow problem from a tool choice or repository structure
-alone. When evidence is unavailable, use the neutral version without a
-personalized observation.
+alone. If no specific operational problem is publicly verified or supplied by
+the prospect, do not claim one and do not use this outreach template.
 
 ## C. Direct outreach message — Japanese
 
-こんにちは。現在、**AI Agent Handoff Audit**の有料パイロットを3件限定で受け付けています。
+Status:
+`FUTURE USE / SEPARATE ONE-TO-ONE AUTHORIZATION REQUIRED`
 
-15,000 JPYで、1つのリポジトリまたは範囲を限定したAIコーディング運用を確認し、引き継ぎ・再開に関する最優先の問題を1つ特定します。そのうえで、優先修正1件、コピペで使える運用資産1点、改善前後の再開チェックをお渡しします。範囲確定・必要資料・入金が揃ってから3営業日以内に納品し、納品内容についての確認を1往復含みます。
+### 中立・確認済み問題版
 
-まず、このパイロットの対象になるかだけ確認しますか？無料の適合確認では、個別診断や改善案の作成は行いません。
+`{確認済みの問題}`についてのIssueを拝見しました。私は、コンテキスト喪失、再開状態の弱さ、指示のdrift、完了条件の不明確さなどを対象に、範囲を限定したAI Agent Handoff Auditを公開提供しています。オファー、納品物、根拠、料金はこちらです：<https://github.com/shin4141/decision-os-v13-loopkit/blob/main/services/ai_agent_handoff_audit_offer.md>。最初の有料クライアント3件には、標準30,000 JPYの適用前に15,000 JPYのパイロット料金が適用されます。適合確認をご希望ですか？
 
-個別化する場合は、公開資料または相手から受け取った情報で確認できる事実だけを使います。根拠がなければ、この中立文面をそのまま使います。
+個別化する場合は、公開資料または相手から受け取った情報で確認できる事実だけを使います。具体的な運用上の問題を確認できない場合は、問題を推測せず、このoutreachテンプレートを使いません。
 
 ## D. Fit-check reply
 
@@ -64,11 +94,14 @@ Thanks for your interest. To confirm fit and scope, please send only:
 - the coding-agent tool you use;
 - one recurring failure;
 - what the next session or agent needs to understand;
-- whether I may review the material privately.
+- whether any required non-public material can later be reviewed through an
+  appropriate private channel.
 
 Please remove credentials and secrets before sharing. I will reply only with
-whether the case fits, whether materials are missing, and the proposed scope.
-Bespoke diagnosis begins only after scope confirmation and payment.
+fit, bounded scope, and material availability. A public issue must not contain
+credentials, secrets, private repository content, customer data, or
+confidential material. No friction map, diagnosis, custom prompt, priority fix,
+or implementation advice begins before scope confirmation and payment.
 
 ### Japanese
 
@@ -78,9 +111,9 @@ Bespoke diagnosis begins only after scope confirmation and payment.
 - 使用しているAIコーディングツール
 - 繰り返し起きている問題を1つ
 - 次のセッションやAIに理解してほしいこと
-- 資料を非公開で確認してよいか
+- 必要な非公開資料を、後で適切な非公開経路から確認できるか
 
-認証情報や秘密情報は除いてください。ここでは適合可否、資料不足の有無、対象範囲だけを返答します。個別診断は、範囲確定と入金のあとに開始します。
+認証情報や秘密情報は除いてください。公開Issueには、非公開リポジトリの内容、顧客データ、機密情報を投稿しないでください。ここでは適合可否、限定した対象範囲、資料の利用可能性だけを返答します。Friction Map、個別診断、カスタムプロンプト、優先修正、実装助言は、範囲確定と入金のあとに開始します。
 
 ## E. Scope-confirmation and payment message
 
@@ -92,10 +125,14 @@ Accepted scope: `{one repository or bounded workflow}`
 
 Primary focus: `{one recurring failure}`
 
-The fee is **15,000 JPY**. Work begins after payment and receipt of the agreed
-materials. Delivery is within **3 business days** after scope confirmation,
-materials, and payment. One bounded clarification round about the delivered
-audit is included.
+For an overseas client within the first 3 paid pilot slots, the fee is
+**US$100**. Work begins after payment and receipt of the agreed materials.
+Delivery is within **3 business days** after scope confirmation, materials,
+and payment. One bounded clarification round about the delivered audit is
+included.
+
+After the first 3 paid pilots, use the standard `US$200` rate unless Shin has
+published a later explicit Forward-only price change.
 
 Not included: `{full repository refactor, product feature development, ongoing
 maintenance, mass documentation rewriting, or other excluded work}`.
@@ -111,7 +148,9 @@ correct, please confirm and I will send the payment details.
 
 主な確認対象：`{繰り返し起きている問題を1つ}`
 
-料金は**15,000 JPY**です。入金と必要資料の受領後に作業を開始し、範囲確定・資料・入金が揃ってから**3営業日以内**に納品します。納品内容についての確認を1往復含みます。
+通貨区分を合計した最初の有料パイロット3件に含まれる国内クライアントの場合、料金は**15,000 JPY**です。入金と必要資料の受領後に作業を開始し、範囲確定・資料・入金が揃ってから**3営業日以内**に納品します。納品内容についての確認を1往復含みます。
+
+最初の有料パイロット3件の後は、Shinが後日明示的なForward-only価格変更を公開しない限り、標準料金`30,000 JPY`を使用します。
 
 対象外：`{リポジトリ全体の改修、製品機能の実装、継続保守、大量の文書書き換え、その他の対象外作業}`
 
@@ -175,7 +214,8 @@ beginning a free diagnosis.
 
 AI Agent Handoff Auditの件で、一度だけ確認のご連絡です。今は引き継ぎや再開性の改善が優先でなければ、ご返信は不要です。こちらから再度の追跡連絡はしません。必要であれば、個別診断を始めずに対象範囲だけ確認できます。
 
-Only one follow-up is authorized. Do not create a repeated chasing sequence.
+At most one follow-up may be sent per prospect, and only under separate
+one-to-one authorization. This packet authorizes no outreach or follow-up.
 
 ## H. Objection handling
 
@@ -235,10 +275,11 @@ Japanese:
 English:
 Three is a capacity and evidence boundary for keeping the work bounded,
 delivering within 3 business days, and learning from the first paid cases. It
-is not artificial urgency or a promise about future pricing.
+is not artificial urgency. After the first 3 paid pilots, the listed standard
+rate applies unless Shin publishes a later explicit Forward-only price change.
 
 Japanese:
-3件は、作業範囲を守り、3営業日以内の納品を維持し、最初の有料事例から確認するための処理能力と証拠の上限です。人工的な緊急性や将来価格の示唆ではありません。
+3件は、作業範囲を守り、3営業日以内の納品を維持し、最初の有料事例から確認するための処理能力と証拠の上限であり、人工的な緊急性ではありません。最初の有料パイロット3件の後は、Shinが後日明示的なForward-only価格変更を公開しない限り、記載された標準料金が適用されます。
 
 ## I. First-client selection rule
 
@@ -275,6 +316,8 @@ Reply:
 Fit check:
 Scope accepted:
 Price:
+Currency / market:
+Rate type:
 Payment:
 Delivery due:
 Delivered:
@@ -287,12 +330,89 @@ Next action:
 This is a manual record only. No automatic tracking, scraping, prospecting, or
 outreach is created or authorized.
 
+## Historical first-wave outreach — before the public sales anchor
+
+The following are historical As-of receipts, not current outreach templates.
+Both messages were sent before the public sales anchor existed. They establish
+only that two outreach actions occurred; they do not establish purchase intent,
+fit acceptance, payment, revenue, delivery, customer status, a testimonial, or
+paid-result evidence. Their wording is not retroactively rewritten to match the
+current public price architecture.
+
+### Outreach 1
+
+```text
+Status:
+SENT / PRESERVED AS-OF
+
+Recipient:
+Reddit user Objective_Law2034
+
+Channel:
+Existing Reddit DM / one-to-one outreach
+
+Displayed price:
+US$100
+
+Domestic reference price:
+15,000 JPY
+
+Message type:
+Paid pilot invitation with fit check only
+
+Free bespoke diagnosis:
+NOT OFFERED
+
+Public sales anchor at send time:
+ABSENT
+```
+
+### Outreach 2
+
+```text
+Status:
+SENT / PRESERVED AS-OF
+
+Target:
+MattKilmer/claude-autofix-bot#3
+
+Channel:
+Top-level GitHub Issue comment by shin4141
+
+Direct URL:
+https://github.com/MattKilmer/claude-autofix-bot/issues/3#issuecomment-5054816982
+
+Displayed price:
+US$100
+
+Message type:
+Paid pilot invitation with fit check only
+
+Free bespoke diagnosis:
+NOT OFFERED
+
+Public sales anchor at send time:
+ABSENT
+```
+
+Historical first-wave outreach count:
+`2`
+
+Remaining Wave 1 outreach:
+`3 / HOLD until public-anchor review`
+
+No third outreach, follow-up, fit check, payment handling, diagnosis, or client
+work is authorized by this packet.
+
 ## Use boundary
 
-- The pilot capacity is the first 3 paid clients at `15,000 JPY` each.
+- The pilot capacity is the first 3 paid clients total at `US$100` overseas or
+  `15,000 JPY` domestic; it is not three clients per currency.
+- After those 3 paid pilots, `US$200` or `30,000 JPY` applies unless Shin
+  publishes a later explicit Forward-only price change.
 - Work starts only after scope confirmation, materials, and payment.
 - Delivery is within 3 business days after those conditions are complete.
 - Send at most one initial message and one follow-up per prospect, and only
   under separately authorized one-to-one outreach.
-- Do not publish, send, personalize, or begin client work from this preparation
-  task alone.
+- This packet does not authorize sending, personalization, follow-up, or client
+  work.
