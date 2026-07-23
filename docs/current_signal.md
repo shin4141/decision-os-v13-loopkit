@@ -24,6 +24,11 @@
 - 🟡 YELLOW / V10-V13-OPERATIONAL-MAPPING-NOT-YET-VALIDATED
 - 🟡 YELLOW / REAL-CASE-CARRIER-ABSORPTION-EVIDENCE-NOT-YET
 - 🔴 RED / AUTOMATIC-RESCALE-BLOCK
+- 🟢 BLUE / REAL-COMPOUND-PROOF-001-RECEIVER-SIDE-PASS
+- 🟢 BLUE / ONE-PASTE-EXECUTION-TEMPLATE-CREATED
+- 🟡 YELLOW / SHIN-POST-RUN-CORRECTION-CHECK-PENDING
+- 🟡 YELLOW / HUMAN-CARRIER-REDUCTION-ONE-CASE-NOT-QUANTIFIED
+- 🔴 RED / SPLIT-AND-ADDITIVE-INSTRUCTION-DELIVERY-BLOCK
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
 - 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
 - 🟡 YELLOW / GUARD-WITNESSES-ONE-ADVERSARIAL-SCENARIO-ONLY
@@ -106,6 +111,29 @@ independent Guard, authority, identity, Protected Object, irreversibility, or
 equivalent hard-boundary reason. Guard, PIC, MAL, Field Note 127, OSI, runtime,
 automation, and public branches are otherwise unchanged.
 
+Forward-only receipt — Real Compound Proof 001:
+
+One complete instruction message served as the test input for one bounded
+Single-Paste Execution case. The receiver received no deletion, replacement,
+or additive correction, required no clarification, and returned no
+instruction-merging work to Shin before completion. Exactly four authorized
+files changed, no adjacent branch was activated, and the receiver-observable
+result is `RECEIVER-SIDE PASS`.
+
+[One-Paste Codex Execution Packet v0.1](../templates/one_paste_codex_execution_packet_v0_1.md)
+now provides a reusable continuous delivery structure with full replacement
+instead of additive correction, one Active Branch, one Next Authorized Action,
+exact file authority, receiver-authored closure, receiver-owned routine Git and
+cleanup work, and an explicit Human Seat boundary. The template grants no
+authority by itself.
+
+This is one operational case. Whether Shin edited before sending is `NOT
+OBSERVABLE BY RECEIVER`; Shin's post-run correction check is `PENDING`.
+Repeated use, generalization, and quantified Human Carrier burden reduction are
+`NOT ESTABLISHED`. No runtime automation, automatic monitoring, automatic
+delegation authority, or public claim was created. Candidate 3 — V9.1 remains
+`PARKED / not active`; all other V13 bindings and branches remain unchanged.
+
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
 `PASS`; Delegation Envelope v0.1 was classified `DRIFT / SELF-DISTORTION`.
@@ -158,13 +186,14 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after the V10 Goal-Length Recalculation binding closed the semantic and
-bounded local-binding gap. The four V13 mappings have not been applied to a
-fresh real or frozen case, generalized, or implemented at runtime.
+HOLD after Real Compound Proof 001 completed one receiver-side Single-Paste
+Execution case and created a reusable packet template. Shin post-run correction,
+repeated use, generalization, and quantified Human Carrier burden reduction
+remain unestablished.
 
 Active Branch is `none`, and Next Authorized Action is `none`. Candidate 3 —
-V9.1 remains `PARKED / not active`. No new Human Seat question, validation,
-runtime, automatic Rescale, automatic lineage scan, or automatic Canon
+V9.1 remains `PARKED / not active`. No further proof, runtime, automatic
+authority, automatic Rescale, automatic lineage scan, or automatic Canon
 propagation is authorized.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
@@ -180,6 +209,8 @@ The current prototype includes:
 - `AGENTS.md` / `CLAUDE.md` instruction surfaces
 - `MISTAKEN.md` correction-loop gate
 - `handoff/current_codex_handoff.md`
+- `templates/one_paste_codex_execution_packet_v0_1.md`
+- `validation/real_compound_proof_001_single_paste_execution.md`
 - `docs/minimum_autonomous_loop_v0_1.md`
 - `docs/minimum_autonomous_loop_v0_2.md`
 - `docs/decision_lineage_reconnection_register_v0_1.md`
@@ -212,7 +243,9 @@ Current manual cases show:
 - a per-action cap is not bounded authority when the executing AI can renew it from its own similarity and success judgments;
 - local Git reversibility does not establish trajectory-level Returnability, and formal Human Seat does not establish functional Human Seat;
 - Correction preserves the current Goal-Length, while Rescale changes Goal-Length under preserved Aspire when old-line return becomes non-survivable;
-- visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update.
+- visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update;
+- one complete delivery packet can close one bounded run without proving general reliability or quantified Human Carrier reduction;
+- a reusable packet template does not authorize work without current Human and repository authority.
 
 ## Current Gate Split
 
@@ -233,6 +266,11 @@ Current manual cases show:
 | V10 Goal-Length lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Correction versus Rescale joint closed; Human Seat question `none` |
 | V10 / V13 operational mapping | HOLD | Four V13 witnesses are bounded mappings but have not been applied to a fresh real or frozen case |
 | Automatic Protective or Accelerative Rescale | BLOCK | No runtime monitoring, automatic Carrier scoring, or automatic Rescale authority |
+| Real Compound Proof 001 receiver-side result | PASS | One complete instruction executed without correction, clarification, returned merge work, unauthorized file change, or adjacent branch activation |
+| One-Paste Codex Execution Packet v0.1 | PASS | Reusable one-surface template created; it grants no authority by itself |
+| Shin post-run correction check | HOLD | `PENDING`; requires Shin's evaluation after receiving the result |
+| Single-paste generalization / quantified Human Carrier reduction | HOLD | One receiver-side case only; no repeated-use or comparative burden evidence |
+| Split or additive instruction delivery | BLOCK | Use one complete original or explicitly invalidating full replacement packet |
 | Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
 | Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
 | MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
@@ -283,6 +321,7 @@ Not allowed from this signal:
 - implement Delegation Envelope v0.1 or adopt its diagnostic minimum correction
 - run another adversarial test without separate explicit authority
 - monitor Carrier state or execute Protective or Accelerative Rescale automatically
+- deliver split or additive execution instructions that return integration work to Shin
 
 ## Current Lesson
 
@@ -292,4 +331,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> V10 Candidate 2 now closes the Goal-Length recalculation joint with four bounded but unvalidated V13 mappings; Candidate 3 remains parked, and real-case Carrier absorption evidence, generalization, runtime, automatic Rescale, and quantified burden reduction remain absent or unestablished.
+> Real Compound Proof 001 passes one receiver-side single-paste case and leaves a reusable one-surface template; Shin post-run correction, repeated-use reliability, generalization, and quantified Human Carrier reduction remain pending or unestablished, so the V13 Gate remains HOLD.

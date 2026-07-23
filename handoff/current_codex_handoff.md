@@ -8,6 +8,110 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current Real Compound Proof 001 — Single-Paste Execution — 2026-07-23
+
+Receipt:
+
+```text
+Real Compound Proof 001:
+RECEIVER-SIDE PASS
+
+Test:
+Single-Paste Execution
+
+Instruction messages received:
+1
+
+Follow-up corrections before completion:
+0
+
+Clarification questions:
+0
+
+Instruction-merging work returned to Shin:
+none
+
+Authorized files changed:
+4 / exact authorized scope
+
+Adjacent branch activation:
+none
+
+Receiver-authored Completion Line:
+yes
+
+Shin pre-send editing:
+NOT OBSERVABLE BY RECEIVER
+
+Shin post-run correction:
+PENDING
+
+Quantified Human Carrier reduction:
+NOT ESTABLISHED
+
+Generalization:
+NOT ESTABLISHED
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Reason:
+One receiver-side single-paste case is complete, but Shin post-run correction,
+repeated use, generalization, and quantified Human Carrier burden reduction
+remain unestablished.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [One-Paste Codex Execution Packet v0.1](../templates/one_paste_codex_execution_packet_v0_1.md)
+- [Real Compound Proof 001 record](../validation/real_compound_proof_001_single_paste_execution.md)
+- [Current Signal](../docs/current_signal.md)
+
+The instruction itself was the test input. Receiver-side observation recorded
+one instruction message, zero deletion/replacement/additive corrections before
+completion, zero required clarification questions, and no instruction-merging
+work returned to Shin. Exactly two authorized files were created and two were
+updated. No adjacent branch was activated.
+
+The reusable template provides one continuous copy surface, full invalidation
+and replacement instead of additive correction, one Active Branch, one Next
+Authorized Action, exact file authority, receiver-owned routine Git and cleanup
+work, receiver-authored closure, and an explicit Human Seat boundary. It does
+not authorize work by itself.
+
+This is one operational receiver-side case. It cannot establish whether Shin
+edited before sending, whether he will require a correction after reviewing
+the result, whether later receivers will follow the template, or whether Human
+Carrier burden was reduced. Repeated-use reliability, generalization, and
+quantified burden reduction remain unestablished.
+
+No runtime, automation, automatic monitoring, automatic delegation authority,
+new Field Note, new Case, or public claim was created. Candidate 3 — V9.1
+remains `PARKED / not active`. PIC, Guard, V10, MAL, Field Note 127, Case 004,
+the Boundary Proposal adversarial test, OSI, Canon, roadmap, Aspire map, and
+public surfaces remain unchanged.
+
+Completion Line:
+
+Real Compound Proof 001 passes its receiver-observable single-paste criteria:
+one uncorrected instruction produced a reusable execution-packet template and
+a bounded four-file closure without clarification or returned merge work;
+Shin's pre-send editing, post-run correction judgment, repeated-use reliability,
+generalization, and quantified burden effect remain external or unestablished,
+so the V13 Gate remains `HOLD`.
+
 ## Current V10 Goal-Length Recalculation Local Binding 001 — 2026-07-23
 
 Receipt:
