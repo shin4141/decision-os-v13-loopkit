@@ -19,6 +19,11 @@
 - 🟡 YELLOW / INDEPENDENT-REPRODUCTION-NOT-YET
 - 🟡 YELLOW / HUMAN-CARRIER-BURDEN-REDUCTION-NOT-QUANTIFIED
 - 🟢 BLUE / GUARD-LINEAGE-BINDING-REGISTERED
+- 🟢 BLUE / V10-GOAL-LENGTH-LINEAGE-BINDING-COMPLETE
+- 🟢 BLUE / RETURNABILITY-RECALCULATION-JOINT-CLOSED
+- 🟡 YELLOW / V10-V13-OPERATIONAL-MAPPING-NOT-YET-VALIDATED
+- 🟡 YELLOW / REAL-CASE-CARRIER-ABSORPTION-EVIDENCE-NOT-YET
+- 🔴 RED / AUTOMATIC-RESCALE-BLOCK
 - 🟢 BLUE / BOUNDARY-PROPOSAL-ADVERSARIAL-TEST-001-PASS
 - 🟢 BLUE / SILENT-CONSISTENT-DRIFT-DETECTED
 - 🟡 YELLOW / GUARD-WITNESSES-ONE-ADVERSARIAL-SCENARIO-ONLY
@@ -56,9 +61,9 @@ self-update or runtime has validated them. Guard governs admissibility and
 stopping; PIC governs non-destructive committed integration and canonical
 convergence. Guard preservation is necessary but not sufficient for a
 self-evolution candidate. Guard break routes to `DRIFT / SELF-DISTORTION`,
-while insufficient Guard evidence routes to `HOLD / UNCLASSIFIED`. Candidate 2
-— V10 Goal-Length and Candidate 3 — V9.1 Condition-Bound Reuse remain
-`PARKED / not active`.
+while insufficient Guard evidence routes to `HOLD / UNCLASSIFIED`. At that
+Guard-binding As-of, Candidate 2 — V10 Goal-Length and Candidate 3 — V9.1
+Condition-Bound Reuse remained `PARKED / not active`.
 
 Field Note 127 — Lineage Reconnection Burden Transfer is registered as a
 `PRIVATE FIELD NOTE` from one `DIRECT OPERATIONAL CASE`. It preserves the failed
@@ -73,8 +78,33 @@ MAL v0.2 and the Decision Lineage Reconnection Register are Forward-only
 prevention structures created after the incident, not independent validation.
 Independent reproduction is `NOT YET`; generalization and quantified Human
 Carrier burden reduction are `NOT ESTABLISHED`. No fresh validation is active.
-Candidate 2 V10 and Candidate 3 V9.1 remain parked, and Guard, runtime, Canon,
-automatic propagation, and public branches remain unchanged.
+At the Field Note 127 registration As-of, Candidate 2 V10 and Candidate 3 V9.1
+remained parked, and Guard, runtime, Canon, automatic propagation, and public
+branches remained unchanged.
+
+Forward-only receipt — V10 Goal-Length Recalculation Local Binding 001:
+
+Candidate 2 deep read and bounded local binding are now `COMPLETE`, with
+classification `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`, `Decision Route:
+AI-OWNED`, and `Human Seat Question: none`. The earlier parked state remains
+preserved as historical As-of; this receipt supersedes only Candidate 2's
+current status. Candidate 3 — V9.1 remains `PARKED / not active`.
+
+V10 now supplies the source distinction between Correction under the current
+Goal-Length and Rescale under preserved Aspire when return to the old Baseline
+Completion Line becomes non-survivable. V13 maps that distinction through four
+unvalidated witnesses: Returnability; Debt and Absorption; Branching, Seat, and
+Baseline; and Rescale Evidence. No real Carrier measurement, quantified burden
+reduction, runtime monitoring, automatic Protective or Accelerative Rescale,
+or generalization is established.
+
+V10 `GO` grants no V13 authority by itself. V10 `HOLD` maps to V13 `HOLD`.
+A Protective or Accelerative `RESCALE` candidate maps to a bounded V13 `CAP`
+for recalculation or proposal preparation, or to `HOLD` while evidence or a
+genuine Human Seat judgment remains pending. V13 `BLOCK` still requires an
+independent Guard, authority, identity, Protected Object, irreversibility, or
+equivalent hard-boundary reason. Guard, PIC, MAL, Field Note 127, OSI, runtime,
+automation, and public branches are otherwise unchanged.
 
 Boundary Proposal Adversarial Test 001 completed as a frozen read-only
 evaluation with `PASS — SILENT CONSISTENT DRIFT DETECTED`. Test conformance was
@@ -128,14 +158,13 @@ The repository is restartable from the public GitHub state and current local han
 
 ## Current V13 State
 
-HOLD after Field Note 127 registered one direct lineage-reconnection
-burden-transfer case. Exact transcript binding, independent reproduction,
-generalization, and quantified Human Carrier burden reduction remain
-incomplete.
+HOLD after the V10 Goal-Length Recalculation binding closed the semantic and
+bounded local-binding gap. The four V13 mappings have not been applied to a
+fresh real or frozen case, generalized, or implemented at runtime.
 
-Active Branch is `none`, and Next Authorized Action is `none`. No subsequent
-adversarial test is active. Fresh v0.2 validation is `NOT STARTED / PARKED`.
-No new Human Seat question, runtime, automatic lineage scan, or automatic Canon
+Active Branch is `none`, and Next Authorized Action is `none`. Candidate 3 —
+V9.1 remains `PARKED / not active`. No new Human Seat question, validation,
+runtime, automatic Rescale, automatic lineage scan, or automatic Canon
 propagation is authorized.
 
 OSI remains a V13 child; its next evidence return is optional and capped at one event. Automatic OSI observation, intervention, and repository modification remain `BLOCK`.
@@ -181,7 +210,9 @@ Current manual cases show:
 - local undefined, lineage undefined, and Human unanswered are distinct routing states;
 - preserved knowledge can remain operationally unavailable when the current joint lacks a reconnectable source path;
 - a per-action cap is not bounded authority when the executing AI can renew it from its own similarity and success judgments;
-- local Git reversibility does not establish trajectory-level recoverability, and formal Human Seat does not establish functional Human Seat.
+- local Git reversibility does not establish trajectory-level Returnability, and formal Human Seat does not establish functional Human Seat;
+- Correction preserves the current Goal-Length, while Rescale changes Goal-Length under preserved Aspire when old-line return becomes non-survivable;
+- visible progress does not establish Carrier absorption or a reproducible Carrier Capacity Update.
 
 ## Current Gate Split
 
@@ -199,6 +230,9 @@ Current manual cases show:
 | Field Note 127 private registration | PASS | One direct operational PIC case; failed route preserved and source/participant evidence separated |
 | Field Note 127 reproduction / generalization | HOLD | Transcript identity partially unbound; independent reproduction, generalization, and quantified burden reduction not established |
 | Guard Continuity lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Human Seat question `none` |
+| V10 Goal-Length lineage binding | PASS | `LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED`; Correction versus Rescale joint closed; Human Seat question `none` |
+| V10 / V13 operational mapping | HOLD | Four V13 witnesses are bounded mappings but have not been applied to a fresh real or frozen case |
+| Automatic Protective or Accelerative Rescale | BLOCK | No runtime monitoring, automatic Carrier scoring, or automatic Rescale authority |
 | Boundary Proposal Adversarial Test 001 | PASS | Frozen read-only test detected silent consistent drift; proposal classified `DRIFT / SELF-DISTORTION` |
 | Guard Continuity operational validation | HOLD | One adversarial scenario only; runtime enforcement, broad accuracy, and generalization remain unestablished |
 | MAL v0.2 fresh validation | HOLD | `NOT STARTED / PARKED`; requires separate authorization |
@@ -248,6 +282,7 @@ Not allowed from this signal:
 - repeatedly rescan unchanged state to manufacture a gap or progress
 - implement Delegation Envelope v0.1 or adopt its diagnostic minimum correction
 - run another adversarial test without separate explicit authority
+- monitor Carrier state or execute Protective or Accelerative Rescale automatically
 
 ## Current Lesson
 
@@ -257,4 +292,4 @@ Stars and adoption remain important external signals. They are neither removed n
 
 In one line:
 
-> Field Note 127 privately registers one PIC lineage-reconnection burden-transfer case with the failed route preserved, while its live transcript remains partially unbound and independent reproduction, generalization, quantified burden reduction, fresh validation, Candidate 2, Candidate 3, runtime, and automatic propagation remain inactive or unestablished.
+> V10 Candidate 2 now closes the Goal-Length recalculation joint with four bounded but unvalidated V13 mappings; Candidate 3 remains parked, and real-case Carrier absorption evidence, generalization, runtime, automatic Rescale, and quantified burden reduction remain absent or unestablished.

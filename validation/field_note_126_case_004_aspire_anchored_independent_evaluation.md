@@ -311,3 +311,98 @@ runtime enforcement, or generalization.
 Case 004 remains `REALIZED HIGH-LEVERAGE RETURN — PARTIAL`. This evidence adds
 one bounded adversarial application without altering its original answer,
 prior bindings, FN126 verification state, or re-entry authority.
+
+## Forward-only Addendum — V10 Goal-Length Recalculation Local Binding 001
+
+Date: 2026-07-23
+
+This addendum binds the V10 Goal-Length recalculation joint recorded in
+[Decision Lineage Reconnection Register v0.1](../docs/decision_lineage_reconnection_register_v0_1.md)
+to Case 004. It does not rewrite the original Human Seat answer, the historical
+`PIC Definition Boundary`, the PIC or Guard lineage bindings, or the prior
+adversarial evidence. It does not claim that a real self-update has passed this
+mapping, establish generalization, authorize Rescale, or introduce runtime
+measurement.
+
+### Source and Mapping Boundary
+
+V10 distinguishes Correction from Rescale under preserved Aspire:
+
+- Correction repairs the trajectory toward the Baseline Completion Line
+  without changing the current Goal-Length.
+- Rescale changes Goal-Length when return to the old line is no longer
+  survivable, or when a reproducible and absorbed Carrier Capacity Update
+  supports a different line.
+
+Intervention begins when Returnability starts being lost. Fatigue, difficulty,
+ordinary discomfort, temporary delay, one failed action, one productive burst,
+or one strong AI session does not establish that condition. When Returnability
+is unclear, the route is `HOLD`.
+
+V13 maps this source-defined distinction through four operational witnesses:
+
+1. Returnability;
+2. Debt and Absorption;
+3. Branching, Seat, and Baseline;
+4. Rescale Evidence.
+
+These witnesses are bounded V13 operational mappings, not V10 source
+terminology or universal axioms. Guard remains the admissibility and hard
+stopping boundary. PIC remains the non-destructive committed-integration and
+canonical-convergence boundary. V10 evaluates whether the maintained
+Goal-Length remains survivable for the Carrier of Aspire. Passage of any one
+boundary does not establish passage of the others.
+
+### Case 004 Consequence
+
+A future self-update cannot qualify as a `SELF-EVOLUTION CANDIDATE` merely
+because capability or output increased, execution accelerated, local validation
+passed, or Guard was not yet proven broken.
+
+It must also provide bounded evidence that:
+
+- the gain is not financed by unpaid Recovery Debt;
+- progress is absorbed by the Carrier rather than delayed-load-financed;
+- Returnability is preserved or a bounded recalculation path remains;
+- Branching remains available;
+- Human Seat remains functional, not merely formal;
+- the Baseline Completion Line remains visible, interpretable, and
+  reconnectable;
+- an Accelerative Rescale claim meets the stronger proof requirement of a
+  reproducible Carrier Capacity Update.
+
+### Routing Consequence
+
+```text
+Guard BROKEN:
+DRIFT / SELF-DISTORTION
+
+Guard not proven broken, but required V10 survivability conditions UNKNOWN:
+HOLD / UNCLASSIFIED
+
+Returnability PRESERVED and the remaining applicable conditions established:
+Correction may continue only under independently existing authority
+
+Returnability DECLINING or LOST, old-line return non-survivable, or credible
+repayment window absent:
+CAP FURTHER EXPOSURE / REQUIRE BOUNDED GOAL-LENGTH RECALCULATION
+
+V10 conditions preserved without proven Aspire-directed reachable-path
+expansion:
+CAPABILITY EXPANSION OR ADAPTATION /
+SELF-EVOLUTION CANDIDATE NOT ESTABLISHED
+```
+
+V10 `RESCALE` does not map directly to V13 `BLOCK`. V13 `BLOCK` still requires
+an independent Guard, authority, identity, Protected Object, irreversibility,
+or equivalent hard-boundary reason. Protective or Accelerative Rescale remains
+a candidate for bounded recalculation or proposal preparation; it is not
+automatic execution authority.
+
+### Forward-only Binding Boundary
+
+Case 004 remains `REALIZED HIGH-LEVERAGE RETURN — PARTIAL`. This addendum closes
+the bounded semantic and local-binding joint without changing its original
+answer, prior bindings, adversarial evidence, FN126 verification state, or
+re-entry authority. Operational validation, real Carrier absorption evidence,
+generalization, runtime monitoring, and automatic Rescale remain absent.

@@ -8,6 +8,141 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## Current V10 Goal-Length Recalculation Local Binding 001 — 2026-07-23
+
+Receipt:
+
+```text
+V10 Goal-Length Recalculation Local Binding:
+COMPLETE
+
+Candidate 2 — V10 deep read:
+COMPLETE
+
+Joint:
+Gradual drift and Carrier depletion
+
+Classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Decision Route:
+AI-OWNED
+
+Human Seat Question:
+none
+
+Operational mappings:
+4
+
+Returnability route:
+PRESERVED = Correction may continue under existing authority
+UNKNOWN = HOLD
+DECLINING or LOST = CAP further exposure and require Goal-Length recalculation
+
+Recovery Debt:
+Must have a credible repayment window before further Carrier, Branching, or
+Seat deterioration
+
+Progress:
+Must be absorbed by the Carrier rather than delayed-load-financed
+
+Accelerative Rescale:
+Requires stronger evidence through a reproducible Carrier Capacity Update
+
+V13 BLOCK:
+Requires an independent hard-boundary reason
+
+Validation:
+NOT STARTED
+
+Runtime:
+BLOCK
+
+Candidate 3 — V9.1:
+PARKED / not active
+
+V12 State:
+PASS
+
+V13 Next Loop Gate:
+HOLD
+
+Reason:
+V10 now supplies a bounded Returnability and Goal-Length recalculation binding,
+but the four V13 mappings have not been applied to a fresh real or frozen case,
+generalized, or implemented at runtime.
+
+Active Branch:
+none
+
+Next Authorized Action:
+none
+
+Decision Packet Required:
+no
+```
+
+Artifacts:
+
+- [Decision Lineage Reconnection Register](../docs/decision_lineage_reconnection_register_v0_1.md)
+- [Case 004 Forward-only binding](../validation/field_note_126_case_004_aspire_anchored_independent_evaluation.md)
+- [Current Signal](../docs/current_signal.md)
+
+Source identity:
+
+```text
+Source: Decision-OS V10 v2.0 — Recalculating Goal-Length Without Breaking the
+Carrier of Aspiration
+Gateway repository: shin4141/decision-os-paper
+Gateway retrieval commit: 07f20eb5bbea1e49d0b5f60fc4962c45ddcd3704
+Gateway path:
+notes/v10/Decision_OS_V10_Recalculating_Goal_Length_Without_Breaking_the_Carrier_of_Aspiration_EN_v1.pdf
+Git blob: 2e253c64a32eddf1e7c47bc0d0227231c222b4b9
+DOI: 10.5281/zenodo.20371623
+Verified source version: v2.0
+Retrieved PDF SHA-256:
+15c228a222df1b5da5a5adcfdc7152b94882f80471214d2b0832de38d8cd05ff
+Version rule: EN_v1 is not version authority
+```
+
+V10 supplies the source-defined distinction between Correction and Rescale.
+Correction repairs the trajectory toward the preserved Baseline Completion
+Line without changing current Goal-Length. Rescale changes Goal-Length under
+preserved Aspire when old-line return is no longer survivable, or when a
+reproducible and absorbed Carrier Capacity Update supports another line.
+Intervention begins when Returnability starts being lost; fatigue, difficulty,
+ordinary discomfort, temporary delay, one failed action, one productive burst,
+or one strong AI session is not sufficient by itself.
+
+V13 separately maps that source core through four unvalidated witnesses:
+Returnability; Debt and Absorption; Branching, Seat, and Baseline; and Rescale
+Evidence. `UNKNOWN` routes to `HOLD`. `DECLINING` or `LOST`, absent repayment,
+material Branching or functional Seat contraction, or non-survivable old-line
+return caps further exposure and requires bounded Goal-Length recalculation.
+V10 `RESCALE` does not map directly to V13 `BLOCK`.
+
+Guard remains the admissibility and hard-stopping boundary. PIC remains the
+non-destructive committed-integration and canonical-convergence boundary. V10
+governs whether the maintained trajectory remains survivable for the Carrier
+of Aspire. The V10 Gate does not replace the V13 Gate, and passage of one
+boundary does not establish passage of the others.
+
+The earlier Candidate 2 `PARKED / not active` statements below remain preserved
+at their historical As-of. This later Forward-only receipt supersedes only
+Candidate 2's current status. Candidate 3 — V9.1 remains `PARKED / not active`.
+No real Carrier measurement, quantified burden reduction, operational
+validation, runtime monitoring, automatic Rescale, automatic lineage scan,
+Canon propagation, or public claim was introduced.
+
+Completion Line:
+
+V13 now binds V10's gradual-drift joint by preserving Correction while return
+to the Baseline Completion Line remains survivable and requiring bounded
+Goal-Length recalculation when old-line return becomes non-survivable;
+`UNKNOWN` routes to `HOLD`, the non-survivable route caps further exposure, no
+Human Seat question remained, operational validation and runtime remain
+missing, and the V13 Gate is `HOLD`.
+
 ## Current Field Note 127 — Lineage Reconnection Burden Transfer — 2026-07-23
 
 Receipt:

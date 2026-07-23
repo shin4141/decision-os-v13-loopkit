@@ -4,9 +4,10 @@
 
 ```text
 Register specification: COMPLETE
-Registered bindings: 2
+Registered bindings: 3
 First binding: PIC
 Second binding: Guard Continuity
+Third binding: V10 Goal-Length Recalculation
 Automatic lineage scan: BLOCK
 Automatic Canon propagation: BLOCK
 Runtime: BLOCK
@@ -519,9 +520,235 @@ prove Guard preservation for an actual self-update, validate the four
 witnesses, run Case 004, establish self-evolution, authorize runtime, or permit
 automatic lineage scanning or Canon propagation.
 
+## Entry 003 — V10 Goal-Length Recalculation
+
+```text
+Term / Joint:
+Goal-Length Recalculation under Gradual Drift and Carrier Depletion
+
+Current Local Use:
+Early survivability evaluation for V13 self-update and loop-continuation
+decisions before a hard Guard break is established.
+
+Lineage Classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Established Context Check:
+CLOSED
+
+Decision Route:
+AI-OWNED
+
+Authoritative Source:
+1. Current Shin Forward-only authorization;
+2. current V13 authority at repository As-of
+   bb5b5c94021fcf9897052cf697321db6a551768c;
+3. Decision-OS V10 v2.0, Recalculating Goal-Length Without Breaking the
+   Carrier of Aspiration, DOI 10.5281/zenodo.20371623;
+4. current Case 004 and related V13 operational evidence.
+
+Source As-of / Version:
+Decision-OS V10 v2.0;
+gateway repository shin4141/decision-os-paper;
+gateway retrieval commit 07f20eb5bbea1e49d0b5f60fc4962c45ddcd3704;
+gateway path
+notes/v10/Decision_OS_V10_Recalculating_Goal_Length_Without_Breaking_the_Carrier_of_Aspiration_EN_v1.pdf;
+Git blob 2e253c64a32eddf1e7c47bc0d0227231c222b4b9;
+retrieved PDF SHA-256
+15c228a222df1b5da5a5adcfdc7152b94882f80471214d2b0832de38d8cd05ff.
+The filename fragment EN_v1 is not version authority.
+
+Later Forward-only Deltas:
+At repository As-of bb5b5c94021fcf9897052cf697321db6a551768c,
+Candidate 2 — V10 Goal-Length remained PARKED / not active. Triggered Lineage
+Deep Read 002 later completed and classified the joint LINEAGE-CLOSED /
+LOCAL-BINDING-REQUIRED. This entry records the subsequent bounded local-binding
+completion without rewriting that historical state. Candidate 3 — V9.1
+Condition-Bound Reuse remains PARKED / not active.
+
+Source-Defined Core:
+Aspire is the long-horizon direction to preserve. Goal is the current form
+through which Aspire is expressed. Goal-Length is the effective distance,
+burden, cost, time, complexity, exposure, opportunity cost, and recovery demand
+of that Goal form. Carrier is the human, organizational, relational, financial,
+temporal, cognitive, physical, credibility, and recovery capacity needed to
+carry Aspire forward.
+
+The Baseline Completion Line is the preserved As-of reference for the original
+Goal-Length and completion form; it is a comparison line, not a permanent
+obligation. Correction repairs the trajectory toward that line without
+changing current Goal-Length. Rescale changes Goal-Length while preserving
+Aspire when return to the old line is no longer survivable, or when a
+reproducible and absorbed Carrier Capacity Update supports another line.
+
+Returnability is the capacity to return from deviation without major loss of
+future participation, Carrier integrity, Branching, functional Human Seat, or
+future action. Recovery Debt is accumulated burden without a credible repayment
+window. A repayment window is credible only when recovery can complete before
+additional load further reduces Carrier capacity, Branching, or Human Seat
+stability. Drift Combo is the nonlinear recovery cost produced when several
+individually tolerable deviations combine, including during visible progress.
+
+Source-Defined Intervention Point:
+Intervention begins when Returnability starts being lost. Fatigue, difficulty,
+ordinary discomfort, temporary delay, one failed action, one productive burst,
+or one strong AI session is not sufficient by itself. UNKNOWN Returnability
+routes to HOLD. Preserved Returnability permits Correction only under existing
+authority. When return to the old Baseline Completion Line adds non-recoverable
+cost, Goal-Length recalculation is required.
+
+Current-Layer Operational Mapping:
+V13 maps the source-defined core to four witnesses. These are bounded V13
+mappings, not V10 source terminology or universal axioms.
+
+Minimum Witnesses:
+- Returnability: PRESERVED when Correction remains possible without major
+  future-capacity loss; DECLINING when return remains possible but consumes
+  Branching, Carrier capacity, functional Human Seat, or future participation;
+  LOST when old-line return itself requires non-recoverable damage or destroys
+  the capacity needed to continue Aspire; UNKNOWN when survivability cannot be
+  established.
+- Debt and Absorption: Recovery Debt must have a credible repayment window, and
+  visible progress must be absorbed by the Carrier rather than financed by
+  delayed recovery, maintenance, attention, financial, social, monitoring, or
+  correction load. Output, commits, speed, capability, confidence, or temporary
+  motivation do not prove absorption. A progress gain remains UNABSORBED or
+  UNKNOWN when its recovery, maintenance, attention, financial, social,
+  monitoring, or correction costs have not yet appeared or been repaid.
+- Branching, Seat, and Baseline: viable future paths, functional rather than
+  merely formal Human Seat, an interpretable Baseline Completion Line, and a
+  reversible next delta remain available without narrowing into a fragile
+  one-way path.
+- Rescale Evidence: Protective evidence includes declining or lost
+  Returnability, absent repayment, Branching contraction, Carrier damage,
+  functional Seat drift, non-recoverable old-line return, or current Goal form
+  beginning to violate Aspire. Accelerative evidence requires the stronger
+  proof of a reproducible Carrier Capacity Update with equal or greater
+  progress, equal or lower
+  recovery cost, non-increasing Recovery Debt, preserved or expanded Branching,
+  functional Human Seat, an interpretable baseline, continued Aspire service,
+  and already-absorbed increased load. One burst, session, model upgrade, or
+  motivational pressure is insufficient.
+
+Minimum V13 Recalculation Rule:
+Continue local Correction only while all applicable conditions are sufficiently
+established: Returnability is PRESERVED; old-line return does not require major
+future-capacity loss; Recovery Debt has a credible repayment window; progress
+is absorbed; Branching and functional Human Seat remain intact; and the
+Baseline Completion Line remains interpretable.
+
+If a required condition is UNKNOWN, V13 routes to HOLD. If Returnability is
+DECLINING or LOST, repayment is absent, Branching or functional Human Seat is
+materially contracting, or old-line return adds non-recoverable cost, V13 caps
+further exposure and requires bounded Goal-Length recalculation. V13 BLOCK
+requires an independent hard-boundary reason.
+
+Required Distinctions:
+Guard is the admissibility and hard-stopping boundary. V10 governs
+survivability and Goal-Length recalculation before or without a proven hard
+Guard break. A proven Guard break routes independently. V10 survivability does
+not prove Guard preservation, and Guard preservation does not prove the current
+Goal-Length remains survivable. Expressed as pass conditions: V10 PASS does not
+prove Guard preservation, and Guard PASS does not prove that the current
+Goal-Length remains survivable.
+
+PIC governs non-destructive committed integration and canonical convergence.
+V10 asks whether the maintained trajectory remains survivable for the Carrier
+of Aspire. PIC may consistently preserve a non-survivable or wrongly admitted
+trajectory, and V10 does not establish PIC preservation.
+
+V10 / V13 Gate Mapping:
+- V10 GO: V13 may continue only under independently existing authority; its
+  result may be GO or bounded CAP depending on authority and exposure.
+- V10 HOLD: V13 HOLD; only a separately authorized observation, recovery, or
+  evidence action may proceed under bounded CAP.
+- V10 Protective or Accelerative RESCALE candidate: V13 CAP for bounded
+  recalculation or proposal preparation; use HOLD while evidence or genuine
+  Human Seat judgment remains pending.
+- V13 BLOCK: reserved for an independent Guard, authority, identity, Protected
+  Object, irreversibility, or equivalent hard-boundary failure.
+
+The V10 Gate does not replace the V13 Gate.
+
+Human Seat Boundary:
+AI may detect candidate conditions, structure evidence, distinguish Correction
+from Rescale, identify Returnability, Recovery Debt, Branching, delayed load,
+and Carrier Capacity Update evidence, and propose GO, HOLD, CAP, Protective
+Rescale, or Accelerative Rescale candidates. AI may not define a new Aspire,
+own the human life trajectory, unilaterally decide abandonment, acceleration,
+or identity-level change, convert fatigue into automatic slowdown, convert
+temporary success into automatic acceleration, or execute Rescale without the
+authority required by the affected decision.
+
+Import Boundary:
+Do not import numeric fatigue or drift thresholds, universal slowdown,
+fatigue-as-failure, difficulty-as-failure, one-burst capacity updates, the full
+V10 ontology or examples, AI ownership of Aspire or human trajectory, automatic
+Rescale, V10 replacement of the V13 Gate, quantified Carrier-burden reduction,
+runtime monitoring, automatic Carrier scoring, validation, generalization, or
+public claims.
+
+Reopen If:
+A later explicit Human Seat or authoritative source delta changes these
+meanings; source identity, blob, hash, or gateway As-of no longer verifies;
+source proof becomes insufficient; materially valid meanings conflict after
+As-of precedence; a V13 witness cannot distinguish Correction from Rescale; or
+authorized evidence falsifies a mapping or shows that it produces avoidance,
+debt-funded acceleration, or loss of Human Seat. UNKNOWN routes to HOLD and
+never supplies permission.
+
+Human Seat Required:
+no
+```
+
+## Entry 003 Routing Receipt
+
+```text
+V10 Goal-Length lineage classification:
+LINEAGE-CLOSED / LOCAL-BINDING-REQUIRED
+
+Established Context Check:
+CLOSED
+
+Decision Route:
+AI-OWNED
+
+Human Seat Question:
+none
+
+Operational mappings:
+4
+
+Returnability route:
+PRESERVED = Correction may continue under existing authority
+UNKNOWN = HOLD
+DECLINING or LOST = CAP further exposure and require Goal-Length recalculation
+
+V13 BLOCK:
+Requires an independent hard-boundary reason
+
+Validation:
+NOT STARTED
+
+Runtime:
+BLOCK
+
+Candidate 3 — V9.1:
+PARKED / not active
+
+Propagation:
+NOT EXECUTED BY THIS REGISTER
+```
+
+This binding closes the V10 semantic and bounded local-binding gap only. It
+does not validate the four witnesses, measure a real Carrier, run Case 004,
+establish generalization or burden reduction, authorize Rescale or runtime, or
+permit automatic monitoring, lineage scanning, or Canon propagation.
+
 ## Completion Line
 
-PIC and Guard Continuity are now reconnectable from their V13 uses to verified
-lineage sources. Their source definitions remain separate from their bounded
-V13 operational witnesses, and neither binding returns a Human Seat question
-or claims runtime validation.
+PIC, Guard Continuity, and V10 Goal-Length Recalculation are now reconnectable
+from their V13 uses to verified lineage sources. V10 distinguishes survivable
+Correction from Goal-Length Rescale when old-line return becomes
+non-survivable; its four V13 mappings remain unvalidated, runtime remains
+blocked, and no Human Seat question was created.
