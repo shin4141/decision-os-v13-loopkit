@@ -1,5 +1,163 @@
 # Current Signal
 
+## V13 Runner Distribution Surface v0.1 — Integration and Closure
+
+PR #14 merged the exact reviewed implementation head
+`205be5766be05d079cc2aa3627b1685cec2500bd` through the history-preserving
+merge commit `f9b83d5bde850829e232653df811790fbd3daff9`.
+
+```text
+Run-specific V12 Completion Integrity Guard:
+PASS / CURRENT RUN EVIDENCE ONLY
+
+Historical V12 backfill:
+NONE
+
+V13 Runner Distribution Surface v0.1:
+PASS / COMPLETE / MERGED / AVAILABLE ON MAIN
+
+Runner:
+V13 RUNNER V0.2 / UNCHANGED
+
+Canonical starting main:
+f4df2a726bd632ae54b2ac1069640a772cfb6fac
+
+Packaging source ref:
+e1212a795413e0146c52b2c9aa51356897c62846
+
+Implementation head:
+205be5766be05d079cc2aa3627b1685cec2500bd
+
+PR #14:
+PASS / MERGED / COMPLETE
+
+Implementation merge:
+f9b83d5bde850829e232653df811790fbd3daff9
+
+Transport Tool Identity Guard:
+PASS / UV 0.11.32 / FIXED ARTIFACT AND EXECUTABLE DIGESTS
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Pre-merge corrections:
+1 OF 2 USED / REMAINING CORRECTION AUTHORITY EXHAUSTED WITH RUN CLOSURE
+
+Unit tests:
+73 OF 73 / PASS
+
+Cold and warm exact-ref execution:
+PASS / EXIT 0 / IDENTICAL RUNNER STDOUT
+
+Four-surface output and exit parity:
+PASS / JSON + TEXT + EXIT 0, 2, 3, 4, 5
+
+Invalid exact-ref behavior:
+PASS / NONZERO / NO RUNNER OUTPUT / NO FALLBACK
+
+Target and source no-write proof:
+PASS / OPENING AND CLOSING DIGESTS IDENTICAL
+
+Repository-content return:
+NONE OBSERVED / UNIQUE FILE-BODY SENTINEL ABSENT FROM ALL OUTPUTS
+
+Package publication:
+NONE
+
+Release:
+NONE
+
+Tag:
+NONE
+
+Telemetry:
+NONE
+
+Remote scan:
+NONE
+
+External contact:
+NONE
+
+Rollback Identity:
+STARTING MAIN f4df2a726bd632ae54b2ac1069640a772cfb6fac / IMPLEMENTATION MERGE f9b83d5bde850829e232653df811790fbd3daff9 / HISTORY-PRESERVING REVERT ONLY
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+docs/v13_runner_distribution_surface_v0_1.md / GUARD + BUILD + EXACT-REF + PARITY + NO-WRITE PASS
+
+Closure-Only Tail:
+docs/v13_runner_distribution_surface_v0_1.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — DISTRIBUTION SURFACE V0.1 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+The run-specific V12 Completion Integrity Guard passed from this run's fixed
+tool receipt, clean exact-source build, 73 passing tests, cold/warm execution,
+four-surface byte and exit parity, exact-ref failure behavior, no-write
+digests, reviewed head, and history-preserving merge. It does not insert or
+backfill a canonical current `V12 State`; strict `decision-os check` therefore
+continues to expose `v12_state: UNKNOWN`.
+
+The public command is pinned to the immutable packaging source commit
+`e1212a795413e0146c52b2c9aa51356897c62846`. Cold transport may contact
+GitHub and the Python package index; the Runner scan itself remains local,
+read-only, without telemetry, and sends no repository content. The durable
+receipt records the bounded evidence and does not claim packet-level
+attestation across untested hosts.
+
+The enclosing closure commit supplies its own transport identity. This tail
+grants no correction, branch, PR, scan, package publication, release, tag, CI,
+telemetry, external action, Revenue action, runtime, or v0.3 authority.
+
+Completion Line:
+
+V13 Runner Distribution Surface v0.1は、固定uv identityとexact Git refで
+cold/warm transport、四経路のbyte/exit parity、no-write、no-content-returnを
+実証し、Runner v0.2を変更せずmainへ統合してauthorityを閉じた。
+
 ## V13 Runner v0.2 — External Validation Run 001 Closure
 
 The unchanged Runner v0.2 was evaluated on three preregistered public

@@ -8,6 +8,198 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Runner Distribution Surface v0.1 Integration and Closure
+
+Date:
+`2026-07-24`
+
+Canonical starting `main`:
+`f4df2a726bd632ae54b2ac1069640a772cfb6fac`
+
+Packaging source ref:
+`e1212a795413e0146c52b2c9aa51356897c62846`
+
+Approved implementation head:
+`205be5766be05d079cc2aa3627b1685cec2500bd`
+
+PR #14 history-preserving merge:
+`f9b83d5bde850829e232653df811790fbd3daff9`
+
+Completed execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Canonical receipt:
+
+```text
+Run-specific V12 Completion Integrity Guard:
+PASS / CURRENT RUN EVIDENCE ONLY
+
+Historical V12 backfill:
+NONE
+
+V13 Runner Distribution Surface v0.1:
+PASS / COMPLETE / MERGED / AVAILABLE ON MAIN
+
+Runner:
+V13 RUNNER V0.2 / UNCHANGED
+
+Canonical starting main:
+f4df2a726bd632ae54b2ac1069640a772cfb6fac
+
+Packaging source ref:
+e1212a795413e0146c52b2c9aa51356897c62846
+
+Implementation head:
+205be5766be05d079cc2aa3627b1685cec2500bd
+
+PR #14:
+PASS / MERGED / COMPLETE
+
+Implementation merge:
+f9b83d5bde850829e232653df811790fbd3daff9
+
+Transport Tool Identity Guard:
+PASS / UV 0.11.32 / FIXED ARTIFACT AND EXECUTABLE DIGESTS
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Pre-merge corrections:
+1 OF 2 USED / REMAINING CORRECTION AUTHORITY EXHAUSTED WITH RUN CLOSURE
+
+Unit tests:
+73 OF 73 / PASS
+
+Cold and warm exact-ref execution:
+PASS / EXIT 0 / IDENTICAL RUNNER STDOUT
+
+Four-surface output and exit parity:
+PASS / JSON + TEXT + EXIT 0, 2, 3, 4, 5
+
+Invalid exact-ref behavior:
+PASS / NONZERO / NO RUNNER OUTPUT / NO FALLBACK
+
+Target and source no-write proof:
+PASS / OPENING AND CLOSING DIGESTS IDENTICAL
+
+Repository-content return:
+NONE OBSERVED / UNIQUE FILE-BODY SENTINEL ABSENT FROM ALL OUTPUTS
+
+Package publication:
+NONE
+
+Release:
+NONE
+
+Tag:
+NONE
+
+Telemetry:
+NONE
+
+Remote scan:
+NONE
+
+External contact:
+NONE
+
+Rollback Identity:
+STARTING MAIN f4df2a726bd632ae54b2ac1069640a772cfb6fac / IMPLEMENTATION MERGE f9b83d5bde850829e232653df811790fbd3daff9 / HISTORY-PRESERVING REVERT ONLY
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+docs/v13_runner_distribution_surface_v0_1.md / GUARD + BUILD + EXACT-REF + PARITY + NO-WRITE PASS
+
+Closure-Only Tail:
+docs/v13_runner_distribution_surface_v0_1.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — DISTRIBUTION SURFACE V0.1 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+The Transport Tool Identity Guard fixed `uv` and `uvx` 0.11.32, their
+official acquisition artifact and cryptographic digests, their exact
+temporary executable paths, macOS 26.2 arm64, and one dedicated mode-0700
+temporary/cache root before branch creation. Cold and warm validation used
+the same tool identity and cache.
+
+The package added no runtime dependency and changed no `decision_os/**`
+source. The public command pins the immutable packaging source commit
+`e1212a795413e0146c52b2c9aa51356897c62846`. Cold transport may contact
+GitHub and the Python package index; after launch, the Runner scan is local,
+read-only, uses no telemetry, and sends no repository content.
+
+Validation passed 73 of 73 tests. The local wrapper, module, temporary
+wheel-installed console entry point, and exact-ref `uvx` execution produced
+byte-identical JSON/text and matching exits 0, 2, 3, 4, and 5. Cold and warm
+text output hashes matched. An invalid exact ref failed visibly without
+Runner output or fallback. All target/source worktree, Git-directory, HEAD,
+branch, and status digests matched before and after execution.
+
+The run-specific V12 Completion Integrity Guard passed from this run's
+evidence. It does not insert or backfill a canonical current `V12 State`;
+strict `decision-os check` therefore continues to expose
+`v12_state: UNKNOWN`. One of two authorized correction cycles was used to
+replace unavailable `flit_core==4.0.0` with pinned `flit_core==3.12.0`; no
+remaining correction authority survives closure.
+
+The enclosing documentation-only commit supplies its own transport identity.
+The rollback route is one history-preserving revert of the implementation
+merge, followed only by the reserved state correction if rollback is ever
+authorized. This closure grants no new branch, PR, scan, package publication,
+release, tag, CI, telemetry, outreach, Revenue action, runtime, or v0.3
+authority.
+
+Completion Line:
+
+V13 Runner Distribution Surface v0.1は、固定uv identityとexact Git refで
+cold/warm transport、四経路のbyte/exit parity、no-write、no-content-returnを
+実証し、Runner v0.2を変更せずmainへ統合してauthorityを閉じた。
+
 ## V13 — Runner v0.2 External Validation Run 001 Closure
 
 Date:

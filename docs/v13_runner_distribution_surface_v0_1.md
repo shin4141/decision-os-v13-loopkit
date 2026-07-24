@@ -4,13 +4,22 @@
 
 ```text
 Implementation:
-VALIDATED / MERGE PENDING
+PASS / COMPLETE / MERGED / AVAILABLE ON MAIN
 
 Canonical starting main:
 f4df2a726bd632ae54b2ac1069640a772cfb6fac
 
 Packaging source ref:
 e1212a795413e0146c52b2c9aa51356897c62846
+
+Implementation head:
+205be5766be05d079cc2aa3627b1685cec2500bd
+
+PR #14:
+PASS / MERGED / COMPLETE
+
+Implementation merge:
+f9b83d5bde850829e232653df811790fbd3daff9
 
 Runner:
 V13 RUNNER V0.2 / UNCHANGED
@@ -344,6 +353,66 @@ implementation merge, followed only by the reserved closure surfaces if
 rollback is required. No reset, release deletion, tag deletion, package-index
 action, source behavior repair, or authority expansion is permitted.
 
-Final implementation-head, PR, merge, closure-tail, rollback, and authority
-exhaustion identities are reserved for the authorized closure-only update to
-this file after exact-head integration.
+## Integration and authority closure
+
+```text
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER DISTRIBUTION SURFACE V0.1 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Pre-merge corrections:
+1 OF 2 USED / REMAINING CORRECTION AUTHORITY EXHAUSTED WITH RUN CLOSURE
+
+Approved implementation head:
+205be5766be05d079cc2aa3627b1685cec2500bd
+
+PR:
+#14 / MERGED
+
+History-preserving merge:
+f9b83d5bde850829e232653df811790fbd3daff9
+
+Rollback Identity:
+STARTING MAIN f4df2a726bd632ae54b2ac1069640a772cfb6fac / IMPLEMENTATION MERGE f9b83d5bde850829e232653df811790fbd3daff9 / HISTORY-PRESERVING REVERT ONLY
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+docs/v13_runner_distribution_surface_v0_1.md / GUARD + BUILD + EXACT-REF + PARITY + NO-WRITE PASS
+
+Closure-Only Tail:
+docs/v13_runner_distribution_surface_v0_1.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — DISTRIBUTION SURFACE V0.1 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+```
+
+The merge preserved both implementation commits and merged the reviewed head
+without squash. The enclosing documentation-only commit supplies the
+closure-tail transport identity. It grants no additional correction, branch,
+PR, scan, package publication, release, tag, CI, telemetry, outreach,
+Revenue, runtime, or v0.3 authority.
+
+Completion Line:
+
+V13 Runner Distribution Surface v0.1は、固定uv identityとexact Git refで
+cold/warm transport、四経路のbyte/exit parity、no-write、no-content-returnを
+実証し、Runner v0.2を変更せずmainへ統合してauthorityを閉じた。
