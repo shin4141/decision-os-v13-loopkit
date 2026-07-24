@@ -1,5 +1,71 @@
 # V13 Runner v0.2 — Unmanaged Repository Scan
 
+## Canonical Integration Receipt
+
+V13 Runner v0.2 was implemented in exactly two operational loops on
+`codex/v13-runner-v0-2` and merged through PR #13.
+
+```text
+Starting canonical main:
+57dc2d1f557aabf40b18c09313fabcb5b6dc96f8
+
+Loop 01:
+2e1eb1c93b51b926d976497ac3cd4304872fb4aa / UNMANAGED SCAN ENGINE
+
+Loop 02:
+605ca44b6e0b7a86a12002cfec0c687f893cba88 / CLI, TEXT, DOCS, AND VALIDATION
+
+Approved implementation head:
+605ca44b6e0b7a86a12002cfec0c687f893cba88
+
+History-preserving merge:
+4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+PR:
+#13 / PASS / MERGED / COMPLETE
+
+Validation:
+69 OF 69 TESTS PASS / 12 OF 12 REQUIRED SCAN SCENARIOS COVERED
+
+Determinism:
+JSON AND TEXT REPEATED-BYTE IDENTITY / MODULE-BIN PARITY PASS
+
+No-write proof:
+TARGET WORKTREE + GIT DIR + RUNNER SOURCE DIGESTS PASS
+
+Operational loops:
+2 OF 2 CONSUMED
+
+Implementation branches:
+1 OF 1 USED
+
+Implementation PRs:
+1 OF 1 USED
+
+Pre-merge corrections:
+2 OF 2 USED
+
+Loop 03:
+NOT AUTHORIZED
+
+Rollback Identity:
+STARTING MAIN 57dc2d1f557aabf40b18c09313fabcb5b6dc96f8 / IMPLEMENTATION MERGE 4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+Rollback:
+NOT EXECUTED
+
+Authority Envelope:
+CONSUMED / CLOSED
+
+Closure-Only Tail:
+THIS FILE + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+```
+
+The enclosing closure commit supplies its own transport identity because a
+commit cannot embed its own SHA. The reserved tail grants no implementation,
+correction, branch, PR, merge, rollback, release, external action, or v0.3
+authority.
+
 V13 Runner v0.2 adds a repository-local, read-only discovery command for an
 ordinary Git repository that has not adopted V13:
 

@@ -1,7 +1,138 @@
 # Current Signal
 
+## V13 Runner v0.2 — Integration and Closure
+
+PR #13 merged the exact reviewed implementation head
+`605ca44b6e0b7a86a12002cfec0c687f893cba88` through the
+history-preserving merge commit
+`4cbc45acfd39305d771dcac4c50ad126c7ce9cfd`.
+
+```text
+V13 Runner v0.2:
+MERGED / AVAILABLE ON MAIN
+
+PR #13:
+PASS / MERGED / COMPLETE
+
+Starting canonical main:
+57dc2d1f557aabf40b18c09313fabcb5b6dc96f8
+
+Loop 01:
+2e1eb1c93b51b926d976497ac3cd4304872fb4aa / UNMANAGED SCAN ENGINE
+
+Loop 02:
+605ca44b6e0b7a86a12002cfec0c687f893cba88 / CLI, TEXT, DOCS, AND VALIDATION
+
+Implementation head:
+605ca44b6e0b7a86a12002cfec0c687f893cba88
+
+Implementation merge:
+4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.2 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.2 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Pre-merge corrections:
+2 OF 2 USED
+
+Rollback Identity:
+STARTING MAIN 57dc2d1f557aabf40b18c09313fabcb5b6dc96f8 / IMPLEMENTATION MERGE 4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+PR #13 / 69 OF 69 TESTS PASS / 12 OF 12 REQUIRED SCAN SCENARIOS COVERED / JSON-TEXT DETERMINISM AND NO-WRITE PROOF PASS
+
+Closure-Only Tail:
+docs/v13_runner_v0_2.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — V13 RUNNER V0.2 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+Runner v0.2 added a local, standard-library-only `decision-os scan` discovery
+surface for unmanaged repositories. JSON remains the default; deterministic
+text is opt-in. Ordinary missing optional evidence is nonfatal, unsafe or
+unmeasurable evidence stays visible, and a V13-managed or partial V13 surface
+routes to the unchanged strict `decision-os check` contract.
+
+The merged implementation used one branch, one non-draft PR, two operational
+loops, and two bounded pre-merge correction cycles. All 69 tests pass. The 12
+required scan scenarios, module/bin parity, repeated-output byte identity,
+protected-v0.1 blobs, exact-case containment, symlink rejection, stable
+snapshot detection, and target/Runner no-write digests are covered.
+
+No package publication, release, CI, external repository validation, network
+scan, telemetry, outreach, Revenue wording/price/offer change, bespoke
+diagnosis, Canon, paper, V7, runtime, or v0.3 work occurred. The documentation
+contains the optional fit-check link; JSON and terminal output do not.
+
+The enclosing closure commit supplies its own transport identity because a
+commit cannot embed its own SHA. This tail grants no candidate-selection,
+source/test correction, branch, PR, merge, rollback, new loop, or runtime
+authority.
+
+This closure does not assert a new current V12 State. The strict
+`decision-os check` contract therefore continues to expose
+`v12_state: UNKNOWN` and exit `4`; historical V12 values are not backfilled,
+and the missing value grants no execution authority.
+
+Completion Line:
+
+V13 Runner v0.2は普通のlocal Git repositoryをbounded evidenceから検査する
+deterministic scanとして2 loopsとPR #13で履歴保存統合され、69/69 testsと
+no-write境界を保持したままauthority envelopeとclosure-only tailを消費した。
+
 ## Signal
 
+- 🟢 BLUE / V13-RUNNER-V0.2-MERGED-AVAILABLE-ON-MAIN
+- 🟢 BLUE / PR-13-HISTORY-PRESERVING-MERGE-PASS-COMPLETE
+- 🟢 BLUE / V13-RUNNER-V0.2-TWO-OF-TWO-OPERATIONAL-LOOPS-CLOSED
+- 🟢 BLUE / V13-RUNNER-V0.2-READ-ONLY-SCAN-69-OF-69-TESTS-PASS
+- 🟢 BLUE / V13-RUNNER-V0.2-12-OF-12-SCAN-SCENARIOS-COVERED
+- 🟢 BLUE / V13-RUNNER-V0.2-AUTHORITY-ENVELOPE-CONSUMED
+- 🔴 RED / V13-RUNNER-V0.2-LOOP-03-NOT-AUTHORIZED
+- 🟡 YELLOW / V13-RUNNER-V0.2-NEXT-ACTION-NONE
 - 🟢 BLUE / V13-RUNNER-V0.1-MERGED-AVAILABLE-ON-MAIN
 - 🟢 BLUE / PR-12-HISTORY-PRESERVING-MERGE-PASS-COMPLETE
 - 🟢 BLUE / V13-RUNNER-TWO-OF-TWO-OPERATIONAL-LOOPS-CLOSED

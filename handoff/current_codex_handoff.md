@@ -8,6 +8,154 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Runner v0.2 Integration and Closure
+
+Date:
+`2026-07-24`
+
+Starting canonical `main`:
+`57dc2d1f557aabf40b18c09313fabcb5b6dc96f8`
+
+Loop 01:
+`2e1eb1c93b51b926d976497ac3cd4304872fb4aa`
+
+Approved implementation head / Loop 02:
+`605ca44b6e0b7a86a12002cfec0c687f893cba88`
+
+PR #13 history-preserving merge:
+`4cbc45acfd39305d771dcac4c50ad126c7ce9cfd`
+
+Completed execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Canonical receipt:
+
+```text
+V13 Runner v0.2:
+MERGED / AVAILABLE ON MAIN
+
+PR #13:
+PASS / MERGED / COMPLETE
+
+Starting canonical main:
+57dc2d1f557aabf40b18c09313fabcb5b6dc96f8
+
+Loop 01:
+2e1eb1c93b51b926d976497ac3cd4304872fb4aa / UNMANAGED SCAN ENGINE
+
+Loop 02:
+605ca44b6e0b7a86a12002cfec0c687f893cba88 / CLI, TEXT, DOCS, AND VALIDATION
+
+Implementation head:
+605ca44b6e0b7a86a12002cfec0c687f893cba88
+
+Implementation merge:
+4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.2 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.2 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Pre-merge corrections:
+2 OF 2 USED
+
+Rollback Identity:
+STARTING MAIN 57dc2d1f557aabf40b18c09313fabcb5b6dc96f8 / IMPLEMENTATION MERGE 4cbc45acfd39305d771dcac4c50ad126c7ce9cfd
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+PR #13 / 69 OF 69 TESTS PASS / 12 OF 12 REQUIRED SCAN SCENARIOS COVERED / JSON-TEXT DETERMINISM AND NO-WRITE PROOF PASS
+
+Closure-Only Tail:
+docs/v13_runner_v0_2.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — V13 RUNNER V0.2 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+The repository-local CLI now provides:
+
+```text
+decision-os scan <repository>
+decision-os scan --format json <repository>
+decision-os scan --format text <repository>
+decision-os check <repository>
+```
+
+`scan` is a bounded generic evidence surface. It does not supply
+workflow-specific diagnosis, custom priority correction, implementation
+advice, authority, remote freshness, or a V13 Gate. `check` retains its v0.1
+current-state schema and exit contract.
+
+The run used exactly one branch, one non-draft implementation PR, two
+operational loops, and two bounded pre-merge correction cycles. Validation is
+69 of 69 passing tests with all 12 required scan scenarios, deterministic
+JSON/text, module/bin parity, protected-v0.1 blob checks, symlink/path
+containment, stable-snapshot detection, and target/Runner no-write proofs.
+
+No rollback was required. No package publication, release, CI, external
+repository validation, network scan, telemetry, outreach, Revenue
+wording/price/offer change, bespoke diagnosis, Canon, paper, V7, runtime, or
+v0.3 work occurred. The fit-check link remains documentation-only.
+
+The enclosing closure commit supplies its own transport identity. This tail
+grants no Loop 03, correction, candidate-selection, branch, PR, merge,
+rollback, source/test modification, runtime, or external-action authority.
+
+This closure does not assert a new current V12 State. The strict
+`decision-os check` contract therefore continues to return exit `4` with
+`v12_state: UNKNOWN`; it does not backfill a historical value, and the missing
+value grants no execution authority.
+
+Completion Line:
+
+V13 Runner v0.2は普通のlocal Git repositoryをbounded evidenceから検査する
+deterministic scanとして2 loopsとPR #13で履歴保存統合され、69/69 testsと
+no-write境界を保持したままauthority envelopeとclosure-only tailを消費した。
+
 ## V13 — Runner v0.1 Integration and Closure
 
 Date:
