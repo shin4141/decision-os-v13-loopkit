@@ -3,20 +3,18 @@
 ![Release](https://img.shields.io/github/v/release/shin4141/decision-os-v13-loopkit?label=release)
 ![License](https://img.shields.io/github/license/shin4141/decision-os-v13-loopkit)
 ![Status](https://img.shields.io/badge/status-operating%20prototype-blue)
-![No automation](https://img.shields.io/badge/automation-none-lightgrey)
-![Human approval](https://img.shields.io/badge/human%20approval-required-orange)
+![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
+![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
-> Good completion reduces future AI cost. Good loops reduce lifetime AI cost.
+## Can the next coding agent find where to restart?
 
-AI work gets expensive when every session has to rediscover the same context.
+Your repository can contain the right instructions and current state while
+still hiding them from a fresh agent.
 
-LoopKit helps AI-agent workflows reduce that hidden re-onboarding cost: what was done, why it stopped, what must not be touched, where residue belongs, and whether the next loop should run.
+Run one local, read-only command to see what a bounded reader can actually
+discover.
 
-It keeps always-on rules small, moves manuals and examples to on-demand surfaces, and records restart points so the next agent does not have to reconstruct everything from scratch.
-
-Before paying for a stronger model, fix the fuel efficiency of your AI workflow.
-
-### Run the read-only local scan
+### Run the local read-only scan
 
 If [`uv`](https://docs.astral.sh/uv/) and Python 3.10 or newer are already
 available, run this from the root of the Git repository you want to inspect:
@@ -27,26 +25,84 @@ uvx --isolated --no-config --no-env-file --no-python-downloads \
   decision-os scan --format text .
 ```
 
-The full 40-character Git commit is the Runner source identity. On a cold run,
-`uvx` may contact GitHub for that exact source, contact the Python package
-index for the pinned build backend, and use its local cache. Those transport
-messages appear on stderr. After launch, the Runner scan itself is local and
-read-only: it makes no Git network call, sends no repository content, uses no
-telemetry, and writes nothing to the target repository. Runner output alone is
-written to stdout.
+The command has two phases:
 
-The result begins with a bounded status such as:
+- **Tool transport:** on a cold run, `uvx` may contact GitHub for the exact
+  40-character source commit, contact the Python package index for the pinned
+  build backend, use its local cache, and print transport messages to stderr.
+- **Repository scan:** after launch, the Runner scan is local and read-only.
+  It makes no target Git network call, sends no target repository content, uses
+  no Runner telemetry, and performs no target-worktree or target-Git-directory
+  write. Runner output is written to stdout.
+
+This distribution path was validated with `uv 0.11.32`, Python 3.14.3, and
+macOS 26.2 arm64. Other platforms and Python versions were not tested in that
+validation run. See the
+[Distribution Surface v0.1 receipt](docs/v13_runner_distribution_surface_v0_1.md)
+for the exact boundary and limitations.
+
+### What a result can look like
+
+This is a condensed, anonymized example grounded in a verified scan. It is not
+the complete raw output:
 
 ```text
-Decision-OS Scan v0.2: REVIEW
-Mode: UNMANAGED_REPOSITORY
+Decision-OS Scan v0.2: INSUFFICIENT EVIDENCE
+
+Observed:
+- CLAUDE.md
+
+Unknown:
+- AGENTS.md — symlink rejected
+
+Not observed through bounded restart paths:
+- HANDOFF.md
+- CURRENT_STATE.md
+- docs/current_state.md
+
+Recommendation:
+INSUFFICIENT EVIDENCE
 ```
 
-For deterministic JSON, replace `--format text` with `--format json`. This
-surface was validated with `uv 0.11.32`, Python 3.14.3, and macOS 26.2 arm64;
-other platforms and Python versions were not tested in this run. See the
-[Distribution Surface v0.1 receipt](docs/v13_runner_distribution_surface_v0_1.md)
-for the exact boundary, parity results, cache-removal note, and limitations.
+### How to interpret it
+
+If you see INSUFFICIENT EVIDENCE, the scan could not confirm a stable restart
+path through its bounded rules. That is useful: it shows where a fresh,
+safety-bounded reader may need a clearer canonical pointer.
+
+- **OBSERVED** means the Runner safely found the item through a declared path.
+  It does not establish that the item is correct or sufficient.
+- **ABSENT** is path-bounded. It does not establish repository-wide absence;
+  the state may be absent or may exist at a repository-specific location.
+- **UNKNOWN** means the Runner could not safely establish the item through its
+  bounded rules. It is intentional and non-permissive, not silent permission
+  to treat the item as present or absent.
+
+The Runner is not a complete Audit. It does not establish software safety,
+software correctness, task completion, instruction quality, remote freshness,
+or workflow-specific cause.
+
+### Choose what happens after the result
+
+#### A. Result is enough
+
+If the bounded result answers your question, stop there. No adoption, fork,
+purchase, or repository change is required. You may simply keep the output as
+a bounded record.
+
+#### B. Private Repository-Specific Audit
+
+If the result leaves a repository-specific cause unresolved, the private Audit
+is designed to examine whether the cause is true absence, path or symlink
+discoverability, existing non-canonical state, or a missing minimum pointer.
+
+The scan result is complete without purchasing anything.
+
+See the
+[AI Agent Handoff Audit](services/ai_agent_handoff_audit_offer.md)
+for scope, pricing, delivery, and the free fit-check boundary.
+
+## Secondary adoption paths
 
 ### Try one line first
 
