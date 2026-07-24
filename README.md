@@ -16,6 +16,38 @@ It keeps always-on rules small, moves manuals and examples to on-demand surfaces
 
 Before paying for a stronger model, fix the fuel efficiency of your AI workflow.
 
+### Run the read-only local scan
+
+If [`uv`](https://docs.astral.sh/uv/) and Python 3.10 or newer are already
+available, run this from the root of the Git repository you want to inspect:
+
+```sh
+uvx --isolated --no-config --no-env-file --no-python-downloads \
+  --from "git+https://github.com/shin4141/decision-os-v13-loopkit@e1212a795413e0146c52b2c9aa51356897c62846" \
+  decision-os scan --format text .
+```
+
+The full 40-character Git commit is the Runner source identity. On a cold run,
+`uvx` may contact GitHub for that exact source, contact the Python package
+index for the pinned build backend, and use its local cache. Those transport
+messages appear on stderr. After launch, the Runner scan itself is local and
+read-only: it makes no Git network call, sends no repository content, uses no
+telemetry, and writes nothing to the target repository. Runner output alone is
+written to stdout.
+
+The result begins with a bounded status such as:
+
+```text
+Decision-OS Scan v0.2: REVIEW
+Mode: UNMANAGED_REPOSITORY
+```
+
+For deterministic JSON, replace `--format text` with `--format json`. This
+surface was validated with `uv 0.11.32`, Python 3.14.3, and macOS 26.2 arm64;
+other platforms and Python versions were not tested in this run. See the
+[Distribution Surface v0.1 receipt](docs/v13_runner_distribution_surface_v0_1.md)
+for the exact boundary, parity results, cache-removal note, and limitations.
+
 ### Try one line first
 
 If every AI session makes you re-explain context, re-fix old mistakes, or clean up after "done," try adding this one line to your `AGENTS.md`, `CLAUDE.md`, or project instructions:
