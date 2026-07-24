@@ -1,5 +1,166 @@
 # Current Signal
 
+## V13 Runner v0.2 — External Validation Run 001 Closure
+
+The unchanged Runner v0.2 was evaluated on three preregistered public
+repositories from distinct project lineages. The durable receipt is sanitized
+and uses only `Case A`, `Case B`, and `Case C`.
+
+```text
+V13 Runner v0.2 External Validation Run 001:
+PASS / COMPLETE
+
+Runner:
+V13 RUNNER V0.2 / UNCHANGED
+
+Canonical As-of:
+49c686bb21df8a89895e0200246b5dd8636cf502
+
+Pre-activation V12 Completion Integrity Guard:
+PASS / READ-ONLY RUN-SPECIFIC DETERMINATION
+
+Historical V12 backfill:
+NONE
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.2 EXTERNAL VALIDATION RUN 001 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.2 EXTERNAL VALIDATION RUN 001 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Completed cases:
+3 OF 3 / DISTINCT PROJECT LINEAGES
+
+Scan executions:
+12 OF 12 / EXIT 0
+
+JSON and text determinism:
+PASS / 3 OF 3
+
+Recommendation contract:
+PASS / 3 OF 3
+
+Target no-write proof:
+PASS / 3 OF 3
+
+Evaluator judgments:
+USEFUL 1 / PARTIALLY USEFUL 1 / NOT USEFUL 1 / MISLEADING 0
+
+Evaluator independence:
+INTERNAL EVALUATION ON EXTERNAL REPOSITORIES / INDEPENDENCE NOT ESTABLISHED
+
+Pre-scan substitutions:
+0 OF 2
+
+Runner defect:
+NONE OBSERVED
+
+External contact:
+NONE
+
+Attributable result publication:
+NONE
+
+Rollback Identity:
+STARTING MAIN 49c686bb21df8a89895e0200246b5dd8636cf502 / ENCLOSING RECEIPT COMMIT / HISTORY-PRESERVING REVERT ONLY
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+validation/v13_runner_v0_2_external_validation_run_001.md / 3 OF 3 CASES / 12 OF 12 SCANS / SUCCESS BOUNDARY PASS
+
+Closure-Only Tail:
+validation/v13_runner_v0_2_external_validation_run_001.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — EXTERNAL VALIDATION RUN 001 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+The read-only pre-activation Guard verified exact canonical identity, a clean
+and synchronized main, the prior merge/rollback/closure receipts, and 69 of 69
+tests. It did not insert a current V12 value. The strict checker therefore
+continues to expose `v12_state: UNKNOWN` rather than backfilling a historical
+value.
+
+The run used public unauthenticated metadata and shallow clones only before
+scanning. All target scans then ran locally without network. Opening and
+closing worktree-content, Git-directory, and Git-state digests matched for
+every case. No target, Runner source, test, fixture, README, Revenue, price,
+offer, fit-check, package, release, CI, telemetry, runtime, or v0.3 surface was
+modified.
+
+Case A added no material operational value. Case B correctly combined one
+instruction surface with absent bounded restart evidence and returned the
+documented lite restart-note recommendation. Case C truthfully exposed the
+allowlist boundary without denying the existence of restart-oriented
+structure outside that boundary.
+
+No target identity, URL, commit SHA, raw payload, file body, dirty filename,
+credential, absolute local path, or private observation is present in the
+durable receipt. No owner contact, outreach, email, Issue, PR, comment, lead,
+or attributable result publication occurred.
+
+The enclosing closure commit supplies its own transport identity. This tail
+grants no case selection, source correction, branch, PR, merge, outreach,
+publication, Revenue action, runtime, or v0.3 authority.
+
+Completion Line:
+
+V13 Runner v0.2 External Validation Run 001は三つの無関係な公開repoを12回の
+offline scanで検証し、3/3 no-write、3/3 recommendation contract、2/3
+USEFULまたはPARTIALLY USEFUL、0 MISLEADINGで閉じ、Runnerを変更せず
+authority envelopeを消費した。
+
+## Signal
+
+- 🟢 BLUE / V13-RUNNER-V0.2-EXTERNAL-VALIDATION-RUN-001-PASS-COMPLETE
+- 🟢 BLUE / THREE-OF-THREE-PUBLIC-DISTINCT-LINEAGE-CASES-CLOSED
+- 🟢 BLUE / TWELVE-OF-TWELVE-OFFLINE-SCANS-EXIT-ZERO
+- 🟢 BLUE / THREE-OF-THREE-JSON-TEXT-DETERMINISM-PASS
+- 🟢 BLUE / THREE-OF-THREE-TARGET-NO-WRITE-PASS
+- 🟢 BLUE / ZERO-MISLEADING-RESULTS
+- 🟡 YELLOW / INTERNAL-EVALUATOR-INDEPENDENCE-NOT-ESTABLISHED
+- 🟡 YELLOW / RUNNER-V0.2-GENERALIZATION-NOT-ESTABLISHED
+- 🔴 RED / FURTHER-EXTERNAL-VALIDATION-NOT-AUTHORIZED
+- 🟡 YELLOW / NEXT-ACTION-NONE
+
 ## V13 Runner v0.2 — Integration and Closure
 
 PR #13 merged the exact reviewed implementation head

@@ -8,6 +8,189 @@ Purpose:
 
 V13 LoopKit is a lightweight operating layer for AI-agent work after completion. It helps decide whether the next loop should `GO`, `HOLD`, `CAP`, or `BLOCK`.
 
+## V13 — Runner v0.2 External Validation Run 001 Closure
+
+Date:
+`2026-07-24`
+
+Canonical starting `main`:
+`49c686bb21df8a89895e0200246b5dd8636cf502`
+
+Execution subject:
+`Codex 13-9`
+
+Current AI execution subject:
+`none`
+
+Canonical receipt:
+
+```text
+V13 Runner v0.2 External Validation Run 001:
+PASS / COMPLETE
+
+Runner:
+V13 RUNNER V0.2 / UNCHANGED
+
+Canonical As-of:
+49c686bb21df8a89895e0200246b5dd8636cf502
+
+Pre-activation V12 Completion Integrity Guard:
+PASS / READ-ONLY RUN-SPECIFIC DETERMINATION
+
+Historical V12 backfill:
+NONE
+
+Run:
+COMPLETE / 2 OF 2 OPERATIONAL LOOPS CLOSED
+
+Activation:
+CONSUMED / CLOSED
+
+Authority Envelope:
+V13 RUNNER V0.2 EXTERNAL VALIDATION RUN 001 / CONSUMED / CLOSED
+
+Run authority:
+CONSUMED / CLOSED
+
+Authority Window:
+V13 RUNNER V0.2 EXTERNAL VALIDATION RUN 001 / EXHAUSTED
+
+Remaining authorized loops:
+0
+
+Completed cases:
+3 OF 3 / DISTINCT PROJECT LINEAGES
+
+Scan executions:
+12 OF 12 / EXIT 0
+
+JSON and text determinism:
+PASS / 3 OF 3
+
+Recommendation contract:
+PASS / 3 OF 3
+
+Target no-write proof:
+PASS / 3 OF 3
+
+Evaluator judgments:
+USEFUL 1 / PARTIALLY USEFUL 1 / NOT USEFUL 1 / MISLEADING 0
+
+Evaluator independence:
+INTERNAL EVALUATION ON EXTERNAL REPOSITORIES / INDEPENDENCE NOT ESTABLISHED
+
+Pre-scan substitutions:
+0 OF 2
+
+Runner defect:
+NONE OBSERVED
+
+External contact:
+NONE
+
+Attributable result publication:
+NONE
+
+Rollback Identity:
+STARTING MAIN 49c686bb21df8a89895e0200246b5dd8636cf502 / ENCLOSING RECEIPT COMMIT / HISTORY-PRESERVING REVERT ONLY
+
+Rollback execution:
+NOT EXECUTED
+
+Receipt:
+validation/v13_runner_v0_2_external_validation_run_001.md / 3 OF 3 CASES / 12 OF 12 SCANS / SUCCESS BOUNDARY PASS
+
+Closure-Only Tail:
+validation/v13_runner_v0_2_external_validation_run_001.md + docs/current_signal.md + handoff/current_codex_handoff.md / CONSUMED BY ENCLOSING COMMIT
+
+Current Gate:
+HOLD — EXTERNAL VALIDATION RUN 001 CLOSED / NO NEXT AUTHORIZED ACTION
+
+Active Branch:
+none
+
+Codex Next Authorized Action:
+none
+
+Revenue reply route:
+HOLD — WAIT FOR MARKET RESPONSE
+
+New outreach:
+HOLD — NOT AUTHORIZED
+
+Free bespoke diagnosis:
+BLOCK — UNCHANGED
+
+V7 publication / Canon:
+CAP — UNCHANGED
+
+Decision Packet Required:
+no
+
+Decision Owner:
+Shin
+```
+
+The run-specific V12 Completion Integrity Guard passed from exact canonical
+identity, clean synchronized main, prior merge/rollback/closure evidence, and
+69 of 69 tests. It did not create or backfill a current V12 value. Strict
+`decision-os check` therefore continues to return exit `4` with
+`v12_state: UNKNOWN`.
+
+Selection and execution remained inside the approved envelope:
+
+- exactly three public, unauthenticated repositories;
+- three distinct project lineages;
+- no known Shin relationship in recorded V13 surfaces;
+- zero of two pre-scan substitutions used;
+- repository identity and commit frozen before execution;
+- shallow single-branch clones inside one mode-0700 temporary root;
+- external-target network ended before scanning;
+- four offline scan executions per case;
+- no case replacement after scanning began.
+
+Validation closed with 12 of 12 exit-zero scans, JSON and text repeated-byte
+identity in all three cases, recommendation-contract agreement in all three,
+and exact opening/closing worktree-content, Git-directory, and Git-state
+digest matches in all three.
+
+Fixed-rubric evaluation:
+
+- Case A: `NOT USEFUL` — correct but no material signal beyond quick glance.
+- Case B: `USEFUL` — one instruction plus no bounded restart evidence produced
+  the documented lite restart-note route without workflow diagnosis.
+- Case C: `PARTIALLY USEFUL` — correct bounded absence exposed the allowlist
+  boundary but could not interpret restart-oriented structure outside it.
+
+No case was `MISLEADING`; no Runner defect was observed. This remains internal
+evaluation on external repositories, not evaluator-independent reproduction.
+Generalization, demand, conversion, Revenue effect, and paid-Audit necessity
+remain unestablished.
+
+The durable receipt is:
+
+`validation/v13_runner_v0_2_external_validation_run_001.md`
+
+It contains no repository owner/name, URL, commit SHA, raw payload, file body,
+dirty filename, credential, absolute local path, or private observation.
+
+No target modification, owner contact, outreach, email, Issue, PR, comment,
+lead creation, attributable result publication, bespoke diagnosis, Runner
+source/test/fixture change, README/Revenue/price/offer/fit-check change,
+package, release, CI, telemetry, runtime, or v0.3 work occurred.
+
+The enclosing documentation-only commit supplies its own transport identity.
+The history-preserving rollback route is one revert of that exact commit.
+This closure grants no new run, case, correction, branch, PR, external action,
+Revenue action, runtime, or v0.3 authority.
+
+Completion Line:
+
+V13 Runner v0.2 External Validation Run 001は三つの無関係な公開repoを12回の
+offline scanで検証し、3/3 no-write、3/3 recommendation contract、2/3
+USEFULまたはPARTIALLY USEFUL、0 MISLEADINGで閉じ、Runnerを変更せず
+authority envelopeを消費した。
+
 ## V13 — Runner v0.2 Integration and Closure
 
 Date:
