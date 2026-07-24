@@ -1,0 +1,23 @@
+[build-system]
+requires = ["flit_core==3.12.0"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "decision-os-v13-loopkit"
+version = "0.2.0"
+description = "Deterministic, read-only Decision-OS checks for local Git repositories."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Shinichi Nagata" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/shin4141/decision-os-v13-loopkit"
+
+[project.scripts]
+decision-os = "decision_os.cli:main"
+
+[tool.flit.module]
+name = "decision_os"
