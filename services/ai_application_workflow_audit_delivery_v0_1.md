@@ -181,6 +181,13 @@ asset returned; before/after restart distinction visible; unknowns and
 exclusions explicit.>
 ```
 
+## See a complete non-repository sample
+
+[AI Application Workflow Audit — Sample 002](ai_application_workflow_audit_sample_002.md)
+
+The sample is synthetic and demonstrates format only. It is not client evidence
+or a measured result.
+
 ## Fit-check boundary
 
 The free fit check determines only:
