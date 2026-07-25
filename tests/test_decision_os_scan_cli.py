@@ -102,7 +102,7 @@ PROTECTED_BLOBS = {
     ),
     "tests/test_decision_os_cli.py": (
         "100644",
-        "a4641d5033c0fb1a21313d76d273005fe4dc2bd4",
+        "80cc4b6d8b5075c29ba05c0da1b752cc198ba876",
     ),
 }
 

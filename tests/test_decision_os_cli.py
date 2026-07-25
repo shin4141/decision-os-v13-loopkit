@@ -165,22 +165,23 @@ class DecisionOsCliTest(unittest.TestCase):
         self.assertEqual("runner.internal", payload["evidence"][0]["check"])
         self.assertEqual("RuntimeError", payload["evidence"][0]["detail"]["type"])
 
-    def test_starting_canonical_state_fails_closed_without_history_backfill(
+    def test_current_canonical_state_is_explicit_and_read_only(
         self,
     ) -> None:
         before = tree_digest(REPO_ROOT)
 
         completed = run_module(REPO_ROOT.parent, "check", str(REPO_ROOT))
 
-        self.assertEqual(4, completed.returncode)
+        self.assertEqual(0, completed.returncode)
         payload = decoded(completed)
-        self.assertEqual("UNKNOWN", payload["v12_state"])
+        self.assertEqual("DELAY", payload["v12_state"])
+        self.assertEqual("HOLD", payload["v13_gate"])
         required = next(
             item
             for item in payload["evidence"]
             if item["check"] == "state.required_fields"
         )
-        self.assertIn("v12_state", required["detail"]["missing"])
+        self.assertEqual([], required["detail"]["missing"])
         self.assertEqual(before, tree_digest(REPO_ROOT))
 
 

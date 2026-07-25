@@ -326,8 +326,7 @@ implementation surfaces are `decision_os/scan.py`,
 `decision_os/scan_text.py`, the explicit `scan` dispatch in
 `decision_os/cli.py`, v0.2-only tests/fixtures, and this document.
 
-The integration receipt is reserved for the predefined Forward-only
-closure-only tail after exact-head review and history-preserving merge. That
-tail may update only this document, `docs/current_signal.md`, and
-`handoff/current_codex_handoff.md`. Until that receipt is written, this section
-does not claim merge completion or grant additional authority.
+The predefined Forward-only closure-only tail was consumed after exact-head
+review and history-preserving merge. It updated only this document,
+`docs/current_signal.md`, and `handoff/current_codex_handoff.md`. This paragraph
+preserves that historical boundary and grants no additional authority.

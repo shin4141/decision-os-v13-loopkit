@@ -322,9 +322,8 @@ productivity, a paid client, or revenue.
 
 ## Completion Line
 
-Sample 001 now provides a complete public-review audit surface showing how a
-valid route-level `HOLD` collapsed into system-level stasis and how one
-`ACTIVE ASPIRE RESTART BLOCK` restores bounded alternative motion; conversion,
-Stars, productivity, paid-delivery value, and generalization remain unproven,
-and Shin retains the final decision to approve or reject merging the sample
-into `main`.
+Sample 001 is already merged and public on `main`. It provides a complete
+public-review audit surface showing how a valid route-level `HOLD` collapsed
+into system-level stasis and how one `ACTIVE ASPIRE RESTART BLOCK` restores
+bounded alternative motion; conversion, demand, customer outcomes, Stars,
+productivity, paid-delivery value, and generalization remain unproven.
