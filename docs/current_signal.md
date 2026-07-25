@@ -19,7 +19,7 @@ Canonical Reddit URL:
 UNKNOWN / NOT YET RECORDED
 
 V12 State:
-DELAY — canonical URL is not yet recorded and cleanup is not yet merged
+DELAY — canonical Reddit URL is not yet recorded
 
 V13 Gate:
 HOLD — OBSERVE PUBLIC RESPONSE / NO FOLLOW-UP ACTION AUTHORIZED
@@ -34,13 +34,13 @@ Distribution Source Ref:
 e1212a795413e0146c52b2c9aa51356897c62846
 
 Current Cleanup Executor:
-Codex 3-11 / BOUNDED DOCUMENTATION PR ONLY
+Codex 3-11 / CLEANUP DRAFT COMPLETED / NO MERGE AUTHORITY
 
 Active Branch:
-docs/v13-consistency-cleanup-v0-1
+none after cleanup integration
 
 Next Authorized Action:
-CREATE DRAFT CLEANUP PR ONLY
+none — observe public response; no follow-up action authorized
 
 Decision Owner:
 Shin
