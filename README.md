@@ -102,6 +102,11 @@ See the
 [AI Agent Handoff Audit](services/ai_agent_handoff_audit_offer.md)
 for scope, pricing, delivery, and the free fit-check boundary.
 
+Not only coding repositories. The paid Audit can also review one clearly bounded
+[AI application or operational workflow](services/ai_application_workflow_audit_delivery_v0_1.md)
+when a failure returned revalidation, cleanup, context reconstruction,
+rollback, or restart decisions to a human.
+
 ## What AI coding incidents return to the human
 
 [![AI coding incidents do not end at the error](assets/incident-map/external-ai-workflow-incident-map-v0-1.png)](case_studies/external_ai_workflow_incident_map_v0_1.md)
