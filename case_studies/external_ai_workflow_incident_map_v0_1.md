@@ -99,6 +99,9 @@ The selected public GitHub incident corpus was collected as of `2026-07-25`.
   safety, product quality, or product ranking.
 - One external case may map to more than one normalized what-broke or
   returned-burden class, so class counts do not sum to 17.
+- All bar lengths use the external-corpus denominator of 17 and the same common
+  track width (`displayed case count / 17 × common track width`), so bars are
+  visually comparable across all three external panels.
 - Returned-burden counts indicate case presence, not burden magnitude.
 - The title and subtitle are editorial framing, not source-authored causal or
   prevalence claims.
@@ -113,9 +116,11 @@ Editorial three-stage flow based on 17 public AI coding incident worldlines
 across seven GitHub repositories. Five workflow types lead to broken
 operational surfaces—Evidence Chain 15, Restartability 11, Trust 10, and
 Re-entry Capacity 6—which return work to people: Revalidation 11, Manual
-cleanup 6, Context reconstruction 4, Lost session 2, and Rollback 2. A separate
-internal audit panel reports 126 Field Notes scanned, 91 candidate worldlines
-reviewed, and 10 confirmed incidents, while excluding 11 contained
+cleanup 6, Context reconstruction 4, Lost session 2, and Rollback 2. All bars
+use a shared 17-case scale, making the three external panels visually
+comparable. A separate internal audit panel reports 126 Field Notes scanned,
+91 candidate worldlines reviewed, and 10 confirmed incidents, while excluding
+11 contained
 near-misses, 26 controlled validations, 33 general risks, and 7
 insufficient-evidence cases. Internal and external corpus counts are not
 combined.
