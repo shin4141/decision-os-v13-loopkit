@@ -22,7 +22,7 @@ payment.
 <!-- Add one public repository URL, or describe one bounded workflow without
 sharing private material. -->
 
-## Coding-agent tool
+## AI tool, application, or workflow
 
 <!-- For example: Codex, Claude Code, Cursor, Cline, or another agent. -->
 
@@ -31,7 +31,7 @@ sharing private material. -->
 <!-- Describe one concrete handoff, context-loss, restart, instruction-drift,
 or completion-state failure. Do not ask for a diagnosis here. -->
 
-## What the next session or agent needs to understand
+## What the next human, agent, or operator needs to understand
 
 <!-- State the restart outcome you need. -->
 

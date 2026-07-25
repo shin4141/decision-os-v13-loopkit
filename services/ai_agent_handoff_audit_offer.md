@@ -41,13 +41,15 @@ After the first 3 paid pilots, the listed standard rate applies unless Shin
 publishes a later explicit Forward-only pricing change.
 
 Scope:
-One repository or one clearly bounded AI-agent workflow.
+One repository or one clearly bounded AI-agent or AI-application workflow.
 
 ## Who this is for
 
 - solo builders;
 - small teams;
 - maintainers using Codex, Claude Code, Cursor, or similar coding agents;
+- operators, founders, consultants, or small teams running bounded AI
+  applications or AI-assisted operational workflows;
 - repositories using `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, `.cursor/rules`,
   handoffs, operational prompts, or long-running agent sessions;
 - people experiencing drift, restart friction, context bloat, unclear
@@ -96,6 +98,13 @@ delivered audit and asset; it does not expand the accepted scope.
 
 The sample demonstrates the audit format and reasoning process. It is not a
 client testimonial or paid-delivery result.
+
+## AI application workflow delivery
+
+For an accepted non-repository case, use
+[AI Application Workflow Audit — Delivery v0.1](ai_application_workflow_audit_delivery_v0_1.md)
+to see the bounded intake, audit dimensions, delivery template, and claim
+boundary. Not every AI application or workflow qualifies.
 
 ## Why this audit is credible
 
