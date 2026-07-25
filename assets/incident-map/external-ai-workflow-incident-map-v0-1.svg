@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="incident-map-title incident-map-desc">
+  <title id="incident-map-title">AI Coding Incidents Do Not End at the Error</title>
+  <desc id="incident-map-desc">Editorial three-stage flow based on 17 public AI coding incident worldlines across seven GitHub repositories. Five workflow types lead to broken operational surfaces: Evidence Chain 15, Restartability 11, Trust 10, and Re-entry Capacity 6. Those failures return work to people: Revalidation 11, Manual cleanup 6, Context reconstruction 4, Lost session 2, and Rollback 2. A separate internal audit panel reports 126 Field Notes scanned, 91 candidate worldlines reviewed, and 10 confirmed incidents, while excluding 11 contained near-misses, 26 controlled validations, 33 general risks, and 7 insufficient-evidence cases. Internal and external corpus counts are not combined.</desc>
+  <metadata>
+    Canonical editorial visualization. Sources: case_studies/external_incident_summary_v0_1.md, case_studies/incident_summary_v0_2.md, and case_studies/latent_incident_candidate_register_v0_1.md. Counts collected as of 2026-07-25.
+  </metadata>
+  <style>
+    .root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    .title { font-size: 52px; font-weight: 500; fill: #171817; }
+    .subtitle { font-size: 26px; font-weight: 400; fill: #565A57; }
+    .evidence { font-size: 24px; font-weight: 500; fill: #171817; }
+    .stage { font-size: 22px; font-weight: 500; letter-spacing: 1.1px; fill: #171817; }
+    .label { font-size: 21px; font-weight: 400; fill: #171817; }
+    .value { font-size: 30px; font-weight: 500; fill: #0F766E; text-anchor: end; }
+    .note { font-size: 20px; font-weight: 400; fill: #565A57; }
+    .audit-head { font-size: 21px; font-weight: 500; letter-spacing: 0.9px; fill: #171817; }
+    .audit-value { font-size: 42px; font-weight: 500; fill: #0F766E; }
+    .audit-label { font-size: 20px; font-weight: 400; fill: #171817; }
+    .closing { font-size: 20px; font-weight: 500; fill: #171817; }
+    .footnote { font-size: 20px; font-weight: 400; fill: #565A57; }
+    .accent-fill { fill: #0F766E; }
+    .accent-stroke { stroke: #0F766E; }
+    .rule { stroke: #D4D4D0; stroke-width: 1.5; }
+    .track { stroke: #D4D4D0; stroke-width: 5; }
+    .bar { stroke: #0F766E; stroke-width: 5; }
+  </style>
+
+  <g class="root">
+    <rect width="1600" height="1000" fill="#FAFAF8"/>
+
+    <rect x="80" y="52" width="64" height="6" class="accent-fill"/>
+    <text x="80" y="112" class="title">AI Coding Incidents Do Not End at the Error</text>
+    <text x="80" y="161" class="subtitle">The error happens in the tool.</text>
+    <text x="80" y="197" class="subtitle">The recovery work returns to the human.</text>
+
+    <text x="80" y="235" class="evidence">
+      <tspan class="accent-fill">17</tspan>
+      <tspan> public incident worldlines across </tspan>
+      <tspan class="accent-fill">7</tspan>
+      <tspan> repositories</tspan>
+    </text>
+    <line x1="80" y1="264" x2="1520" y2="264" class="rule"/>
+
+    <text x="80" y="304" class="stage">
+      <tspan class="accent-fill">1.</tspan>
+      <tspan> WHERE IT STARTED</tspan>
+    </text>
+    <line x1="80" y1="323" x2="500" y2="323" class="rule"/>
+
+    <line x1="520" y1="297" x2="558" y2="297" class="accent-stroke" stroke-width="3"/>
+    <path d="M558 289 L574 297 L558 305 Z" class="accent-fill"/>
+
+    <text x="590" y="304" class="stage">
+      <tspan class="accent-fill">2.</tspan>
+      <tspan> WHAT BROKE</tspan>
+    </text>
+    <line x1="590" y1="323" x2="1010" y2="323" class="rule"/>
+
+    <line x1="1030" y1="297" x2="1068" y2="297" class="accent-stroke" stroke-width="3"/>
+    <path d="M1068 289 L1084 297 L1068 305 Z" class="accent-fill"/>
+
+    <text x="1100" y="304" class="stage">
+      <tspan class="accent-fill">3.</tspan>
+      <tspan> WHAT RETURNED TO THE HUMAN</tspan>
+    </text>
+    <line x1="1100" y1="323" x2="1520" y2="323" class="rule"/>
+
+    <g aria-label="Where it started">
+      <text x="80" y="364" class="label">Session continuity and resume</text>
+      <text x="500" y="364" class="value">4</text>
+      <line x1="80" y1="378" x2="460" y2="378" class="track"/>
+      <line x1="80" y1="378" x2="460" y2="378" class="bar"/>
+
+      <text x="80" y="418" class="label">Structured edit application</text>
+      <text x="500" y="418" class="value">3</text>
+      <line x1="80" y1="432" x2="460" y2="432" class="track"/>
+      <line x1="80" y1="432" x2="365" y2="432" class="bar"/>
+
+      <text x="80" y="472" class="label">IDE file editing and recovery</text>
+      <text x="500" y="472" class="value">2</text>
+      <line x1="80" y1="486" x2="460" y2="486" class="track"/>
+      <line x1="80" y1="486" x2="270" y2="486" class="bar"/>
+
+      <text x="80" y="526" class="label">Multi-worktree repository</text>
+      <text x="80" y="551" class="label">orchestration</text>
+      <text x="500" y="526" class="value">2</text>
+      <line x1="80" y1="565" x2="460" y2="565" class="track"/>
+      <line x1="80" y1="565" x2="270" y2="565" class="bar"/>
+
+      <text x="80" y="607" class="label">Repository shell mutation</text>
+      <text x="500" y="607" class="value">2</text>
+      <line x1="80" y1="621" x2="460" y2="621" class="track"/>
+      <line x1="80" y1="621" x2="270" y2="621" class="bar"/>
+
+      <text x="80" y="650" class="note">Four additional workflow types contain one case each.</text>
+    </g>
+
+    <g aria-label="What broke">
+      <text x="590" y="364" class="label">Evidence Chain</text>
+      <text x="1010" y="364" class="value">15</text>
+      <line x1="590" y1="378" x2="970" y2="378" class="track"/>
+      <line x1="590" y1="378" x2="970" y2="378" class="bar"/>
+
+      <text x="590" y="432" class="label">Restartability</text>
+      <text x="1010" y="432" class="value">11</text>
+      <line x1="590" y1="446" x2="970" y2="446" class="track"/>
+      <line x1="590" y1="446" x2="869" y2="446" class="bar"/>
+
+      <text x="590" y="500" class="label">Trust</text>
+      <text x="1010" y="500" class="value">10</text>
+      <line x1="590" y1="514" x2="970" y2="514" class="track"/>
+      <line x1="590" y1="514" x2="843" y2="514" class="bar"/>
+
+      <text x="590" y="568" class="label">Re-entry Capacity</text>
+      <text x="1010" y="568" class="value">6</text>
+      <line x1="590" y1="582" x2="970" y2="582" class="track"/>
+      <line x1="590" y1="582" x2="742" y2="582" class="bar"/>
+
+      <text x="590" y="636" class="note">Operational surfaces mapped from case evidence.</text>
+    </g>
+
+    <g aria-label="What returned to the human">
+      <text x="1100" y="364" class="label">Revalidation</text>
+      <text x="1520" y="364" class="value">11</text>
+      <line x1="1100" y1="378" x2="1480" y2="378" class="track"/>
+      <line x1="1100" y1="378" x2="1480" y2="378" class="bar"/>
+
+      <text x="1100" y="418" class="label">Manual cleanup</text>
+      <text x="1520" y="418" class="value">6</text>
+      <line x1="1100" y1="432" x2="1480" y2="432" class="track"/>
+      <line x1="1100" y1="432" x2="1307" y2="432" class="bar"/>
+
+      <text x="1100" y="472" class="label">Context reconstruction</text>
+      <text x="1520" y="472" class="value">4</text>
+      <line x1="1100" y1="486" x2="1480" y2="486" class="track"/>
+      <line x1="1100" y1="486" x2="1238" y2="486" class="bar"/>
+
+      <text x="1100" y="526" class="label">Lost session</text>
+      <text x="1520" y="526" class="value">2</text>
+      <line x1="1100" y1="540" x2="1480" y2="540" class="track"/>
+      <line x1="1100" y1="540" x2="1169" y2="540" class="bar"/>
+
+      <text x="1100" y="580" class="label">Rollback</text>
+      <text x="1520" y="580" class="value">2</text>
+      <line x1="1100" y1="594" x2="1480" y2="594" class="track"/>
+      <line x1="1100" y1="594" x2="1169" y2="594" class="bar"/>
+
+      <text x="1100" y="636" class="note">Returned burden is case presence, not magnitude.</text>
+    </g>
+
+    <rect x="80" y="674" width="1440" height="201" fill="#EFEFED"/>
+    <text x="112" y="711" class="audit-head">INTERNAL AUDIT DISCIPLINE</text>
+
+    <text x="112" y="766" class="audit-value">126</text>
+    <text x="112" y="797" class="audit-label">Field Notes scanned</text>
+
+    <text x="350" y="766" class="audit-value">91</text>
+    <text x="350" y="797" class="audit-label">candidate worldlines reviewed</text>
+
+    <text x="640" y="766" class="audit-value">10</text>
+    <text x="640" y="797" class="audit-label">confirmed incidents</text>
+
+    <line x1="830" y1="699" x2="830" y2="837" class="rule"/>
+
+    <text x="870" y="711" class="audit-head">NOT COUNTED AS CONFIRMED INCIDENTS</text>
+    <text x="870" y="755" class="audit-label">
+      <tspan class="accent-fill" font-weight="500">11</tspan>
+      <tspan> contained near-misses</tspan>
+    </text>
+    <text x="1170" y="755" class="audit-label">
+      <tspan class="accent-fill" font-weight="500">26</tspan>
+      <tspan> controlled validations</tspan>
+    </text>
+    <text x="870" y="791" class="audit-label">
+      <tspan class="accent-fill" font-weight="500">33</tspan>
+      <tspan> general risks</tspan>
+    </text>
+    <text x="1170" y="791" class="audit-label">
+      <tspan class="accent-fill" font-weight="500">7</tspan>
+      <tspan> insufficient-evidence cases</tspan>
+    </text>
+    <text x="870" y="831" class="closing">We did not count every warning as an incident.</text>
+    <text x="870" y="857" class="note">Other candidates were existing-case-related.</text>
+
+    <line x1="80" y1="895" x2="1520" y2="895" class="rule"/>
+    <text x="80" y="927" class="footnote">Selected public GitHub incident corpus, collected as of 2026-07-25.</text>
+    <text x="80" y="953" class="footnote">Descriptive case-presence counts only; not population frequency or product ranking.</text>
+    <text x="80" y="979" class="footnote">One case may map to more than one class. Internal and external corpus counts are not combined.</text>
+  </g>
+</svg>
