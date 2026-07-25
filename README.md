@@ -164,6 +164,30 @@ This is not only a prompt kit. Used as a fork, LoopKit becomes a small external 
 
 The 5-minute check shows the first benefit. A fork captures the longer benefit: fewer repeated mistakes, less re-explanation, lower token waste, and safer restartability over time.
 
+### What a fork unlocks
+
+Forking does not mean copying every LoopKit rule into your workflow.
+
+It gives your AI a library it can selectively connect to your repository:
+
+- **Interactive tutorial** — Ask your AI to read
+  [`AI_TUTORIAL_CAPSULE.md`](AI_TUTORIAL_CAPSULE.md) and
+  [`docs/codex_tutorial_guide.md`](docs/codex_tutorial_guide.md).
+  The tutorial starts with a menu instead of explaining the entire framework at once.
+
+- **A repo-specific starter pack** — Use the `Setup Pill` to inspect only the
+  smallest useful surfaces of one repository and return its likely boundaries,
+  first files to read, suggested memory surfaces, Lite Footer, and first tiny task.
+  It remains read-only until you approve changes.
+
+- **Selective operational reuse** — Your AI does not need to load or copy every
+  field note. It should read only the notes related to the current task or failure,
+  then carry forward only the reusable residue that belongs in a handoff, example,
+  document, or candidate operating rule.
+
+The fork is not a documentation burden. It is a selective operating library for
+your AI-assisted work.
+
 ## After you fork: where to write
 
 A fork becomes useful when your AI work starts leaving memory outside the chat.
