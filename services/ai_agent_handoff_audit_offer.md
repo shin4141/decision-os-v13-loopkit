@@ -96,8 +96,11 @@ delivered audit and asset; it does not expand the accepted scope.
 
 [AI Agent Handoff Audit — Sample 001](ai_agent_handoff_audit_sample_001.md)
 
-The sample demonstrates the audit format and reasoning process. It is not a
-client testimonial or paid-delivery result.
+[AI Application Workflow Audit — Sample 002](ai_application_workflow_audit_sample_002.md)
+
+Sample 001 demonstrates the repository-focused audit format and reasoning
+process. Sample 002 is synthetic and demonstrates the non-repository delivery
+path. Neither sample is paid-client evidence or a testimonial.
 
 ## AI application workflow delivery
 
