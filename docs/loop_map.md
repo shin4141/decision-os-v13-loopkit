@@ -41,11 +41,13 @@ A Loop Map is global.
 Loop Map
 
 Proof Loop:
-Gate: GO / CAP
+Gate: GO
+Status: BOUNDED PROOF; use CAP instead when a fixed limit is required
 Meaning: continue bounded real-task proof
 
 Feature Growth Loop:
-Gate: HOLD / PAUSE
+Gate: HOLD
+Status: PAUSE
 Meaning: do not add new features yet
 
 Public Exposure Loop:
@@ -57,30 +59,29 @@ Gate: HOLD
 Meaning: wait for more operating-surface evidence
 
 Decision Packet Loop:
-Gate: DESIGN-ONLY / CAP
+Gate: CAP
+Status: DESIGN-ONLY
 Meaning: document examples only; do not implement Telegram or automation
 
 Ownership-Sensitive Loop:
-Gate: HUMAN REQUIRED
+Gate: HOLD
+Authority: HUMAN REQUIRED
 Meaning: color, naming, brand, pricing, public promises, and other authorship decisions require human choice
 
 Irreversible Action Loop:
-Gate: HUMAN REQUIRED
+Gate: BLOCK
+Authority: HUMAN REQUIRED
 Meaning: deletion, release, credential, money, account, or external authority changes require human confirmation
 ```
 
 ## Current Loop Map
 
-As of the current prototype state:
-
-| Loop                      |            Gate | Meaning                                     |
-| ------------------------- | --------------: | ------------------------------------------- |
-| Proof Loop                |     🟢 GO / CAP | Continue bounded real-task proof            |
-| Feature Growth Loop       | 🟡 HOLD / PAUSE | Do not add new features yet                 |
-| Public Exposure Loop      |          🟡 CAP | No repeated promotion or reaction-chasing   |
-| V13 v1.0 Paper Loop       |         🟡 HOLD | Do not draft v1.0 yet                       |
-| Decision Packet Loop      |  🟡 DESIGN-ONLY | Examples are allowed; implementation is not |
-| External V13 README Reuse |           🟢 GO | Use as-is for next reader or task           |
+The current operational state is maintained in the first current block of
+[`docs/current_signal.md`](current_signal.md) and the matching first current
+block of
+[`handoff/current_codex_handoff.md`](../handoff/current_codex_handoff.md).
+This Loop Map preserves vocabulary and historical loop evidence; it does not
+grant present authority.
 
 ## Bounded Operational Authority Window v0.1 — Canonical / Inactive
 

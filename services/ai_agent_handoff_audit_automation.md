@@ -1,5 +1,15 @@
 # AI Agent Handoff Audit Automation
 
+> **HISTORICAL / INACTIVE**
+>
+> **NOT THE CURRENT PUBLIC OFFER**
+>
+> **GRANTS NO FREE DIAGNOSIS, DISCOVERY, CONTACT, AUTOMATION, OR EXECUTION
+> AUTHORITY**
+>
+> Current public offer:
+> [`services/ai_agent_handoff_audit_offer.md`](ai_agent_handoff_audit_offer.md)
+
 ## Goal
 
 Reduce manual outreach burden for the AI Agent Handoff Audit service.

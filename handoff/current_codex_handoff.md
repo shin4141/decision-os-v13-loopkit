@@ -1,5 +1,54 @@
 # Current Codex Handoff - V13 LoopKit
 
+## Canonical Current State — Consistency Cleanup v0.1
+
+```text
+Current Layer:
+V13 — Compound Loop / Runner Public Adoption
+
+Canonical main before cleanup:
+ec9df85e72ac881db05fd11b13d4ea2a6d12b298
+
+README PR #15:
+PASS / MERGED / COMPLETE
+
+Reddit Public Entry:
+LIVE / BODY AND COMMAND VERIFIED FROM OWNER-ARCHIVED PDF
+
+Canonical Reddit URL:
+UNKNOWN / NOT YET RECORDED
+
+V12 State:
+DELAY — canonical URL is not yet recorded and cleanup is not yet merged
+
+V13 Gate:
+HOLD — OBSERVE PUBLIC RESPONSE / NO FOLLOW-UP ACTION AUTHORIZED
+
+Current Gate:
+HOLD — OBSERVE PUBLIC RESPONSE / NO FOLLOW-UP ACTION AUTHORIZED
+
+Runner:
+V13 Runner v0.2 / UNCHANGED
+
+Distribution Source Ref:
+e1212a795413e0146c52b2c9aa51356897c62846
+
+Current Cleanup Executor:
+Codex 3-11 / BOUNDED DOCUMENTATION PR ONLY
+
+Active Branch:
+docs/v13-consistency-cleanup-v0-1
+
+Next Authorized Action:
+CREATE DRAFT CLEANUP PR ONLY
+
+Decision Owner:
+Shin
+```
+
+Everything below this boundary is a historical reverse-chronological ledger.
+Historical entries preserve their As-of truth but grant no present authority.
+
 ## Repository
 
 `decision-os-v13-loopkit`

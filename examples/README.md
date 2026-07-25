@@ -4,6 +4,9 @@ Start here:
 
 [`examples/cap.v12_handoff_review.json`](cap.v12_handoff_review.json)
 
+Validate all Loop Record examples:
+`python3 -B scripts/validate_loop_record_examples.py`
+
 Why:
 
 This example shows completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision.

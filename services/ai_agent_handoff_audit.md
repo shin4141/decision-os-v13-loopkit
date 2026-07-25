@@ -1,5 +1,15 @@
 # AI Agent Handoff Audit
 
+> **HISTORICAL / INACTIVE**
+>
+> **NOT THE CURRENT PUBLIC OFFER**
+>
+> **GRANTS NO FREE DIAGNOSIS, DISCOVERY, CONTACT, AUTOMATION, OR EXECUTION
+> AUTHORITY**
+>
+> Current public offer:
+> [`services/ai_agent_handoff_audit_offer.md`](ai_agent_handoff_audit_offer.md)
+
 ## What this is
 
 A lightweight audit for repos using AI coding agents.
