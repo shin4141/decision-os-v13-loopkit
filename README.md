@@ -102,6 +102,20 @@ See the
 [AI Agent Handoff Audit](services/ai_agent_handoff_audit_offer.md)
 for scope, pricing, delivery, and the free fit-check boundary.
 
+## What AI coding incidents return to the human
+
+[![AI coding incidents do not end at the error](assets/incident-map/external-ai-workflow-incident-map-v0-1.png)](case_studies/external_ai_workflow_incident_map_v0_1.md)
+
+Across 17 selected public incident worldlines from seven GitHub repositories,
+the visible error often did not end inside the tool. It returned work to the
+human as revalidation, manual cleanup, context reconstruction, rollback, or a
+lost session.
+
+These are descriptive case-presence counts from a selected public corpus, not
+population frequency or a product ranking.
+
+[Read the evidence boundary, source tables, and interpretation limits.](case_studies/external_ai_workflow_incident_map_v0_1.md)
+
 ## Secondary adoption paths
 
 ### Try one line first
