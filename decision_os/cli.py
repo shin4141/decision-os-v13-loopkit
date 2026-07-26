@@ -8,6 +8,9 @@ import sys
 from typing import Any, Sequence, TextIO
 
 from .checks import evidence, inspect_repository, unknown_payload
+from .intake import invalid_payload as intake_invalid_payload
+from .intake import validate_intake_file
+from .intake_text import render_text as render_intake_text
 from .scan import failure_payload as scan_failure_payload
 from .scan import scan_repository
 from .scan_text import render_text
@@ -19,6 +22,10 @@ USAGE = "decision-os check <repository>"
 SCAN_USAGE = (
     "decision-os scan <repository> | "
     "decision-os scan --format json|text <repository>"
+)
+INTAKE_USAGE = (
+    "decision-os intake <packet.json> | "
+    "decision-os intake --format json|text <packet.json>"
 )
 
 
@@ -123,6 +130,75 @@ def _run_scan(arguments: Sequence[str], output: TextIO) -> int:
     return exit_code
 
 
+def _intake_format(arguments: Sequence[str]) -> str:
+    if (
+        len(arguments) >= 3
+        and arguments[0] == "intake"
+        and arguments[1] == "--format"
+        and arguments[2] == "text"
+    ):
+        return "text"
+    return "json"
+
+
+def _write_intake(
+    payload: dict[str, Any],
+    output_format: str,
+    stream: TextIO,
+) -> None:
+    if output_format == "text":
+        stream.write(render_intake_text(payload))
+        return
+    _write(payload, stream)
+
+
+def _run_intake(arguments: Sequence[str], output: TextIO) -> int:
+    output_format = _intake_format(arguments)
+    packet: str | None = None
+    if (
+        len(arguments) == 2
+        and arguments[0] == "intake"
+        and arguments[1]
+        and not arguments[1].startswith("-")
+    ):
+        packet = arguments[1]
+        output_format = "json"
+    elif (
+        len(arguments) == 4
+        and arguments[0] == "intake"
+        and arguments[1] == "--format"
+        and arguments[2] in ("json", "text")
+        and arguments[3]
+    ):
+        output_format = arguments[2]
+        packet = arguments[3]
+
+    if packet is None:
+        payload = intake_invalid_payload(
+            None,
+            minimum_next_step=INTAKE_USAGE,
+            unknowns=("cli_usage",),
+        )
+        _write_intake(payload, output_format, output)
+        return EXIT_USAGE
+
+    try:
+        payload, exit_code = validate_intake_file(Path(packet))
+    except Exception:
+        payload = intake_invalid_payload(
+            Path(packet),
+            minimum_next_step=(
+                "Retry the same local packet once; if the internal failure "
+                "repeats, stop and report the command boundary."
+            ),
+            unknowns=("internal_failure",),
+        )
+        exit_code = EXIT_INTERNAL
+
+    _write_intake(payload, output_format, output)
+    return exit_code
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -135,6 +211,9 @@ def main(
 
     if arguments and arguments[0] == "scan":
         return _run_scan(arguments, output)
+
+    if arguments and arguments[0] == "intake":
+        return _run_intake(arguments, output)
 
     if (
         len(arguments) != 2
