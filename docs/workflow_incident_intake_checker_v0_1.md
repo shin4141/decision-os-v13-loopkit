@@ -9,6 +9,52 @@ discussion.
 It does not perform an Audit, diagnose a workflow or vendor, recover state,
 establish correctness or safety, or accept work for a paid Audit.
 
+## Exact-commit first use
+
+Download the example from the exact source commit, then run the checker from
+that same commit:
+
+```sh
+curl -fsSLo workflow_incident_intake_v0_1.json \
+  https://raw.githubusercontent.com/shin4141/decision-os-v13-loopkit/d3ba864c66367e5c676ec14fbaa550801e4f1889/examples/workflow_incident_intake_v0_1.json
+
+uvx --isolated --no-config --no-env-file --no-python-downloads \
+  --from "git+https://github.com/shin4141/decision-os-v13-loopkit@d3ba864c66367e5c676ec14fbaa550801e4f1889" \
+  decision-os intake --format text workflow_incident_intake_v0_1.json
+```
+
+Tool transport:
+
+- `curl` contacts `raw.githubusercontent.com` for the exact example blob;
+- `uvx` may contact GitHub for the exact source commit;
+- a cold run may contact the Python package index for the pinned build backend;
+- a local cache may be used;
+- transport messages may appear on stderr.
+
+Intake execution:
+
+- reads only the supplied local JSON file;
+- uploads no target workflow data through the checker;
+- uses no telemetry;
+- performs no input-file writes;
+- does not echo packet contents.
+
+## Who this is for
+
+This path is for:
+
+- released AI applications with one concrete incident;
+- staging, beta, or pilot workflows with one concrete incident;
+- internal AI-assisted operational workflows with one concrete incident.
+
+It is not for:
+
+- a pre-release application with no incident;
+- general safety approval;
+- a security audit;
+- a product-wide code review;
+- vendor bug repair.
+
 ## Commands
 
 The three Decision-OS commands remain separate:
@@ -35,7 +81,7 @@ not list them.
 
 ## Local read boundary
 
-The command:
+After tool transport, the `decision-os intake` checker:
 
 - reads one local file only;
 - performs no network access, telemetry, or writes;
