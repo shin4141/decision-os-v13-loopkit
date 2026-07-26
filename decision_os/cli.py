@@ -7,6 +7,10 @@ from pathlib import Path
 import sys
 from typing import Any, Sequence, TextIO
 
+from .audit_gate import invalid_payload as audit_gate_invalid_payload
+from .audit_gate import validate_audit_gate_files
+from .audit_gate import validate_result_contract as validate_audit_gate_result
+from .audit_gate_text import render_text as render_audit_gate_text
 from .audit_link import invalid_payload as audit_link_invalid_payload
 from .audit_link import validate_audit_link_files
 from .audit_link_text import render_text as render_audit_link_text
@@ -40,6 +44,10 @@ AUDIT_CHECK_USAGE = (
 AUDIT_LINK_USAGE = (
     "decision-os audit-link <intake.json> <audit.md> | "
     "decision-os audit-link --format json|text <intake.json> <audit.md>"
+)
+AUDIT_GATE_USAGE = (
+    "decision-os audit-gate <intake.json> <audit.md> | "
+    "decision-os audit-gate --format json|text <intake.json> <audit.md>"
 )
 
 
@@ -364,6 +372,89 @@ def _run_audit_link(arguments: Sequence[str], output: TextIO) -> int:
     return exit_code
 
 
+def _audit_gate_format(arguments: Sequence[str]) -> str:
+    if (
+        len(arguments) >= 3
+        and arguments[0] == "audit-gate"
+        and arguments[1] == "--format"
+        and arguments[2] == "text"
+    ):
+        return "text"
+    return "json"
+
+
+def _write_audit_gate(
+    payload: dict[str, Any],
+    output_format: str,
+    stream: TextIO,
+) -> None:
+    if output_format == "text":
+        stream.write(render_audit_gate_text(payload))
+        return
+    _write(payload, stream)
+
+
+def _run_audit_gate(arguments: Sequence[str], output: TextIO) -> int:
+    output_format = _audit_gate_format(arguments)
+    intake_path: str | None = None
+    audit_path: str | None = None
+    if (
+        len(arguments) == 3
+        and arguments[0] == "audit-gate"
+        and arguments[1]
+        and arguments[2]
+        and not arguments[1].startswith("-")
+        and not arguments[2].startswith("-")
+    ):
+        intake_path = arguments[1]
+        audit_path = arguments[2]
+        output_format = "json"
+    elif (
+        len(arguments) == 5
+        and arguments[0] == "audit-gate"
+        and arguments[1] == "--format"
+        and arguments[2] in ("json", "text")
+        and arguments[3]
+        and arguments[4]
+        and not arguments[3].startswith("-")
+        and not arguments[4].startswith("-")
+    ):
+        output_format = arguments[2]
+        intake_path = arguments[3]
+        audit_path = arguments[4]
+
+    if intake_path is None or audit_path is None:
+        payload = audit_gate_invalid_payload(
+            None,
+            None,
+            minimum_next_step=AUDIT_GATE_USAGE,
+            unknowns=("cli_usage",),
+        )
+        _write_audit_gate(payload, output_format, output)
+        return EXIT_USAGE
+
+    try:
+        payload, exit_code = validate_audit_gate_files(
+            Path(intake_path),
+            Path(audit_path),
+        )
+        validate_audit_gate_result(payload, exit_code)
+        _write_audit_gate(payload, output_format, output)
+        return exit_code
+    except Exception:
+        payload = audit_gate_invalid_payload(
+            Path(intake_path),
+            Path(audit_path),
+            minimum_next_step=(
+                "Retry the same two local files once; if the internal failure "
+                "repeats, stop and report the command boundary."
+            ),
+            unknowns=("internal_failure",),
+        )
+        _write_audit_gate(payload, output_format, output)
+        return EXIT_INTERNAL
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -385,6 +476,9 @@ def main(
 
     if arguments and arguments[0] == "audit-link":
         return _run_audit_link(arguments, output)
+
+    if arguments and arguments[0] == "audit-gate":
+        return _run_audit_gate(arguments, output)
 
     if (
         len(arguments) != 2
