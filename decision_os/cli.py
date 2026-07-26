@@ -7,6 +7,9 @@ from pathlib import Path
 import sys
 from typing import Any, Sequence, TextIO
 
+from .audit_delivery import invalid_payload as audit_invalid_payload
+from .audit_delivery import validate_audit_delivery_file
+from .audit_delivery_text import render_text as render_audit_text
 from .checks import evidence, inspect_repository, unknown_payload
 from .intake import invalid_payload as intake_invalid_payload
 from .intake import validate_intake_file
@@ -26,6 +29,10 @@ SCAN_USAGE = (
 INTAKE_USAGE = (
     "decision-os intake <packet.json> | "
     "decision-os intake --format json|text <packet.json>"
+)
+AUDIT_CHECK_USAGE = (
+    "decision-os audit-check <audit.md> | "
+    "decision-os audit-check --format json|text <audit.md>"
 )
 
 
@@ -199,6 +206,75 @@ def _run_intake(arguments: Sequence[str], output: TextIO) -> int:
     return exit_code
 
 
+def _audit_check_format(arguments: Sequence[str]) -> str:
+    if (
+        len(arguments) >= 3
+        and arguments[0] == "audit-check"
+        and arguments[1] == "--format"
+        and arguments[2] == "text"
+    ):
+        return "text"
+    return "json"
+
+
+def _write_audit_check(
+    payload: dict[str, Any],
+    output_format: str,
+    stream: TextIO,
+) -> None:
+    if output_format == "text":
+        stream.write(render_audit_text(payload))
+        return
+    _write(payload, stream)
+
+
+def _run_audit_check(arguments: Sequence[str], output: TextIO) -> int:
+    output_format = _audit_check_format(arguments)
+    delivery: str | None = None
+    if (
+        len(arguments) == 2
+        and arguments[0] == "audit-check"
+        and arguments[1]
+        and not arguments[1].startswith("-")
+    ):
+        delivery = arguments[1]
+        output_format = "json"
+    elif (
+        len(arguments) == 4
+        and arguments[0] == "audit-check"
+        and arguments[1] == "--format"
+        and arguments[2] in ("json", "text")
+        and arguments[3]
+    ):
+        output_format = arguments[2]
+        delivery = arguments[3]
+
+    if delivery is None:
+        payload = audit_invalid_payload(
+            None,
+            minimum_next_step=AUDIT_CHECK_USAGE,
+            unknowns=("cli_usage",),
+        )
+        _write_audit_check(payload, output_format, output)
+        return EXIT_USAGE
+
+    try:
+        payload, exit_code = validate_audit_delivery_file(Path(delivery))
+    except Exception:
+        payload = audit_invalid_payload(
+            Path(delivery),
+            minimum_next_step=(
+                "Retry the same local delivery once; if the internal failure "
+                "repeats, stop and report the command boundary."
+            ),
+            unknowns=("internal_failure",),
+        )
+        exit_code = EXIT_INTERNAL
+
+    _write_audit_check(payload, output_format, output)
+    return exit_code
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -214,6 +290,9 @@ def main(
 
     if arguments and arguments[0] == "intake":
         return _run_intake(arguments, output)
+
+    if arguments and arguments[0] == "audit-check":
+        return _run_audit_check(arguments, output)
 
     if (
         len(arguments) != 2
