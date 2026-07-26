@@ -6,6 +6,28 @@
 ![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
 ![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
+## Turn one AI incident into a paste-ready rule
+
+An AI agent said “done,” resumed from stale state, lost the accepted result,
+or left you reconstructing the restart point.
+
+You do not need to post the incident, share your repository, install LoopKit,
+or contact anyone.
+
+Paste one sanitized incident into your own AI and receive a draft rule for
+your `AGENTS.md`, `CLAUDE.md`, system prompt, or runbook.
+
+[Copy the Incident-to-Instruction prompt](copy-paste/incident-to-instruction-rule.md)
+
+[See one complete Before / After example](examples/incident-to-instruction-before-after-v0-1.md)
+
+1. Remove secrets and private data.
+2. Paste one incident into the prompt.
+3. Review the returned rule before adding it to your instruction surface.
+
+The self-service result is a draft, not a verified Audit or a guarantee that
+the underlying tool will not fail again.
+
 ## Can the next coding agent find where to restart?
 
 Your repository can contain the right instructions and current state while
