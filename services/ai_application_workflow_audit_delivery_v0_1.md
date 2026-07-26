@@ -36,6 +36,15 @@ The incident must be specific enough to distinguish its trigger, expected
 state, observed state, returned human work, and current restart or fallback
 path.
 
+## Prepare one incident packet
+
+The local
+[Workflow Incident Intake Checker](../docs/workflow_incident_intake_checker_v0_1.md)
+can confirm whether a sanitized incident packet contains the minimum structure
+for a free fit discussion. It does not diagnose the incident, and using it is
+optional. A repository is not required. `FIT_CHECK_READY` does not imply
+acceptance for a paid Audit.
+
 ## Minimum intake
 
 Collect only:

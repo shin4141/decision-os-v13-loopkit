@@ -107,6 +107,38 @@ Not only coding repositories. The paid Audit can also review one clearly bounded
 when a failure returned revalidation, cleanup, context reconstruction,
 rollback, or restart decisions to a human.
 
+## Check one AI workflow incident
+
+Use this for a released app, pilot, staging workflow, or internal workflow when
+one concrete incident has already returned cleanup, rollback, revalidation,
+reconstruction, or restart decisions to a human.
+
+This is not a pre-release safety certification or a general product audit. The
+checker verifies only whether the incident packet is structurally ready for a
+bounded fit discussion.
+
+```sh
+curl -fsSLo workflow_incident_intake_v0_1.json \
+  https://raw.githubusercontent.com/shin4141/decision-os-v13-loopkit/d3ba864c66367e5c676ec14fbaa550801e4f1889/examples/workflow_incident_intake_v0_1.json
+
+uvx --isolated --no-config --no-env-file --no-python-downloads \
+  --from "git+https://github.com/shin4141/decision-os-v13-loopkit@d3ba864c66367e5c676ec14fbaa550801e4f1889" \
+  decision-os intake --format text workflow_incident_intake_v0_1.json
+```
+
+- Edit the downloaded JSON to describe one sanitized incident.
+- Remove credentials, customer data, production secrets, and private material.
+- Expected results are `FIT_CHECK_READY`, `INCOMPLETE`, or `INVALID`.
+- `FIT_CHECK_READY` does not mean the workflow passed an Audit or was accepted
+  for paid work.
+
+Read the
+[Workflow Incident Intake Checker guide](docs/workflow_incident_intake_checker_v0_1.md),
+review the
+[AI Application Workflow Audit delivery boundary](services/ai_application_workflow_audit_delivery_v0_1.md),
+or
+[open the AI Agent Handoff Audit fit-check form](https://github.com/shin4141/decision-os-v13-loopkit/issues/new?template=ai_agent_handoff_audit_fit_check.md).
+
 ## What AI coding incidents return to the human
 
 [![AI coding incidents do not end at the error](assets/incident-map/external-ai-workflow-incident-map-v0-1.png)](case_studies/external_ai_workflow_incident_map_v0_1.md)
