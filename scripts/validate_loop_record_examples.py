@@ -27,6 +27,12 @@ SUPPORTED_SCHEMA_KEYS = {
 }
 
 SUPPORTED_TYPES = {"object", "array", "string"}
+LOOP_RECORD_EXAMPLE_PATTERNS = (
+    "go.*.json",
+    "hold.*.json",
+    "cap.*.json",
+    "block.*.json",
+)
 
 
 class SchemaSupportError(Exception):
@@ -203,9 +209,17 @@ def validate_examples(schema_path: Path, examples_dir: Path) -> int:
         raise SchemaSupportError(f"{schema_path}: root schema must be an object")
     audit_schema(schema)
 
-    example_paths = sorted(examples_dir.glob("*.json"))
+    example_paths = sorted(
+        {
+            path
+            for pattern in LOOP_RECORD_EXAMPLE_PATTERNS
+            for path in examples_dir.glob(pattern)
+        }
+    )
     if not example_paths:
-        raise RecordValidationError(f"{examples_dir}: no JSON examples found")
+        raise RecordValidationError(
+            f"{examples_dir}: no Loop Record examples found"
+        )
 
     failures: list[str] = []
     for example_path in example_paths:
@@ -235,9 +249,9 @@ def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(
         description=(
-            "Validate examples/*.json against the supported subset used by "
-            "schema/v13_loop_record.schema.json. Unsupported schema keywords "
-            "fail closed."
+            "Validate canonical gate-prefixed Loop Record examples against "
+            "the supported subset used by schema/v13_loop_record.schema.json. "
+            "Unsupported schema keywords fail closed."
         )
     )
     parser.add_argument(

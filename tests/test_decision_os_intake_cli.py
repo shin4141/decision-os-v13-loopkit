@@ -23,6 +23,9 @@ from tests.test_decision_os_checks import tree_digest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BIN_ENTRY = REPO_ROOT / "bin" / "decision-os"
 SHIPPED_EXAMPLE = REPO_ROOT / "examples" / "workflow_incident_intake_v0_1.json"
+LOOP_RECORD_VALIDATOR = (
+    REPO_ROOT / "scripts" / "validate_loop_record_examples.py"
+)
 
 
 def cli_environment() -> dict[str, str]:
@@ -86,6 +89,24 @@ def decoded(completed: subprocess.CompletedProcess[bytes]) -> dict[str, object]:
 
 
 class WorkflowIntakeCliTest(unittest.TestCase):
+    def test_loop_record_validator_does_not_consume_intake_example(self) -> None:
+        completed = subprocess.run(
+            (sys.executable, "-B", str(LOOP_RECORD_VALIDATOR)),
+            capture_output=True,
+            check=False,
+            cwd=REPO_ROOT,
+            env=cli_environment(),
+        )
+
+        self.assertEqual(0, completed.returncode)
+        self.assertEqual(b"", completed.stderr)
+        self.assertTrue(
+            completed.stdout.startswith(
+                b"PASS: 12/12 Loop Record examples validate against "
+            )
+        )
+        self.assertNotIn(SHIPPED_EXAMPLE.name.encode(), completed.stdout)
+
     def test_shipped_example_is_fit_check_ready(self) -> None:
         completed = run_module(
             REPO_ROOT,
