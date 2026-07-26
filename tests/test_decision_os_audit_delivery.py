@@ -55,7 +55,7 @@ class AuditDeliveryValidationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             content = ready_document().replace(
-                "Synthetic editorial approval assistant",
+                "Customer-support approval workflow",
                 "SECRET APPLICATION VALUE",
             )
             path = write_document(root, content)
@@ -213,8 +213,8 @@ class AuditDeliveryValidationTest(unittest.TestCase):
             (
                 "empty",
                 (
-                    "Application or Workflow: Synthetic editorial "
-                    "approval assistant",
+                    "Application or Workflow: Customer-support approval "
+                    "workflow",
                     "Application or Workflow:",
                 ),
                 "Application or Workflow",
@@ -597,13 +597,12 @@ class AuditDeliveryValidationTest(unittest.TestCase):
     ) -> None:
         ordinary = ready_document().replace(
             (
-                "Application or Workflow: Synthetic editorial approval "
-                "assistant"
+                "Application or Workflow: Customer-support approval workflow"
             ),
             (
                 "Application or Workflow:\n"
                 "```text\n"
-                "Synthetic editorial approval assistant\n"
+                "Customer-support approval workflow\n"
                 "```"
             ),
             1,
