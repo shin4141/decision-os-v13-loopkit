@@ -93,6 +93,14 @@ The operational asset may be:
 - a next-safe-action record;
 - an escalation or stop condition.
 
+When the selected fix belongs in an existing project instruction surface, use
+the
+[Instruction-Surface Remediation Profile v0.1](instruction_surface_remediation_profile_v0_1.md)
+to deliver one paste-ready rule block with explicit placement, completion
+evidence, stop conditions, handoff requirements, rollback, and re-evaluation.
+This is an Operational Asset profile inside the existing Audit. It does not
+create a new product family or authorize editing the target surface.
+
 ## Audit dimensions
 
 Each dimension receives one result: `PASS`, `PARTIAL`, `FAIL`, or `UNKNOWN`.
