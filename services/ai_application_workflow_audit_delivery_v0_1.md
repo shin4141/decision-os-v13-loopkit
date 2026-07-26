@@ -195,6 +195,24 @@ Native Resume: NOT PROOF OF TRUSTWORTHY RESTART
 <fill this>
 ```
 
+## Preserve accepted incident identity
+
+Carry the six accepted intake values into the corresponding Audit fields
+without paraphrasing:
+
+- `workflow` → `Application or Workflow`
+- `bounded_path` → `Bounded Workflow Path`
+- `trigger` → `Trigger`
+- `expected_state` → `Expected State`
+- `observed_state` → `Observed State`
+- `restart_or_fallback_path` → `Current Restart or Fallback Path`
+
+The local
+[Audit Case Link Checker](../docs/audit_case_link_checker_v0_1.md) is optional
+but recommended before delivery. `LINKED` proves only bounded field continuity
+between the two supplied files. It does not prove that either file is
+factually correct.
+
 ## Validate a completed delivery
 
 The local

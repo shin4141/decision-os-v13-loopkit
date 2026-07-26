@@ -77,7 +77,7 @@ def write_example(directory: Path, *, secret: bool = False) -> Path:
     content = SHIPPED_EXAMPLE.read_text(encoding="utf-8")
     if secret:
         content = content.replace(
-            "Synthetic editorial approval assistant",
+            "Customer-support approval workflow",
             "SECRET DELIVERY CONTENT",
         )
     path = directory / "audit.md"

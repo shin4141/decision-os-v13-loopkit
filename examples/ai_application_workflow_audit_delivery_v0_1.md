@@ -1,14 +1,14 @@
 # AI Application Workflow Audit — Executable Synthetic Example
 
-This invented, non-private packet is an executable example for the Audit
-Delivery Validator. It is not a testimonial, paid-client result, or measured
-outcome.
+This synthetic, invented, non-private packet is an executable example for the
+Audit Delivery Validator and Audit Case Link Checker. It is not client
+evidence, a testimonial, a paid-client result, or a measured result.
 
 ## Scope
 
 Audit Profile: AI_APPLICATION_WORKFLOW
-Application or Workflow: Synthetic editorial approval assistant
-Bounded Workflow Path: Draft generation to human approval to publication handoff
+Application or Workflow: Customer-support approval workflow
+Bounded Workflow Path: draft response -> human approval -> send decision
 Audit As-of: 2026-07-26
 
 ## Source Materials
@@ -19,10 +19,10 @@ Material Restrictions: No credentials, customer data, or private code
 
 ## Incident As-of State
 
-Trigger: Resume the publication handoff after an interrupted approval session
-Expected State: The resumed operator can bind the accepted draft to its approval
-Observed State: The draft exists, but its approval binding is not established
-Current Restart or Fallback Path: Stop publication and revalidate the draft
+Trigger: The workflow resumed after an interrupted approval step.
+Expected State: The approved draft remained current and ready for the send decision.
+Observed State: The resumed workflow could not establish which draft the approval covered.
+Current Restart or Fallback Path: Keep the workflow stopped at approval until the draft identity is re-established.
 Current Owner: Human publication operator
 Next Safe Action: Record the accepted draft identity before another handoff
 
