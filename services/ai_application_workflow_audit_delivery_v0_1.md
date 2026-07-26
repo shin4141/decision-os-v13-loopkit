@@ -118,77 +118,90 @@ Copy and complete this Markdown template for one accepted incident:
 
 ## Scope
 
-Application or workflow:
-Bounded workflow path:
-Audit as-of date:
+Audit Profile: AI_APPLICATION_WORKFLOW
+Application or Workflow: <fill this>
+Bounded Workflow Path: <fill this>
+Audit As-of: <fill this>
 
-## Source materials
+## Source Materials
 
-- Reviewed:
-- Not reviewed:
-- Material restrictions:
+Reviewed: <fill this>
+Not Reviewed: <fill this>
+Material Restrictions: <fill this>
 
-## Incident as-of state
+## Incident As-of State
 
-Trigger:
-Expected state:
-Observed state:
-Current restart or fallback path:
-
-## Observed failure
-
-<What failed, stopped, drifted, or returned an untrustworthy completion state?>
-
-## Returned human burden
-
-<What rollback, cleanup, revalidation, reconstruction, or restart decision
-returned to the human? Keep quantities UNKNOWN unless recorded.>
+Trigger: <fill this>
+Expected State: <fill this>
+Observed State: <fill this>
+Current Restart or Fallback Path: <fill this>
+Current Owner: <fill this>
+Next Safe Action: <fill this>
 
 ## Friction Map
 
-| Point | Expected carrier | Observed gap | Returned human work |
-|---|---|---|---|
-| <point> | <expected evidence or state> | <gap> | <burden> |
+| Point | Expected Carrier | Observed Gap | Returned Human Work |
+| --- | --- | --- | --- |
+| <point> | <carrier> | <gap> | <work> |
 
-## Diagnosis
+## Restartability Diagnosis
 
-Trigger clarity:
-Accepted-state clarity:
-Evidence continuity:
-Completion integrity:
-Restartability:
-Ownership / next actor:
-Human recovery burden:
-Safe next action:
+Trigger Clarity: UNKNOWN — <rationale>
+Accepted-State Clarity: UNKNOWN — <rationale>
+Evidence Continuity: UNKNOWN — <rationale>
+Completion Integrity: UNKNOWN — <rationale>
+Restartability: UNKNOWN — <rationale>
+Ownership / Next Actor: UNKNOWN — <rationale>
+Human Recovery Burden: UNKNOWN — <rationale>
+Safe Next Action: UNKNOWN — <rationale>
+Overall Diagnosis: <fill this>
 
 ## Priority Fix
 
-<One bounded repair and why it has priority.>
+Selected Fix: <fill this>
+Why Priority: <fill this>
 
 ## Operational Asset
 
-<One copy-paste or directly usable asset.>
+Asset Type: <fill this>
+Asset Content: <fill this; may continue over following lines>
 
 ## Before / After Restart Check
 
-Before:
-After:
-Still UNKNOWN:
+Before: <fill this>
+After: <fill this>
+Still UNKNOWN: <fill this>
 
 ## Unknowns
 
-- <Unverified state or assumption>
+- <fill this>
 
 ## Exclusions
 
-- <System, claim, material, or action outside the accepted scope>
+- <fill this>
+
+## Claim Boundary
+
+Vendor Bug Fix: NOT CLAIMED
+Future Prevention: NOT CLAIMED
+Lost-State Recovery: NOT CLAIMED
+Security or Safety: NOT CLAIMED
+Productivity / Labor / Cost / Revenue: NOT CLAIMED
+Unreviewed Systems: NOT DIAGNOSED
+Native Resume: NOT PROOF OF TRUSTWORTHY RESTART
 
 ## Completion Line
 
-<One bounded incident diagnosed; one priority repair selected; one operational
-asset returned; before/after restart distinction visible; unknowns and
-exclusions explicit.>
+<fill this>
 ```
+
+## Validate a completed delivery
+
+The local
+[Audit Delivery Validator](../docs/audit_delivery_validator_v0_1.md) is optional
+but recommended before paid delivery. `DELIVERY_READY` means structural closure
+only. It is not proof of diagnosis truth, Operational Asset efficacy, or client
+acceptance.
 
 ## Fit-check boundary
 
