@@ -1,0 +1,23 @@
+{
+  "schema_version": "decision-os.workflow-intake.v0.1",
+  "workflow": "Customer-support approval workflow",
+  "bounded_path": "draft response -> human approval -> send decision",
+  "incident_as_of": "2026-07-26",
+  "trigger": "The workflow resumed after an interrupted approval step.",
+  "expected_state": "The approved draft remained current and ready for the send decision.",
+  "observed_state": "The resumed workflow could not establish which draft the approval covered.",
+  "human_recovery_work": [
+    "Revalidated the draft and repeated the send decision."
+  ],
+  "restart_or_fallback_path": "Keep the workflow stopped at approval until the draft identity is re-established.",
+  "materials_available": [
+    "Sanitized workflow diagram",
+    "Redacted event timeline",
+    "Configuration field names without values"
+  ],
+  "prohibited_materials": [
+    "Credentials",
+    "Customer messages",
+    "Production secrets"
+  ]
+}
