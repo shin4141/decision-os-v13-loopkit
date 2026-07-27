@@ -391,25 +391,23 @@ untouched.
 
 ## Git and Draft PR State
 
-This section is completed only from actual post-push evidence in the closure
-commit.
-
 ```text
-Implementation commit:
-PENDING INITIAL COMMIT
+Initial implementation commit:
+75bf881e191c1e5959b9364bb559bce84787be4b
 
-Closure commit:
-PENDING CLOSURE COMMIT
+Initial remote branch:
+75bf881e191c1e5959b9364bb559bce84787be4b
 
-Remote branch:
-PENDING INITIAL PUSH
+Canonical closure content:
+this receipt and the two canonical current-state blocks in final branch HEAD
 
 Draft PR:
-PENDING CREATION
+OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/34
 
 Merge:
 NOT AUTHORIZED / NOT PERFORMED
 ```
 
-These are explicit current facts at this validation stage, not planned-success
-claims.
+The final branch-head SHA is verified after the closure commit and reported in
+the receiver-authored completion report. A commit cannot safely embed its own
+hash as content, so no self-referential SHA is claimed here.

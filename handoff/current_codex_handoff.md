@@ -1,5 +1,79 @@
 # Current Codex Handoff - V13 LoopKit
 
+## Canonical Current State — Verified Save Claude MVP v0.1
+
+```text
+Current Layer:
+V13 — Compound Loop / Verified Save Proof-of-Use MVP
+
+Primary Objective:
+External Proof-of-Use
+
+First Adapter:
+Claude Agent SDK / product core remains agent-agnostic
+
+Starting Main:
+3c9142692dfe60785a033b91ad7b6e5226712a93
+
+Active Branch:
+feat/verified-save-claude-mvp-v0-1
+
+V12 State:
+DELAY — deterministic engine and Claude adapter passed; live human-owned proof
+is recoverably incomplete because Claude authentication is unavailable
+
+V13 Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+V13 Next Loop Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+Live Proof:
+DELAY — bundled Claude CLI reports loggedIn=false / no human option-2 selection
+
+Deterministic Engine:
+PASS / 25 OF 25 ACCELERATION TESTS
+
+Full Regression:
+PASS / 191 OF 191 TESTS
+
+Draft PR:
+OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/34
+
+Demo GIF:
+NOT_CREATED — conditional on passing live proof
+
+Merge Authority:
+NONE
+
+Next Authorized Action:
+none unless Shin explicitly approves review or merge
+
+Decision Owner:
+Shin
+```
+
+Restart evidence:
+
+- protocol and external usage:
+  `docs/verified_save_claude_mvp_v0_1.md`;
+- validation and exact re-entry:
+  `validation/verified_save_claude_mvp_run_001.md`;
+- implementation branch:
+  `feat/verified-save-claude-mvp-v0-1`;
+- Draft PR:
+  `https://github.com/shin4141/decision-os-v13-loopkit/pull/34`;
+- live-proof re-entry:
+  authenticate Claude until `claude auth status` reports `loggedIn=true`, then
+  run the documented demo interactively with one explicit human option `2`.
+
+Do not treat deterministic fixtures as live proof. Do not create the GIF,
+modify README, add another adapter, merge, release, tag, or publish a package
+without a new exact instruction from Shin.
+
+Everything below this boundary is a historical reverse-chronological ledger.
+Historical entries preserve their As-of truth but grant no present authority.
+
 ## Canonical Current State — Consistency Cleanup v0.1
 
 ```text
