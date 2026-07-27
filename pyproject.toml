@@ -13,11 +13,15 @@ license-files = ["LICENSE"]
 authors = [{ name = "Shinichi Nagata" }]
 dependencies = []
 
+[project.optional-dependencies]
+claude = ["claude-agent-sdk==0.2.123"]
+
 [project.urls]
 Repository = "https://github.com/shin4141/decision-os-v13-loopkit"
 
 [project.scripts]
 decision-os = "decision_os.cli:main"
+decision-os-accelerate = "decision_os.acceleration.cli:main"
 
 [tool.flit.module]
 name = "decision_os"

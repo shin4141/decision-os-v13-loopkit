@@ -55,7 +55,12 @@ class DistributionMetadataTest(unittest.TestCase):
 
         self.assertEqual(
             metadata["project"]["scripts"],
-            {"decision-os": "decision_os.cli:main"},
+            {
+                "decision-os": "decision_os.cli:main",
+                "decision-os-accelerate": (
+                    "decision_os.acceleration.cli:main"
+                ),
+            },
         )
 
 

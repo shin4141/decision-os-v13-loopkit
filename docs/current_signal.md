@@ -1,5 +1,73 @@
 # Current Signal
 
+## Canonical Current State — Verified Save Claude MVP v0.1
+
+```text
+Current Layer:
+V13 — Compound Loop / Verified Save Proof-of-Use MVP
+
+Primary Objective:
+External Proof-of-Use
+
+First Adapter:
+Claude Agent SDK / product core remains agent-agnostic
+
+Starting Main:
+3c9142692dfe60785a033b91ad7b6e5226712a93
+
+Active Branch:
+feat/verified-save-claude-mvp-v0-1
+
+V12 State:
+DELAY — creator-owned human two-Run live proof passed; external-user adoption
+remains unobserved and no external adoption claim is made
+
+V13 Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+V13 Next Loop Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+Live Proof:
+PASS — Run 1 normal terminal / repeated interrupt skipped / fresh Run 2
+VERIFIED_SAVE / 1 Save / 1 Verified Reuse
+
+Deterministic Engine:
+PASS / 26 OF 26 ACCELERATION TESTS
+
+Full Regression:
+PASS / 192 OF 192 TESTS
+
+Draft PR:
+OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/34
+
+Demo GIF:
+NOT_CREATED — not authorized by the live-proof closure
+
+Live Receipt:
+7.5 estimated minutes / ¥625 estimated human-time value /
+9,467 configured estimated tokens
+
+Receipt SHA-256:
+027368f679b7ce1f14bf7ca42bfe686c34c8af313d801f7cc086e0b2a5c3e100
+
+Claim Boundary:
+creator-owned human live proof / not external-user adoption /
+not third-party certification / estimates remain estimates
+
+Merge Authority:
+NONE
+
+Next Authorized Action:
+none unless Shin explicitly approves review or merge
+
+Decision Owner:
+Shin
+```
+
+Everything below this boundary is a historical reverse-chronological ledger.
+Historical entries preserve their As-of truth but grant no present authority.
+
 ## Canonical Current State — Consistency Cleanup v0.1
 
 ```text
