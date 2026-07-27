@@ -1,5 +1,104 @@
 # Current Codex Handoff - V13 LoopKit
 
+## Canonical Current State — Verified Save Codex/Sol MVP v0.1
+
+```text
+Current Layer:
+V13 — Compound Loop / Verified Save Adapter Expansion
+
+Primary Objective:
+External Proof-of-Use
+
+Companion Adapter:
+Codex app-server / product core remains agent-agnostic
+
+Starting Main:
+02ddd7af50e2366eac0c042ae3671050df5e21e0
+
+Approved Pre-Closure Head:
+c0ecd71f1ecad0692566ad831aca8268b72adc17
+
+Active Branch:
+codex/verified-save-codex-sol-mvp-v0-1
+
+V12 State:
+DELAY — creator-owned human two-Run live proof passed; external-user adoption
+remains unobserved and no external adoption claim is made
+
+V13 Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+V13 Next Loop Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+Live Proof:
+PASS — explicit human option 2 in Run 1 / Run 1 NORMAL_TERMINAL and completed /
+repeated interrupt skipped / fresh Run 2 VERIFIED_SAVE and completed /
+1 Save / 1 Verified Reuse
+
+Runtime Identity:
+gpt-5.6-sol / ultra / priority / Codex CLI 0.146.0-alpha.3.1
+
+Authentication:
+ChatGPT subscription
+
+Codex Adapter:
+PASS / 24 OF 24 TESTS ON PYTHON 3.14 AND PYTHON 3.13
+
+Full Regression:
+PASS / 220 OF 220 TESTS
+
+Draft PR:
+OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/36
+
+Demo GIF:
+NOT_CREATED — not authorized by the live-proof closure
+
+Live Receipt:
+7.5 estimated minutes / ¥625 estimated human-time value /
+tokens UNKNOWN because tokens_per_reuse was not configured
+
+Receipt SHA-256:
+23c6ced038a0ca2b963ed84463fe25181bbc52dddf08b052e6f6725fb3c40780
+
+Claim Boundary:
+creator-owned human live proof / not external-user adoption /
+not native Codex Desktop interception / not third-party certification /
+estimates remain estimates
+
+Merge Authority:
+NONE
+
+Next Authorized Action:
+none unless Shin explicitly approves review or merge
+
+Decision Owner:
+Shin
+```
+
+Restart evidence:
+
+- validation and exact live-proof evidence:
+  `validation/verified_save_codex_mvp_run_001.md`;
+- implementation branch:
+  `codex/verified-save-codex-sol-mvp-v0-1`;
+- Draft PR:
+  `https://github.com/shin4141/decision-os-v13-loopkit/pull/36`;
+- live-proof receipt:
+  `validation/verified_save_codex_mvp_run_001.md`, bound to sanitized receipt
+  SHA-256
+  `23c6ced038a0ca2b963ed84463fe25181bbc52dddf08b052e6f6725fb3c40780`.
+
+The passing proof is creator-owned human evidence. It is not external-user
+adoption, native Codex Desktop interception, or third-party certification.
+Estimates remain estimates. No source or test change, merge or ready-for-review
+transition, README change, pricing implementation, GIF, release, tag, package
+publication, or public post is authorized without a new exact instruction from
+Shin.
+
+Everything below this boundary is a historical reverse-chronological ledger.
+Historical entries preserve their As-of truth but grant no present authority.
+
 ## Canonical Current State — Verified Save Claude MVP v0.1
 
 ```text
