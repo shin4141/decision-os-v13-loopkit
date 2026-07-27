@@ -17,6 +17,8 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_SERVICE_TIER,
     CodexAdapter,
     CodexAdapterFailure,
+    CodexApproval,
+    CodexLifecycleEvent,
     _SubprocessTransport,
 )
 from decision_os.acceleration.engine import AccelerationEngine
@@ -235,6 +237,29 @@ def completed_item(
                 "id": item_id,
                 "status": status,
                 "type": "fileChange",
+            },
+            "threadId": thread_id,
+            "turnId": turn_id,
+        },
+    }
+
+
+def completed_agent_message(
+    *,
+    thread_id: str,
+    turn_id: str,
+    text: str,
+    phase: str = "final_answer",
+) -> dict[str, Any]:
+    return {
+        "method": "item/completed",
+        "params": {
+            "completedAtMs": 4,
+            "item": {
+                "id": "agent-message-1",
+                "phase": phase,
+                "text": text,
+                "type": "agentMessage",
             },
             "threadId": thread_id,
             "turnId": turn_id,
@@ -476,6 +501,84 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    async def test_structured_approval_lifecycle_and_final_message_bridge(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = file_run_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+                item_id="item-1",
+            )
+            approval_message = next(
+                message
+                for message in messages
+                if message.get("method")
+                == "item/fileChange/requestApproval"
+            )
+            approval_message["params"]["reason"] = "Bounded reason."
+            messages.insert(
+                -1,
+                completed_agent_message(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    text="Sanitized final result.",
+                ),
+            )
+            factory = FakeTransportFactory([messages])
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+            approvals: list[CodexApproval] = []
+            lifecycle: list[CodexLifecycleEvent] = []
+            adapter = CodexAdapter(
+                engine,
+                input_func=lambda: (_ for _ in ()).throw(
+                    AssertionError("CLI input must not be used")
+                ),
+                stdout=io.StringIO(),
+                transport_factory=factory,
+                approval_provider=lambda approval: (
+                    approvals.append(approval) or "1"
+                ),
+                lifecycle_sink=lifecycle.append,
+            )
+
+            result = await adapter.run("Modify target.txt once.")
+
+            self.assertEqual("Sanitized final result.", result.final_message)
+            self.assertEqual(1, len(approvals))
+            self.assertEqual(
+                CodexApproval(
+                    repository_name="repo",
+                    action="Modify",
+                    normalized_scope="target.txt",
+                    diff="@@ -1 +1 @@\n-one\n+two\n",
+                    reason="Bounded reason.",
+                ),
+                approvals[0],
+            )
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("one-time", result.file_actions[0].access)
+            self.assertEqual("approved", result.file_actions[0].status)
+            self.assertEqual(
+                [
+                    "starting",
+                    "runtime",
+                    "account",
+                    "model",
+                    "run",
+                    "working",
+                    "approval",
+                    "finalizing",
+                ],
+                [event.kind for event in lifecycle],
+            )
+
     async def test_two_fresh_threads_create_default_then_verified_save(
         self,
     ) -> None:

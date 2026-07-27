@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decision OS Companion</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">PRIVATE LOCAL RUNNER</p>
+      <h1>Decision OS Companion</h1>
+      <p class="subtitle">One repository. One bounded task. One fresh Run.</p>
+      <div class="runtime-lock" aria-label="Locked runtime">
+        <span>ChatGPT</span>
+        <span>gpt-5.6-sol</span>
+        <span>Ultra</span>
+        <span>Priority</span>
+      </div>
+    </header>
+
+    <section class="card" aria-labelledby="repository-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">1</p>
+          <h2 id="repository-heading">Repository</h2>
+        </div>
+        <button id="choose-repository" class="secondary" type="button">
+          Choose Repository…
+        </button>
+      </div>
+      <p id="repository-name" class="primary-value">No repository selected</p>
+      <p id="repository-path" class="path-value">
+        Select one local Git repository.
+      </p>
+    </section>
+
+    <section class="card" aria-labelledby="task-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">2</p>
+          <h2 id="task-heading">Bounded task</h2>
+        </div>
+      </div>
+      <label class="visually-hidden" for="task">Bounded task</label>
+      <textarea
+        id="task"
+        rows="7"
+        maxlength="20000"
+        placeholder="Example: Read docs/guide.md and improve one unclear paragraph. Modify that file only."
+      ></textarea>
+      <p class="boundary">
+        v0.1 supports read-only work or one exact typed single-file create or
+        modify. No shell, dependencies, deletes, renames, MCP, or subagents.
+      </p>
+      <button id="run" class="primary" type="button">Run</button>
+    </section>
+
+    <section id="progress-card" class="card hidden" aria-labelledby="progress-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">3</p>
+          <h2 id="progress-heading">Run progress</h2>
+        </div>
+        <span id="run-state" class="status">Idle</span>
+      </div>
+      <ol id="progress" class="progress-list"></ol>
+      <p id="run-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <section id="result-card" class="card hidden" aria-labelledby="result-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">4</p>
+          <h2 id="result-heading">Result</h2>
+        </div>
+        <span id="result-state" class="status">Completed</span>
+      </div>
+      <pre id="result" class="result-text"></pre>
+      <div id="file-actions" class="file-actions"></div>
+      <dl id="runtime" class="runtime-grid"></dl>
+      <button id="new-run" class="primary" type="button">New Run</button>
+    </section>
+
+    <section class="card receipt-card" aria-labelledby="receipt-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">R</p>
+          <h2 id="receipt-heading">Receipt</h2>
+        </div>
+        <span id="receipt-status" class="status">No repository</span>
+      </div>
+      <div class="receipt-columns">
+        <div>
+          <h3>Current Run</h3>
+          <dl id="run-receipt" class="metric-grid"></dl>
+        </div>
+        <div>
+          <h3>Repository total</h3>
+          <dl id="repository-receipt" class="metric-grid"></dl>
+        </div>
+      </div>
+      <p id="claim-boundary" class="claim-boundary">
+        Verified Save is a locally recorded proof-of-use event, not
+        third-party certification.
+      </p>
+    </section>
+
+    <section class="card" aria-labelledby="defaults-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">A</p>
+          <h2 id="defaults-heading">Saved repository access</h2>
+        </div>
+      </div>
+      <p class="boundary">
+        Each entry is limited to this repository, one action, and one exact
+        path. It is never broad repository access.
+      </p>
+      <div id="defaults" class="defaults-list"></div>
+    </section>
+
+    <p id="global-error" class="error hidden" role="alert"></p>
+  </main>
+
+  <div id="approval-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="approval-heading">
+    <section class="approval-card">
+      <p class="eyebrow">APPROVAL REQUIRED</p>
+      <h2 id="approval-heading">One exact file change</h2>
+      <dl class="approval-details">
+        <dt>Repository</dt>
+        <dd id="approval-repository"></dd>
+        <dt>Action</dt>
+        <dd id="approval-action"></dd>
+        <dt>Path</dt>
+        <dd id="approval-path"></dd>
+        <dt id="approval-reason-label">Reason</dt>
+        <dd id="approval-reason"></dd>
+      </dl>
+      <h3>Proposed diff</h3>
+      <pre id="approval-diff" class="diff"></pre>
+      <p class="boundary">
+        “Use for this repository” saves only this exact action and path.
+      </p>
+      <div class="approval-actions">
+        <button data-choice="allow_once" class="secondary" type="button">
+          Allow once
+        </button>
+        <button data-choice="repository" class="primary" type="button">
+          Use for this repository
+        </button>
+        <button data-choice="deny" class="danger" type="button">Deny</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

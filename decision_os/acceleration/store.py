@@ -39,6 +39,18 @@ class DefaultRecord:
 
 
 @dataclass(frozen=True)
+class ActiveDefaultRecord:
+    """Presentation fields for one active exact Repository Default."""
+
+    decision_key: str
+    created_run_id: str
+    rule_hash: str
+    decision_type: str
+    normalized_scope: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class ReceiptSettings:
     """User-configurable estimate inputs, separate from verified events."""
 
@@ -316,6 +328,55 @@ class AccelerationStore:
             }:
                 active = None
         return active
+
+    def active_defaults(self) -> tuple[ActiveDefaultRecord, ...]:
+        """Enumerate active exact defaults without changing protocol state."""
+
+        active: dict[str, ActiveDefaultRecord] = {}
+        for event in self.read_events():
+            key = event["decision_key"]
+            if event["event_type"] == "HUMAN_DEFAULT_CREATED":
+                created_run_id = event["default_created_run_id"]
+                rule = event["default_rule_hash"]
+                decision_type = event["decision_type"]
+                scope = event["normalized_scope"]
+                created_at = event["timestamp"]
+                if not all(
+                    isinstance(value, str) and value
+                    for value in (
+                        key,
+                        created_run_id,
+                        rule,
+                        decision_type,
+                        scope,
+                        created_at,
+                    )
+                ):
+                    raise StateIntegrityError("Default identity is incomplete.")
+                active[key] = ActiveDefaultRecord(
+                    decision_key=key,
+                    created_run_id=created_run_id,
+                    rule_hash=rule,
+                    decision_type=decision_type,
+                    normalized_scope=scope,
+                    created_at=created_at,
+                )
+            elif event["event_type"] in {
+                "OVERRIDE",
+                "DEFAULT_REVOKED_AFTER_USE",
+                "DEFAULT_SUPERSEDED",
+            }:
+                active.pop(key, None)
+        return tuple(
+            sorted(
+                active.values(),
+                key=lambda item: (
+                    item.normalized_scope,
+                    item.decision_type,
+                    item.created_at,
+                ),
+            )
+        )
 
     def verified_decision_keys(self) -> set[str]:
         """Return unique repository decision pairs that became Verified Saves."""

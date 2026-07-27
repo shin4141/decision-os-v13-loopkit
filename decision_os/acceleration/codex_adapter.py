@@ -76,6 +76,37 @@ class CodexRunResult:
     turn_status: str | None
     runtime_identity: CodexRuntimeIdentity | None
     checkpoint_outcomes: tuple[CheckpointOutcome, ...]
+    final_message: str = ""
+    file_actions: tuple[CodexFileAction, ...] = ()
+
+
+@dataclass(frozen=True)
+class CodexApproval:
+    """Presentation-safe description of one exact file-change approval."""
+
+    repository_name: str
+    action: str
+    normalized_scope: str
+    diff: str
+    reason: str | None
+
+
+@dataclass(frozen=True)
+class CodexLifecycleEvent:
+    """Small sanitized lifecycle event for non-CLI presentation surfaces."""
+
+    kind: str
+    message: str
+
+
+@dataclass(frozen=True)
+class CodexFileAction:
+    """Presentation-safe outcome for one exact file action."""
+
+    action: str
+    normalized_scope: str
+    access: str
+    status: str
 
 
 class AppServerTransport(Protocol):
@@ -252,6 +283,8 @@ class _SubprocessTransport:
 
 
 TransportFactory = Callable[[Path], AppServerTransport]
+ApprovalProvider = Callable[[CodexApproval], str | None]
+LifecycleSink = Callable[[CodexLifecycleEvent], None]
 
 
 class CodexAdapter:
@@ -265,6 +298,8 @@ class CodexAdapter:
         stdout: TextIO,
         executable: Path | None = None,
         transport_factory: TransportFactory | None = None,
+        approval_provider: ApprovalProvider | None = None,
+        lifecycle_sink: LifecycleSink | None = None,
         expected_model: str = CODEX_MODEL,
         expected_reasoning_effort: str = CODEX_REASONING_EFFORT,
         expected_service_tier: str = CODEX_SERVICE_TIER,
@@ -275,6 +310,8 @@ class CodexAdapter:
         self.stdout = stdout
         self.executable = executable or BUNDLED_CODEX_PATH
         self.transport_factory = transport_factory or _SubprocessTransport
+        self.approval_provider = approval_provider
+        self.lifecycle_sink = lifecycle_sink
         self.expected_model = expected_model
         self.expected_reasoning_effort = expected_reasoning_effort
         self.expected_service_tier = expected_service_tier
@@ -304,6 +341,8 @@ class CodexAdapter:
         self._permission_denied = False
         self._unsupported_mutation = False
         self._identity_failure = False
+        self._final_message = ""
+        self._file_actions: list[CodexFileAction] = []
 
     def _reset_run(self) -> None:
         self._request_id = 0
@@ -330,6 +369,13 @@ class CodexAdapter:
         self._permission_denied = False
         self._unsupported_mutation = False
         self._identity_failure = False
+        self._final_message = ""
+        self._file_actions = []
+
+    def _emit(self, kind: str, message: str) -> None:
+        if self.lifecycle_sink is None:
+            return
+        self.lifecycle_sink(CodexLifecycleEvent(kind=kind, message=message))
 
     def _send(self, message: dict[str, Any]) -> None:
         if self._transport is None:
@@ -369,6 +415,7 @@ class CodexAdapter:
         return value
 
     def _initialize(self) -> None:
+        self._emit("runtime", "Starting the private Codex runtime.")
         result = self._require_object(
             self._request(
                 "initialize",
@@ -391,6 +438,7 @@ class CodexAdapter:
         self._send({"method": "initialized", "params": {}})
 
     def _verify_account(self) -> None:
+        self._emit("account", "Verifying ChatGPT authentication.")
         result = self._require_object(
             self._request("account/read", {"refreshToken": False}),
             "account/read result",
@@ -406,6 +454,7 @@ class CodexAdapter:
         self._account_type = "chatgpt"
 
     def _verify_model_catalog(self) -> None:
+        self._emit("model", "Verifying the required model and service tier.")
         cursor: str | None = None
         seen_cursors: set[str] = set()
         while True:
@@ -465,6 +514,7 @@ class CodexAdapter:
             cursor = next_cursor
 
     def _start_thread(self) -> None:
+        self._emit("run", "Starting one fresh bounded Run.")
         repository = self.engine.store.repository
         isolated_features = {
             "apps": False,
@@ -582,6 +632,7 @@ class CodexAdapter:
         if self._turn_id is not None and self._turn_id != turn_id:
             raise CodexAdapterFailure("Codex turn identity changed during start.")
         self._turn_id = turn_id
+        self._emit("working", "Codex is working on the bounded task.")
 
     def _cwd_matches(self, value: Any) -> bool:
         if not isinstance(value, str) or not value:
@@ -621,6 +672,51 @@ class CodexAdapter:
             return self.input_func()
         except (EOFError, KeyboardInterrupt, OSError):
             return None
+
+    def _approval_choice(
+        self,
+        identity: Any,
+        item: dict[str, Any],
+        params: dict[str, Any],
+    ) -> str | None:
+        if self.approval_provider is None:
+            return self._human_choice(identity)
+        change = self._require_object(
+            item["changes"][0],
+            "Codex approval change",
+        )
+        diff = change.get("diff")
+        if not isinstance(diff, str):
+            raise CodexAdapterFailure(
+                "Codex file change lacks a typed diff."
+            )
+        action = (
+            "Create"
+            if identity.decision_type is DecisionType.CREATE_FILE
+            else "Modify"
+        )
+        reason = params.get("reason")
+        if reason is not None and not isinstance(reason, str):
+            reason = None
+        self._emit("approval", "Waiting for one exact file-change decision.")
+        return self.approval_provider(
+            CodexApproval(
+                repository_name=self.engine.store.repository.name,
+                action=action,
+                normalized_scope=identity.normalized_scope,
+                diff=diff,
+                reason=reason,
+            )
+        )
+
+    @staticmethod
+    def _access_label(status: str) -> str:
+        return {
+            "ALLOW_ONCE": "one-time",
+            "HUMAN_DEFAULT_CREATED": "newly-saved",
+            "DEFAULT_MATCHED": "reused",
+            "SAME_RUN_DEFAULT": "newly-saved",
+        }.get(status, "denied")
 
     def _map_file_change(
         self,
@@ -761,13 +857,35 @@ class CodexAdapter:
                 decision_type=decision_type,
                 requested_scope=raw_path,
                 source_interrupt_id=item_id,
-                choice_provider=self._human_choice,
+                choice_provider=lambda identity: self._approval_choice(
+                    identity,
+                    self._items[item_id],
+                    params,
+                ),
             )
             self._seen[key] = outcome
             if outcome.pending_cross_run_checkpoint:
                 self._pending[outcome.identity.decision_key] = outcome
 
         if outcome.allowed:
+            decision_type, _ = self._map_file_change(self._items[item_id])
+            self._file_actions.append(
+                CodexFileAction(
+                    action=(
+                        "Create"
+                        if decision_type is DecisionType.CREATE_FILE
+                        else "Modify"
+                    ),
+                    normalized_scope=outcome.identity.normalized_scope,
+                    access=self._access_label(outcome.status),
+                    status="approved",
+                )
+            )
+            if outcome.status == "DEFAULT_MATCHED":
+                self._emit(
+                    "reuse",
+                    "Matching saved repository access was reused.",
+                )
             self._accepted_items.add(item_id)
             self._approved_changes[item_id] = copy.deepcopy(
                 self._items[item_id]["changes"]
@@ -777,6 +895,18 @@ class CodexAdapter:
             )
             return
         self._permission_denied = True
+        self._file_actions.append(
+            CodexFileAction(
+                action=(
+                    "Create"
+                    if outcome.identity.decision_type is DecisionType.CREATE_FILE
+                    else "Modify"
+                ),
+                normalized_scope=outcome.identity.normalized_scope,
+                access="denied",
+                status="denied",
+            )
+        )
         self._declined_items.add(item_id)
         self._send(
             {"id": request_id, "result": {"decision": "decline"}}
@@ -879,6 +1009,18 @@ class CodexAdapter:
         if item_type in _UNSUPPORTED_ITEM_TYPES:
             self._unsupported_mutation = True
             return
+        if item_type == "agentMessage":
+            text = item.get("text")
+            phase = item.get("phase")
+            if (
+                not isinstance(text, str)
+                or phase not in {None, "final_answer", "commentary"}
+            ):
+                self._identity_failure = True
+                return
+            if phase in {None, "final_answer"}:
+                self._final_message = text
+            return
         if item_type != "fileChange":
             return
         item_id = item.get("id")
@@ -961,6 +1103,7 @@ class CodexAdapter:
             self._identity_failure = True
             return
         self._turn_status = status
+        self._emit("finalizing", "Finalizing the local Receipt.")
 
     def _dispatch(self, message: dict[str, Any]) -> None:
         method = message.get("method")
@@ -1015,6 +1158,7 @@ class CodexAdapter:
         if not isinstance(prompt, str) or not prompt.strip():
             raise CodexAdapterFailure("Codex prompt must be a non-empty string.")
         self._reset_run()
+        self._emit("starting", "Preparing the bounded task.")
         self._transport = self.transport_factory(self.executable)
         turn_started = False
         error_type: str | None = None
@@ -1096,4 +1240,6 @@ class CodexAdapter:
             turn_status=self._turn_status,
             runtime_identity=self._runtime_identity,
             checkpoint_outcomes=checkpoints,
+            final_message=self._final_message,
+            file_actions=tuple(self._file_actions),
         )
