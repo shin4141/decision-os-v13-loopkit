@@ -15,11 +15,20 @@ import tempfile
 from typing import TextIO
 
 from .claude_adapter import (
-    ADAPTER_NAME,
+    ADAPTER_NAME as CLAUDE_ADAPTER_NAME,
     CLAUDE_AGENT_SDK_VERSION,
     ClaudeAdapter,
     ClaudeAdapterFailure,
     ClaudeAdapterUnavailable,
+    ClaudeRunResult,
+)
+from .codex_adapter import (
+    ADAPTER_NAME as CODEX_ADAPTER_NAME,
+    CODEX_CLI_VERSION,
+    CodexAdapter,
+    CodexAdapterFailure,
+    CodexAdapterUnavailable,
+    CodexRunResult,
 )
 from .engine import AccelerationEngine
 from .store import AccelerationStore, StateIntegrityError
@@ -39,6 +48,16 @@ DEMO_RUN_2 = (
     "Read demo_target.txt. Use Edit exactly once to replace the line "
     "'stage: run-1' with 'stage: run-2'. Do not touch any other file."
 )
+CODEX_DEMO_RUN_1 = (
+    "In demo_target.txt, the current line is 'stage: initial'. "
+    "Use the typed file-change tool exactly once to replace it with "
+    "'stage: run-1'. Do not use a shell command or touch any other file."
+)
+CODEX_DEMO_RUN_2 = (
+    "In demo_target.txt, the current line is 'stage: run-1'. "
+    "Use the typed file-change tool exactly once to replace it with "
+    "'stage: run-2'. Do not use a shell command or touch any other file."
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -46,7 +65,7 @@ def _parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     run = subcommands.add_parser("run")
-    run.add_argument("--adapter", choices=("claude",), required=True)
+    run.add_argument("--adapter", choices=("claude", "codex"), required=True)
     run.add_argument("--prompt-file", type=Path, required=True)
     run.add_argument("--minutes-per-reuse", type=float, default=7.5)
     run.add_argument("--hourly-value-jpy", type=float, default=5000)
@@ -61,7 +80,11 @@ def _parser() -> argparse.ArgumentParser:
     revoke.add_argument("repository", type=Path)
 
     demo = subcommands.add_parser("demo")
-    demo.add_argument("--adapter", choices=("claude",), required=True)
+    demo.add_argument(
+        "--adapter",
+        choices=("claude", "codex"),
+        required=True,
+    )
     demo.add_argument("--tokens-per-reuse", type=int)
     return parser
 
@@ -81,6 +104,60 @@ def _settings(
     )
 
 
+def _configured_adapter(
+    repository: Path,
+    adapter_name: str,
+    *,
+    stdout: TextIO,
+    input_func: Callable[[], str],
+    store: AccelerationStore | None = None,
+) -> tuple[AccelerationEngine, ClaudeAdapter | CodexAdapter]:
+    if adapter_name == "claude":
+        engine = AccelerationEngine(
+            repository,
+            store=store,
+            adapter=CLAUDE_ADAPTER_NAME,
+            adapter_version=CLAUDE_AGENT_SDK_VERSION,
+        )
+        return engine, ClaudeAdapter(
+            engine,
+            input_func=input_func,
+            stdout=stdout,
+        )
+    if adapter_name == "codex":
+        engine = AccelerationEngine(
+            repository,
+            store=store,
+            adapter=CODEX_ADAPTER_NAME,
+            adapter_version=CODEX_CLI_VERSION,
+        )
+        return engine, CodexAdapter(
+            engine,
+            input_func=input_func,
+            stdout=stdout,
+        )
+    raise ValueError(f"Unsupported acceleration adapter: {adapter_name}")
+
+
+def _write_codex_identity(
+    result: CodexRunResult,
+    *,
+    stdout: TextIO,
+) -> None:
+    identity = result.runtime_identity
+    if identity is None:
+        stdout.write("Codex runtime identity: UNAVAILABLE\n")
+        return
+    stdout.write(
+        "Codex runtime identity: "
+        f"model={identity.model}; "
+        f"reasoning_effort={identity.reasoning_effort}; "
+        f"service_tier={identity.service_tier}; "
+        f"cli_version={identity.codex_cli_version}; "
+        f"account_type={identity.account_type}\n"
+    )
+
+
 def _run_command(
     arguments: argparse.Namespace,
     *,
@@ -96,22 +173,23 @@ def _run_command(
             hourly_value_jpy=arguments.hourly_value_jpy,
             tokens_per_reuse=arguments.tokens_per_reuse,
         )
-        engine = AccelerationEngine(
+        engine, adapter = _configured_adapter(
             arguments.repository,
-            store=store,
-            adapter=ADAPTER_NAME,
-            adapter_version=CLAUDE_AGENT_SDK_VERSION,
-        )
-        adapter = ClaudeAdapter(
-            engine,
+            arguments.adapter,
             input_func=input_func,
             stdout=stdout,
+            store=store,
         )
         result = asyncio.run(adapter.run(prompt))
     except (OSError, UnicodeError, StateIntegrityError) as exc:
         stdout.write(f"BLOCK: {type(exc).__name__}\n")
         return EXIT_STATE
-    except (ClaudeAdapterUnavailable, ClaudeAdapterFailure) as exc:
+    except (
+        ClaudeAdapterUnavailable,
+        ClaudeAdapterFailure,
+        CodexAdapterUnavailable,
+        CodexAdapterFailure,
+    ) as exc:
         stdout.write(f"DELAY: {exc}\n")
         return EXIT_DELAY
 
@@ -121,10 +199,12 @@ def _run_command(
     )
     if result.error_type:
         stdout.write(f"Adapter error type: {result.error_type}\n")
+    if isinstance(result, CodexRunResult):
+        _write_codex_identity(result, stdout=stdout)
     stdout.write(engine.render_receipt())
     if result.status in {"VERIFIED_SAVE", "VERIFIED_REUSE", "NORMAL_TERMINAL"}:
         return EXIT_OK
-    if result.status == "ABNORMAL_TERMINAL":
+    if result.status in {"ABNORMAL_TERMINAL", "PENDING"}:
         return EXIT_DELAY
     return EXIT_DENIED
 
@@ -156,6 +236,38 @@ def _revoke_command(arguments: argparse.Namespace, *, stdout: TextIO) -> int:
     return EXIT_OK
 
 
+def _write_live_result(
+    label: str,
+    result: ClaudeRunResult | CodexRunResult,
+    *,
+    stdout: TextIO,
+) -> None:
+    if isinstance(result, CodexRunResult):
+        identity = result.runtime_identity
+        stdout.write(
+            f"{label}: "
+            f"status={result.status}; "
+            f"turn_status={result.turn_status or 'NONE'}; "
+            f"model={identity.model if identity else 'NONE'}; "
+            "reasoning_effort="
+            f"{identity.reasoning_effort if identity else 'NONE'}; "
+            "service_tier="
+            f"{identity.service_tier if identity else 'NONE'}; "
+            "codex_cli_version="
+            f"{identity.codex_cli_version if identity else 'NONE'}; "
+            f"error_type={result.error_type or 'NONE'}\n"
+        )
+        return
+    stdout.write(
+        f"{label}: "
+        f"status={result.status}; "
+        f"result_subtype={result.result_subtype or 'NONE'}; "
+        f"api_error_status={result.api_error_status or 'NONE'}; "
+        f"stop_reason={result.stop_reason or 'NONE'}; "
+        f"error_type={result.error_type or 'NONE'}\n"
+    )
+
+
 def _demo_command(
     arguments: argparse.Namespace,
     *,
@@ -184,26 +296,18 @@ def _demo_command(
             hourly_value_jpy=5000,
             tokens_per_reuse=arguments.tokens_per_reuse,
         )
-        engine = AccelerationEngine(
+        engine, adapter = _configured_adapter(
             directory,
             store=store,
-            adapter=ADAPTER_NAME,
-            adapter_version=CLAUDE_AGENT_SDK_VERSION,
-        )
-        adapter = ClaudeAdapter(
-            engine,
+            adapter_name=arguments.adapter,
             input_func=input_func,
             stdout=stdout,
         )
-        first = asyncio.run(adapter.run(DEMO_RUN_1, demo=True))
-        stdout.write(
-            "Live Run 1: "
-            f"status={first.status}; "
-            f"result_subtype={first.result_subtype or 'NONE'}; "
-            f"api_error_status={first.api_error_status or 'NONE'}; "
-            f"stop_reason={first.stop_reason or 'NONE'}; "
-            f"error_type={first.error_type or 'NONE'}\n"
-        )
+        if isinstance(adapter, ClaudeAdapter):
+            first = asyncio.run(adapter.run(DEMO_RUN_1, demo=True))
+        else:
+            first = asyncio.run(adapter.run(CODEX_DEMO_RUN_1))
+        _write_live_result("Live Run 1", first, stdout=stdout)
         default_created = any(
             event["event_type"] == "HUMAN_DEFAULT_CREATED"
             and event["run_id"] == first.run_id
@@ -216,15 +320,11 @@ def _demo_command(
             )
             return EXIT_DELAY
 
-        second = asyncio.run(adapter.run(DEMO_RUN_2, demo=True))
-        stdout.write(
-            "Live Run 2: "
-            f"status={second.status}; "
-            f"result_subtype={second.result_subtype or 'NONE'}; "
-            f"api_error_status={second.api_error_status or 'NONE'}; "
-            f"stop_reason={second.stop_reason or 'NONE'}; "
-            f"error_type={second.error_type or 'NONE'}\n"
-        )
+        if isinstance(adapter, ClaudeAdapter):
+            second = asyncio.run(adapter.run(DEMO_RUN_2, demo=True))
+        else:
+            second = asyncio.run(adapter.run(CODEX_DEMO_RUN_2))
+        _write_live_result("Live Run 2", second, stdout=stdout)
         receipt = engine.render_receipt()
         stdout.write(receipt)
         verified_saves, verified_reuses = store.counters()
@@ -246,7 +346,12 @@ def _demo_command(
         receipt_path.write_text(receipt, encoding="utf-8")
         stdout.write(f"Sanitized receipt: {receipt_path}\n")
         return EXIT_OK
-    except (ClaudeAdapterUnavailable, ClaudeAdapterFailure) as exc:
+    except (
+        ClaudeAdapterUnavailable,
+        ClaudeAdapterFailure,
+        CodexAdapterUnavailable,
+        CodexAdapterFailure,
+    ) as exc:
         stdout.write(f"DELAY: {exc}\n")
         return EXIT_DELAY
     except (OSError, StateIntegrityError) as exc:
