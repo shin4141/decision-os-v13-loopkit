@@ -1,10 +1,19 @@
 "use strict";
 
+const DISCONNECTED_MESSAGE =
+  "This companion session has ended. Close this tab and relaunch Decision OS Companion.app.";
+
 let csrfToken = "";
 let latestState = null;
 let requestActive = false;
+let connected = false;
+let connectionGeneration = 0;
 
 const byId = (id) => document.getElementById(id);
+
+class CompanionUnavailableError extends Error {}
+
+class RequestRejectedError extends Error {}
 
 function setText(id, value) {
   byId(id).textContent = value == null ? "" : String(value);
@@ -123,6 +132,7 @@ function renderResult(run) {
     run.state,
   );
   setHidden("result-card", !terminal);
+  byId("new-run").disabled = !terminal;
   setText("result-state", statusLabel(run.state));
   setText(
     "result",
@@ -136,7 +146,17 @@ function renderResult(run) {
 }
 
 function renderApproval(approval) {
+  for (const button of document.querySelectorAll("[data-choice]")) {
+    button.disabled = !approval;
+  }
   setHidden("approval-overlay", !approval);
+  setText("approval-repository", "");
+  setText("approval-action", "");
+  setText("approval-path", "");
+  setText("approval-diff", "");
+  setHidden("approval-reason-label", true);
+  setHidden("approval-reason", true);
+  setText("approval-reason", "");
   if (!approval) {
     return;
   }
@@ -169,6 +189,7 @@ function renderDefaults(defaults) {
     revoke.type = "button";
     revoke.className = "danger";
     revoke.textContent = "Revoke";
+    revoke.disabled = !connected;
     revoke.addEventListener("click", async () => {
       const confirmed = window.confirm(
         "Revoke this exact saved repository access? Historical proof remains.",
@@ -183,6 +204,9 @@ function renderDefaults(defaults) {
 }
 
 function render(state) {
+  if (!connected) {
+    return;
+  }
   latestState = state;
   csrfToken = state.csrf || csrfToken;
   const repository = state.repository;
@@ -217,15 +241,81 @@ function render(state) {
   }
 }
 
+function disableStateChangingControls() {
+  byId("choose-repository").disabled = true;
+  byId("run").disabled = true;
+  byId("new-run").disabled = true;
+  byId("task").disabled = true;
+  for (const button of document.querySelectorAll("[data-choice]")) {
+    button.disabled = true;
+  }
+  for (const button of byId("defaults").querySelectorAll("button")) {
+    button.disabled = true;
+  }
+}
+
+function enterDisconnected() {
+  connectionGeneration += 1;
+  connected = false;
+  latestState = null;
+  csrfToken = "";
+  disableStateChangingControls();
+
+  setText("repository-name", "Companion disconnected");
+  setText("repository-path", DISCONNECTED_MESSAGE);
+
+  const emptyRun = {
+    state: "idle",
+    progress: [],
+    result: "",
+    file_actions: [],
+    runtime: null,
+    receipt_delta: null,
+    approval: null,
+    error: null,
+  };
+  renderProgress(emptyRun);
+  renderResult(emptyRun);
+  setText("run-state", "");
+  setText("result-state", "");
+  setText("result", "");
+  renderApproval(null);
+
+  byId("defaults").replaceChildren();
+  setText("receipt-status", "Session ended");
+  byId("run-receipt").replaceChildren();
+  byId("repository-receipt").replaceChildren();
+  setText("claim-boundary", "");
+
+  setText("global-error", DISCONNECTED_MESSAGE);
+  setHidden("global-error", false);
+}
+
+function renderAuthenticatedState(state) {
+  connected = true;
+  render(state);
+  setText("global-error", "");
+  setHidden("global-error", true);
+}
+
 async function readResponse(response) {
   let body;
   try {
     body = await response.json();
   } catch (_error) {
-    throw new Error("The local companion returned an invalid response.");
+    throw new CompanionUnavailableError();
   }
   if (!response.ok) {
-    throw new Error(body.error || "The local companion rejected the request.");
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status >= 500
+    ) {
+      throw new CompanionUnavailableError();
+    }
+    throw new RequestRejectedError(
+      body.error || "The local companion rejected the request.",
+    );
   }
   return body;
 }
@@ -239,9 +329,10 @@ async function getState() {
 }
 
 async function postJSON(path, value) {
-  if (requestActive) {
+  if (!connected || requestActive) {
     return null;
   }
+  connectionGeneration += 1;
   requestActive = true;
   setHidden("global-error", true);
   try {
@@ -259,11 +350,12 @@ async function postJSON(path, value) {
     render(state);
     return state;
   } catch (error) {
-    setText(
-      "global-error",
-      error instanceof Error ? error.message : "The local request failed.",
-    );
-    setHidden("global-error", false);
+    if (error instanceof RequestRejectedError) {
+      setText("global-error", error.message);
+      setHidden("global-error", false);
+    } else {
+      enterDisconnected();
+    }
     return null;
   } finally {
     requestActive = false;
@@ -271,7 +363,7 @@ async function postJSON(path, value) {
 }
 
 byId("task").addEventListener("input", () => {
-  if (latestState) {
+  if (connected && latestState) {
     render(latestState);
   }
 });
@@ -301,18 +393,20 @@ for (const button of document.querySelectorAll("[data-choice]")) {
 
 async function refresh() {
   if (!requestActive) {
+    const generation = connectionGeneration;
     try {
-      render(await getState());
-      setHidden("global-error", true);
-    } catch (error) {
-      setText(
-        "global-error",
-        error instanceof Error ? error.message : "The local companion is unavailable.",
-      );
-      setHidden("global-error", false);
+      const state = await getState();
+      if (generation === connectionGeneration) {
+        renderAuthenticatedState(state);
+      }
+    } catch (_error) {
+      if (generation === connectionGeneration) {
+        enterDisconnected();
+      }
     }
   }
   window.setTimeout(refresh, 750);
 }
 
+disableStateChangingControls();
 refresh();
