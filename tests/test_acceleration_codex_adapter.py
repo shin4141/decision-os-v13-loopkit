@@ -19,6 +19,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexAdapterFailure,
     CodexApproval,
     CodexLifecycleEvent,
+    CodexRunResult,
     _SubprocessTransport,
 )
 from decision_os.acceleration.engine import AccelerationEngine
@@ -501,6 +502,33 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    def test_run_result_rejects_unbounded_unsupported_reason(self) -> None:
+        common = {
+            "run_id": "run-1",
+            "normal_terminal": False,
+            "error_type": None,
+            "turn_status": "completed",
+            "runtime_identity": None,
+            "checkpoint_outcomes": (),
+        }
+        with self.assertRaisesRegex(ValueError, "bounded code"):
+            CodexRunResult(
+                **common,
+                status="UNSUPPORTED_MUTATION",
+                unsupported_reason="PRIVATE_PROMPT",
+            )
+        with self.assertRaisesRegex(ValueError, "must agree"):
+            CodexRunResult(
+                **common,
+                status="UNSUPPORTED_MUTATION",
+            )
+        with self.assertRaisesRegex(ValueError, "must agree"):
+            CodexRunResult(
+                **common,
+                status="ABNORMAL_TERMINAL",
+                unsupported_reason="unsupported_request_method:other",
+            )
+
     async def test_structured_approval_lifecycle_and_final_message_bridge(
         self,
     ) -> None:
@@ -565,6 +593,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(1, len(result.file_actions))
             self.assertEqual("one-time", result.file_actions[0].access)
             self.assertEqual("approved", result.file_actions[0].status)
+            self.assertIsNone(result.unsupported_reason)
             self.assertEqual(
                 [
                     "starting",
@@ -615,6 +644,8 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("VERIFIED_SAVE", second.status)
             self.assertTrue(second.normal_terminal)
             self.assertNotEqual(first.run_id, second.run_id)
+            self.assertEqual("newly-saved", first.file_actions[0].access)
+            self.assertEqual("reused", second.file_actions[0].access)
             self.assertEqual((1, 1), engine.store.counters())
             self.assertEqual(1, output.getvalue().count("Selection:"))
             events = engine.store.read_events()
@@ -659,6 +690,40 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 for transport in factory.transports
             ]
             self.assertEqual(["thread-1", "thread-2"], turn_thread_ids)
+
+    async def test_later_verified_reuse_keeps_final_reused_label(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            factory = FakeTransportFactory(
+                [
+                    file_run_messages(
+                        repository,
+                        thread_id=f"thread-{index}",
+                        turn_id=f"turn-{index}",
+                        item_id=f"item-{index}",
+                    )
+                    for index in range(1, 4)
+                ]
+            )
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "2",
+            )
+
+            first = await adapter.run("create default")
+            second = await adapter.run("verify save")
+            third = await adapter.run("verify reuse")
+
+            self.assertEqual("NORMAL_TERMINAL", first.status)
+            self.assertEqual("VERIFIED_SAVE", second.status)
+            self.assertEqual("VERIFIED_REUSE", third.status)
+            self.assertEqual("newly-saved", first.file_actions[0].access)
+            self.assertEqual("reused", second.file_actions[0].access)
+            self.assertEqual("reused", third.file_actions[0].access)
+            self.assertEqual((1, 2), engine.store.counters())
 
     async def test_control_stream_stays_open_through_terminal_checkpoint(
         self,
@@ -870,6 +935,9 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("DENIED", result.status)
             self.assertFalse(result.normal_terminal)
             self.assertEqual((0, 0), engine.store.counters())
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("denied", result.file_actions[0].access)
+            self.assertEqual("denied", result.file_actions[0].status)
             approvals = [
                 message["result"]["decision"]
                 for message in factory.transports[0].sent
@@ -880,6 +948,43 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 {"approval-item-1"},
                 adapter._resolved_approval_requests,
             )
+
+    async def test_incomplete_access_is_not_labeled_as_completed(
+        self,
+    ) -> None:
+        cases = (
+            ("1", False, "completed"),
+            ("2", True, "failed"),
+        )
+        for index, (choice, include_completion, turn_status) in enumerate(
+            cases,
+            start=1,
+        ):
+            with self.subTest(choice=choice, turn_status=turn_status):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    factory = FakeTransportFactory(
+                        [
+                            file_run_messages(
+                                repository,
+                                thread_id=f"thread-{index}",
+                                turn_id=f"turn-{index}",
+                                item_id=f"item-{index}",
+                                include_item_completion=include_completion,
+                                turn_status=turn_status,
+                            )
+                        ]
+                    )
+                    _, adapter, _ = adapter_for(
+                        repository,
+                        factory,
+                        choice=lambda: choice,
+                    )
+
+                    result = await adapter.run("incomplete access")
+
+                    self.assertFalse(result.normal_terminal)
+                    self.assertEqual((), result.file_actions)
 
     async def test_same_run_repeat_never_becomes_verified(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -972,6 +1077,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("PENDING", second.status)
             self.assertFalse(second.normal_terminal)
             self.assertEqual("failed", second.turn_status)
+            self.assertEqual(1, len(second.file_actions))
+            self.assertEqual(
+                "matched-not-verified",
+                second.file_actions[0].access,
+            )
             self.assertEqual((0, 0), engine.store.counters())
             self.assertTrue(
                 any(
@@ -1012,6 +1122,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual("PENDING", second.status)
             self.assertFalse(second.normal_terminal)
+            self.assertEqual(1, len(second.file_actions))
+            self.assertEqual(
+                "matched-not-verified",
+                second.file_actions[0].access,
+            )
             self.assertEqual((0, 0), engine.store.counters())
 
     async def test_machine_identity_and_wire_settings_are_exact(self) -> None:
@@ -1141,6 +1256,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 "CodexRuntimeIdentityError",
                 result.error_type,
+            )
+            self.assertEqual(
+                "approval_identity_mismatch",
+                result.unsupported_reason,
             )
             self.assertIsNone(result.runtime_identity)
             self.assertFalse(adapter._settings_verified)
@@ -1298,6 +1417,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
                     self.assertEqual("UNSUPPORTED_MUTATION", result.status)
                     self.assertFalse(result.normal_terminal)
+                    self.assertEqual(
+                        "unsupported_file_change_shape",
+                        result.unsupported_reason,
+                    )
                     self.assertEqual([], engine.store.read_events())
                     responses = [
                         message["result"]["decision"]
@@ -1365,6 +1488,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual("UNSUPPORTED_MUTATION", result.status)
             self.assertIsNone(result.error_type)
+            self.assertEqual(
+                "unsupported_request_method:commandExecution",
+                result.unsupported_reason,
+            )
             self.assertEqual([], engine.store.read_events())
             self.assertEqual(
                 {"command-approval"},
@@ -1378,6 +1505,202 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 {"decision": "decline"},
                 response["result"],
+            )
+
+    async def test_all_unsupported_item_types_are_bounded_and_fail_closed(
+        self,
+    ) -> None:
+        item_types = (
+            "collabAgentToolCall",
+            "commandExecution",
+            "dynamicToolCall",
+            "hookPrompt",
+            "imageGeneration",
+            "mcpToolCall",
+            "subAgentActivity",
+        )
+        for index, item_type in enumerate(item_types, start=1):
+            with self.subTest(item_type=item_type):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    thread_id = f"thread-{index}"
+                    turn_id = f"turn-{index}"
+                    messages = handshake_messages(
+                        repository,
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                    )
+                    messages.extend(
+                        [
+                            {
+                                "method": "item/started",
+                                "params": {
+                                    "item": {
+                                        "id": "PRIVATE_ITEM_ID",
+                                        "private": "PRIVATE_PAYLOAD",
+                                        "type": item_type,
+                                    },
+                                    "threadId": thread_id,
+                                    "turnId": turn_id,
+                                },
+                            },
+                            completed_turn(
+                                thread_id=thread_id,
+                                turn_id=turn_id,
+                            ),
+                        ]
+                    )
+                    factory = FakeTransportFactory([messages])
+                    engine, adapter, _ = adapter_for(
+                        repository,
+                        factory,
+                        choice=lambda: self.fail("must not prompt"),
+                    )
+
+                    result = await adapter.run("PRIVATE_PROMPT")
+
+                    self.assertEqual(
+                        "UNSUPPORTED_MUTATION",
+                        result.status,
+                    )
+                    self.assertFalse(result.normal_terminal)
+                    self.assertEqual(
+                        f"unsupported_item_type:{item_type}",
+                        result.unsupported_reason,
+                    )
+                    self.assertNotIn(
+                        "PRIVATE",
+                        result.unsupported_reason,
+                    )
+                    self.assertNotIn("PRIVATE", result.final_message)
+                    self.assertEqual([], engine.store.read_events())
+
+    async def test_unknown_request_method_uses_generic_bounded_reason(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    {
+                        "id": "PRIVATE_REQUEST_ID",
+                        "method": "PRIVATE_METHOD",
+                        "params": {
+                            "credential": "PRIVATE_CREDENTIAL",
+                            "itemId": "PRIVATE_ITEM_ID",
+                            "prompt": "PRIVATE_PROMPT",
+                            "threadId": "thread-1",
+                            "turnId": "turn-1",
+                        },
+                    },
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="PRIVATE_REQUEST_ID",
+                    ),
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            result = await adapter.run("PRIVATE_PROMPT")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertFalse(result.normal_terminal)
+            self.assertEqual(
+                "unsupported_request_method:other",
+                result.unsupported_reason,
+            )
+            self.assertNotIn("PRIVATE", result.unsupported_reason)
+            self.assertNotIn("PRIVATE", result.final_message)
+            self.assertEqual([], engine.store.read_events())
+
+    async def test_unsupported_reason_resets_for_each_fresh_run(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            first_messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            first_messages.extend(
+                [
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="command-1",
+                        request_id="command-approval",
+                        method=(
+                            "item/commandExecution/requestApproval"
+                        ),
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="command-approval",
+                    ),
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            second_messages = handshake_messages(
+                repository,
+                thread_id="thread-2",
+                turn_id="turn-2",
+            )
+            second_messages.extend(
+                [
+                    {
+                        "method": "item/started",
+                        "params": {
+                            "item": {
+                                "id": "dynamic-1",
+                                "type": "dynamicToolCall",
+                            },
+                            "threadId": "thread-2",
+                            "turnId": "turn-2",
+                        },
+                    },
+                    completed_turn(
+                        thread_id="thread-2",
+                        turn_id="turn-2",
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory(
+                [first_messages, second_messages]
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            first = await adapter.run("first unsupported")
+            second = await adapter.run("second unsupported")
+
+            self.assertEqual(
+                "unsupported_request_method:commandExecution",
+                first.unsupported_reason,
+            )
+            self.assertEqual(
+                "unsupported_item_type:dynamicToolCall",
+                second.unsupported_reason,
             )
 
     async def test_image_generation_cannot_promote_pending_match(
@@ -1397,14 +1720,40 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 turn_id="turn-2",
                 item_id="file-2",
             )
+            secret_values = (
+                "PROMPT_SECRET",
+                "FILE_CONTENT_SECRET",
+                "PRIVATE_ITEM_ID",
+                "PRIVATE_COMMAND_ID",
+                "PRIVATE_REQUEST_ID",
+                "PRIVATE_PATH",
+                "CREDENTIAL_SECRET",
+                "RAW_JSON_SECRET",
+            )
             image_item = {
-                "id": "image-1",
-                "revisedPrompt": "generated artifact",
-                "savedPath": "generated.png",
+                "credential": "CREDENTIAL_SECRET",
+                "fileContent": "FILE_CONTENT_SECRET",
+                "id": "PRIVATE_ITEM_ID",
+                "rawPayload": "RAW_JSON_SECRET",
+                "revisedPrompt": "PROMPT_SECRET",
+                "savedPath": "PRIVATE_PATH",
                 "status": "completed",
                 "type": "imageGeneration",
             }
+            command_request = approval_request(
+                thread_id="thread-2",
+                turn_id="turn-2",
+                item_id="PRIVATE_COMMAND_ID",
+                request_id="PRIVATE_REQUEST_ID",
+                method="item/commandExecution/requestApproval",
+            )
+            command_request["params"]["credential"] = "CREDENTIAL_SECRET"
             second_messages[-1:-1] = [
+                completed_agent_message(
+                    thread_id="thread-2",
+                    turn_id="turn-2",
+                    text="Original Codex answer.",
+                ),
                 {
                     "method": "item/started",
                     "params": {
@@ -1421,6 +1770,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                         "turnId": "turn-2",
                     },
                 },
+                command_request,
+                resolved_request(
+                    thread_id="thread-2",
+                    request_id="PRIVATE_REQUEST_ID",
+                ),
             ]
             factory = FakeTransportFactory(
                 [first_messages, second_messages]
@@ -1432,12 +1786,30 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             )
 
             first = await adapter.run("create default")
-            result = await adapter.run("unsupported image")
+            result = await adapter.run("PROMPT_SECRET")
 
             self.assertEqual("NORMAL_TERMINAL", first.status)
             self.assertEqual("UNSUPPORTED_MUTATION", result.status)
             self.assertFalse(result.normal_terminal)
             self.assertEqual("PENDING", result.checkpoint_outcomes[-1].status)
+            self.assertEqual(
+                "unsupported_item_type:imageGeneration",
+                result.unsupported_reason,
+            )
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual(
+                "matched-not-verified",
+                result.file_actions[0].access,
+            )
+            self.assertEqual(
+                "Original Codex answer.\n\n"
+                "Decision OS verification: not verified "
+                "(unsupported_item_type:imageGeneration).",
+                result.final_message,
+            )
+            for secret in secret_values:
+                self.assertNotIn(secret, result.unsupported_reason)
+                self.assertNotIn(secret, result.final_message)
             self.assertEqual((0, 0), engine.store.counters())
 
     async def test_completed_file_without_approval_is_unsupported(self) -> None:
@@ -1480,6 +1852,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual("UNSUPPORTED_MUTATION", result.status)
             self.assertFalse(result.normal_terminal)
+            self.assertEqual(
+                "unapproved_file_completion",
+                result.unsupported_reason,
+            )
             self.assertEqual([], engine.store.read_events())
 
     async def test_post_approval_patch_change_cannot_promote(self) -> None:
