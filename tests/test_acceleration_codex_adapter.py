@@ -69,9 +69,10 @@ def handshake_messages(
     network_access: bool = False,
     effective_cwd: str | None = None,
     ephemeral: bool = True,
+    include_settings_update: bool = False,
 ) -> list[dict[str, Any]]:
     cwd = str(repository.resolve()) if effective_cwd is None else effective_cwd
-    return [
+    messages = [
         {
             "id": 1,
             "result": {
@@ -148,26 +149,30 @@ def handshake_messages(
                 }
             },
         },
-        {
-            "method": "thread/settings/updated",
-            "params": {
-                "threadId": thread_id,
-                "threadSettings": {
-                    "approvalPolicy": approval_policy,
-                    "approvalsReviewer": approvals_reviewer,
-                    "cwd": cwd,
-                    "effort": effort,
-                    "model": model,
-                    "modelProvider": model_provider,
-                    "sandboxPolicy": {
-                        "networkAccess": network_access,
-                        "type": sandbox_type,
-                    },
-                    "serviceTier": service_tier,
-                },
-            },
-        },
     ]
+    if include_settings_update:
+        messages.append(
+            {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": thread_id,
+                    "threadSettings": {
+                        "approvalPolicy": approval_policy,
+                        "approvalsReviewer": approvals_reviewer,
+                        "cwd": cwd,
+                        "effort": effort,
+                        "model": model,
+                        "modelProvider": model_provider,
+                        "sandboxPolicy": {
+                            "networkAccess": network_access,
+                            "type": sandbox_type,
+                        },
+                        "serviceTier": service_tier,
+                    },
+                },
+            }
+        )
+    return messages
 
 
 def started_item(
@@ -198,7 +203,7 @@ def approval_request(
     thread_id: str,
     turn_id: str,
     item_id: str,
-    request_id: str,
+    request_id: str | int,
     method: str = "item/fileChange/requestApproval",
 ) -> dict[str, Any]:
     return {
@@ -240,7 +245,7 @@ def completed_item(
 def resolved_request(
     *,
     thread_id: str,
-    request_id: str,
+    request_id: str | int,
 ) -> dict[str, Any]:
     return {
         "method": "serverRequest/resolved",
@@ -600,6 +605,95 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 events.index("server_closed"),
             )
 
+    async def test_thread_start_identity_reaches_human_without_initial_update(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            changes = [change()]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    started_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        request_id=0,
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id=0,
+                    ),
+                    completed_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            callback_count = 0
+
+            def choose_once() -> str:
+                nonlocal callback_count
+                callback_count += 1
+                return "1"
+
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=choose_once,
+            )
+            original_send = adapter._send
+            approval_decisions: list[str] = []
+
+            def assert_registered_before_send(
+                message: dict[str, Any],
+            ) -> None:
+                result = message.get("result")
+                if message.get("id") == 0 and isinstance(result, dict):
+                    self.assertEqual(
+                        "item-1",
+                        adapter._approval_requests.get(0),
+                    )
+                    approval_decisions.append(result["decision"])
+                original_send(message)
+
+            with patch.object(
+                adapter,
+                "_send",
+                side_effect=assert_registered_before_send,
+            ):
+                result = await adapter.run("modify")
+
+            self.assertEqual(1, callback_count)
+            self.assertEqual(["accept"], approval_decisions)
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNone(result.error_type)
+            self.assertIsNotNone(result.runtime_identity)
+            self.assertEqual({0: "item-1"}, adapter._approval_requests)
+            self.assertEqual({0}, adapter._resolved_approval_requests)
+            self.assertNotIn(
+                "received:thread/settings/updated",
+                factory.transports[0].events,
+            )
+
     async def test_option_one_is_not_persisted_or_verified(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory))
@@ -648,8 +742,27 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 factory,
                 choice=lambda: "3",
             )
+            original_send = adapter._send
 
-            result = await adapter.run("deny")
+            def assert_registered_before_decline(
+                message: dict[str, Any],
+            ) -> None:
+                result = message.get("result")
+                if isinstance(result, dict) and "decision" in result:
+                    self.assertEqual(
+                        "item-1",
+                        adapter._approval_requests.get(
+                            "approval-item-1"
+                        ),
+                    )
+                original_send(message)
+
+            with patch.object(
+                adapter,
+                "_send",
+                side_effect=assert_registered_before_decline,
+            ):
+                result = await adapter.run("deny")
 
             self.assertEqual("DENIED", result.status)
             self.assertFalse(result.normal_terminal)
@@ -660,6 +773,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 if "result" in message
             ]
             self.assertEqual(["decline"], approvals)
+            self.assertEqual(
+                {"approval-item-1"},
+                adapter._resolved_approval_requests,
+            )
 
     async def test_same_run_repeat_never_becomes_verified(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -804,6 +921,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                         thread_id="thread-1",
                         turn_id="turn-1",
                         item_id="item-1",
+                        include_settings_update=True,
                     )
                 ]
             )
@@ -815,6 +933,9 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             result = await adapter.run("identity")
 
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNone(result.error_type)
             self.assertIsNotNone(result.runtime_identity)
             identity = result.runtime_identity
             assert identity is not None
@@ -874,6 +995,67 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(ADAPTER_NAME, engine.adapter)
             self.assertEqual(CODEX_CLI_VERSION, engine.adapter_version)
+            self.assertIn(
+                "received:thread/settings/updated",
+                factory.transports[0].events,
+            )
+
+    async def test_conflicting_settings_update_stays_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = file_run_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+                item_id="item-1",
+                item_status="declined",
+                include_settings_update=True,
+            )
+            matching_update = messages[5]
+            matching_settings = matching_update["params"]["threadSettings"]
+            messages[5] = {
+                "method": "thread/settings/updated",
+                "params": {
+                    "threadId": "thread-1",
+                    "threadSettings": {
+                        **matching_settings,
+                        "serviceTier": "flex",
+                    },
+                },
+            }
+            messages.insert(6, matching_update)
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            result = await adapter.run("conflicting settings")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertFalse(result.normal_terminal)
+            self.assertEqual(
+                "CodexRuntimeIdentityError",
+                result.error_type,
+            )
+            self.assertIsNone(result.runtime_identity)
+            self.assertFalse(adapter._settings_verified)
+            self.assertEqual(
+                {"approval-item-1": "item-1"},
+                adapter._approval_requests,
+            )
+            self.assertEqual(
+                {"approval-item-1"},
+                adapter._resolved_approval_requests,
+            )
+            approvals = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["decline"], approvals)
 
     async def test_identity_mismatches_fail_closed_before_turn(self) -> None:
         cases = (
@@ -1040,6 +1222,10 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                             "item/commandExecution/requestApproval"
                         ),
                     ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="command-approval",
+                    ),
                     completed_turn(
                         thread_id="thread-1",
                         turn_id="turn-1",
@@ -1052,11 +1238,35 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 factory,
                 choice=lambda: self.fail("must not prompt"),
             )
+            original_send = adapter._send
 
-            result = await adapter.run("shell mutation")
+            def assert_registered_before_decline(
+                message: dict[str, Any],
+            ) -> None:
+                result = message.get("result")
+                if isinstance(result, dict) and "decision" in result:
+                    self.assertEqual(
+                        "command-1",
+                        adapter._approval_requests.get(
+                            "command-approval"
+                        ),
+                    )
+                original_send(message)
+
+            with patch.object(
+                adapter,
+                "_send",
+                side_effect=assert_registered_before_decline,
+            ):
+                result = await adapter.run("shell mutation")
 
             self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertIsNone(result.error_type)
             self.assertEqual([], engine.store.read_events())
+            self.assertEqual(
+                {"command-approval"},
+                adapter._resolved_approval_requests,
+            )
             response = next(
                 message
                 for message in factory.transports[0].sent
@@ -1288,6 +1498,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
+                include_settings_update=True,
             )
             turn_response = base[4]
             settings = base[5]

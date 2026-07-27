@@ -293,7 +293,8 @@ class CodexAdapter:
         self._iteration = 0
         self._items: dict[str, dict[str, Any]] = {}
         self._approved_changes: dict[str, list[dict[str, Any]]] = {}
-        self._approval_requests: dict[str | int, str] = {}
+        self._approval_requests: dict[str | int, str | None] = {}
+        self._resolved_approval_requests: set[str | int] = set()
         self._accepted_items: set[str] = set()
         self._declined_items: set[str] = set()
         self._resolved_items: set[str] = set()
@@ -319,6 +320,7 @@ class CodexAdapter:
         self._items = {}
         self._approved_changes = {}
         self._approval_requests = {}
+        self._resolved_approval_requests = set()
         self._accepted_items = set()
         self._declined_items = set()
         self._resolved_items = set()
@@ -530,8 +532,21 @@ class CodexAdapter:
             raise CodexAdapterFailure("Codex thread is not ephemeral.")
         if not self._cwd_matches(thread.get("cwd")):
             raise CodexAdapterFailure("Codex thread root identity mismatch.")
+        account_type = self._account_type
+        if account_type != "chatgpt":
+            raise CodexAdapterFailure(
+                "Codex account identity changed during thread start."
+            )
         self._thread_id = thread_id
         self._thread_cli_version = cli_version
+        self._settings_verified = True
+        self._runtime_identity = CodexRuntimeIdentity(
+            model=result["model"],
+            reasoning_effort=result["reasoningEffort"],
+            service_tier=result["serviceTier"],
+            codex_cli_version=cli_version,
+            account_type=account_type,
+        )
         deferred = tuple(self._deferred_settings)
         self._deferred_settings = []
         for params in deferred:
@@ -664,6 +679,22 @@ class CodexAdapter:
             self._turn_id = observed_turn_id
         return observed_turn_id == self._turn_id
 
+    def _register_approval_request(
+        self,
+        request_id: Any,
+        item_id: Any,
+    ) -> bool:
+        if (
+            not isinstance(request_id, (str, int))
+            or isinstance(request_id, bool)
+            or request_id in self._approval_requests
+        ):
+            return False
+        self._approval_requests[request_id] = (
+            item_id if isinstance(item_id, str) else None
+        )
+        return True
+
     def _respond_file_approval(self, message: dict[str, Any]) -> None:
         request_id = message.get("id")
         params = self._require_object(
@@ -671,11 +702,11 @@ class CodexAdapter:
             "file approval parameters",
         )
         item_id = params.get("itemId")
-        if (
-            not isinstance(request_id, (str, int))
-            or isinstance(request_id, bool)
-            or request_id in self._approval_requests
-        ):
+        duplicate_item = (
+            isinstance(item_id, str)
+            and item_id in self._approval_requests.values()
+        )
+        if not self._register_approval_request(request_id, item_id):
             self._unsupported_mutation = True
             if isinstance(item_id, str):
                 self._declined_items.add(item_id)
@@ -696,14 +727,13 @@ class CodexAdapter:
                 {"id": request_id, "result": {"decision": "decline"}}
             )
             return
-        if item_id in self._approval_requests.values():
+        if duplicate_item:
             self._unsupported_mutation = True
             self._declined_items.add(item_id)
             self._send(
                 {"id": request_id, "result": {"decision": "decline"}}
             )
             return
-        self._approval_requests[request_id] = item_id
         try:
             decision_type, raw_path = self._map_file_change(
                 self._items[item_id]
@@ -763,8 +793,17 @@ class CodexAdapter:
         ):
             self._identity_failure = True
             return
-        item_id = self._approval_requests.get(request_id)
-        if item_id is None or item_id in self._resolved_items:
+        if (
+            request_id not in self._approval_requests
+            or request_id in self._resolved_approval_requests
+        ):
+            self._identity_failure = True
+            return
+        self._resolved_approval_requests.add(request_id)
+        item_id = self._approval_requests[request_id]
+        if item_id is None:
+            return
+        if item_id in self._resolved_items:
             self._identity_failure = True
             return
         self._resolved_items.add(item_id)
@@ -773,6 +812,9 @@ class CodexAdapter:
         self._unsupported_mutation = True
         request_id = message.get("id")
         method = message.get("method")
+        params = message.get("params")
+        item_id = params.get("itemId") if isinstance(params, dict) else None
+        self._register_approval_request(request_id, item_id)
         if method == "item/commandExecution/requestApproval":
             self._send(
                 {"id": request_id, "result": {"decision": "decline"}}
@@ -863,22 +905,33 @@ class CodexAdapter:
             return
         self._completed_items.add(item_id)
 
+    def _invalidate_runtime_identity(self) -> None:
+        self._identity_failure = True
+        self._settings_verified = False
+        self._runtime_identity = None
+
     def _verify_settings(self, params: dict[str, Any]) -> None:
         if self._thread_id is None:
             self._deferred_settings.append(params)
             return
         if params.get("threadId") != self._thread_id:
-            self._identity_failure = True
+            self._invalidate_runtime_identity()
             return
         settings = self._require_object(
             params.get("threadSettings"),
             "thread settings",
         )
+        identity = self._runtime_identity
         if (
-            settings.get("model") != self.expected_model
+            self._identity_failure
+            or not self._settings_verified
+            or identity is None
+            or identity.account_type != self._account_type
+            or identity.codex_cli_version != self._thread_cli_version
+            or settings.get("model") != identity.model
             or settings.get("modelProvider") != "openai"
-            or settings.get("effort") != self.expected_reasoning_effort
-            or settings.get("serviceTier") != self.expected_service_tier
+            or settings.get("effort") != identity.reasoning_effort
+            or settings.get("serviceTier") != identity.service_tier
             or settings.get("approvalPolicy") != "on-request"
             or settings.get("approvalsReviewer") != "user"
             or not self._cwd_matches(settings.get("cwd"))
@@ -886,21 +939,8 @@ class CodexAdapter:
                 settings.get("sandboxPolicy")
             )
         ):
-            self._identity_failure = True
-            self._runtime_identity = None
+            self._invalidate_runtime_identity()
             return
-        if self._account_type != "chatgpt" or self._thread_cli_version is None:
-            self._identity_failure = True
-            self._runtime_identity = None
-            return
-        self._settings_verified = True
-        self._runtime_identity = CodexRuntimeIdentity(
-            model=settings["model"],
-            reasoning_effort=settings["effort"],
-            service_tier=settings["serviceTier"],
-            codex_cli_version=self._thread_cli_version,
-            account_type=self._account_type,
-        )
 
     def _complete_turn(self, params: dict[str, Any]) -> None:
         if params.get("threadId") != self._thread_id:
