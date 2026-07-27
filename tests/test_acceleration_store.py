@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
+from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import (
     DecisionType,
     ScopeError,
@@ -194,6 +195,41 @@ class AccelerationStoreTest(unittest.TestCase):
             self.assertEqual([], store.read_events())
             with self.assertRaises(StateIntegrityError):
                 store.update_settings(minutes_per_reuse=0)
+
+    def test_active_defaults_are_enumerated_and_revoked_without_key_changes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            (repository / "target.txt").write_text("one\n", encoding="utf-8")
+            engine = AccelerationEngine(repository)
+            run_id = engine.new_run_id()
+
+            outcome = engine.evaluate(
+                run_id=run_id,
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="./target.txt",
+                source_interrupt_id="enumeration-test",
+                choice_provider=lambda _identity: "2",
+            )
+            records = engine.store.active_defaults()
+
+            self.assertEqual(1, len(records))
+            record = records[0]
+            self.assertEqual(outcome.identity.decision_key, record.decision_key)
+            self.assertEqual(outcome.identity.rule_hash, record.rule_hash)
+            self.assertEqual("MODIFY_FILE", record.decision_type)
+            self.assertEqual("target.txt", record.normalized_scope)
+            self.assertEqual(run_id, record.created_run_id)
+            self.assertTrue(record.created_at.endswith("Z"))
+
+            engine.revoke(
+                run_id=engine.new_run_id(),
+                decision_key=record.decision_key,
+            )
+
+            self.assertEqual((), engine.store.active_defaults())
 
 
 if __name__ == "__main__":

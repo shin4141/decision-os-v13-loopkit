@@ -1,5 +1,97 @@
 # Current Signal
 
+## Canonical Current State — Decision OS Companion Acceptance v0.1
+
+```text
+Current Layer:
+V13 — Operational Use Entry
+
+Primary Objective:
+Shin-owned local Companion acceptance
+
+Companion Surface:
+local macOS .app wrapper / localhost browser UI / one-task Runner
+
+Starting Main:
+e6e2ba7a1be8612eb781c565c7c2bb9d012b129d
+
+Approved Pre-Closure Head:
+a04f1463fc1f4bf46196eeea1702c5b096fd36e2
+
+Active Branch:
+codex/decision-os-companion-v0-1
+
+V12 State:
+DELAY — Shin-owned fresh-process local Companion acceptance passed;
+external-user adoption remains unobserved and no external adoption claim is made
+
+V13 Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+V13 Next Loop Gate:
+HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
+
+Fresh-Process Acceptance:
+PASS — app launched without Terminal / repository reopened / no repeated
+approval card / saved exact access reused / normal terminal / approved reused
+
+Terminal Proof:
+PASS — CHECKPOINT_PASSED / VERIFIED_SAVE
+
+Earlier Matched Run:
+NOT VERIFIED — CHECKPOINT_PENDING / ZERO RECEIPT
+
+Acceptance Sequence:
+corrected fresh-process verification after A1 and A2 /
+not an uninterrupted clean-room two-Run final-build claim
+
+Runtime Identity:
+ChatGPT / gpt-5.6-sol / ultra / priority
+
+Authoritative Receipt:
+VERIFIED / 1 Verified Save / 1 Verified Reuse /
+7.5 estimated recovered minutes / ¥625 estimated human-time value /
+tokens UNKNOWN
+
+Focused Companion:
+PASS / 16 OF 16 TESTS
+
+Focused Codex Adapter:
+PASS / 31 OF 31 TESTS
+
+Full Regression:
+PASS / 244 OF 244 TESTS
+
+Draft PR:
+OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/37
+
+Acceptance Record:
+validation/decision_os_companion_acceptance_run_001.md
+
+Claim Boundary:
+Shin-owned local acceptance / not external-user adoption /
+not native Codex Desktop integration / not third-party certification /
+recovered time and money remain estimates / token value remains UNKNOWN
+
+macOS Computer Use Prompt:
+SEPARATE / NONCAUSAL / NOT REQUIRED FOR THE VERIFIED RUN
+
+Temporary Acceptance File:
+DELETED / NEVER STAGED OR COMMITTED
+
+Merge Authority:
+NONE
+
+Next Authorized Action:
+none unless Shin explicitly approves review-state or merge work
+
+Decision Owner:
+Shin
+```
+
+Everything below this boundary is a historical reverse-chronological ledger.
+Historical entries preserve their As-of truth but grant no present authority.
+
 ## Canonical Current State — Verified Save Codex/Sol MVP v0.1
 
 ```text
