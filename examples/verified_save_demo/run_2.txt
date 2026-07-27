@@ -1,0 +1,2 @@
+Read demo_target.txt. Use Edit exactly once to replace the line
+`stage: run-1` with `stage: run-2`. Do not touch any other file.
