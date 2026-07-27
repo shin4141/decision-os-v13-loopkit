@@ -1,4 +1,4 @@
-# Qualified Outbound Cohort 001 — Validation Receipt
+# Qualified Outbound Cohort 001 — Send-Readiness Revision Receipt
 
 Status: PASS / REVIEW HOLD
 Validated: 2026-07-27 JST
@@ -8,63 +8,102 @@ Branch: `codex/qualified-outbound-cohort-001`
 
 ## Completion result
 
-Twenty organizations honestly pass the admission threshold. The cohort contains 10 Group A prospects and 10 Group B prospects. The lowest score is 9/10; no threshold relaxation or replacement candidate was used.
+The 20 organizations remain the research pool. The original 8/10 scoring threshold remains satisfied by all 20, but score is no longer sufficient for admission.
 
-No email, form submission, direct message, issue comment, or other outreach occurred while producing or validating this cohort.
+After applying Pain Ownership, Route-Purpose, Evidence-Boundary, and Economic-Parent as non-compensable gates:
+
+- send-ready: **3**;
+- HOLD: **5**;
+- BLOCK: **12**;
+- send-ready Group A / B: **0 / 3**;
+- send-ready organizations: Dify / LangGenius, deepset / Haystack, and Inngest.
+
+The missing Group A dimension is Route-Purpose. None of the Group A research candidates has a currently usable route that explicitly accepts this service proposal under the approved sender identity.
+
+No email, form submission, direct message, issue comment, or other outreach occurred while producing or validating this revision.
 
 ## Exact output scope
 
-Only these four files are in scope:
+Only these four existing PR files are revised:
 
 1. `outreach/qualified_outbound_cohort_001.md`
 2. `outreach/qualified_outbound_cohort_001.csv`
 3. `outreach/outbound_observation_plan_001.md`
 4. `validation/qualified_outbound_cohort_001_receipt.md`
 
-Pricing, public claims, `README.md`, releases, private/public Canon files, and existing pull requests are unchanged.
+Pricing, public claims, `README.md`, releases, private/public Canon files, and other pull requests are unchanged.
 
-## Qualification validation
+## Hard-gate result
 
-| Check | Result | Evidence |
+| Research priority | Candidate | Decision | Non-passing gate or admission basis |
+|---:|---|---|---|
+| 1 | Letta | BLOCK | Business contact is not explicitly a vendor/implementation/partnership route. |
+| 2 | Temporal | HOLD | Agency/SI route exists, but current sole-proprietor eligibility without a documented Temporal service line is not established. |
+| 3 | n8n | HOLD | Program requires proven n8n experience and immediate enterprise-scale implementation capacity; approved proof is absent. |
+| 4 | FlowiseAI | BLOCK | Verified route is support. |
+| 5 | LangChain / LangGraph | HOLD | Partner form rejects personal email and requires company website plus delivered LangSmith implementations. |
+| 6 | CrewAI | BLOCK | Buyer meeting route and repository-specific marketplace intake do not accept this proposal. |
+| 7 | Dify / LangGenius | PASS | Official Service Partner program accepts external paid technical services. |
+| 8 | deepset / Haystack | PASS | Official Services Partner form accepts hands-on implementation partners. |
+| 9 | Agno | BLOCK | Buyer/product contact; no explicit service-partner purpose. |
+| 10 | Trigger.dev | BLOCK | General contact lacks explicit vendor/partner purpose. |
+| 11 | OpenHands | BLOCK | General contact and buyer-side Design Partner intake do not accept this proposal. |
+| 12 | Composio | HOLD | Current product/platform partnership form does not establish fit for the approved service-only sender identity. |
+| 13 | Mastra | HOLD | Partner route requires an already-shipped Mastra integration and public supporting assets. |
+| 14 | Prefect | BLOCK | Buyer sales route; shared economic parent with Dagster and no distinct authority. |
+| 15 | Pydantic | BLOCK | Buyer sales route; no verified service-partner route. |
+| 16 | LiteLLM | BLOCK | Buyer Enterprise route. |
+| 17 | LlamaIndex | BLOCK | Buyer sales route. |
+| 18 | Mem0 | BLOCK | Buyer Enterprise route. |
+| 19 | Dagster Labs | BLOCK | Program excludes the relevant individual/freelancer posture; shared economic parent with Prefect. |
+| 20 | Inngest | PASS | Partnerships & Integrations explicitly accepts parties building with or alongside Inngest; static evidence limit is stated. |
+
+## Required-correction validation
+
+| Required correction | Result | Evidence |
 |---|---|---|
-| Candidate count | PASS | 20 numbered Markdown records and 20 CSV data rows |
-| Group allocation | PASS | Group A = 10; Group B = 10 |
-| Minimum admission score | PASS | Minimum 9/10; maximum 10/10 |
-| Score arithmetic | PASS | Every total equals the five recorded sub-scores |
-| Unique organizations | PASS | 20 unique organization labels; no duplicate-organization exception used |
-| Ongoing AI/agent/automation workflow | PASS | Every candidate scores 2/2 |
-| Public operational reason | PASS | Every record includes one exact public GitHub issue URL and an evidence class |
-| Evidence language | PASS | Closed issues are treated as historical boundaries; inferred analysis is identified rather than reported as an incident |
-| Recurrence or expansion case | PASS | Every record states a workflow-specific recurrence path |
-| Rule shown in advance | PASS | Every record and draft contains one operational rule before the CTA |
-| Unresolved questions | PASS | Every record contains three workflow-specific questions |
-| Exactly one proposed next step | PASS | Every draft closes with one small prospect-specific CTA |
-| Professional contact route | PASS | Every route is an official company form, designated partner/sales route, or officially published business address |
-| Prohibited routes | PASS | No guessed address, personal-only account, commit metadata, issue-comment outreach, broker data, or private identity source is used |
-| Guarantee language | PASS | No prevention, safety, productivity, or effectiveness guarantee is made |
-| “Free fit check” framing | PASS | Phrase absent; it is not used as the value proposition |
+| Preserve 20 researched candidates | PASS | 20 Markdown records and 20 CSV rows remain |
+| Add four non-compensable gates | PASS | Gate matrix in Markdown and gate columns in CSV |
+| Return actual count | PASS | 3; no attempt to force 20 |
+| Prefect + Dagster one parent | PASS | Both use `economic_parent_id=prefect-dagster`; neither enters denominator |
+| Buyer demo/sales/support routes | PASS | Reclassified HOLD/BLOCK; none enters denominator |
+| Temporal actual-status eligibility | PASS | HOLD pending evidence that current sole-proprietor operation fits Agency/SI route |
+| n8n actual-status eligibility | PASS | HOLD pending proven n8n delivery and enterprise implementation evidence |
+| Evidence-boundary language | PASS | 20 advance rules and 20 drafts use verification invariants and state unconfirmed cause boundaries |
+| Inferred Inngest evidence | PASS | Static analysis is not described as a production occurrence or confirmed ordering |
+| Public credibility anchor | PASS | Every PASS draft links the complete public Before / After example |
+| Consecutive business-day schedule | PASS | 2026-07-29 and 2026-07-30 |
+| First cohort decision | PASS | 2026-08-14, 10 business days after the second send day; 2026-08-11 Japanese national holiday excluded |
+| Rejected candidates retained | PASS | 17 HOLD/BLOCK records remain with exact reasons |
+| External contact | PASS | None |
+| Merge boundary | PASS | Draft PR only; merge HOLD |
+
+## Research score and evidence validation
+
+| Check | Result |
+|---|---|
+| Research-pool count | PASS — 20 |
+| Original Group A / B count | PASS — 10 / 10 |
+| Original minimum score | PASS — 9/10 |
+| Score arithmetic | PASS — every total recomputes from five sub-scores |
+| Public incident URL | PASS — one exact URL per candidate |
+| Evidence class | PASS — observed / owner-reported / inferred |
+| Closed-issue boundary | PASS — not treated as a current unresolved defect |
+| Hypothesis promotion | PASS — no advance rule claims an unconfirmed root cause |
+| Economic-parent uniqueness in denominator | PASS — 3 distinct parents |
 
 ## Newness and denominator validation
 
-The exclusion set was built read-only from:
+The prior-contact exclusion set remains read-only and unchanged:
 
 - existing repository outreach records;
 - the separate 13-13 sent record;
 - Gmail Sent messages from 2026-06-01 through the research cut-off;
 - follow-ups sent on 2026-07-26.
 
-Candidate organization labels and the public entities behind them were compared against that exclusion set. No admitted candidate is a previously emailed contact. Private addresses discovered during the read-only check are neither reproduced here nor copied into cohort artifacts.
+No research-pool candidate is a previously emailed contact. Prior emails and the 2026-07-26 follow-ups remain excluded from the numerator and denominator.
 
-The observation plan fixes:
-
-- the initial denominator at 20;
-- Group A / B at 10 / 10;
-- a first-send date, one follow-up date, and a 10-business-day first decision date for every prospect;
-- strong- and weak-signal definitions;
-- GO / HOLD / CAP / BLOCK interpretation;
-- the exclusion of prior emails and the 2026-07-26 follow-ups from this cohort's numerator and denominator.
-
-The dates are observation controls, not send authority. A missed first-send date forces calendar re-approval rather than silent date movement.
+The fixed denominator is three. HOLD/BLOCK candidates cannot be replacements. A changed route or new eligibility proof requires a new gate audit and a re-fixed plan.
 
 ## Format and consistency validation
 
@@ -72,26 +111,30 @@ The dates are observation controls, not send authority. A missed first-send date
 |---|---|
 | Markdown candidate headings | PASS — 20 |
 | Markdown required 18 fields per candidate | PASS |
-| Markdown complete email drafts | PASS — 20 |
-| Markdown advance-value rules | PASS — 20 |
-| CSV parse | PASS — 20 rows, 27 columns |
-| CSV priority sequence | PASS — integers 1 through 20 |
-| CSV Group A / B count | PASS — 10 / 10 |
-| CSV score floor and arithmetic | PASS — all totals 9–10 and recomputed |
-| CSV evidence and contact route fields | PASS — non-empty, explicit URL/scheme |
-| CSV subjects, drafts, rules, and dates | PASS — complete |
-| Markdown / CSV organization order | PASS — priorities 1 through 20 align |
-| Private sender email / company-field value in outputs | PASS — absent |
+| Markdown gate rows | PASS — 20 |
+| Markdown complete research drafts | PASS — 20 |
+| Markdown evidence-bounded rules | PASS — 20 |
+| CSV parse | PASS — 20 rows, 37 columns |
+| CSV research-priority sequence | PASS — integers 1 through 20 |
+| CSV status count | PASS — PASS 3 / HOLD 5 / BLOCK 12 |
+| CSV send-priority sequence | PASS — 1 through 3 for PASS only |
+| CSV schedule boundary | PASS — dates only on PASS rows |
+| CSV credibility anchors | PASS — present on all PASS rows only |
+| Markdown / CSV evidence-rule and draft alignment | PASS |
+| Private Sender Canon values | PASS — absent |
+| Repository test suite | PASS — `python3 -m unittest discover -s tests -v`, 166 tests |
 | `git diff --check` | PASS |
-| Exact changed-file scope | PASS — four requested files only |
+| Exact changed-file scope | PASS — four requested PR files only |
 | Branch cleanliness after commit | PASS — no uncommitted or staged residue |
 
 ## Externalization boundary
 
-Current Gate: **HOLD — receiving AI audit and Shin send-cohort decision**
+Current Gate: **HOLD — receiving AI audit and Shin decision**
 
-The Draft PR is review material only. Merge is HOLD. First sends, follow-ups, replies, form completion, and any other external action remain unauthorized until Shin approves a final send cohort and the applicable pre-send provenance check passes.
+The three PASS rows are send-ready candidates, not send authorization. Every future send still requires Shin's explicit approval, route re-open, sender-field provenance, and a passing DOM field manifest.
+
+HOLD/BLOCK research drafts are not sendable. No merge, send, follow-up, reply, form completion, or other external action is authorized by this receipt.
 
 ## Completion line
 
-Twenty genuinely qualified prospects are presented as a reviewable cohort with public evidence, individualized advance value, official professional routes, complete email drafts, and a fixed observation calendar. No contact has occurred.
+The PR distinguishes researched candidates from genuinely send-ready prospects, and every denominator unit passes pain ownership, route purpose, evidence boundary, and economic-parent identity as hard gates.

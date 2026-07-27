@@ -2,12 +2,15 @@
 
 Status: FIXED PLAN / SEND HOLD
 Plan fixed: 2026-07-27 JST
-Initial denominator: 20 newly qualified organizations
-Group allocation: Group A = 10; Group B = 10
+Research pool: 20 organizations
+Initial send-ready denominator: 3 economic-parent units
+Send-ready group allocation: Group A = 0; Group B = 3
 
 ## Denominator rule
 
-The denominator is the 20 organizations admitted in `qualified_outbound_cohort_001.md`. It is fixed at first send and is not backfilled if a route fails, a candidate opts out, or a draft is rejected. A duplicate contact at the same organization does not create another denominator unit.
+The research pool remains the 20 organizations in `qualified_outbound_cohort_001.md`. The observation denominator contains only the three organizations that pass Pain Ownership, Route-Purpose, Evidence-Boundary, and Economic-Parent gates: Dify / LangGenius, deepset / Haystack, and Inngest.
+
+The denominator is fixed at three economic-parent units. It is not backfilled if a pre-send field check fails, a route changes, a candidate opts out, or a draft is rejected. The other 17 research candidates are HOLD or BLOCK and cannot be substituted into the denominator without a new gate audit and a re-fixed observation plan. Prefect and Dagster Labs are one economic parent and never create two denominator units without public proof of distinct buying authority.
 
 All emails sent before this cohort, all earlier repository/13-13 outreach, and the follow-ups sent on 2026-07-26 are excluded from both numerator and denominator. Replies caused by those earlier messages are also excluded. A response counts here only when it is attributable to a Cohort 001 first send or its single scheduled follow-up.
 
@@ -15,30 +18,13 @@ No date below authorizes sending. Every send still requires Shin's explicit appr
 
 ## Fixed calendar
 
-Business-day arithmetic excludes Saturdays and Sundays and assumes no additional local holiday adjustment. If Shin approves later than a listed first-send date, the cohort is **HOLD** until the calendar is re-fixed before any send; dates must not slide silently.
+Business-day arithmetic excludes Saturdays, Sundays, and Japanese national holidays. The three send-ready prospects are scheduled across two consecutive business days, 2026-07-29 and 2026-07-30. Because the [Cabinet Office 2026 holiday list](https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html) identifies 2026-08-11 as Mountain Day, the cohort-level first decision is 10 business days after the second send day: 2026-08-14. If Shin approves later than a listed first-send date, the cohort is **HOLD** until the calendar is re-fixed before any send; dates must not slide silently.
 
-| Priority | Organization | Group | First-send date | One follow-up date | 10-business-day first decision |
-|---:|---|:---:|---|---|---|
-| 1 | Letta | A | 2026-07-29 | 2026-08-05 | 2026-08-12 |
-| 2 | Temporal | B | 2026-07-29 | 2026-08-05 | 2026-08-12 |
-| 3 | n8n | B | 2026-07-29 | 2026-08-05 | 2026-08-12 |
-| 4 | FlowiseAI | B | 2026-07-29 | 2026-08-05 | 2026-08-12 |
-| 5 | LangChain / LangGraph | B | 2026-07-29 | 2026-08-05 | 2026-08-12 |
-| 6 | CrewAI | A | 2026-07-30 | 2026-08-06 | 2026-08-13 |
-| 7 | Dify / LangGenius | B | 2026-07-30 | 2026-08-06 | 2026-08-13 |
-| 8 | deepset / Haystack | B | 2026-07-30 | 2026-08-06 | 2026-08-13 |
-| 9 | Agno | A | 2026-07-30 | 2026-08-06 | 2026-08-13 |
-| 10 | Trigger.dev | B | 2026-07-30 | 2026-08-06 | 2026-08-13 |
-| 11 | OpenHands | A | 2026-08-03 | 2026-08-10 | 2026-08-17 |
-| 12 | Composio | A | 2026-08-03 | 2026-08-10 | 2026-08-17 |
-| 13 | Mastra | A | 2026-08-03 | 2026-08-10 | 2026-08-17 |
-| 14 | Prefect | B | 2026-08-03 | 2026-08-10 | 2026-08-17 |
-| 15 | Pydantic | A | 2026-08-03 | 2026-08-10 | 2026-08-17 |
-| 16 | LiteLLM | A | 2026-08-04 | 2026-08-11 | 2026-08-18 |
-| 17 | LlamaIndex | A | 2026-08-04 | 2026-08-11 | 2026-08-18 |
-| 18 | Mem0 | A | 2026-08-04 | 2026-08-11 | 2026-08-18 |
-| 19 | Dagster Labs | B | 2026-08-04 | 2026-08-11 | 2026-08-18 |
-| 20 | Inngest | B | 2026-08-04 | 2026-08-11 | 2026-08-18 |
+| Send priority | Research priority | Organization | Group | First-send date | One follow-up date | Cohort first decision |
+|---:|---:|---|:---:|---|---|---|
+| 1 | 7 | Dify / LangGenius | B | 2026-07-29 | 2026-08-05 | 2026-08-14 |
+| 2 | 8 | deepset / Haystack | B | 2026-07-29 | 2026-08-05 | 2026-08-14 |
+| 3 | 20 | Inngest | B | 2026-07-30 | 2026-08-06 | 2026-08-14 |
 
 Only one follow-up is allowed per prospect. A substantive reply before the follow-up cancels that follow-up. No replacement send, second follow-up, LinkedIn contact, issue comment, or personal-account contact is authorized.
 
@@ -74,7 +60,7 @@ Weak signals remain logged but never count toward the strong-signal numerator.
 
 At a cohort decision point, **GO** requires all of:
 
-1. at least two strong signals, or a strong-signal rate of at least 10% of the fixed denominator;
+1. at least two strong signals, which is at least two-thirds of the fixed denominator;
 2. no sender-identity, personal-data, route-purpose, or evidence-boundary violation;
 3. each live conversation has a named next actor and bounded next step;
 4. Shin separately approves the next response, meeting, or capped cohort action.
@@ -92,7 +78,7 @@ Use **HOLD** when the observation window is incomplete, the only signals are wea
 
 ### CAP
 
-Use **CAP** when exactly one strong signal exists, a route accepts the message but authority is unclear, or a boundary concern can be contained to one conversation. CAP means:
+Use **CAP** when exactly one strong signal exists, a route accepts the message but authority is unclear, or a boundary concern can be contained to one conversation. One strong signal is not cohort-level GO. CAP means:
 
 - work only the specific responding prospect;
 - perform no cohort expansion;
@@ -121,4 +107,4 @@ For each authorized future send, record without publishing private sender data:
 
 ## First decision
 
-The first cohort-level decision is taken after the last prospect reaches its own 10-business-day date, which is **2026-08-18**, unless a strong signal earlier creates a prospect-specific CAP/GO review. The denominator remains 20 throughout. No silence-based success claim is permitted.
+The first cohort-level decision is **2026-08-14**, 10 business days after the second send day after excluding the 2026-08-11 Japanese national holiday, unless a strong signal earlier creates a prospect-specific CAP review. The denominator remains three throughout and the research pool remains 20. No silence-based success claim is permitted.
