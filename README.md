@@ -6,6 +6,22 @@
 ![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
 ![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
+## Your coding agent asks once. The next Run remembers.
+
+1. The agent asks whether it may modify a file.
+2. You choose **Use for this repository**.
+3. A fresh later Run skips the repeated interrupt, records a Verified Save,
+   and emits a local Acceleration Receipt.
+
+In the creator-owned human live proof for the first Claude Agent SDK adapter,
+the human explicitly selected option 2 in Run 1. A separate, fresh Run 2 showed
+no second option prompt and ended with `VERIFIED_SAVE`. Its Receipt recorded
+1 Save and 1 Verified Reuse; 7.5 minutes, ¥625, and 9,467 tokens are estimates.
+
+This is creator-owned human live proof, not external-user adoption or
+third-party certification. [See the Verified Save Claude MVP
+guide.](docs/verified_save_claude_mvp_v0_1.md)
+
 ## Turn one AI incident into a paste-ready rule
 
 An AI agent said “done,” resumed from stale state, lost the accepted result,
