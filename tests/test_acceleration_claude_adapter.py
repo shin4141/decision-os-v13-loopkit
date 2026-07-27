@@ -65,28 +65,64 @@ def fake_sdk(
     path: str = "target.txt",
     result: FakeResult | None = None,
     callback_results: list[object] | None = None,
+    lifecycle_events: list[str] | None = None,
 ) -> SimpleNamespace:
     observed = callback_results if callback_results is not None else []
+    events = lifecycle_events if lifecycle_events is not None else []
 
-    async def query(*, prompt: object, options: FakeOptions):
-        messages = [message async for message in prompt]
-        if not messages:
-            raise AssertionError("missing streaming prompt")
-        permission = await options.can_use_tool(
-            tool_name,
-            {"file_path": path},
-            FakeContext(),
-        )
-        observed.append(permission)
-        yield result or FakeResult()
+    class FakeClaudeSDKClient:
+        def __init__(self, *, options: FakeOptions) -> None:
+            self.options = options
+            self.connected = False
+            self.prompt: str | None = None
+
+        async def __aenter__(self) -> FakeClaudeSDKClient:
+            self.connected = True
+            events.append("control_stream_opened")
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type: object,
+            exc: object,
+            traceback: object,
+        ) -> None:
+            self.connected = False
+            events.append("control_stream_closed")
+
+        async def query(self, prompt: str) -> None:
+            if not self.connected:
+                raise AssertionError("query requires an open control stream")
+            if not isinstance(prompt, str) or not prompt:
+                raise AssertionError("missing prompt")
+            self.prompt = prompt
+            events.append("prompt_sent")
+
+        async def receive_response(self):
+            if not self.connected or self.prompt is None:
+                raise AssertionError("response requires an open control stream")
+            events.append("permission_requested")
+            permission = await self.options.can_use_tool(
+                tool_name,
+                {"file_path": path},
+                FakeContext(),
+            )
+            if not self.connected:
+                raise AssertionError(
+                    "control stream closed before permission completed"
+                )
+            observed.append(permission)
+            events.append("permission_completed")
+            events.append("terminal_result_received")
+            yield result or FakeResult()
 
     return SimpleNamespace(
         __version__=CLAUDE_AGENT_SDK_VERSION,
         ClaudeAgentOptions=FakeOptions,
+        ClaudeSDKClient=FakeClaudeSDKClient,
         PermissionResultAllow=FakeAllow,
         PermissionResultDeny=FakeDeny,
         ResultMessage=FakeResult,
-        query=query,
     )
 
 
@@ -120,6 +156,39 @@ class ClaudeAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(2, len(permissions))
             self.assertTrue(all(item.behavior == "allow" for item in permissions))
             self.assertEqual(1, output.getvalue().count("Selection:"))
+
+    async def test_control_stream_stays_open_through_gated_edit_and_result(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            lifecycle: list[str] = []
+            permissions: list[object] = []
+            adapter = ClaudeAdapter(
+                AccelerationEngine(repository),
+                input_func=lambda: "1",
+                stdout=io.StringIO(),
+                sdk_module=fake_sdk(
+                    callback_results=permissions,
+                    lifecycle_events=lifecycle,
+                ),
+            )
+
+            result = await adapter.run("modify target")
+
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(1, len(permissions))
+            self.assertEqual(
+                [
+                    "control_stream_opened",
+                    "prompt_sent",
+                    "permission_requested",
+                    "permission_completed",
+                    "terminal_result_received",
+                    "control_stream_closed",
+                ],
+                lifecycle,
+            )
 
     async def test_error_result_leaves_cross_run_candidate_pending(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

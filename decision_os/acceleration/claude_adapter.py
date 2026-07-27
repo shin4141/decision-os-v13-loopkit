@@ -252,20 +252,12 @@ class ClaudeAdapter:
         result_message: Any | None = None
         error_type: str | None = None
 
-        async def prompt_stream() -> Any:
-            yield {
-                "type": "user",
-                "message": {"role": "user", "content": prompt},
-                "parent_tool_use_id": None,
-            }
-
         try:
-            async for message in sdk.query(
-                prompt=prompt_stream(),
-                options=options,
-            ):
-                if isinstance(message, sdk.ResultMessage):
-                    result_message = message
+            async with sdk.ClaudeSDKClient(options=options) as client:
+                await client.query(prompt)
+                async for message in client.receive_response():
+                    if isinstance(message, sdk.ResultMessage):
+                        result_message = message
         except Exception as exc:
             error_type = type(exc).__name__
 
