@@ -19,8 +19,8 @@ Active Branch:
 feat/verified-save-claude-mvp-v0-1
 
 V12 State:
-DELAY — deterministic engine and Claude adapter passed; live human-owned proof
-is recoverably incomplete because Claude authentication is unavailable
+DELAY — creator-owned human two-Run live proof passed; external-user adoption
+remains unobserved and no external adoption claim is made
 
 V13 Gate:
 HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
@@ -29,19 +29,31 @@ V13 Next Loop Gate:
 HOLD — DRAFT PR REVIEW / NO MERGE AUTHORITY
 
 Live Proof:
-DELAY — bundled Claude CLI reports loggedIn=false / no human option-2 selection
+PASS — Run 1 normal terminal / repeated interrupt skipped / fresh Run 2
+VERIFIED_SAVE / 1 Save / 1 Verified Reuse
 
 Deterministic Engine:
-PASS / 25 OF 25 ACCELERATION TESTS
+PASS / 26 OF 26 ACCELERATION TESTS
 
 Full Regression:
-PASS / 191 OF 191 TESTS
+PASS / 192 OF 192 TESTS
 
 Draft PR:
 OPEN / DRAFT / https://github.com/shin4141/decision-os-v13-loopkit/pull/34
 
 Demo GIF:
-NOT_CREATED — conditional on passing live proof
+NOT_CREATED — not authorized by the live-proof closure
+
+Live Receipt:
+7.5 estimated minutes / ¥625 estimated human-time value /
+9,467 configured estimated tokens
+
+Receipt SHA-256:
+027368f679b7ce1f14bf7ca42bfe686c34c8af313d801f7cc086e0b2a5c3e100
+
+Claim Boundary:
+creator-owned human live proof / not external-user adoption /
+not third-party certification / estimates remain estimates
 
 Merge Authority:
 NONE

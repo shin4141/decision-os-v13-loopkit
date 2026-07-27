@@ -23,7 +23,7 @@ Validation date:
 
 ```text
 LIVE_PROOF:
-DELAY
+PASS
 
 DETERMINISTIC_ENGINE:
 PASS
@@ -40,7 +40,11 @@ mapping, normal/error ResultMessage boundary, lazy optional import, and
 fail-closed callback behavior passed implementation and deterministic adapter
 tests.
 
-It does not mean a live two-Run Verified Save occurred.
+`LIVE_PROOF=PASS` means the creator completed the bounded two-Run demo with one
+explicit human Repository Default and a separate fresh Run that produced the
+first Verified Save. It is not external-user adoption or third-party
+certification. Receipt time, human-time value, and token values remain
+estimates.
 
 ## Starting-State Receipt
 
@@ -109,7 +113,7 @@ dependencies.
 
 ```text
 Acceleration-specific tests:
-25 / 25 PASS
+26 / 26 PASS
 
 Network:
 not required
@@ -165,7 +169,7 @@ Baseline before implementation:
 166 / 166 PASS
 
 Final full suite:
-191 / 191 PASS
+192 / 192 PASS
 
 Protected v0.1 blobs and modes:
 14 / 14 PASS
@@ -250,73 +254,68 @@ repository name, or raw remote URL.
 
 No telemetry or server submission was added.
 
-## Live Proof Attempt
+## Live Proof Closure
 
-One bounded attempt used the installed official SDK and the bundled CLI in a
-disposable Git repository.
+The creator ran the installed official SDK and bundled CLI in the disposable
+demo repository from corrected PR head
+`73435f4d98592dfd9e626a897daa2498b465b7f2`.
 
-Observed result:
-
-```text
-Run 1 normal terminal:
-no
-
-Human option-2 callback reached:
-no
-
-Repository Default created:
-no
-
-Run 2 started:
-no
-
-Verified Save:
-no
-
-Verified Reuse:
-no
-```
-
-The bundled Claude CLI authentication check returned:
+The authenticated human-owned two-Run result was:
 
 ```text
-loggedIn:
-false
+Run 1 human selection:
+explicit option 2
 
-authMethod:
-none
+Live Run 1 status:
+NORMAL_TERMINAL
 
-apiProvider:
-firstParty
+Live Run 1 result subtype:
+success
+
+Live Run 1 API error status:
+NONE
+
+Live Run 1 stop reason:
+end_turn
+
+Live Run 1 error type:
+NONE
+
+Run 2:
+fresh Wrapper invocation
+
+Repeated human interrupt:
+skipped / no second option prompt
+
+Live Run 2 status:
+VERIFIED_SAVE
+
+Live Run 2 result subtype:
+success
+
+Live Run 2 API error status:
+NONE
+
+Live Run 2 stop reason:
+end_turn
+
+Live Run 2 error type:
+NONE
+
+Verified Save counter:
+1 Save
+
+Verified Reuse counter:
+1 Verified Reuse
 ```
 
-This is a recoverable authentication prerequisite, so the correct
-classification is `LIVE_PROOF=DELAY`, not FAIL or PASS.
+The first Run created the Repository Default only after Shin explicitly chose
+option `2`. The fresh second Run reached the same mechanically derived decision
+key, skipped the repeated interrupt, completed normally, and produced the
+first `VERIFIED_SAVE`. No agent, fixture, timeout, or automatic input
+substituted for the human selection.
 
-Exact re-entry condition:
-
-```text
-claude auth login
-claude auth status
-
-Required status:
-loggedIn=true
-```
-
-Then run from an interactive terminal:
-
-```bash
-decision-os-accelerate demo \
-  --adapter claude \
-  --tokens-per-reuse 9467
-```
-
-The human must explicitly select option `2` in Run 1. No agent, fixture, timeout,
-or automatic input may substitute for that selection.
-
-## Receipt Example
-
-The deterministic, privacy-safe rendering contract passed with:
+The sanitized live Receipt was:
 
 ```text
 VERIFIED
@@ -335,14 +334,25 @@ Calculated from:
 1 verified reuse × 9,467 configured tokens per reuse
 ```
 
-This is deterministic engine evidence, not a live Proof-of-Use claim.
-
-The renderer also includes:
-
 ```text
 Verified Save is a locally recorded proof-of-use event, not third-party
 certification.
 ```
+
+Receipt evidence:
+
+```text
+Sanitized receipt path:
+/var/folders/8p/njjq3zy14slbn9jvv4tt82dm0000gn/T/decision-os-verified-save-receipt-8b15f620b6f9.txt
+
+Receipt SHA-256:
+027368f679b7ce1f14bf7ca42bfe686c34c8af313d801f7cc086e0b2a5c3e100
+```
+
+This is a creator-owned human live proof. It is not external-user adoption,
+customer evidence, or third-party certification. The 7.5 minutes, ¥625
+human-time value, and 9,467 configured tokens remain estimates; only the
+1 Save and 1 Verified Reuse counters are hard observed protocol results.
 
 ## GIF Result
 
@@ -351,9 +361,9 @@ DEMO_GIF:
 NOT_CREATED
 ```
 
-A GIF is conditional on a passing real live proof. No fabricated fixture visual
-was substituted, so dimensions, duration, frame count, renderer identity,
-source receipt identity, and GIF hash are not applicable.
+The live proof passed, but GIF creation was not authorized by the closure
+packet. No visual was created, so dimensions, duration, frame count, renderer
+identity, source receipt identity, and GIF hash are not applicable.
 
 ## Exact File Boundary
 
