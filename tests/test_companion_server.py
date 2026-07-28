@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import http.client
 import json
 from pathlib import Path
@@ -18,7 +20,22 @@ from decision_os.companion.controller import CompanionController
 from decision_os.companion.server import CompanionServer
 from tests.test_companion_controller import (
     ScriptedFactory,
+    bridge_boundary,
     create_repository,
+    pro_design_metadata,
+)
+
+
+BRIDGE_POST_ROUTES = (
+    "/api/bridge/session",
+    "/api/bridge/copy",
+    "/api/bridge/import",
+    "/api/bridge/handoff/generate",
+    "/api/bridge/output/freeze",
+    "/api/bridge/receipt/generate",
+    "/api/bridge/manifest/generate",
+    "/api/bridge/replay",
+    "/api/bridge/observation",
 )
 
 
@@ -63,6 +80,7 @@ class CompanionServerTest(unittest.TestCase):
         csrf: str | None = None,
         origin: str | None = None,
         host: str | None = None,
+        declared_content_length: int | None = None,
     ) -> tuple[int, dict[str, str], bytes]:
         connection = http.client.HTTPConnection(
             "127.0.0.1",
@@ -82,7 +100,11 @@ class CompanionServerTest(unittest.TestCase):
         if body is not None:
             payload = json.dumps(body).encode("utf-8")
             headers["Content-Type"] = "application/json"
-            headers["Content-Length"] = str(len(payload))
+            headers["Content-Length"] = str(
+                declared_content_length
+                if declared_content_length is not None
+                else len(payload)
+            )
         connection.request(method, path, body=payload, headers=headers)
         response = connection.getresponse()
         raw = response.read()
@@ -106,6 +128,22 @@ class CompanionServerTest(unittest.TestCase):
         self.assertEqual(200, status)
         csrf = json.loads(raw)["csrf"]
         return cookie, csrf
+
+    def start_bridge_session(
+        self,
+        cookie: str,
+        csrf: str,
+    ) -> dict[str, object]:
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/bridge/session",
+            body={"boundary": bridge_boundary()},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        return json.loads(raw)
 
     def test_bootstrap_session_and_security_headers(self) -> None:
         status, _headers, _raw = self.request("GET", "/api/state")
@@ -170,6 +208,40 @@ class CompanionServerTest(unittest.TestCase):
         )
         self.assertEqual(403, status)
 
+    def test_all_manual_bridge_posts_require_session_origin_and_csrf(
+        self,
+    ) -> None:
+        for path in BRIDGE_POST_ROUTES:
+            with self.subTest(path=path, missing="session"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    origin=self.server.origin,
+                )
+                self.assertEqual(401, status)
+
+        cookie, csrf = self.bootstrap()
+        for path in BRIDGE_POST_ROUTES:
+            with self.subTest(path=path, missing="origin"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    csrf=csrf,
+                )
+                self.assertEqual(403, status)
+            with self.subTest(path=path, missing="csrf"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(403, status)
+
     def test_static_allowlist_blocks_traversal_and_arbitrary_files(self) -> None:
         cookie, _csrf = self.bootstrap()
         for path in (
@@ -208,6 +280,128 @@ class CompanionServerTest(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertIn(b"textContent", javascript)
         self.assertNotIn(b"innerHTML", javascript)
+
+    def test_bridge_import_cap_preserves_legacy_cap_and_exact_bytes(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/run",
+            body={"task": "x" * (64 * 1024)},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(413, status)
+        self.assertEqual({"error": "Request is too large."}, json.loads(raw))
+
+        self.start_bridge_session(cookie, csrf)
+        exact_payload = (b"p" * 64_155) + b"\r\n"
+        self.assertEqual(64_157, len(exact_payload))
+        hostile_source = 'design<script>alert("x")</script>&.md'
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/bridge/import",
+            body={
+                "mode": "BYTE_EXACT_FILE_IMPORT",
+                "selected_role": "PRO_DESIGN",
+                "source_path_or_label": hostile_source,
+                "payload_base64": base64.b64encode(exact_payload).decode("ascii"),
+                "metadata": pro_design_metadata(),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        status, _headers, raw = self.request(
+            "GET",
+            "/api/state",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        self.assertNotIn(b"<script>", raw)
+        self.assertIn(b"\\u003cscript\\u003e", raw)
+        self.assertIn(b"\\u0026", raw)
+        state = json.loads(raw)
+        identity = state["manual_bridge"]["imports"][0]
+        self.assertEqual(hostile_source, identity["source_path_or_label"])
+        self.assertEqual(
+            hashlib.sha256(exact_payload).hexdigest(),
+            identity["artifact_content_hash"],
+        )
+        self.assertEqual("BYTE_EXACT_FILE_IMPORT", identity["import_mode"])
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/bridge/import",
+            body={
+                "mode": "BYTE_EXACT_FILE_IMPORT",
+                "selected_role": "PRO_DESIGN",
+                "source_path_or_label": "invalid-base64.md",
+                "payload_base64": "%%%not-base64%%%",
+                "metadata": pro_design_metadata(),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(400, status)
+        self.assertEqual(
+            {"error": "Byte-exact import payload is invalid."},
+            json.loads(raw),
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/bridge/import",
+            body={
+                "mode": "BYTE_EXACT_FILE_IMPORT",
+                "selected_role": "PRO_DESIGN",
+                "source_path_or_label": "oversize.md",
+                "payload_base64": "AAAA",
+                "metadata": pro_design_metadata(),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+            declared_content_length=(2 * 1024 * 1024) + 1,
+        )
+        self.assertEqual(413, status)
+        self.assertEqual({"error": "Request is too large."}, json.loads(raw))
+
+    def test_manual_bridge_dom_and_independent_results_are_present(self) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+
+        self.assertEqual(200, status)
+        for element_id in (
+            "bridge-heading",
+            "bridge-start",
+            "bridge-copy",
+            "bridge-role",
+            "bridge-file",
+            "bridge-paste",
+            "bridge-identities",
+            "bridge-generate-handoff",
+            "bridge-generate-receipt",
+            "bridge-generate-manifest",
+            "bridge-replay-run",
+            "bridge-protocol-result",
+            "bridge-product-result",
+            "bridge-replay-result",
+        ):
+            with self.subTest(element_id=element_id):
+                self.assertIn(f'id="{element_id}"'.encode("utf-8"), html)
+        self.assertIn(b"Protocol Result", html)
+        self.assertIn(b"Product Result", html)
+        self.assertIn(b"Replay Result", html)
+        self.assertIn(
+            b"BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED",
+            html,
+        )
 
     def test_one_active_run_and_browser_reconnect(self) -> None:
         cookie, csrf = self.bootstrap()
@@ -458,6 +652,53 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               focus() {}
             }
 
+            const bridgeButtonIds = [
+              "bridge-copy",
+              "bridge-freeze-handoff",
+              "bridge-freeze-manifest",
+              "bridge-freeze-receipt",
+              "bridge-generate-handoff",
+              "bridge-generate-manifest",
+              "bridge-generate-receipt",
+              "bridge-import-file",
+              "bridge-import-paste",
+              "bridge-record-intervention",
+              "bridge-record-reexplanation",
+              "bridge-replay-run",
+              "bridge-start",
+            ];
+            const bridgeInputIds = [
+              "bridge-task-id",
+              "bridge-protocol-run-id",
+              "bridge-objective",
+              "bridge-completion-line",
+              "bridge-do-not-touch",
+              "bridge-current-gate",
+              "bridge-authority-boundary",
+              "bridge-as-of-commit",
+              "bridge-required-next-actor",
+              "bridge-evidence-commit",
+              "bridge-evidence-path",
+              "bridge-evidence-blob",
+              "bridge-evidence-sha256",
+              "bridge-framework-lens",
+              "bridge-framework-layer",
+              "bridge-framework-question",
+              "bridge-framework-finding",
+              "bridge-role",
+              "bridge-source",
+              "bridge-file",
+              "bridge-paste",
+              "bridge-metadata",
+              "bridge-replay-baseline",
+              "bridge-replay-candidate",
+            ];
+            const buttonIds = new Set([
+              "choose-repository",
+              "new-run",
+              "run",
+              ...bridgeButtonIds,
+            ]);
             const ids = [
               "approval-action",
               "approval-diff",
@@ -466,6 +707,55 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "approval-reason",
               "approval-reason-label",
               "approval-repository",
+              "bridge-as-of-commit",
+              "bridge-authority-boundary",
+              "bridge-burden-status",
+              "bridge-completion-line",
+              "bridge-copy",
+              "bridge-copy-output",
+              "bridge-current-gate",
+              "bridge-do-not-touch",
+              "bridge-evidence-blob",
+              "bridge-evidence-commit",
+              "bridge-evidence-path",
+              "bridge-evidence-sha256",
+              "bridge-file",
+              "bridge-framework-finding",
+              "bridge-framework-layer",
+              "bridge-framework-lens",
+              "bridge-framework-question",
+              "bridge-freeze-handoff",
+              "bridge-freeze-manifest",
+              "bridge-freeze-receipt",
+              "bridge-generate-handoff",
+              "bridge-generate-manifest",
+              "bridge-generate-receipt",
+              "bridge-handoff-output",
+              "bridge-identities",
+              "bridge-import-file",
+              "bridge-import-paste",
+              "bridge-manifest-output",
+              "bridge-metadata",
+              "bridge-objective",
+              "bridge-paste",
+              "bridge-product-result",
+              "bridge-protocol-result",
+              "bridge-protocol-run-id",
+              "bridge-receipt-output",
+              "bridge-record-intervention",
+              "bridge-record-reexplanation",
+              "bridge-replay-baseline",
+              "bridge-replay-candidate",
+              "bridge-replay-output",
+              "bridge-replay-result",
+              "bridge-replay-run",
+              "bridge-required-next-actor",
+              "bridge-role",
+              "bridge-session-id",
+              "bridge-source",
+              "bridge-start",
+              "bridge-state",
+              "bridge-task-id",
               "choose-repository",
               "claim-boundary",
               "defaults",
@@ -492,7 +782,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ids.map((id) => [
                 id,
                 new Element(
-                  ["choose-repository", "new-run", "run"].includes(id)
+                  buttonIds.has(id)
                     ? "button"
                     : id === "task"
                       ? "textarea"
@@ -542,6 +832,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const timers = [];
             const fetchQueue = [];
             const fetchCalls = [];
+            const clipboardWrites = [];
+            const navigator = {
+              clipboard: {
+                async writeText(value) {
+                  clipboardWrites.push(value);
+                },
+              },
+            };
             const window = {
               confirm() {
                 return false;
@@ -631,6 +929,42 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ],
               receipt: staleReceipt,
+              manual_bridge: {
+                state: "DESIGN_IMPORTED",
+                session: {
+                  session_id: "STALE_BRIDGE_SESSION",
+                },
+                imports: [
+                  {
+                    selected_role: "PRO_DESIGN",
+                    artifact_content_hash: "STALE_BRIDGE_HASH",
+                    import_mode: "BYTE_EXACT_FILE_IMPORT",
+                    source_path_or_label: "STALE_BRIDGE_SOURCE",
+                    model_identity: { value: "STALE_PRO_MODEL" },
+                    role_identity: "STALE_PRO_ROLE",
+                    artifact_authored_at: "STALE_PRO_TIME",
+                    authority_state: "DESIGN_ONLY_NO_EXECUTION_AUTHORITY",
+                  },
+                ],
+                outputs: {
+                  COPY_FOR_PRO: { content: "STALE_COPY_FOR_PRO" },
+                  EXECUTION_HANDOFF: { content: "STALE_HANDOFF" },
+                  BRIDGE_RECEIPT: { content: "STALE_BRIDGE_RECEIPT" },
+                  GOLDEN_MANIFEST: { content: "STALE_MANIFEST" },
+                  REPLAY_RESULT: { content: "STALE_REPLAY_OUTPUT" },
+                },
+                golden_manifest: null,
+                results: {
+                  protocol: "STALE_PROTOCOL_RESULT",
+                  product: "STALE_PRODUCT_RESULT",
+                  replay: "STALE_REPLAY_RESULT",
+                },
+                burden: {
+                  shin_copy_paste_count: {
+                    value_or_unknown: 1,
+                  },
+                },
+              },
             };
             const approvalState = {
               ...completedState,
@@ -660,6 +994,28 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }),
               defaults: [],
               receipt: null,
+              manual_bridge: {
+                state: "BOUNDARY_INCOMPLETE",
+                session: null,
+                imports: [],
+                outputs: {},
+                golden_manifest: null,
+                results: {
+                  protocol: "IN PROGRESS / NOT FINAL",
+                  product:
+                    "BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED",
+                  replay: "NOT YET PERFORMED",
+                },
+                burden: {},
+              },
+            };
+            const switchedRepositoryState = {
+              ...recoveredState,
+              csrf: "csrf-switched",
+              repository: {
+                name: "OTHER_REPOSITORY_NAME",
+                path: "/tmp/OTHER_REPOSITORY_PATH",
+              },
             };
 
             function hidden(id) {
@@ -685,9 +1041,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 Promise,
                 String,
                 TypeError,
+                Uint8Array,
+                btoa(value) {
+                  return Buffer.from(value, "binary").toString("base64");
+                },
                 console,
                 document,
                 fetch: fetchMock,
+                navigator,
                 window,
               };
               vm.createContext(sandbox);
@@ -709,6 +1070,34 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(
+                elements.get("bridge-state").textContent,
+                "DESIGN_IMPORTED",
+              );
+              assert.strictEqual(
+                elements.get("bridge-protocol-result").textContent,
+                "STALE_PROTOCOL_RESULT",
+              );
+              assert.strictEqual(
+                elements.get("bridge-product-result").textContent,
+                "STALE_PRODUCT_RESULT",
+              );
+              assert.strictEqual(
+                elements.get("bridge-replay-result").textContent,
+                "STALE_REPLAY_RESULT",
+              );
+              assert.strictEqual(
+                elements.get("bridge-copy-output").textContent,
+                "STALE_COPY_FOR_PRO",
+              );
+              assert.strictEqual(
+                elements.get("bridge-identities").textContent.includes(
+                  "STALE_BRIDGE_SOURCE",
+                ),
+                true,
+              );
+              assert.strictEqual(elements.get("bridge-start").disabled, true);
+              assert.strictEqual(elements.get("bridge-copy").disabled, false);
               const firstRevoke =
                 elements.get("defaults").children[0].children[1];
               assert.strictEqual(firstRevoke.disabled, false);
@@ -725,6 +1114,16 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }
               const pendingRevoke =
                 elements.get("defaults").children[0].children[1];
+
+              elements.get("bridge-objective").value = "STALE_BOUNDARY_DRAFT";
+              elements.get("bridge-role").value = "PRO_DESIGN";
+              elements.get("bridge-source").value = "STALE_SOURCE_DRAFT";
+              elements.get("bridge-file").value = "STALE_FILE_SELECTION";
+              elements.get("bridge-paste").value = "STALE_RAW_PROSE";
+              elements.get("bridge-metadata").value = '{"stale":true}';
+              elements.get("bridge-replay-baseline").value = '{"stale":"base"}';
+              elements.get("bridge-replay-candidate").value =
+                '{"stale":"candidate"}';
 
               fetchQueue.push(() =>
                 Promise.reject(new TypeError("fetch failed")),
@@ -762,6 +1161,34 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(elements.get("claim-boundary").textContent, "");
               assert.strictEqual(elements.get("defaults").children.length, 0);
+              assert.strictEqual(
+                elements.get("bridge-state").textContent,
+                "No session",
+              );
+              assert.strictEqual(
+                elements.get("bridge-copy-output").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("bridge-handoff-output").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("bridge-identities").textContent,
+                "No artifacts imported.",
+              );
+              assert.strictEqual(
+                elements.get("bridge-protocol-result").textContent,
+                "IN PROGRESS / NOT FINAL",
+              );
+              assert.strictEqual(
+                elements.get("bridge-product-result").textContent,
+                "BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED",
+              );
+              assert.strictEqual(
+                elements.get("bridge-replay-result").textContent,
+                "NOT YET PERFORMED",
+              );
               assert.strictEqual(hidden("approval-overlay"), true);
               for (const id of [
                 "approval-repository",
@@ -783,6 +1210,26 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               for (const button of approvalButtons) {
                 assert.strictEqual(button.disabled, true);
               }
+              for (const id of bridgeButtonIds) {
+                assert.strictEqual(elements.get(id).disabled, true, id);
+              }
+              for (const id of bridgeInputIds) {
+                assert.strictEqual(elements.get(id).disabled, true, id);
+              }
+              assert.strictEqual(elements.get("bridge-objective").value, "");
+              assert.strictEqual(elements.get("bridge-role").value, "");
+              assert.strictEqual(elements.get("bridge-source").value, "");
+              assert.strictEqual(elements.get("bridge-file").value, "");
+              assert.strictEqual(elements.get("bridge-paste").value, "");
+              assert.strictEqual(elements.get("bridge-metadata").value, "{}");
+              assert.strictEqual(
+                elements.get("bridge-replay-baseline").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("bridge-replay-candidate").value,
+                "{}",
+              );
               assert.strictEqual(pendingRevoke.disabled, true);
 
               elements.get("task").value = "Changed while disconnected";
@@ -809,6 +1256,69 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(
+                elements.get("bridge-state").textContent,
+                "BOUNDARY_INCOMPLETE",
+              );
+              assert.strictEqual(elements.get("bridge-start").disabled, false);
+              assert.strictEqual(elements.get("bridge-copy").disabled, true);
+              assert.strictEqual(
+                elements.get("bridge-product-result").textContent,
+                "BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED",
+              );
+
+              let oversizedRead = false;
+              elements.get("bridge-role").value = "PRO_DESIGN";
+              elements.get("bridge-file").files = [
+                {
+                  name: "oversized.bin",
+                  size: 1024 * 1024 + 1,
+                  async arrayBuffer() {
+                    oversizedRead = true;
+                    return new ArrayBuffer(0);
+                  },
+                },
+              ];
+              const fetchCountBeforeOversized = fetchCalls.length;
+              await elements.get("bridge-import-file").dispatch("click");
+              await settle();
+              assert.strictEqual(oversizedRead, false);
+              assert.strictEqual(fetchCalls.length, fetchCountBeforeOversized);
+              assert.strictEqual(
+                elements.get("global-error").textContent,
+                "Artifact exceeds the 1 MiB Manual Bridge limit.",
+              );
+
+              elements.get("bridge-objective").value = "REPOSITORY_A_DRAFT";
+              elements.get("bridge-role").value = "PRO_DESIGN";
+              elements.get("bridge-source").value = "REPOSITORY_A_SOURCE";
+              elements.get("bridge-file").value = "REPOSITORY_A_FILE";
+              elements.get("bridge-paste").value = "REPOSITORY_A_PROSE";
+              elements.get("bridge-metadata").value = '{"repo":"A"}';
+              elements.get("bridge-replay-baseline").value = '{"repo":"A"}';
+              elements.get("bridge-replay-candidate").value = '{"repo":"A"}';
+              fetchQueue.push(() =>
+                Promise.resolve(response(switchedRepositoryState)),
+              );
+              await runNextTimer();
+              assert.strictEqual(
+                elements.get("repository-path").textContent,
+                "/tmp/OTHER_REPOSITORY_PATH",
+              );
+              assert.strictEqual(elements.get("bridge-objective").value, "");
+              assert.strictEqual(elements.get("bridge-role").value, "");
+              assert.strictEqual(elements.get("bridge-source").value, "");
+              assert.strictEqual(elements.get("bridge-file").value, "");
+              assert.strictEqual(elements.get("bridge-paste").value, "");
+              assert.strictEqual(elements.get("bridge-metadata").value, "{}");
+              assert.strictEqual(
+                elements.get("bridge-replay-baseline").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("bridge-replay-candidate").value,
+                "{}",
+              );
 
               const freshApprovalState = {
                 ...approvalState,

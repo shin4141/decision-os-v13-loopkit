@@ -121,6 +121,193 @@
       <div id="defaults" class="defaults-list"></div>
     </section>
 
+    <section class="card" aria-labelledby="bridge-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">M</p>
+          <h2 id="bridge-heading">Manual Bridge</h2>
+        </div>
+        <span id="bridge-state" class="status">No session</span>
+      </div>
+      <p class="boundary">
+        Exact artifact identity is recorded separately from authority.
+        Importing or generating an artifact never starts Codex, approves a
+        change, or grants build, merge, publication, or release authority.
+      </p>
+
+      <h3>Frozen session boundary</h3>
+      <label for="bridge-task-id">Task ID</label>
+      <input id="bridge-task-id" type="text" maxlength="200" value="V13-CMB-001">
+      <label for="bridge-protocol-run-id">Protocol Run ID</label>
+      <input id="bridge-protocol-run-id" type="text" maxlength="200" value="V13-PMR-002">
+      <label for="bridge-objective">Objective</label>
+      <textarea id="bridge-objective" rows="3" maxlength="10000"></textarea>
+      <label for="bridge-completion-line">Completion Line</label>
+      <textarea id="bridge-completion-line" rows="3" maxlength="10000"></textarea>
+      <label for="bridge-do-not-touch">Do Not Touch</label>
+      <textarea id="bridge-do-not-touch" rows="3" maxlength="10000"></textarea>
+      <label for="bridge-current-gate">Current Gate</label>
+      <input id="bridge-current-gate" type="text" maxlength="1000">
+      <label for="bridge-authority-boundary">Authority Boundary</label>
+      <textarea id="bridge-authority-boundary" rows="3" maxlength="10000"></textarea>
+      <label for="bridge-as-of-commit">As-of commit</label>
+      <input
+        id="bridge-as-of-commit"
+        type="text"
+        maxlength="64"
+        value="63eb260a94595298e2b07b476f7f9d8572c9ef09"
+      >
+      <label for="bridge-required-next-actor">Required next actor</label>
+      <input
+        id="bridge-required-next-actor"
+        type="text"
+        maxlength="1000"
+        value="Fresh SOL / coding-agent Builder"
+      >
+      <details>
+        <summary>Frozen Evidence Packet identity</summary>
+        <label for="bridge-evidence-commit">Commit</label>
+        <input
+          id="bridge-evidence-commit"
+          type="text"
+          maxlength="64"
+          value="970ae5e24e59dada54e1b829229360d9945a0910"
+        >
+        <label for="bridge-evidence-path">Repository path</label>
+        <input
+          id="bridge-evidence-path"
+          type="text"
+          maxlength="1000"
+          value="validation/companion_manual_bridge_v0_1_shared_evidence_packet.md"
+        >
+        <label for="bridge-evidence-blob">Git blob SHA</label>
+        <input
+          id="bridge-evidence-blob"
+          type="text"
+          maxlength="64"
+          value="92f9f69f18db052b421fa5fa7f233ce77f5a42b8"
+        >
+        <label for="bridge-evidence-sha256">SHA-256</label>
+        <input
+          id="bridge-evidence-sha256"
+          type="text"
+          maxlength="64"
+          value="847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab"
+        >
+      </details>
+      <details>
+        <summary>Optional Framework Lens metadata</summary>
+        <label for="bridge-framework-lens">Framework lens used</label>
+        <input id="bridge-framework-lens" type="text" maxlength="1000">
+        <label for="bridge-framework-layer">Relevant Decision OS layer</label>
+        <input id="bridge-framework-layer" type="text" maxlength="1000">
+        <label for="bridge-framework-question">Reinterpretation question</label>
+        <textarea id="bridge-framework-question" rows="2" maxlength="5000"></textarea>
+        <label for="bridge-framework-finding">Framework-derived finding</label>
+        <textarea id="bridge-framework-finding" rows="2" maxlength="5000"></textarea>
+      </details>
+      <button id="bridge-start" class="primary" type="button">
+        Start Manual Bridge session
+      </button>
+      <p id="bridge-session-id" class="path-value">No session created.</p>
+
+      <h3>Copy for Pro</h3>
+      <button id="bridge-copy" class="secondary" type="button">Copy for Pro</button>
+      <pre id="bridge-copy-output" class="result-text"></pre>
+
+      <h3>Exact artifact import</h3>
+      <label for="bridge-role">Selected artifact role</label>
+      <select id="bridge-role">
+        <option value="">Select a role first</option>
+        <option value="EVIDENCE_PACKET">EVIDENCE_PACKET</option>
+        <option value="PRO_DESIGN">PRO_DESIGN</option>
+        <option value="BUILD_RECEIPT">BUILD_RECEIPT</option>
+        <option value="PRO_AUDIT">PRO_AUDIT</option>
+        <option value="REUSABLE_DELTA_RECORD">REUSABLE_DELTA_RECORD</option>
+      </select>
+      <label for="bridge-source">Source path or label</label>
+      <input id="bridge-source" type="text" maxlength="1000">
+      <label for="bridge-file">Byte-exact file</label>
+      <input id="bridge-file" type="file">
+      <button id="bridge-import-file" class="secondary" type="button">
+        Import exact file bytes
+      </button>
+      <label for="bridge-paste">Paste capture</label>
+      <textarea id="bridge-paste" rows="6" maxlength="1048576"></textarea>
+      <button id="bridge-import-paste" class="secondary" type="button">
+        Import captured UTF-8 payload
+      </button>
+      <label for="bridge-metadata">
+        Explicit envelope metadata (optional JSON object)
+      </label>
+      <textarea id="bridge-metadata" rows="6" maxlength="65536">{}</textarea>
+      <div id="bridge-identities" class="defaults-list"></div>
+
+      <h3>Deterministic outputs</h3>
+      <button id="bridge-generate-handoff" class="secondary" type="button">
+        Generate Execution Handoff
+      </button>
+      <button id="bridge-freeze-handoff" class="secondary" type="button">
+        Freeze Execution Handoff
+      </button>
+      <pre id="bridge-handoff-output" class="result-text"></pre>
+      <button id="bridge-generate-receipt" class="secondary" type="button">
+        Generate Bridge Receipt
+      </button>
+      <button id="bridge-freeze-receipt" class="secondary" type="button">
+        Freeze Bridge Receipt
+      </button>
+      <pre id="bridge-receipt-output" class="result-text"></pre>
+      <button id="bridge-generate-manifest" class="secondary" type="button">
+        Generate Golden manifest
+      </button>
+      <button id="bridge-freeze-manifest" class="secondary" type="button">
+        Freeze Golden manifest
+      </button>
+      <pre id="bridge-manifest-output" class="result-text"></pre>
+
+      <h3>Structural Replay</h3>
+      <p class="boundary">
+        Replay compares typed field atoms only. Fluent prose is not
+        preservation evidence.
+      </p>
+      <label for="bridge-replay-baseline">Baseline structural JSON</label>
+      <textarea id="bridge-replay-baseline" rows="6" maxlength="262144">{}</textarea>
+      <label for="bridge-replay-candidate">Candidate structural JSON</label>
+      <textarea id="bridge-replay-candidate" rows="6" maxlength="262144">{}</textarea>
+      <button id="bridge-replay-run" class="secondary" type="button">
+        Run structural Replay
+      </button>
+      <pre id="bridge-replay-output" class="result-text"></pre>
+
+      <h3>Independent results</h3>
+      <dl class="metric-grid">
+        <dt>Protocol Result</dt>
+        <dd id="bridge-protocol-result">IN PROGRESS / NOT FINAL</dd>
+        <dt>Product Result</dt>
+        <dd id="bridge-product-result">
+          BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED
+        </dd>
+        <dt>Replay Result</dt>
+        <dd id="bridge-replay-result">NOT YET PERFORMED</dd>
+      </dl>
+
+      <h3>Human-burden observation</h3>
+      <p id="bridge-burden-status" class="path-value">
+        Pre-Bridge manual events remain UNKNOWN.
+      </p>
+      <button id="bridge-record-reexplanation" class="secondary" type="button">
+        Record one re-explanation
+      </button>
+      <button id="bridge-record-intervention" class="secondary" type="button">
+        Record one operational intervention
+      </button>
+      <p class="claim-boundary">
+        Golden means frozen comparison source only. It does not mean correct,
+        approved, certified, authorized, or PASS.
+      </p>
+    </section>
+
     <p id="global-error" class="error hidden" role="alert"></p>
   </main>
 

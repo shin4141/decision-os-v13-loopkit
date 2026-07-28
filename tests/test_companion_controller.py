@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import stat
 import subprocess
+import sys
 import tempfile
+import threading
 import time
 import unittest
 from typing import Any
@@ -32,6 +34,73 @@ from decision_os.companion.controller import (
     RepositorySelectionError,
     RunConflictError,
 )
+from decision_os.companion.manual_bridge import ManualBridgeIntegrityError
+
+
+EVIDENCE_COMMIT = "970ae5e24e59dada54e1b829229360d9945a0910"
+EVIDENCE_BLOB_SHA = "92f9f69f18db052b421fa5fa7f233ce77f5a42b8"
+EVIDENCE_SHA256 = (
+    "847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab"
+)
+PRODUCT_AS_OF_COMMIT = "63eb260a94595298e2b07b476f7f9d8572c9ef09"
+
+
+def bridge_boundary() -> dict[str, Any]:
+    return {
+        "task_id": "V13-CMB-001",
+        "protocol_run_id": "V13-PMR-002",
+        "objective": "Implement the bounded Companion Manual Bridge v0.1.",
+        "completion_line": (
+            "Bridge evidence is ready for separate independent audit."
+        ),
+        "do_not_touch": "AccelerationStore and Verified Save semantics.",
+        "current_gate": "GO UNDER CAP — FRESH BUILDER IMPLEMENTATION ONLY",
+        "authority_boundary": (
+            "Artifact identity is evidence only and grants no execution authority."
+        ),
+        "as_of_commit": PRODUCT_AS_OF_COMMIT,
+        "required_next_actor": "Fresh SOL / coding-agent Builder",
+        "evidence_packet_identity": {
+            "commit": EVIDENCE_COMMIT,
+            "path": (
+                "validation/"
+                "companion_manual_bridge_v0_1_shared_evidence_packet.md"
+            ),
+            "blob_sha": EVIDENCE_BLOB_SHA,
+            "sha256": EVIDENCE_SHA256,
+            "product_as_of_commit": PRODUCT_AS_OF_COMMIT,
+        },
+    }
+
+
+def pro_design_metadata() -> dict[str, Any]:
+    return {
+        "schema": "decision-os-companion-manual-bridge-record-v0.1",
+        "task_id": "V13-CMB-001",
+        "protocol_run_id": "V13-PMR-002",
+        "artifact_role": "PRO_DESIGN",
+        "model_identity": {
+            "value": "GPT-5.6 Thinking",
+            "basis": "SELF_DECLARED",
+            "verification_state": "UNVERIFIED",
+        },
+        "role_identity": "Independent Pro Designer",
+        "artifact_authored_at": "2026-07-28T22:00:00+09:00",
+        "as_of_commit": PRODUCT_AS_OF_COMMIT,
+        "evidence_packet_commit": EVIDENCE_COMMIT,
+        "evidence_packet_blob_sha": EVIDENCE_BLOB_SHA,
+        "evidence_packet_sha256": EVIDENCE_SHA256,
+        "authority_state": "DESIGN_ONLY_NO_EXECUTION_AUTHORITY",
+        "required_next_actor": "Fresh SOL / coding-agent Builder",
+        "objective": "Implement the bounded Companion Manual Bridge v0.1.",
+        "completion_line": (
+            "Bridge evidence is ready for separate independent audit."
+        ),
+        "do_not_touch": "AccelerationStore and Verified Save semantics.",
+        "current_gate": "HOLD — SEPARATE BUILDER AUTHORITY REQUIRED",
+        "authority_boundary": "INSTRUCTION_ARTIFACT_ONLY",
+        "unknowns": ["Independent Product Result remains UNKNOWN."],
+    }
 
 
 def create_repository(parent: Path, name: str = "repo") -> Path:
@@ -427,6 +496,268 @@ class CompanionControllerTest(unittest.TestCase):
             wait_for(
                 controller,
                 lambda state: state["run"]["state"] == "denied",
+            )
+
+    def test_manual_bridge_lifecycle_is_separate_from_run_and_receipt(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            selected = controller.select_repository(repository)
+            receipt_before = selected["receipt"]
+            run_before = selected["run"]
+
+            started = controller.start_bridge_session(bridge_boundary())
+            copied = controller.bridge_copy_for_pro()
+            imported = controller.bridge_import_artifact(
+                selected_role="PRO_DESIGN",
+                payload=b"exact pro design bytes\r\n",
+                source_path_or_label="accepted-pro-design.md",
+                import_mode="BYTE_EXACT_FILE_IMPORT",
+                metadata=pro_design_metadata(),
+            )
+
+            self.assertIsNotNone(started["manual_bridge"]["session"])
+            self.assertIn(
+                copied["manual_bridge"]["state"],
+                {"COPY_READY", "DESIGN_IMPORTED"},
+            )
+            self.assertEqual(
+                "PRO_DESIGN",
+                imported["manual_bridge"]["imports"][0]["selected_role"],
+            )
+            self.assertEqual(receipt_before, imported["receipt"])
+            self.assertEqual(run_before, imported["run"])
+            self.assertEqual([], imported["defaults"])
+            self.assertEqual(1, len(factory.modes))
+
+    def test_manual_bridge_corruption_is_panel_local(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            selected = controller.select_repository(repository)
+            receipt_before = selected["receipt"]
+            bridge = controller._bridge
+            self.assertIsNotNone(bridge)
+            original_snapshot = bridge.snapshot
+
+            def corrupted_bridge_snapshot() -> dict[str, Any]:
+                raise ManualBridgeIntegrityError("sensitive bridge chain detail")
+
+            bridge.snapshot = corrupted_bridge_snapshot  # type: ignore[method-assign]
+            try:
+                snapshot = controller.snapshot()
+                self.assertEqual(
+                    "BLOCKED_CORRUPT",
+                    snapshot["manual_bridge"]["state"],
+                )
+                self.assertNotIn("sensitive", json.dumps(snapshot))
+                self.assertEqual(receipt_before, snapshot["receipt"])
+                self.assertEqual("idle", snapshot["run"]["state"])
+
+                controller.start_run("Read target.txt without changing it.")
+                completed = wait_for(
+                    controller,
+                    lambda state: state["run"]["state"] == "completed",
+                )
+                self.assertEqual("Read-only result.", completed["run"]["result"])
+                self.assertEqual(receipt_before, completed["receipt"])
+                self.assertEqual(
+                    "BLOCKED_CORRUPT",
+                    completed["manual_bridge"]["state"],
+                )
+            finally:
+                bridge.snapshot = original_snapshot  # type: ignore[method-assign]
+
+    def test_manual_bridge_lock_contention_is_bounded_and_panel_local(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository)
+            controller.start_bridge_session(bridge_boundary())
+            bridge = controller._bridge
+            self.assertIsNotNone(bridge)
+            lock_path = bridge.store.root / ".transaction.lock"
+
+            holder = subprocess.Popen(
+                (
+                    sys.executable,
+                    "-c",
+                    (
+                        "import fcntl,sys;"
+                        "stream=open(sys.argv[1],'r+b',buffering=0);"
+                        "fcntl.flock(stream.fileno(),fcntl.LOCK_EX);"
+                        "print('LOCKED',flush=True);"
+                        "sys.stdin.read(1)"
+                    ),
+                    str(lock_path),
+                ),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            self.assertEqual("LOCKED", holder.stdout.readline().strip())
+            failures: list[BaseException] = []
+
+            def blocked_bridge_action() -> None:
+                try:
+                    controller.bridge_copy_for_pro()
+                except BaseException as exc:  # captured for deterministic join
+                    failures.append(exc)
+
+            worker = threading.Thread(target=blocked_bridge_action)
+            try:
+                worker.start()
+                time.sleep(0.03)
+                started = time.monotonic()
+                snapshot = controller.snapshot()
+                elapsed = time.monotonic() - started
+
+                self.assertLess(elapsed, 0.2)
+                self.assertEqual("idle", snapshot["run"]["state"])
+                self.assertEqual(
+                    "Manual Bridge is temporarily busy.",
+                    snapshot["manual_bridge"]["error"],
+                )
+            finally:
+                if holder.poll() is None:
+                    holder.stdin.write("\n")
+                    holder.stdin.flush()
+                holder.wait(timeout=5)
+                worker.join(timeout=5)
+                holder.stdin.close()
+                holder.stdout.close()
+                holder.stderr.close()
+            self.assertFalse(worker.is_alive())
+            self.assertLessEqual(len(failures), 1)
+
+    def test_repository_switch_is_rejected_during_bridge_operation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository_a = create_repository(root, "repo-a")
+            repository_b = create_repository(root, "repo-b")
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository_a)
+            controller.start_bridge_session(bridge_boundary())
+            bridge_a = controller._bridge
+            self.assertIsNotNone(bridge_a)
+            events_before = bridge_a.store.events_path.read_bytes()
+            entered = threading.Event()
+            release = threading.Event()
+            original_copy = bridge_a.copy_for_pro
+
+            def bounded_pause() -> dict[str, Any]:
+                entered.set()
+                release.wait(timeout=5)
+                return bridge_a.snapshot()
+
+            bridge_a.copy_for_pro = bounded_pause  # type: ignore[method-assign]
+            failures: list[BaseException] = []
+
+            def run_bridge_action() -> None:
+                try:
+                    controller.bridge_copy_for_pro()
+                except BaseException as exc:
+                    failures.append(exc)
+
+            worker = threading.Thread(target=run_bridge_action)
+            try:
+                worker.start()
+                self.assertTrue(entered.wait(timeout=5))
+                with self.assertRaisesRegex(
+                    RepositorySelectionError,
+                    "Bridge action",
+                ):
+                    controller.select_repository(repository_b)
+            finally:
+                release.set()
+                worker.join(timeout=5)
+                bridge_a.copy_for_pro = original_copy  # type: ignore[method-assign]
+
+            self.assertFalse(worker.is_alive())
+            self.assertEqual([], failures)
+            self.assertEqual(
+                repository_a.resolve(),
+                Path(controller.snapshot()["repository"]["path"]),
+            )
+            self.assertEqual(events_before, bridge_a.store.events_path.read_bytes())
+            self.assertFalse(
+                repository_b
+                .joinpath(".git", "decision-os", "manual-bridge", "v0.1")
+                .exists()
+            )
+
+    def test_repository_switch_waits_for_bridge_response_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository_a = create_repository(root, "repo-a")
+            repository_b = create_repository(root, "repo-b")
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository_a)
+            controller.start_bridge_session(bridge_boundary())
+            entered = threading.Event()
+            release = threading.Event()
+            original_snapshot = controller._snapshot_after_bridge
+
+            def bounded_snapshot(bridge: Any) -> dict[str, Any]:
+                entered.set()
+                release.wait(timeout=5)
+                return original_snapshot(bridge)
+
+            controller._snapshot_after_bridge = bounded_snapshot  # type: ignore[method-assign]
+            results: list[dict[str, Any]] = []
+            failures: list[BaseException] = []
+
+            def run_bridge_action() -> None:
+                try:
+                    results.append(controller.bridge_copy_for_pro())
+                except BaseException as exc:
+                    failures.append(exc)
+
+            worker = threading.Thread(target=run_bridge_action)
+            try:
+                worker.start()
+                self.assertTrue(entered.wait(timeout=5))
+                with self.assertRaisesRegex(
+                    RepositorySelectionError,
+                    "Bridge action",
+                ):
+                    controller.select_repository(repository_b)
+            finally:
+                release.set()
+                worker.join(timeout=5)
+                controller._snapshot_after_bridge = original_snapshot  # type: ignore[method-assign]
+
+            self.assertFalse(worker.is_alive())
+            self.assertEqual([], failures)
+            self.assertEqual(1, len(results))
+            self.assertEqual(
+                repository_a.resolve(),
+                Path(results[0]["repository"]["path"]),
+            )
+            self.assertEqual(
+                repository_a.resolve(),
+                Path(controller.snapshot()["repository"]["path"]),
             )
 
     def test_malformed_lifecycle_and_app_server_failure_are_sanitized(self) -> None:

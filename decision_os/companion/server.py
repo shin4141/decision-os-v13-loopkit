@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,10 +23,17 @@ from .controller import (
     RepositorySelectionError,
     RunConflictError,
 )
+from .manual_bridge import (
+    ManualBridgeConflictError,
+    ManualBridgeError,
+    ManualBridgeIntegrityError,
+    ManualBridgeValidationError,
+)
 from decision_os.acceleration.store import StateIntegrityError
 
 
 _MAX_REQUEST_BYTES = 64 * 1024
+_MAX_BRIDGE_REQUEST_BYTES = 2 * 1024 * 1024
 _STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -243,7 +252,11 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             return
         self._send_bytes(HTTPStatus.OK, payload, content_type)
 
-    def _read_json(self) -> dict[str, Any] | None:
+    def _read_json(
+        self,
+        *,
+        maximum_bytes: int = _MAX_REQUEST_BYTES,
+    ) -> dict[str, Any] | None:
         if self.headers.get_content_type() != "application/json":
             self._error(
                 HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
@@ -256,7 +269,7 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         except ValueError:
             self._error(HTTPStatus.BAD_REQUEST, "Content length is invalid.")
             return None
-        if length < 0 or length > _MAX_REQUEST_BYTES:
+        if length < 0 or length > maximum_bytes:
             self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Request is too large.")
             return None
         try:
@@ -273,7 +286,12 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if not self._request_allowed(state_change=True):
             return
-        value = self._read_json()
+        maximum_bytes = (
+            _MAX_BRIDGE_REQUEST_BYTES
+            if path.startswith("/api/bridge/")
+            else _MAX_REQUEST_BYTES
+        )
+        value = self._read_json(maximum_bytes=maximum_bytes)
         if value is None:
             return
         try:
@@ -297,6 +315,142 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                 if set(value) != {"handle"}:
                     raise CompanionError("Revoke request fields are invalid.")
                 snapshot = self.server.controller.revoke_default(value["handle"])
+            elif path == "/api/bridge/session":
+                if set(value) != {"boundary"} or not isinstance(
+                    value["boundary"],
+                    dict,
+                ):
+                    raise CompanionError("Bridge session fields are invalid.")
+                snapshot = self.server.controller.start_bridge_session(
+                    value["boundary"]
+                )
+            elif path == "/api/bridge/copy":
+                if value:
+                    raise CompanionError("Copy for Pro takes no input.")
+                snapshot = self.server.controller.bridge_copy_for_pro()
+            elif path == "/api/bridge/import":
+                allowed = {
+                    "mode",
+                    "selected_role",
+                    "source_path_or_label",
+                    "payload_base64",
+                    "payload_text",
+                    "metadata",
+                    "declared_sha256",
+                    "supersedes_import_event_id",
+                    "correction_reason",
+                }
+                required = {
+                    "mode",
+                    "selected_role",
+                    "source_path_or_label",
+                }
+                if not required.issubset(value) or not set(value).issubset(
+                    allowed
+                ):
+                    raise CompanionError("Bridge import fields are invalid.")
+                mode = value["mode"]
+                if mode == "BYTE_EXACT_FILE_IMPORT":
+                    encoded = value.get("payload_base64")
+                    if (
+                        not isinstance(encoded, str)
+                        or "payload_text" in value
+                    ):
+                        raise CompanionError(
+                            "Byte-exact import payload is invalid."
+                        )
+                    try:
+                        payload = base64.b64decode(
+                            encoded.encode("ascii"),
+                            validate=True,
+                        )
+                    except (UnicodeError, ValueError, binascii.Error) as exc:
+                        raise CompanionError(
+                            "Byte-exact import payload is invalid."
+                        ) from exc
+                elif mode == "PASTE_CAPTURE":
+                    captured = value.get("payload_text")
+                    if (
+                        not isinstance(captured, str)
+                        or "payload_base64" in value
+                    ):
+                        raise CompanionError(
+                            "Paste capture payload is invalid."
+                        )
+                    try:
+                        payload = captured.encode("utf-8")
+                    except UnicodeEncodeError as exc:
+                        raise CompanionError(
+                            "Paste capture is not valid UTF-8 text."
+                        ) from exc
+                else:
+                    raise CompanionError("Bridge import mode is invalid.")
+                metadata = value.get("metadata")
+                if metadata is not None and not isinstance(metadata, dict):
+                    raise CompanionError("Bridge metadata is invalid.")
+                snapshot = self.server.controller.bridge_import_artifact(
+                    selected_role=value["selected_role"],
+                    payload=payload,
+                    source_path_or_label=value["source_path_or_label"],
+                    import_mode=mode,
+                    metadata=metadata,
+                    declared_sha256=value.get("declared_sha256"),
+                    supersedes_import_event_id=value.get(
+                        "supersedes_import_event_id"
+                    ),
+                    correction_reason=value.get("correction_reason"),
+                )
+            elif path == "/api/bridge/handoff/generate":
+                if value:
+                    raise CompanionError(
+                        "Execution Handoff generation takes no input."
+                    )
+                snapshot = self.server.controller.bridge_generate_handoff()
+            elif path == "/api/bridge/output/freeze":
+                if set(value) != {"role"}:
+                    raise CompanionError("Bridge freeze fields are invalid.")
+                snapshot = self.server.controller.bridge_freeze_output(
+                    value["role"]
+                )
+            elif path == "/api/bridge/receipt/generate":
+                if value:
+                    raise CompanionError(
+                        "Bridge Receipt generation takes no input."
+                    )
+                snapshot = self.server.controller.bridge_generate_receipt()
+            elif path == "/api/bridge/manifest/generate":
+                if value:
+                    raise CompanionError(
+                        "Golden manifest generation takes no input."
+                    )
+                snapshot = self.server.controller.bridge_generate_manifest()
+            elif path == "/api/bridge/replay":
+                if (
+                    set(value) != {"baseline", "candidate"}
+                    or not isinstance(value["baseline"], dict)
+                    or not isinstance(value["candidate"], dict)
+                ):
+                    raise CompanionError("Replay fields are invalid.")
+                snapshot = self.server.controller.bridge_replay(
+                    value["baseline"],
+                    value["candidate"],
+                )
+            elif path == "/api/bridge/observation":
+                required = {"field", "value", "unit", "method"}
+                if (
+                    not required.issubset(value)
+                    or not set(value).issubset(required | {"notes"})
+                ):
+                    raise CompanionError(
+                        "Burden observation fields are invalid."
+                    )
+                snapshot = self.server.controller.bridge_record_observation(
+                    field=value["field"],
+                    value=value["value"],
+                    unit=value["unit"],
+                    method=value["method"],
+                    notes=value.get("notes", ""),
+                )
             else:
                 self._error(HTTPStatus.NOT_FOUND, "Endpoint not found.")
                 return
@@ -305,6 +459,12 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             return
         except (RunConflictError, ApprovalStateError) as exc:
             self._error(HTTPStatus.CONFLICT, str(exc))
+            return
+        except (ManualBridgeConflictError, ManualBridgeIntegrityError) as exc:
+            self._error(HTTPStatus.CONFLICT, str(exc))
+            return
+        except (ManualBridgeValidationError, ManualBridgeError) as exc:
+            self._error(HTTPStatus.BAD_REQUEST, str(exc))
             return
         except CompanionError as exc:
             self._error(HTTPStatus.BAD_REQUEST, str(exc))

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextlib import contextmanager
 import io
 import json
 import os
@@ -29,6 +30,11 @@ from decision_os.acceleration.store import (
     AccelerationStore,
     ActiveDefaultRecord,
     StateIntegrityError,
+)
+from decision_os.companion.manual_bridge import (
+    BridgeSessionController,
+    ManualBridgeBusyError,
+    ManualBridgeIntegrityError,
 )
 
 
@@ -157,7 +163,12 @@ class CompanionController:
         self._approval_choice: str | None = None
         self._default_handles: dict[str, str] = {}
         self._worker: threading.Thread | None = None
+        self._bridge: BridgeSessionController | None = None
+        self._active_bridge_operations = 0
+        self._repository_selection_active = False
         self._load_last_repository()
+        if self._repository is not None:
+            self._bridge = BridgeSessionController(self._repository)
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
@@ -243,15 +254,35 @@ class CompanionController:
     def select_repository(self, candidate: str | Path) -> dict[str, Any]:
         with self._condition:
             self._require_no_active_run()
-        if not isinstance(candidate, (str, Path)):
-            raise RepositorySelectionError("Repository path is invalid.")
-        repository = self._validated_repository(Path(candidate))
-        self._write_last_repository(repository)
-        with self._condition:
-            self._repository = repository
-            self._default_handles = {}
-            self._run = self._empty_run()
-            return self._snapshot_locked()
+            if self._active_bridge_operations:
+                raise RepositorySelectionError(
+                    "A Manual Bridge action is already active."
+                )
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            self._repository_selection_active = True
+        try:
+            if not isinstance(candidate, (str, Path)):
+                raise RepositorySelectionError("Repository path is invalid.")
+            repository = self._validated_repository(Path(candidate))
+            with self._condition:
+                self._require_no_active_run()
+                if self._active_bridge_operations:
+                    raise RepositorySelectionError(
+                        "A Manual Bridge action is already active."
+                    )
+                self._write_last_repository(repository)
+                self._repository = repository
+                self._bridge = BridgeSessionController(repository)
+                self._default_handles = {}
+                self._run = self._empty_run()
+                return self._snapshot_locked()
+        finally:
+            with self._condition:
+                self._repository_selection_active = False
+                self._condition.notify_all()
 
     def pick_repository(self) -> dict[str, Any]:
         selected = self.picker_runner(self.picker_script)
@@ -267,6 +298,125 @@ class CompanionController:
     def _require_no_active_run(self) -> None:
         if self._run["state"] == "running":
             raise RunConflictError("One bounded Run is already active.")
+
+    def _require_bridge(self) -> BridgeSessionController:
+        self._require_repository()
+        if self._bridge is None:
+            raise RepositorySelectionError("Choose a local Git repository first.")
+        return self._bridge
+
+    @contextmanager
+    def _bridge_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            bridge = self._require_bridge()
+            self._active_bridge_operations += 1
+        try:
+            yield bridge
+        finally:
+            with self._condition:
+                self._active_bridge_operations -= 1
+                self._condition.notify_all()
+
+    def _snapshot_after_bridge(
+        self,
+        bridge: BridgeSessionController,
+    ) -> dict[str, Any]:
+        with self._condition:
+            if bridge is not self._bridge:
+                raise RepositorySelectionError(
+                    "The selected repository changed during the Bridge action."
+                )
+            return self._snapshot_locked()
+
+    def start_bridge_session(
+        self,
+        boundary: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.create_session(boundary)
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_copy_for_pro(self) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.copy_for_pro()
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_import_artifact(
+        self,
+        *,
+        selected_role: str,
+        payload: bytes,
+        source_path_or_label: str,
+        import_mode: str,
+        metadata: dict[str, Any] | None = None,
+        declared_sha256: str | None = None,
+        supersedes_import_event_id: str | None = None,
+        correction_reason: str | None = None,
+    ) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.import_artifact(
+                selected_role=selected_role,
+                payload=payload,
+                source_path_or_label=source_path_or_label,
+                import_mode=import_mode,
+                metadata=metadata,
+                declared_sha256=declared_sha256,
+                supersedes_import_event_id=supersedes_import_event_id,
+                correction_reason=correction_reason,
+            )
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_generate_handoff(self) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.generate_execution_handoff()
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_freeze_output(self, role: str) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.freeze_output(role)
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_generate_receipt(self) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.generate_bridge_receipt()
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_generate_manifest(self) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.generate_golden_manifest()
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_replay(
+        self,
+        baseline: dict[str, Any],
+        candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.evaluate_replay(baseline, candidate)
+            return self._snapshot_after_bridge(bridge)
+
+    def bridge_record_observation(
+        self,
+        *,
+        field: str,
+        value: int | float | str,
+        unit: str,
+        method: str,
+        notes: str = "",
+    ) -> dict[str, Any]:
+        with self._bridge_operation() as bridge:
+            bridge.record_observation(
+                field=field,
+                value=value,
+                unit=unit,
+                method=method,
+                notes=notes,
+            )
+            return self._snapshot_after_bridge(bridge)
 
     def start_run(self, task: str) -> dict[str, Any]:
         if not isinstance(task, str) or not task.strip():
@@ -584,6 +734,7 @@ class CompanionController:
             repository_view = None
             receipt = None
             defaults: list[dict[str, str]] = []
+            bridge = None
         else:
             store = AccelerationStore(self._repository)
             receipt = self._public_receipt(
@@ -597,6 +748,37 @@ class CompanionController:
                 "name": self._repository.name,
                 "path": str(self._repository),
             }
+            try:
+                bridge = self._require_bridge().snapshot()
+            except (ManualBridgeIntegrityError, ManualBridgeBusyError) as exc:
+                bridge = {
+                    "state": (
+                        "BOUNDARY_INCOMPLETE"
+                        if isinstance(exc, ManualBridgeBusyError)
+                        else "BLOCKED_CORRUPT"
+                    ),
+                    "error": (
+                        "Manual Bridge is temporarily busy."
+                        if isinstance(exc, ManualBridgeBusyError)
+                        else (
+                            "Manual Bridge state is corrupted. "
+                            "Bridge reads and writes are blocked."
+                        )
+                    ),
+                    "session": None,
+                    "imports": [],
+                    "outputs": {},
+                    "golden_manifest": None,
+                    "results": {
+                        "protocol": "IN PROGRESS / NOT FINAL",
+                        "product": (
+                            "BUILDER EVIDENCE ONLY / "
+                            "INDEPENDENT AUDIT REQUIRED"
+                        ),
+                        "replay": "NOT YET PERFORMED",
+                    },
+                    "burden": {},
+                }
         return {
             "repository": repository_view,
             "run": {
@@ -606,6 +788,7 @@ class CompanionController:
             },
             "receipt": receipt,
             "defaults": defaults,
+            "manual_bridge": bridge,
             "supported": (
                 "Read-only work or one exact typed single-file create or modify."
             ),

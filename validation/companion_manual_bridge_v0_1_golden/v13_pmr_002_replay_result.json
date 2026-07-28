@@ -1,0 +1,192 @@
+{
+  "schema": "decision-os-companion-manual-bridge-replay-result-v0.1",
+  "task_id": "V13-CMB-001",
+  "protocol_run_id": "V13-PMR-002",
+  "candidate_id": "v13-pmr-002-final-golden-structural-replay-001",
+  "replay_method": {
+    "type": "DETERMINISTIC_STRUCTURAL_ATOM_COMPARISON",
+    "llm_used": false,
+    "embedding_used": false,
+    "prose_similarity_used": false,
+    "subjective_semantic_equivalence_used": false,
+    "implementation_head": "361129df8b00e076c7435fc6506911ccdcd6df3c",
+    "implementation_path": "decision_os/companion/manual_bridge.py",
+    "implementation_sha256": "27ad102086243cd63962e1ab04db96cde0790cc9ea9890fec2be4a66d533a0cd",
+    "implementation_git_blob": "001484a350e5355a32b8ffb864c6b056b69704d4"
+  },
+  "repository_manifest": {
+    "path": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_manifest.json",
+    "sha256": "67b7e4287f0ea8cffa25d8114854736f31a7ad75e5d35e207322db71c39be8a8",
+    "git_blob": "c68cb07f61c04502cdcb6db454dbdbd36ae8e3f8",
+    "baseline_manifest": "67b7e4287f0ea8cffa25d8114854736f31a7ad75e5d35e207322db71c39be8a8",
+    "candidate_manifest": "67b7e4287f0ea8cffa25d8114854736f31a7ad75e5d35e207322db71c39be8a8"
+  },
+  "bridge_runtime_evidence": {
+    "session_id": "e4098019-d18c-4a54-82dc-71502f5e0316",
+    "frozen_runtime_manifest_sha256": "dab27ed82a7afb8de3f3568270cf32a4c4e0dc1c57770337ebfb2c4a124b872d",
+    "runtime_replay_baseline_sha256": "dd786aeb5dea7c84258dee2e3bd0807f569b99cf6453f0df0cbe158555fa7526",
+    "candidate_output_sha256": "903b743bd3625bc096dddde1a936bdc11664f790eaa399fadaa21817ba6cd53f",
+    "replay_result_id": "d1aa6a955b88af4aff3ab897ec8d65af8c3694fa00505cb557c689a1e714e73c",
+    "frozen_replay_output_sha256": "c4529df31e27b099ccaa0a4522c1c57fe0dcda6d21040ee4f6a117a40ab728f6",
+    "frozen_replay_output_size_bytes": 3775,
+    "replay_generated_event_id": "068d0192-05fe-4772-8b6f-99a04de23fe2",
+    "replay_freeze_event_id": "05754593-2fcf-42d3-a778-bd701146c8a9",
+    "final_event_chain_head": "ff8c42cda071a438e455181bd4607a3acfb220ebb0be561827155d202dc28789"
+  },
+  "status_vocabulary": [
+    "PRESERVED",
+    "ALTERED",
+    "MISSING",
+    "SUBSTITUTED",
+    "AUTHORITY-INFLATED",
+    "NOT APPLICABLE",
+    "UNKNOWN"
+  ],
+  "field_results": [
+    {
+      "ordinal": 1,
+      "field": "task_id",
+      "label": "Task ID",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 2,
+      "field": "objective",
+      "label": "Objective",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 3,
+      "field": "completion_line",
+      "label": "Completion Line",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 4,
+      "field": "do_not_touch",
+      "label": "Do Not Touch",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 5,
+      "field": "current_gate",
+      "label": "Current Gate",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 6,
+      "field": "authority_boundary",
+      "label": "Authority Boundary",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 7,
+      "field": "as_of_identity",
+      "label": "As-of commit / artifact hash",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 8,
+      "field": "model_identity",
+      "label": "Model identity",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 9,
+      "field": "role_identity",
+      "label": "Role identity",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 10,
+      "field": "time_anchor",
+      "label": "Time anchor",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 11,
+      "field": "required_next_actor",
+      "label": "Required next actor",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 12,
+      "field": "findings",
+      "label": "Findings",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 13,
+      "field": "human_execution_cost",
+      "label": "Human / execution cost",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 14,
+      "field": "reusable_delta",
+      "label": "Reusable Delta",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    },
+    {
+      "ordinal": 15,
+      "field": "unknowns",
+      "label": "UNKNOWNs",
+      "status": "PRESERVED",
+      "reason": "All required atoms and source identities remain."
+    }
+  ],
+  "fifteen_field_summary": {
+    "total": 15,
+    "PRESERVED": 15,
+    "ALTERED": 0,
+    "MISSING": 0,
+    "SUBSTITUTED": 0,
+    "AUTHORITY-INFLATED": 0,
+    "NOT APPLICABLE": 0,
+    "UNKNOWN": 0
+  },
+  "unknown_preservation": {
+    "historical_unknown_atoms_preserved": true,
+    "unknown_field_status": "PRESERVED",
+    "engine_unknown_status_fields": [],
+    "explanation": "The frozen UNKNOWN atoms remain present with their original source identities. No historical audit UNKNOWN was relabeled PASS or treated as resolved.",
+    "resolved_by_forward_only_delta": [],
+    "forward_only_delta_boundary": "RD-001 and RD-002 are future evidence improvements only; neither resolves or reinterprets a current audit UNKNOWN."
+  },
+  "authority_inflation_findings": [],
+  "pass_criteria": {
+    "every_required_structural_field_preserved_or_evidence_backed_not_applicable": true,
+    "existing_unknowns_preserved": true,
+    "forbidden_result_count": 0,
+    "protocol_product_replay_states_independent": true
+  },
+  "overall_replay_result": "PASS",
+  "result_separation": {
+    "product_result": "PARTIAL PASS — AUDIT SATISFIED / NO PRODUCT REPAIR REQUIRED",
+    "protocol_result_at_replay": "IN PROGRESS / PENDING STAGE 2 CLOSURE RECORD",
+    "replay_result": "PASS",
+    "non_implication": {
+      "product_result_does_not_imply_protocol_result": true,
+      "product_result_does_not_imply_replay_result": true,
+      "protocol_result_does_not_imply_product_result": true,
+      "protocol_result_does_not_imply_replay_result": true,
+      "replay_result_does_not_imply_product_result": true,
+      "replay_result_does_not_imply_protocol_result": true
+    }
+  },
+  "claim_boundary": "Replay PASS proves only deterministic structural preservation for one internal frozen Golden Run. It does not establish Product PASS, generality, third-party reproduction, burden reduction, Framework Lens causality, merge readiness, publication readiness, or release readiness."
+}
