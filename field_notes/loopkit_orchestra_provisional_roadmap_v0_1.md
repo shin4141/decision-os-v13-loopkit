@@ -87,6 +87,11 @@ Builder Completion
 
 ### Stage 1 — Pro Manual Protocol
 
+Manual definition: **FIXED** — [Pro Manual Protocol v0.1](pro_manual_protocol_v0_1.md)
+
+Authority: Pro Manual Run 002 remains unauthorized until a separate bounded
+real task and new Gate exist.
+
 - SOL / coding agentがEvidence Packetを作る
 - Proが設計する
 - coding agentが実装する
