@@ -1,0 +1,308 @@
+{
+  "schema": "decision-os-companion-manual-bridge-golden-manifest-v0.1",
+  "task_id": "V13-CMB-001",
+  "protocol_run_id": "V13-PMR-002",
+  "audited_pr": 43,
+  "audited_head": "361129df8b00e076c7435fc6506911ccdcd6df3c",
+  "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+  "golden_status": "GOLDEN_FROZEN",
+  "golden_status_claim_boundary": "Golden means frozen comparison source only. It does not mean correct, PASS, approved, certified, mergeable, published, or released.",
+  "artifact_order": [
+    "EVIDENCE_PACKET",
+    "PRO_DESIGN",
+    "EXECUTION_HANDOFF",
+    "BUILD_RECEIPT",
+    "PRO_AUDIT",
+    "REUSABLE_DELTA_RECORD"
+  ],
+  "bridge_runtime_manifest": {
+    "implementation_head": "361129df8b00e076c7435fc6506911ccdcd6df3c",
+    "implementation_path": "decision_os/companion/manual_bridge.py",
+    "implementation_sha256": "27ad102086243cd63962e1ab04db96cde0790cc9ea9890fec2be4a66d533a0cd",
+    "implementation_git_blob": "001484a350e5355a32b8ffb864c6b056b69704d4",
+    "session_id": "e4098019-d18c-4a54-82dc-71502f5e0316",
+    "state": "GOLDEN_FROZEN",
+    "runtime_golden_status": "GOLDEN_ELIGIBLE",
+    "runtime_manifest_sha256": "dab27ed82a7afb8de3f3568270cf32a4c4e0dc1c57770337ebfb2c4a124b872d",
+    "runtime_manifest_size_bytes": 29712,
+    "runtime_manifest_generated_event_id": "b706f7b3-674c-404f-9dd6-818b3118c54e",
+    "runtime_manifest_freeze_event_id": "b4d6c2bb-73b4-4333-a814-7abaf598c704",
+    "runtime_manifest_event_chain_head": "ce25fb42927bd5627142208638b4b542ebd47dbc72a9b6d7f536a99095d1576b",
+    "replay_baseline_sha256": "dd786aeb5dea7c84258dee2e3bd0807f569b99cf6453f0df0cbe158555fa7526",
+    "projection_boundary": "The frozen private runtime manifest binds exact artifact hashes, import events, and the deterministic Replay baseline. This repository projection adds independently verified Git blob, fixation commit, repository path, time, result-boundary, and historical UNKNOWN fields without changing the runtime baseline."
+  },
+  "artifacts": [
+    {
+      "ordinal": 1,
+      "role": "Evidence Packet",
+      "artifact_role": "EVIDENCE_PACKET",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_shared_evidence_packet.md",
+      "artifact_sha256": "847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab",
+      "artifact_size_bytes": 45879,
+      "git_blob_sha_or_unknown": "92f9f69f18db052b421fa5fa7f233ce77f5a42b8",
+      "fixation_commit_or_unknown": "970ae5e24e59dada54e1b829229360d9945a0910",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "packet_fixation_commit": "970ae5e24e59dada54e1b829229360d9945a0910"
+      },
+      "model_identity": {
+        "value": "UNKNOWN",
+        "basis": "NOT DECLARED IN ARTIFACT",
+        "verification_state": "UNKNOWN"
+      },
+      "role_identity": "Scout Evidence Recorder",
+      "source_role_label": "SOL Scout",
+      "times": {
+        "artifact_authored_at": "UNKNOWN",
+        "observed_at": "2026-07-28T20:39:13+09:00",
+        "imported_at": "NOT APPLICABLE — BOUNDARY-FIXED EVIDENCE INPUT",
+        "repository_fixation_at": "2026-07-28T20:42:45+09:00"
+      },
+      "authority_state": "EVIDENCE_ONLY",
+      "result_boundary": "Frozen evidence input only. It records bounded repository facts and design-open UNKNOWNs; it is not design, execution, Product PASS, Protocol PASS, or Replay PASS.",
+      "import_event_id": "FROZEN_EVIDENCE_INPUT",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Future Pro Designer and Pro Auditor model identities were not yet observed.",
+        "Golden artifacts 02-06 and their later findings, hashes, actors, repair route, and reusable-delta count were not yet observed.",
+        "All baseline human-burden values were UNKNOWN.",
+        "Current installed private-app parity with the As-of repository was UNKNOWN.",
+        "Bridge reuse, Receipt separation, transport, storage, display, validation, structural comparison, prose-variant, and handoff-accept relationships were design-open.",
+        "Protocol, Product, and Replay results were UNKNOWN.",
+        "Any burden reduction was UNKNOWN."
+      ]
+    },
+    {
+      "ordinal": 2,
+      "role": "Pro Design Packet",
+      "artifact_role": "PRO_DESIGN",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_02_pro_design_packet.md",
+      "artifact_sha256": "4011a054fc52fd438912781be4f7366e91ef77cc3104d09c302565dcd1d0c41c",
+      "artifact_size_bytes": 64157,
+      "git_blob_sha_or_unknown": "8da459198e4d81103ddbd67ac32ac142bb0981d8",
+      "fixation_commit_or_unknown": "caa14534bce0460d6b80bcb07e0e4d32fcab9701",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "evidence_packet_commit": "970ae5e24e59dada54e1b829229360d9945a0910",
+        "receiver_fixed_sha256": "4011a054fc52fd438912781be4f7366e91ef77cc3104d09c302565dcd1d0c41c"
+      },
+      "model_identity": {
+        "value": "GPT-5.6 Thinking",
+        "basis": "SELF_DECLARED",
+        "verification_state": "UNVERIFIED"
+      },
+      "role_identity": "Independent Pro Designer",
+      "source_role_label": "GPT 13-18",
+      "times": {
+        "artifact_authored_at": "2026-07-28T22:00:00+09:00",
+        "imported_at": "2026-07-28T15:16:29.387734Z",
+        "repository_fixation_at": "2026-07-29T00:21:10+09:00"
+      },
+      "authority_state": "DESIGN_ONLY_NO_EXECUTION_AUTHORITY",
+      "result_boundary": "Accepted bounded design input only. It grants no implementation, audit, merge, publication, release, Product PASS, Protocol PASS, or Replay PASS authority.",
+      "import_event_id": "9486ab5b-1002-41cd-b90b-18a0106b2b4d",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Shin's acceptance of the design was historically UNKNOWN at authorship.",
+        "Independently verified model identity remains UNKNOWN.",
+        "Builder identity, authority grant, implementation branch/commit, findings, Build Receipt bytes/hash, Auditor identity/model, audit result, repair need, and reusable-delta count/acceptance were future observations.",
+        "All measured Golden Run burden values and any burden reduction or increase were UNKNOWN.",
+        "Installed private-app parity at build time was UNKNOWN.",
+        "Final Protocol, Product, and Replay results were UNKNOWN.",
+        "Framework Lens material value, UI-active-time reliability, and semantic contradictions outside typed envelopes were UNKNOWN."
+      ]
+    },
+    {
+      "ordinal": 3,
+      "role": "Execution Handoff",
+      "artifact_role": "EXECUTION_HANDOFF",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_03_execution_handoff.md",
+      "runtime_output_path": "outputs/e4098019-d18c-4a54-82dc-71502f5e0316/execution_handoff.md",
+      "artifact_sha256": "cf125e67d13acc7a72c1b500d5c31d7b34f83e221d5177695f990e42d501c43f",
+      "artifact_size_bytes": 2506,
+      "git_blob_sha_or_unknown": "9ade681953f7b9276fe5fc1f110b25222acf9080",
+      "fixation_commit_or_unknown": "caa14534bce0460d6b80bcb07e0e4d32fcab9701",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "evidence_packet_commit": "970ae5e24e59dada54e1b829229360d9945a0910",
+        "pro_design_sha256": "4011a054fc52fd438912781be4f7366e91ef77cc3104d09c302565dcd1d0c41c"
+      },
+      "model_identity": {
+        "value": "SYSTEM_GENERATED",
+        "basis": "DETERMINISTIC_GENERATOR",
+        "verification_state": "IMPLEMENTATION_BOUND"
+      },
+      "role_identity": "Companion Manual Bridge v0.1",
+      "times": {
+        "artifact_authored_at": "2026-07-28T15:16:29.407009Z",
+        "generated_at": "2026-07-28T15:16:29.407009Z",
+        "frozen_at": "2026-07-28T15:16:29.424636Z",
+        "imported_at": "NOT APPLICABLE — GENERATED ARTIFACT",
+        "repository_fixation_at": "2026-07-29T00:21:10+09:00"
+      },
+      "authority_state": "INSTRUCTION_ARTIFACT_ONLY",
+      "result_boundary": "Instruction artifact only. Separate Builder authority was required; the handoff itself grants no execution, audit, merge, publication, or release authority.",
+      "import_event_id": "74423aa3-69a5-4844-99a4-019d038d2926",
+      "generated_event_id": "c6c8a414-fade-4d1f-aaeb-125bb44cfd37",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "The Pro Design model identity remained self-declared and unverified.",
+        "At handoff fixation, Build Receipt, independent Pro Audit, Reusable Delta fixation, and Replay remained open.",
+        "The safe pre-authority HOLD text did not retroactively determine historical Builder authority."
+      ]
+    },
+    {
+      "ordinal": 4,
+      "role": "Build Receipt",
+      "artifact_role": "BUILD_RECEIPT",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_04_build_receipt.md",
+      "artifact_sha256": "e98c5a3eb759dd01b2cea422ae24a6be3604f16a9b7b9cff19f9f7c6831c366d",
+      "artifact_size_bytes": 18053,
+      "git_blob_sha_or_unknown": "7874cefe59c3088384affd6302ff64e98aa7b3af",
+      "fixation_commit_or_unknown": "361129df8b00e076c7435fc6506911ccdcd6df3c",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "implementation_commit": "caa14534bce0460d6b80bcb07e0e4d32fcab9701",
+        "receipt_fixation_commit": "361129df8b00e076c7435fc6506911ccdcd6df3c"
+      },
+      "model_identity": {
+        "value": "Codex / GPT-5",
+        "basis": "ARTIFACT_DECLARED",
+        "verification_state": "ARTIFACT_DECLARED"
+      },
+      "role_identity": "Fresh SOL / coding-agent Builder",
+      "times": {
+        "artifact_authored_at": "2026-07-29T00:28:59+09:00",
+        "imported_at": "2026-07-28T23:16:12.013488Z",
+        "repository_fixation_at": "2026-07-29T00:30:42+09:00"
+      },
+      "authority_state": "EXECUTION_EVIDENCE_ONLY",
+      "result_boundary": "Builder execution evidence only. It is not independent Product PASS, Protocol PASS, Replay PASS, merge approval, publication approval, release approval, or reusable-delta acceptance.",
+      "import_event_id": "e1478145-69a6-4c6d-8842-112f401fcdec",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Independent Product Result",
+        "Final Protocol Result",
+        "Replay Result",
+        "Independent Pro Audit findings",
+        "Decision Owner acceptance",
+        "Merge, publication, and release decisions",
+        "Measured end-to-end human handling and elapsed time",
+        "Reusable-delta acceptance"
+      ]
+    },
+    {
+      "ordinal": 5,
+      "role": "Pro Audit Receipt",
+      "artifact_role": "PRO_AUDIT",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_05_pro_audit_receipt.md",
+      "artifact_sha256": "c261e91bc4571a5577a7353dfdf8550b71415f4757c0b63d3b81d9c750c3aae8",
+      "artifact_size_bytes": 32319,
+      "git_blob_sha_or_unknown": "7742a13dfb0cf933d95ed3f699ce7705d659ab8a",
+      "fixation_commit_or_unknown": "8587afd1a87e9dadd5c9c12a8582b3ab725faa34",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "audited_pr": 43,
+        "audited_head": "361129df8b00e076c7435fc6506911ccdcd6df3c"
+      },
+      "model_identity": {
+        "value": "UNKNOWN",
+        "basis": "NOT DECLARED IN EXACT RECEIPT",
+        "verification_state": "UNKNOWN"
+      },
+      "role_identity": "Independent Pro Auditor",
+      "source_actor_label": "GPT 13-19",
+      "times": {
+        "artifact_authored_at": "UNKNOWN",
+        "imported_at": "2026-07-28T23:16:41.766187Z",
+        "repository_fixation_at": "2026-07-29T08:14:00+09:00"
+      },
+      "authority_state": "INDEPENDENT_JUDGMENT_ONLY",
+      "result_boundary": "Independent bounded Product judgment: PARTIAL PASS; Audit Gate SATISFIED; P1 0 / P2 0 / P3 2 / P4 1; repair NONE. No Protocol PASS, Replay PASS, merge, publication, or release authority.",
+      "import_event_id": "7993dee8-51dd-4b62-a165-d2874a272672",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Independent clean-environment execution of the full test suite",
+        "Independent installed-app build and local smoke reproduction",
+        "Direct independent SHA-256 recomputation of the committed Pro Design Packet",
+        "Direct independent SHA-256 recomputation of the committed Build Receipt",
+        "End-to-end human handling time",
+        "Total elapsed time",
+        "Pre-Bridge burden",
+        "Final Golden Replay",
+        "Reusable Delta acceptance",
+        "Final Protocol Result",
+        "Shin's Product acceptance",
+        "Merge, publication, and release decisions"
+      ]
+    },
+    {
+      "ordinal": 6,
+      "role": "Reusable Delta Record",
+      "artifact_role": "REUSABLE_DELTA_RECORD",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_06_reusable_delta_record.md",
+      "artifact_sha256": "b800b5d2afd6765dc331f28320ec02f1fab11129dac34dca0895e0b565f436a5",
+      "artifact_size_bytes": 6650,
+      "git_blob_sha_or_unknown": "8dd39101762ab9c61a57b9f0be2c35afc30ec5da",
+      "fixation_commit_or_unknown": "2ac2f35b36ddb20f7b49b48029f95bb102f64a51",
+      "as_of_identity": {
+        "product_as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+        "audited_head": "361129df8b00e076c7435fc6506911ccdcd6df3c",
+        "source_audit_sha256": "c261e91bc4571a5577a7353dfdf8550b71415f4757c0b63d3b81d9c750c3aae8"
+      },
+      "model_identity": {
+        "value": "Codex / GPT-5",
+        "basis": "RUNTIME_CONTEXT",
+        "verification_state": "ARTIFACT_DECLARED_ON_IMPORT"
+      },
+      "role_identity": "Reusable Delta Owner / Codex 13-26",
+      "times": {
+        "artifact_authored_at": "2026-07-29T08:14:08+09:00",
+        "imported_at": "2026-07-28T23:16:48.117941Z",
+        "repository_fixation_at": "2026-07-29T08:15:03+09:00"
+      },
+      "authority_state": "FUTURE_USE_CANDIDATE_ONLY",
+      "result_boundary": "Exactly RD-001 and RD-002 are fixed as future evidence improvements. They do not retroactively resolve current UNKNOWNs, modify product code, update Canon, or grant execution, merge, publication, or release authority.",
+      "import_event_id": "935ce499-4474-45e3-beee-84894d2e2aa7",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "reusable_deltas": [
+        "RD-001",
+        "RD-002"
+      ],
+      "discovery_result": "NO NEW MATERIAL STRUCTURE FOUND IN THIS RUN",
+      "unknowns": [
+        "Independent clean-environment execution remains UNKNOWN for the audited run.",
+        "Independent installed-app build and smoke reproduction remain UNKNOWN for the audited run.",
+        "Current non-UNKNOWN burden observations remain not independently event-bound in the committed Build Receipt.",
+        "Future effectiveness and generality of RD-001 and RD-002 remain UNKNOWN.",
+        "Decision Owner acceptance, merge, publication, and release decisions remain UNKNOWN."
+      ]
+    }
+  ],
+  "authority_check": {
+    "role_collisions": 0,
+    "hash_mismatches": 0,
+    "authority_inflation_findings": 0,
+    "unresolved_missing_roles": 0,
+    "eligible_for_structural_replay": true
+  },
+  "result_separation_at_manifest_freeze": {
+    "product_result": "PARTIAL PASS — INDEPENDENT AUDIT RECOMMENDATION; NO PRODUCT REPAIR REQUIRED",
+    "protocol_result": "IN PROGRESS / NOT FINAL",
+    "replay_result": "NOT YET PERFORMED",
+    "non_implication": {
+      "product_result_does_not_imply_protocol_result": true,
+      "product_result_does_not_imply_replay_result": true,
+      "protocol_result_does_not_imply_product_result": true,
+      "protocol_result_does_not_imply_replay_result": true,
+      "replay_result_does_not_imply_product_result": true,
+      "replay_result_does_not_imply_protocol_result": true
+    }
+  }
+}
