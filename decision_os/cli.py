@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any, Sequence, TextIO
 
@@ -18,6 +19,20 @@ from .audit_delivery import invalid_payload as audit_invalid_payload
 from .audit_delivery import validate_audit_delivery_file
 from .audit_delivery_text import render_text as render_audit_text
 from .checks import evidence, inspect_repository, unknown_payload
+from .handoff_acceptance import (
+    ISSUE_CODES as HANDOFF_ACCEPTANCE_ISSUE_CODES,
+    MODE_ACTIVE_TRANSFER,
+    MODE_CLOSED_STATE,
+    RESULT_ACCEPTABLE,
+    RESULT_INVALID,
+    RESULT_NOT_ACCEPTABLE,
+    HandoffAssessment,
+    HandoffProcessError,
+    assess_handoff,
+    exit_code_for_assessment,
+    render_json as render_handoff_acceptance_json,
+    render_text as render_handoff_acceptance_text,
+)
 from .intake import invalid_payload as intake_invalid_payload
 from .intake import validate_intake_file
 from .intake_text import render_text as render_intake_text
@@ -27,7 +42,9 @@ from .scan_text import render_text
 
 
 EXIT_USAGE = 2
+EXIT_REPOSITORY_CONTEXT_UNAVAILABLE = 3
 EXIT_INTERNAL = 6
+EXIT_UNSTABLE_SNAPSHOT = 7
 USAGE = "decision-os check <repository>"
 SCAN_USAGE = (
     "decision-os scan <repository> | "
@@ -48,6 +65,26 @@ AUDIT_LINK_USAGE = (
 AUDIT_GATE_USAGE = (
     "decision-os audit-gate <intake.json> <audit.md> | "
     "decision-os audit-gate --format json|text <intake.json> <audit.md>"
+)
+HANDOFF_ACCEPTANCE_PROCESS_EXITS = {
+    "USAGE_ERROR": EXIT_USAGE,
+    "REPOSITORY_CONTEXT_UNAVAILABLE": EXIT_REPOSITORY_CONTEXT_UNAVAILABLE,
+    "INTERNAL_ERROR": EXIT_INTERNAL,
+    "UNSTABLE_SNAPSHOT": EXIT_UNSTABLE_SNAPSHOT,
+}
+_HANDOFF_ACCEPTANCE_OPTIONS = (
+    "--repo",
+    "--handoff",
+    "--receiver",
+    "--target-layer",
+    "--format",
+)
+_TRUSTED_SCALAR_MARKER = re.compile(
+    (
+        r"\b(?:NONE|UNKNOWN|TBD|MAYBE|EITHER|IF|UNLESS|WHEN|OR|"
+        r"DEPENDING|CONDITIONAL|PENDING)\b"
+    ),
+    re.IGNORECASE,
 )
 
 
@@ -455,15 +492,155 @@ def _run_audit_gate(arguments: Sequence[str], output: TextIO) -> int:
         return EXIT_INTERNAL
 
 
+def _trusted_handoff_scalar(value: str) -> str | None:
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if len(value.splitlines()) != 1:
+        return None
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        return None
+    if "?" in normalized or "|" in normalized or "/" in normalized:
+        return None
+    if _TRUSTED_SCALAR_MARKER.search(normalized):
+        return None
+    return normalized
+
+
+def _parse_handoff_acceptance_options(
+    arguments: Sequence[str],
+) -> dict[str, str] | None:
+    if not arguments or arguments[0] != "handoff-accept":
+        return None
+
+    values: dict[str, str] = {}
+    index = 1
+    while index < len(arguments):
+        option = arguments[index]
+        if option not in _HANDOFF_ACCEPTANCE_OPTIONS or option in values:
+            return None
+        if index + 1 >= len(arguments):
+            return None
+        value = arguments[index + 1]
+        if not value or value in _HANDOFF_ACCEPTANCE_OPTIONS:
+            return None
+        values[option] = value
+        index += 2
+
+    if set(values) - {"--format"} != {
+        "--repo",
+        "--handoff",
+        "--receiver",
+        "--target-layer",
+    }:
+        return None
+
+    output_format = values.get("--format", "text")
+    if output_format not in ("text", "json"):
+        return None
+
+    receiver = _trusted_handoff_scalar(values["--receiver"])
+    target_layer = _trusted_handoff_scalar(values["--target-layer"])
+    if receiver is None or target_layer is None:
+        return None
+
+    values["--receiver"] = receiver
+    values["--target-layer"] = target_layer
+    values["--format"] = output_format
+    return values
+
+
+def _write_handoff_acceptance_process_error(
+    code: str,
+    error: TextIO,
+) -> int:
+    safe_code = (
+        code
+        if isinstance(code, str) and code in HANDOFF_ACCEPTANCE_PROCESS_EXITS
+        else "INTERNAL_ERROR"
+    )
+    error.write(f"HANDOFF_ACCEPTANCE_ERROR: {safe_code}\n")
+    return HANDOFF_ACCEPTANCE_PROCESS_EXITS[safe_code]
+
+
+def _valid_handoff_assessment(assessment: object) -> bool:
+    if not isinstance(assessment, HandoffAssessment):
+        return False
+    if not isinstance(assessment.issue_codes, tuple):
+        return False
+    if any(
+        not isinstance(code, str)
+        or code not in HANDOFF_ACCEPTANCE_ISSUE_CODES
+        for code in assessment.issue_codes
+    ):
+        return False
+    expected_issue_order = tuple(
+        code
+        for code in HANDOFF_ACCEPTANCE_ISSUE_CODES
+        if code in assessment.issue_codes
+    )
+    if assessment.issue_codes != expected_issue_order:
+        return False
+    if assessment.result == RESULT_ACCEPTABLE:
+        return (
+            assessment.mode in (MODE_ACTIVE_TRANSFER, MODE_CLOSED_STATE)
+            and not assessment.issue_codes
+        )
+    if assessment.result in (RESULT_NOT_ACCEPTABLE, RESULT_INVALID):
+        return assessment.mode is None and bool(assessment.issue_codes)
+    return False
+
+
+def _run_handoff_acceptance(
+    arguments: Sequence[str],
+    output: TextIO,
+    error: TextIO,
+) -> int:
+    options = _parse_handoff_acceptance_options(arguments)
+    if options is None:
+        return _write_handoff_acceptance_process_error("USAGE_ERROR", error)
+
+    try:
+        assessment = assess_handoff(
+            repo_root=Path(options["--repo"]),
+            handoff_path=Path(options["--handoff"]),
+            expected_receiver=options["--receiver"],
+            expected_target_layer=options["--target-layer"],
+        )
+        if not _valid_handoff_assessment(assessment):
+            raise ValueError("invalid Artifact assessment")
+        exit_code = exit_code_for_assessment(assessment)
+        if exit_code not in (0, 4, 5):
+            raise ValueError("invalid Artifact assessment exit")
+        if options["--format"] == "json":
+            rendered = render_handoff_acceptance_json(assessment)
+        else:
+            rendered = render_handoff_acceptance_text(assessment)
+        if not isinstance(rendered, str) or not rendered.endswith("\n"):
+            raise ValueError("invalid Artifact assessment rendering")
+    except HandoffProcessError as exc:
+        return _write_handoff_acceptance_process_error(exc.code, error)
+    except Exception:
+        return _write_handoff_acceptance_process_error("INTERNAL_ERROR", error)
+
+    output.write(rendered)
+    return exit_code
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
     stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
 ) -> int:
     """Run one repository-local Decision-OS inspection command."""
 
     arguments = list(sys.argv[1:] if argv is None else argv)
     output = sys.stdout if stdout is None else stdout
+    error = sys.stderr if stderr is None else stderr
+
+    if arguments and arguments[0] == "handoff-accept":
+        return _run_handoff_acceptance(arguments, output, error)
 
     if arguments and arguments[0] == "scan":
         return _run_scan(arguments, output)
