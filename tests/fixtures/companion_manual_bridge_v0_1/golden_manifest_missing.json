@@ -1,0 +1,143 @@
+{
+  "artifact_order": [
+    "EVIDENCE_PACKET",
+    "PRO_DESIGN",
+    "EXECUTION_HANDOFF",
+    "BUILD_RECEIPT",
+    "PRO_AUDIT",
+    "REUSABLE_DELTA_RECORD"
+  ],
+  "artifacts": [
+    {
+      "artifact_authored_at": "2026-07-28T00:00:00+09:00",
+      "artifact_role": "EVIDENCE_PACKET",
+      "artifact_sha256": "847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab",
+      "as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+      "authority_state": "EVIDENCE_ONLY_NO_DESIGN_OR_EXECUTION_AUTHORITY",
+      "fixation_commit_or_unknown": "970ae5e24e59dada54e1b829229360d9945a0910",
+      "git_blob_sha_or_unknown": "92f9f69f18db052b421fa5fa7f233ce77f5a42b8",
+      "import_event_id": "fixture-import-evidence-001",
+      "imported_at": "2026-07-29T00:00:00Z",
+      "model_identity": "UNKNOWN",
+      "model_identity_basis": "UNKNOWN",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_shared_evidence_packet.md",
+      "result_boundary": "Frozen evidence input only.",
+      "role_identity": "Scout Evidence Recorder",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Model identity"
+      ]
+    },
+    {
+      "artifact_authored_at": "2026-07-28T22:00:00+09:00",
+      "artifact_role": "PRO_DESIGN",
+      "artifact_sha256": "4011a054fc52fd438912781be4f7366e91ef77cc3104d09c302565dcd1d0c41c",
+      "as_of_commit": "63eb260a94595298e2b07b476f7f9d8572c9ef09",
+      "authority_state": "DESIGN_ONLY_NO_EXECUTION_AUTHORITY",
+      "fixation_commit_or_unknown": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "git_blob_sha_or_unknown": "8da459198e4d81103ddbd67ac32ac142bb0981d8",
+      "import_event_id": "fixture-import-design-001",
+      "imported_at": "2026-07-29T00:01:00Z",
+      "model_identity": "GPT-5.6 Thinking",
+      "model_identity_basis": "SELF_DECLARED",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_02_pro_design_packet.md",
+      "result_boundary": "Design input only; not execution or Product PASS.",
+      "role_identity": "Independent Pro Designer",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Independently verified model identity"
+      ]
+    },
+    {
+      "artifact_authored_at": "2026-07-29T00:02:00Z",
+      "artifact_role": "EXECUTION_HANDOFF",
+      "artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "as_of_commit": "970ae5e24e59dada54e1b829229360d9945a0910",
+      "authority_state": "INSTRUCTION_ARTIFACT_ONLY",
+      "fixation_commit_or_unknown": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "git_blob_sha_or_unknown": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "import_event_id": "fixture-generate-handoff-001",
+      "imported_at": "2026-07-29T00:02:00Z",
+      "model_identity": "SYSTEM_GENERATED",
+      "model_identity_basis": "DETERMINISTIC_GENERATOR",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_03_execution_handoff.md",
+      "result_boundary": "Instruction artifact only; separate Builder authority required.",
+      "role_identity": "Companion Manual Bridge v0.1",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": []
+    },
+    {
+      "artifact_authored_at": "2026-07-29T01:00:00Z",
+      "artifact_role": "BUILD_RECEIPT",
+      "artifact_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "as_of_commit": "1111111111111111111111111111111111111111",
+      "authority_state": "EXECUTION_EVIDENCE_ONLY",
+      "fixation_commit_or_unknown": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "git_blob_sha_or_unknown": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "import_event_id": "fixture-import-build-001",
+      "imported_at": "2026-07-29T01:01:00Z",
+      "model_identity": "gpt-5.6-sol",
+      "model_identity_basis": "VERIFIED_BY_RUNTIME",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_04_build_receipt.md",
+      "result_boundary": "Builder execution evidence only; independent audit required.",
+      "role_identity": "Fresh SOL / coding-agent Builder",
+      "state": "FROZEN",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Independent Product Result"
+      ]
+    },
+    {
+      "artifact_authored_at": "UNKNOWN",
+      "artifact_role": "PRO_AUDIT",
+      "artifact_sha256": "UNKNOWN",
+      "as_of_commit": "UNKNOWN",
+      "authority_state": "UNKNOWN",
+      "fixation_commit_or_unknown": "UNKNOWN",
+      "git_blob_sha_or_unknown": "UNKNOWN",
+      "import_event_id": "UNKNOWN",
+      "imported_at": "UNKNOWN",
+      "model_identity": "UNKNOWN",
+      "model_identity_basis": "UNKNOWN",
+      "reason": "NOT_YET_PRODUCED",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_05_pro_audit_receipt.md",
+      "result_boundary": "Independent audit has not occurred.",
+      "role_identity": "UNKNOWN",
+      "state": "MISSING",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Entire artifact identity"
+      ]
+    },
+    {
+      "artifact_authored_at": "UNKNOWN",
+      "artifact_role": "REUSABLE_DELTA_RECORD",
+      "artifact_sha256": "UNKNOWN",
+      "as_of_commit": "UNKNOWN",
+      "authority_state": "UNKNOWN",
+      "fixation_commit_or_unknown": "UNKNOWN",
+      "git_blob_sha_or_unknown": "UNKNOWN",
+      "import_event_id": "UNKNOWN",
+      "imported_at": "UNKNOWN",
+      "model_identity": "UNKNOWN",
+      "model_identity_basis": "UNKNOWN",
+      "reason": "NOT_YET_PRODUCED",
+      "repository_path_or_source_label": "validation/companion_manual_bridge_v0_1_golden/v13_pmr_002_06_reusable_delta_record.md",
+      "result_boundary": "Reusable Delta has not been evaluated or accepted.",
+      "role_identity": "UNKNOWN",
+      "state": "MISSING",
+      "supersedes": "NONE",
+      "unknowns": [
+        "Entire artifact identity"
+      ]
+    }
+  ],
+  "golden_status": "GOLDEN_INCOMPLETE",
+  "golden_status_claim_boundary": "Missing roles remain visible; Golden state grants no authority or PASS.",
+  "protocol_run_id": "V13-PMR-002",
+  "schema": "decision-os-companion-manual-bridge-golden-manifest-v0.1",
+  "task_id": "V13-CMB-001"
+}
