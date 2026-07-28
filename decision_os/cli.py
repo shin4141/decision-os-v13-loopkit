@@ -21,7 +21,6 @@ from .audit_delivery_text import render_text as render_audit_text
 from .checks import evidence, inspect_repository, unknown_payload
 from .handoff_acceptance import (
     ISSUE_CODES as HANDOFF_ACCEPTANCE_ISSUE_CODES,
-    MODE_ACTIVE_TRANSFER,
     MODE_CLOSED_STATE,
     RESULT_ACCEPTABLE,
     RESULT_INVALID,
@@ -77,6 +76,7 @@ _HANDOFF_ACCEPTANCE_OPTIONS = (
     "--handoff",
     "--receiver",
     "--target-layer",
+    "--canonical-branch",
     "--format",
 )
 _TRUSTED_SCALAR_MARKER = re.compile(
@@ -527,7 +527,7 @@ def _parse_handoff_acceptance_options(
         values[option] = value
         index += 2
 
-    if set(values) - {"--format"} != {
+    if set(values) - {"--format", "--canonical-branch"} != {
         "--repo",
         "--handoff",
         "--receiver",
@@ -583,7 +583,7 @@ def _valid_handoff_assessment(assessment: object) -> bool:
         return False
     if assessment.result == RESULT_ACCEPTABLE:
         return (
-            assessment.mode in (MODE_ACTIVE_TRANSFER, MODE_CLOSED_STATE)
+            assessment.mode == MODE_CLOSED_STATE
             and not assessment.issue_codes
         )
     if assessment.result in (RESULT_NOT_ACCEPTABLE, RESULT_INVALID):
@@ -606,6 +606,7 @@ def _run_handoff_acceptance(
             handoff_path=Path(options["--handoff"]),
             expected_receiver=options["--receiver"],
             expected_target_layer=options["--target-layer"],
+            canonical_branch=options.get("--canonical-branch"),
         )
         if not _valid_handoff_assessment(assessment):
             raise ValueError("invalid Artifact assessment")
