@@ -16,7 +16,7 @@
 - Branch: `codex/v13-sdfp-001-b-execution`
 - Starting commit: `1658264b50d1a3d73e8e0520a63570930091dccc`
 - Implementation status: `COMPLETE`
-- Implementation commit: pending publication freeze
+- Implementation commit: `0ea1df38383d14e64b2964851fda3f32eea98e9d`
 
 ## 2. Pre-Execution State
 
@@ -204,7 +204,23 @@ Separation machinery was added.
   reviewer reran all seven families and found every defect closed.
 - Work discarded or rewritten: none; revised in place.
 
-Deviation count: 6. Classifications: `CHANGED_CONDITION` (1);
+### DEV-007
+
+- Observed fact: the GitHub connector returned HTTP 403
+  `Resource not accessible by integration` when asked to create the authorized
+  Draft PR. It created no PR. The already authenticated GitHub CLI then created
+  the single authorized Draft PR successfully.
+- Classification: `CHANGED_CONDITION`
+- Decision: `CONTINUE`
+- B Design section affected: §4, Git and operational boundary.
+- Effect on purpose or Completion: none; the exact branch, base, title, body,
+  draft state, and no-merge boundary were preserved.
+- Action taken: verified that no duplicate PR existed, used the authenticated
+  CLI fallback, and verified PR number 38 as open/draft with auto-merge
+  disabled.
+- Work discarded or rewritten: none.
+
+Deviation count: 7. Classifications: `CHANGED_CONDITION` (2);
 `EXECUTION_DEVIATION` (5).
 
 ## 5. Execution Measurements
@@ -223,6 +239,9 @@ Deviation count: 6. Classifications: `CHANGED_CONDITION` (1);
     classification and read-only test-helper self-interference.
   - Expanded staging run: 36 tests, 2 failures caused by coupled dependent
     issue staging.
+- Publication condition: the GitHub connector's PR-creation call returned HTTP
+  403 and created nothing; the authenticated GitHub CLI fallback created and
+  verified the one authorized Draft PR.
 - Passing development progression after corrections:
   - 29/29 focused PASS
   - 2/2 targeted staging PASS
@@ -344,8 +363,9 @@ python3 -B -m py_compile decision_os/handoff_acceptance.py decision_os/cli.py te
 git diff --check
 ```
 
-Observed result before evidence-file freeze: both exit 0. `git diff --check`
-must be rerun after the final evidence update and before publication.
+Observed result: compilation exited 0 before evidence-file freeze;
+`git diff --check` exited 0 after evidence-file creation and is rerun after
+every final evidence update before publication.
 
 ## 7. Claim Boundary
 
@@ -382,7 +402,9 @@ comparison.`
 Current gate:
 `HOLD — B EXECUTION CLOSED / AWAIT INDEPENDENT B-C COMPARISON`
 
-- Draft PR: pending publication
+- Draft PR:
+  `https://github.com/shin4141/decision-os-v13-loopkit/pull/38`
+- PR state: `OPEN / DRAFT`
 - Merge: not performed
 - Auto-merge: not enabled
 - Missing closure: none
