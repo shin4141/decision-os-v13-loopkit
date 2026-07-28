@@ -1,5 +1,83 @@
 # Current Codex Handoff - V13 LoopKit
 
+## Canonical Current State — V13-SDFP-001 Final Closure
+
+```text
+Target Layer:
+V13
+
+Repository:
+shin4141/decision-os-v13-loopkit
+
+Current State:
+V13-SDFP-001 COMPLETE
+
+V12 State:
+PASS
+
+Current Gate:
+HOLD — POST-MERGE DISCUSSION
+
+Active Branch:
+none
+
+Canonical Main:
+c2f8870143cfed34bb6a8b8ee6ddcdcf6040a494
+
+PR #39:
+MERGED
+
+PR #38:
+CLOSED / MERGED-BY-ANCESTRY /
+SUPERSEDED HISTORICAL EXPERIMENT EVIDENCE
+
+Final Fixation Delta:
+VALID_FORWARD_ONLY_DELTA —
+CANONICAL STATE TEST AND PROTECTED-BLOB CO-UPDATE
+
+Root Plan Gap:
+PLAN_GAP —
+CANONICAL STATE TEST DEPENDENCY CLOSURE OMITTED
+
+Closure Record:
+validation/v13_sdfp_001_final_closure.md
+
+Next Authorized Action:
+Shin and GPT 13-13 discuss the experiment result and the selective
+Capability-Delta Harvesting route.
+
+Completion Line:
+V13-SDFP-001 is technically and evidentially closed. No implementation,
+evaluation, merge, or repair remains open.
+
+Missing Closure:
+none for the experiment; branch and worktree cleanup is intentionally deferred
+until after discussion and remains AI-owned.
+
+Next Owner:
+GPT 13-13 with Shin as Decision Owner
+
+What the Receiving AI Now Owns:
+GPT 13-13 owns the post-merge discussion, method interpretation, and next Route
+decision. A later execution AI owns branch/worktree cleanup after that
+discussion.
+
+First One Action:
+Discuss what V13-SDFP-001 established about upper-intelligence structural
+extraction and selective reuse.
+
+Do Not Continue Boundary:
+Do not begin another experiment, delete preserved branches, remove preserved
+worktrees, change product scope, or publish claims without a new Gate.
+
+What must not be returned to the Decision Owner:
+branch deletion, worktree removal, routine Git cleanup, evidence placement, and
+other executable closure work.
+```
+
+Everything below this boundary is preserved historical material.
+Historical entries retain their As-of truth but grant no present authority.
+
 ## Canonical Current State — Decision OS Companion Acceptance v0.1
 
 ```text
