@@ -1,0 +1,575 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/v13-role-contract.schema.json",
+  "title": "Decision-OS V13 Stage 4 Role Contract v0.1",
+  "description": "A human-granted, role-bound contract for Builder or Auditor work. The artifact does not assign or invoke a role. Separately supplied records are validator inputs only and are not authenticated by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_identity",
+    "assignment",
+    "owned_responsibility",
+    "operations",
+    "task_artifact_packet",
+    "specialist_lens",
+    "independence_profile",
+    "completion",
+    "lifecycle",
+    "coverage_gap_recommendation"
+  ],
+  "properties": {
+    "contract_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "version", "contract_hash"],
+      "properties": {
+        "contract_id": {"type": "string", "minLength": 1},
+        "version": {"const": "0.1"},
+        "contract_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "role_id",
+        "grant_type",
+        "assignment_authority",
+        "shin_gate_reference",
+        "assignee_identity",
+        "execution_context_identity",
+        "role_acceptance"
+      ],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "grant_type": {"const": "EXPLICIT_ROLE_GRANT"},
+        "assignment_authority": {"const": "Shin"},
+        "shin_gate_reference": {"type": "string", "minLength": 1},
+        "assignee_identity": {"type": "string", "minLength": 1},
+        "execution_context_identity": {"type": "string", "minLength": 1},
+        "role_acceptance": {
+          "const": "ACCEPTED",
+          "description": "A contract claim, not receiver-side proof. ACTIVE validation also requires a separate suppliedRoleAcceptanceRecord."
+        }
+      }
+    },
+    "owned_responsibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["responsibility", "exact_target", "next_owner"],
+      "properties": {
+        "responsibility": {"type": "string", "minLength": 1},
+        "exact_target": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+        "next_owner": {"type": "string", "minLength": 1}
+      }
+    },
+    "operations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_operations", "forbidden_operations"],
+      "properties": {
+        "allowed_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/operation"}
+        },
+        "forbidden_operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/operation"}
+        }
+      }
+    },
+    "task_artifact_packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "head", "paths", "artifact_hashes", "as_of"],
+      "properties": {
+        "repo": {"type": "string", "minLength": 1},
+        "head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "paths": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+        "artifact_hashes": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/sha256"}
+        },
+        "as_of": {"type": "string", "format": "date-time"}
+      }
+    },
+    "specialist_lens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lens_id", "lens_version", "lens_hash"],
+      "properties": {
+        "lens_id": {"type": "string", "minLength": 1},
+        "lens_version": {"type": "string", "minLength": 1},
+        "lens_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "independence_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_context_independence",
+        "source_review_independence",
+        "runtime_execution_independence",
+        "model_diversity"
+      ],
+      "properties": {
+        "role_context_independence": {
+          "enum": [
+            "SAME_CONTEXT_ALLOWED",
+            "FRESH_CONTEXT_REQUIRED",
+            "DISTINCT_CONTEXT_REQUIRED"
+          ]
+        },
+        "source_review_independence": {
+          "enum": [
+            "FULL_PRIOR_CONTEXT_ALLOWED",
+            "FIXED_ARTIFACTS_ONLY",
+            "INDEPENDENT_EVIDENCE_SELECTION_REQUIRED"
+          ]
+        },
+        "runtime_execution_independence": {
+          "enum": [
+            "NOT_REQUIRED",
+            "REQUIRED_NOT_ESTABLISHED",
+            "READ_ONLY_REEXECUTION_REQUIRED",
+            "SEPARATE_ENV_REEXECUTION_REQUIRED",
+            "EXECUTION_RECORD_SUPPLIED"
+          ]
+        },
+        "model_diversity": {
+          "enum": ["SAME_MODEL_ALLOWED", "DIFFERENT_MODEL_REQUIRED"]
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completion_line",
+        "required_exit_receipt",
+        "coverage_gap_required"
+      ],
+      "properties": {
+        "completion_line": {"type": "string", "minLength": 1},
+        "required_exit_receipt": {"const": true},
+        "coverage_gap_required": {"const": true}
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issued_at",
+        "expires_at",
+        "revocation_reference",
+        "status"
+      ],
+      "properties": {
+        "issued_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "status": {"enum": ["ACTIVE", "EXPIRED", "REVOKED"]}
+      }
+    },
+    "coverage_gap_recommendation": {
+      "$ref": "#/$defs/coverageGapRecommendation"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyUniqueStrings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "operation": {
+      "enum": [
+        "IMPLEMENT_DESIGN",
+        "READ_TARGET",
+        "AUDIT_TARGET",
+        "VERIFY_TARGET_IMMUTABILITY",
+        "RUN_TESTS",
+        "RUN_READ_ONLY_TESTS",
+        "PRODUCE_EXIT_RECEIPT",
+        "GENERATE_COVERAGE_GAP_RECOMMENDATION",
+        "SELF_AUDIT",
+        "MODIFY_TARGET",
+        "REPAIR_IMPLEMENTATION",
+        "ASSUME_BUILDER_ROLE",
+        "MODIFY_ROLE_GRANT",
+        "MODIFY_SPECIALIST_LENS",
+        "MODIFY_OUTSIDE_TARGET",
+        "MERGE",
+        "POST",
+        "INVOKE_SPECIALIST",
+        "START_STAGE_5"
+      ]
+    },
+    "suppliedRoleGrantRecord": {
+      "description": "A standalone Role Grant record supplied to the validator. The schema checks declared structure and bindings only; it does not authenticate an issuer, transport, or provenance.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_identity",
+        "snapshot_identity",
+        "contract_id",
+        "contract_hash",
+        "task_id",
+        "role_id",
+        "grant_type",
+        "assignment_authority",
+        "shin_gate_reference",
+        "assignee_identity",
+        "execution_context_identity",
+        "as_of",
+        "revocation_state",
+        "revoked_at",
+        "revocation_reference"
+      ],
+      "properties": {
+        "record_identity": {"type": "string", "minLength": 1},
+        "snapshot_identity": {"type": "string", "minLength": 1},
+        "contract_id": {"type": "string", "minLength": 1},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "task_id": {"type": "string", "minLength": 1},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "grant_type": {"const": "EXPLICIT_ROLE_GRANT"},
+        "assignment_authority": {"const": "Shin"},
+        "shin_gate_reference": {"type": "string", "minLength": 1},
+        "assignee_identity": {"type": "string", "minLength": 1},
+        "execution_context_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "as_of": {"type": "string", "format": "date-time"},
+        "revocation_state": {
+          "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"]
+        },
+        "revoked_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "suppliedRoleAcceptanceRecord": {
+      "description": "A standalone receiver Role Acceptance record supplied to the validator. Its declared identity and lifecycle are validated without authenticating the receiver or record source.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_identity",
+        "snapshot_identity",
+        "contract_id",
+        "contract_hash",
+        "grant_record_identity",
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity",
+        "role_acceptance",
+        "accepted_at",
+        "as_of",
+        "revocation_state",
+        "revoked_at",
+        "revocation_reference"
+      ],
+      "properties": {
+        "record_identity": {"type": "string", "minLength": 1},
+        "snapshot_identity": {"type": "string", "minLength": 1},
+        "contract_id": {"type": "string", "minLength": 1},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "grant_record_identity": {"type": "string", "minLength": 1},
+        "task_id": {"type": "string", "minLength": 1},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "assignee_identity": {"type": "string", "minLength": 1},
+        "execution_context_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_acceptance": {
+          "enum": ["ACCEPTED", "DECLINED", "UNKNOWN"]
+        },
+        "accepted_at": {"type": "string", "format": "date-time"},
+        "as_of": {"type": "string", "format": "date-time"},
+        "revocation_state": {
+          "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"]
+        },
+        "revoked_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "suppliedIndependenceEvidenceRecord": {
+      "description": "A standalone independence record supplied to the validator. It carries declared contract, task, Role, assignee, context, model, and prior-binding snapshot identities without authenticating those declarations.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_identity",
+        "snapshot_identity",
+        "contract_id",
+        "contract_hash",
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity",
+        "role_context_independence",
+        "source_review_independence",
+        "runtime_execution_independence",
+        "model_diversity",
+        "model_identity",
+        "source_review_evidence_reference",
+        "runtime_execution_evidence_reference",
+        "prior_role_bindings_snapshot_identity",
+        "prior_role_bindings_snapshot_hash",
+        "as_of",
+        "revocation_state",
+        "revoked_at",
+        "revocation_reference"
+      ],
+      "properties": {
+        "record_identity": {"type": "string", "minLength": 1},
+        "snapshot_identity": {"type": "string", "minLength": 1},
+        "contract_id": {"type": "string", "minLength": 1},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "task_id": {"type": "string", "minLength": 1},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "assignee_identity": {"type": "string", "minLength": 1},
+        "execution_context_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role_context_independence": {
+          "enum": [
+            "SAME_CONTEXT_ALLOWED",
+            "FRESH_CONTEXT_REQUIRED",
+            "DISTINCT_CONTEXT_REQUIRED"
+          ]
+        },
+        "source_review_independence": {
+          "enum": [
+            "FULL_PRIOR_CONTEXT_ALLOWED",
+            "FIXED_ARTIFACTS_ONLY",
+            "INDEPENDENT_EVIDENCE_SELECTION_REQUIRED"
+          ]
+        },
+        "runtime_execution_independence": {
+          "enum": [
+            "NOT_REQUIRED",
+            "REQUIRED_NOT_ESTABLISHED",
+            "READ_ONLY_REEXECUTION_REQUIRED",
+            "SEPARATE_ENV_REEXECUTION_REQUIRED",
+            "EXECUTION_RECORD_SUPPLIED"
+          ]
+        },
+        "model_diversity": {
+          "enum": ["SAME_MODEL_ALLOWED", "DIFFERENT_MODEL_REQUIRED"]
+        },
+        "model_identity": {"type": "string", "minLength": 1},
+        "source_review_evidence_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime_execution_evidence_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prior_role_bindings_snapshot_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prior_role_bindings_snapshot_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "as_of": {"type": "string", "format": "date-time"},
+        "revocation_state": {
+          "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"]
+        },
+        "revoked_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "suppliedPriorRoleBinding": {
+      "description": "One prior Role binding supplied inside a declared snapshot. Its identity, state, and timestamps are validator inputs, not authenticated facts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_identity",
+        "snapshot_identity",
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity",
+        "model_identity",
+        "bound_at",
+        "ended_at",
+        "binding_state",
+        "as_of",
+        "revocation_state",
+        "revoked_at",
+        "revocation_reference"
+      ],
+      "properties": {
+        "record_identity": {"type": "string", "minLength": 1},
+        "snapshot_identity": {"type": "string", "minLength": 1},
+        "task_id": {"type": "string", "minLength": 1},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "assignee_identity": {"type": "string", "minLength": 1},
+        "execution_context_identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_identity": {"type": "string", "minLength": 1},
+        "bound_at": {"type": "string", "format": "date-time"},
+        "ended_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "binding_state": {"enum": ["ACTIVE", "ENDED", "UNKNOWN"]},
+        "as_of": {"type": "string", "format": "date-time"},
+        "revocation_state": {
+          "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"]
+        },
+        "revoked_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "suppliedPriorRoleBindingSnapshot": {
+      "description": "A supplied snapshot of declared prior Role bindings. The validator can check its hash, manifest, temporal coherence, and completeness assertion but cannot authenticate source completeness.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot_identity",
+        "snapshot_hash",
+        "contract_id",
+        "contract_hash",
+        "task_id",
+        "as_of",
+        "revocation_state",
+        "revoked_at",
+        "revocation_reference",
+        "completeness_boundary",
+        "bindings"
+      ],
+      "properties": {
+        "snapshot_identity": {"type": "string", "minLength": 1},
+        "snapshot_hash": {
+          "$ref": "#/$defs/sha256",
+          "description": "Canonical SHA-256 of this snapshot with snapshot_hash replaced by the empty string."
+        },
+        "contract_id": {"type": "string", "minLength": 1},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "task_id": {"type": "string", "minLength": 1},
+        "as_of": {"type": "string", "format": "date-time"},
+        "revocation_state": {
+          "enum": ["NOT_REVOKED", "REVOKED", "UNKNOWN"]
+        },
+        "revoked_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "revocation_reference": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "completeness_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scope",
+            "task_id",
+            "from",
+            "through",
+            "included_roles",
+            "state",
+            "expected_record_identities"
+          ],
+          "properties": {
+            "scope": {"const": "ALL_PRIOR_ROLE_BINDINGS_FOR_TASK"},
+            "task_id": {"type": "string", "minLength": 1},
+            "from": {"const": "TASK_INCEPTION"},
+            "through": {"type": "string", "format": "date-time"},
+            "included_roles": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {"enum": ["BUILDER", "AUDITOR"]}
+            },
+            "state": {"enum": ["COMPLETE", "INCOMPLETE", "UNKNOWN"]},
+            "expected_record_identities": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/suppliedPriorRoleBinding"}
+        }
+      }
+    },
+    "coverageGapRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_completed",
+        "coverage_gap",
+        "recommended_specialist",
+        "reason",
+        "exact_target",
+        "required_evidence",
+        "urgency",
+        "assignment_authority_required",
+        "automatic_invocation"
+      ],
+      "properties": {
+        "coverage_completed": {"type": "boolean"},
+        "coverage_gap": {"type": "string", "minLength": 1},
+        "recommended_specialist": {
+          "enum": ["NONE", "BUILDER", "AUDITOR"]
+        },
+        "reason": {"type": "string", "minLength": 1},
+        "exact_target": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+        "required_evidence": {"$ref": "#/$defs/nonEmptyUniqueStrings"},
+        "urgency": {"enum": ["NONE", "LOW", "MEDIUM", "HIGH"]},
+        "assignment_authority_required": {"const": true},
+        "automatic_invocation": {"const": false}
+      }
+    }
+  }
+}
