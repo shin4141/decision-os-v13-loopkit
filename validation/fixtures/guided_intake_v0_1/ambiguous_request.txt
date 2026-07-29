@@ -1,0 +1,2 @@
+Add a Guided Intake box to the Companion so I can paste an unclear task
+and get it ready for the next agent. Don’t break the current Runner.

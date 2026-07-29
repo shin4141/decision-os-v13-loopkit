@@ -9,8 +9,12 @@ let requestActive = false;
 let connected = false;
 let connectionGeneration = 0;
 let bridgeRepositoryPath = null;
+let guidedRepositoryPath = null;
+let guidedInputError = "";
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
+const GUIDED_INTAKE_AUTHORITY_CLAIM =
+  "INTERPRETATION ONLY — NO EXECUTION AUTHORITY";
 
 const byId = (id) => document.getElementById(id);
 
@@ -204,6 +208,219 @@ function renderDefaults(defaults) {
     row.append(description, revoke);
     target.append(row);
   }
+}
+
+function displayValue(value, fallback = "") {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  const serialized = JSON.stringify(value, null, 2);
+  return serialized == null ? fallback : serialized;
+}
+
+function renderGuidedList(id, values) {
+  const target = byId(id);
+  target.replaceChildren();
+  const items = Array.isArray(values) ? values : [];
+  if (items.length === 0) {
+    const item = document.createElement("li");
+    item.textContent = "None recorded.";
+    target.append(item);
+    return;
+  }
+  for (const value of items) {
+    const item = document.createElement("li");
+    item.textContent = displayValue(value, "UNKNOWN");
+    target.append(item);
+  }
+}
+
+const guidedIntakeActionIds = [
+  "guided-intake-capture",
+  "guided-intake-copy",
+  "guided-intake-import-draft",
+  "guided-intake-confirm",
+  "guided-intake-freeze",
+  "guided-intake-transfer",
+];
+
+const guidedIntakeInputIds = [
+  "guided-intake-original-request",
+  "guided-intake-producer-label",
+  "guided-intake-draft-json",
+  "guided-intake-answer",
+  "guided-intake-resulting-delta",
+];
+
+function resetGuidedIntakeDrafts() {
+  byId("guided-intake-original-request").value = "";
+  byId("guided-intake-producer-label").value = "";
+  byId("guided-intake-draft-json").value = "{}";
+  byId("guided-intake-answer").value = "";
+  byId("guided-intake-resulting-delta").value = "{}";
+  guidedInputError = "";
+}
+
+function renderGuidedIntake(intake, repository) {
+  const panel = intake && typeof intake === "object" ? intake : null;
+  const interpretation =
+    panel && panel.interpretation && typeof panel.interpretation === "object"
+      ? panel.interpretation
+      : {};
+  const objective =
+    interpretation.objective &&
+    typeof interpretation.objective === "object"
+      ? interpretation.objective
+      : {};
+  const completion =
+    interpretation.completion_line &&
+    typeof interpretation.completion_line === "object"
+      ? interpretation.completion_line
+      : {};
+  const activeQuestion =
+    panel &&
+    panel.active_question &&
+    typeof panel.active_question === "object"
+      ? panel.active_question
+      : null;
+  const freeze =
+    panel && panel.freeze && typeof panel.freeze === "object"
+      ? panel.freeze
+      : null;
+
+  setText("guided-intake-state", panel ? panel.state || "No intake" : "No intake");
+  setText(
+    "guided-intake-authority-claim",
+    panel && panel.authority_claim
+      ? panel.authority_claim
+      : GUIDED_INTAKE_AUTHORITY_CLAIM,
+  );
+  setText(
+    "guided-intake-authority-explanation",
+    panel ? panel.authority_explanation || "" : "",
+  );
+  setText(
+    "guided-intake-original-exact",
+    panel ? panel.original_request || "" : "",
+  );
+  setText(
+    "guided-intake-request-identity",
+    panel ? displayValue(panel.request_identity) : "",
+  );
+  setText("guided-intake-objective", objective.text || "");
+  setText(
+    "guided-intake-objective-status",
+    objective.fidelity_status || "UNKNOWN",
+  );
+  setText("guided-intake-completion-line", completion.text || "");
+  setText(
+    "guided-intake-completion-status",
+    completion.testability_status || "UNKNOWN",
+  );
+  setText(
+    "guided-intake-gate",
+    displayValue(interpretation.gate, "UNKNOWN"),
+  );
+  setText(
+    "guided-intake-objective-atoms",
+    panel
+      ? displayValue(
+          Array.isArray(objective.atoms) ? objective.atoms : [],
+          "[]",
+        )
+      : "",
+  );
+  setText(
+    "guided-intake-completion-checks",
+    panel
+      ? displayValue(
+          Array.isArray(completion.checks) ? completion.checks : [],
+          "[]",
+        )
+      : "",
+  );
+  setText(
+    "guided-intake-confirmation-history",
+    panel
+      ? displayValue(
+          Array.isArray(panel.confirmation_history)
+            ? panel.confirmation_history
+            : [],
+          "[]",
+        )
+      : "",
+  );
+  renderGuidedList(
+    "guided-intake-do-not-touch",
+    interpretation.do_not_touch,
+  );
+  renderGuidedList("guided-intake-unknown", interpretation.unknown);
+  setText(
+    "guided-intake-copy-output",
+    panel ? panel.copy_for_pro_prompt || "" : "",
+  );
+  setHidden("guided-intake-confirmation", !activeQuestion);
+  setText(
+    "guided-intake-question-field",
+    activeQuestion ? `Field: ${activeQuestion.field || "UNKNOWN"}` : "",
+  );
+  setText(
+    "guided-intake-question",
+    activeQuestion ? activeQuestion.question || "" : "",
+  );
+  setText(
+    "guided-intake-freeze-identity",
+    freeze ? displayValue(freeze) : "",
+  );
+  setText(
+    "guided-intake-transfer-receipt",
+    panel ? displayValue(panel.transfer_receipt) : "",
+  );
+
+  const error = guidedInputError || (panel ? panel.error || "" : "");
+  setText("guided-intake-error", error);
+  setHidden("guided-intake-error", !error);
+
+  const usable = Boolean(
+    connected && repository && !(panel && panel.error),
+  );
+  const hasOriginal = Boolean(panel && panel.original_request);
+  const freezeIsCurrent = Boolean(freeze && freeze.current === true);
+  byId("guided-intake-original-request").disabled = !usable;
+  byId("guided-intake-capture").disabled =
+    !usable ||
+    byId("guided-intake-original-request").value.trim().length === 0;
+  byId("guided-intake-copy").disabled = !usable || !hasOriginal;
+  byId("guided-intake-producer-label").disabled =
+    !usable || !hasOriginal;
+  byId("guided-intake-draft-json").disabled =
+    !usable || !hasOriginal;
+  byId("guided-intake-import-draft").disabled =
+    !usable ||
+    !hasOriginal ||
+    byId("guided-intake-producer-label").value.trim().length === 0 ||
+    byId("guided-intake-draft-json").value.trim().length === 0;
+  byId("guided-intake-answer").disabled = !usable || !activeQuestion;
+  byId("guided-intake-resulting-delta").disabled =
+    !usable || !activeQuestion;
+  byId("guided-intake-confirm").disabled =
+    !usable ||
+    !activeQuestion ||
+    byId("guided-intake-answer").value.trim().length === 0 ||
+    byId("guided-intake-resulting-delta").value.trim().length === 0;
+  byId("guided-intake-freeze").disabled =
+    !usable ||
+    !hasOriginal ||
+    Boolean(activeQuestion) ||
+    freezeIsCurrent ||
+    interpretation.gate !== "CLEAR ENOUGH TO FREEZE";
+  byId("guided-intake-transfer").disabled =
+    !usable ||
+    !freezeIsCurrent ||
+    Boolean(panel && panel.transfer_receipt);
 }
 
 function bridgeOutput(bridge, role) {
@@ -443,7 +660,14 @@ function render(state) {
   ) {
     resetBridgeDrafts();
   }
+  if (
+    guidedRepositoryPath !== null &&
+    repositoryPath !== guidedRepositoryPath
+  ) {
+    resetGuidedIntakeDrafts();
+  }
   bridgeRepositoryPath = repositoryPath;
+  guidedRepositoryPath = repositoryPath;
   setText(
     "repository-name",
     repository ? repository.name : "No repository selected",
@@ -473,6 +697,7 @@ function render(state) {
   if (state.receipt) {
     setText("claim-boundary", state.receipt.claim_boundary);
   }
+  renderGuidedIntake(state.guided_intake, repository);
   renderBridge(state.manual_bridge, repository);
 }
 
@@ -487,6 +712,9 @@ function disableStateChangingControls() {
   for (const button of byId("defaults").querySelectorAll("button")) {
     button.disabled = true;
   }
+  for (const id of [...guidedIntakeActionIds, ...guidedIntakeInputIds]) {
+    byId(id).disabled = true;
+  }
   for (const id of [...bridgeActionIds, ...bridgeInputIds]) {
     byId(id).disabled = true;
   }
@@ -498,7 +726,9 @@ function enterDisconnected() {
   latestState = null;
   csrfToken = "";
   bridgeRepositoryPath = null;
+  guidedRepositoryPath = null;
   resetBridgeDrafts();
+  resetGuidedIntakeDrafts();
   disableStateChangingControls();
 
   setText("repository-name", "Companion disconnected");
@@ -526,6 +756,7 @@ function enterDisconnected() {
   byId("run-receipt").replaceChildren();
   byId("repository-receipt").replaceChildren();
   setText("claim-boundary", "");
+  renderGuidedIntake(null, null);
   renderBridge(null, null);
 
   setText("global-error", DISCONNECTED_MESSAGE);
@@ -629,6 +860,149 @@ byId("new-run").addEventListener("click", async () => {
 for (const button of document.querySelectorAll("[data-choice]")) {
   button.addEventListener("click", async () => {
     await postJSON("/api/approval", { choice: button.dataset.choice });
+  });
+}
+
+function guidedJSONObject(id, label) {
+  let value;
+  try {
+    value = JSON.parse(byId(id).value.trim() || "{}");
+  } catch (_error) {
+    throw new RequestRejectedError(`${label} must be a strict JSON object.`);
+  }
+  if (!value || Array.isArray(value) || typeof value !== "object") {
+    throw new RequestRejectedError(`${label} must be a strict JSON object.`);
+  }
+  return value;
+}
+
+function showGuidedInputError(error) {
+  guidedInputError =
+    error instanceof RequestRejectedError
+      ? error.message
+      : "The Guided Intake input could not be prepared safely.";
+  if (connected && latestState) {
+    renderGuidedIntake(latestState.guided_intake, latestState.repository);
+  }
+}
+
+function clearGuidedInputError() {
+  guidedInputError = "";
+  if (connected && latestState) {
+    renderGuidedIntake(latestState.guided_intake, latestState.repository);
+  }
+}
+
+byId("guided-intake-capture").addEventListener("click", async () => {
+  const originalRequest = byId("guided-intake-original-request").value;
+  if (originalRequest.trim().length === 0) {
+    showGuidedInputError(
+      new RequestRejectedError("Original Request must not be empty."),
+    );
+    return;
+  }
+  clearGuidedInputError();
+  const value = { original_request: originalRequest };
+  const identity = latestState?.guided_intake?.request_identity;
+  const supersedesRequestId =
+    identity && typeof identity === "object"
+      ? identity.request_id || identity.id || null
+      : null;
+  if (supersedesRequestId) {
+    value.supersedes_request_id = supersedesRequestId;
+  }
+  await postJSON("/api/guided-intake/capture", value);
+});
+
+byId("guided-intake-copy").addEventListener("click", async () => {
+  clearGuidedInputError();
+  const state = await postJSON("/api/guided-intake/copy", {});
+  if (!state) {
+    return;
+  }
+  const text = state.guided_intake?.copy_for_pro_prompt || "";
+  if (text && globalThis.navigator?.clipboard?.writeText) {
+    try {
+      await globalThis.navigator.clipboard.writeText(text);
+    } catch (_error) {
+      showGuidedInputError(
+        new RequestRejectedError(
+          "Copy for Pro was generated, but clipboard access was unavailable.",
+        ),
+      );
+    }
+  }
+});
+
+byId("guided-intake-import-draft").addEventListener("click", async () => {
+  try {
+    const draftText = byId("guided-intake-draft-json").value;
+    guidedJSONObject(
+      "guided-intake-draft-json",
+      "Guided Intake draft",
+    );
+    const producerLabel = byId("guided-intake-producer-label").value.trim();
+    if (!producerLabel) {
+      throw new RequestRejectedError("Producer label must not be empty.");
+    }
+    clearGuidedInputError();
+    await postJSON("/api/guided-intake/import-draft", {
+      draft_json: draftText,
+      producer_label: producerLabel,
+    });
+  } catch (error) {
+    showGuidedInputError(error);
+  }
+});
+
+byId("guided-intake-confirm").addEventListener("click", async () => {
+  try {
+    const activeQuestion = latestState?.guided_intake?.active_question;
+    if (!activeQuestion || !activeQuestion.question) {
+      throw new RequestRejectedError(
+        "There is no active Guided Intake question.",
+      );
+    }
+    const answer = byId("guided-intake-answer").value;
+    if (!answer.trim()) {
+      throw new RequestRejectedError("Answer must not be empty.");
+    }
+    const resultingDelta = guidedJSONObject(
+      "guided-intake-resulting-delta",
+      "Resulting delta",
+    );
+    clearGuidedInputError();
+    const state = await postJSON("/api/guided-intake/confirm", {
+      question: activeQuestion.question,
+      answer,
+      resulting_delta: resultingDelta,
+    });
+    if (state) {
+      byId("guided-intake-answer").value = "";
+      byId("guided-intake-resulting-delta").value = "{}";
+      renderGuidedIntake(state.guided_intake, state.repository);
+    }
+  } catch (error) {
+    showGuidedInputError(error);
+  }
+});
+
+byId("guided-intake-freeze").addEventListener("click", async () => {
+  clearGuidedInputError();
+  await postJSON("/api/guided-intake/freeze", {});
+});
+
+byId("guided-intake-transfer").addEventListener("click", async () => {
+  clearGuidedInputError();
+  await postJSON("/api/guided-intake/transfer-to-bridge", {});
+});
+
+for (const id of guidedIntakeInputIds) {
+  byId(id).addEventListener("input", () => {
+    guidedInputError = "";
+    if (connected && latestState) {
+      renderGuidedIntake(latestState.guided_intake, latestState.repository);
+    }
   });
 }
 

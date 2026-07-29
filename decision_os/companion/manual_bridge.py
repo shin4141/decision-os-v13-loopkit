@@ -148,6 +148,38 @@ HANDOFF_FIELDS = (
     "Do Not Continue Boundary",
     "What must not be returned to the Decision Owner",
 )
+GUIDED_INTAKE_TRANSFER_SCHEMA = "guided-intake-transfer-v0.1"
+GUIDED_INTAKE_PROFILE = "GUIDED_INTAKE_V0_1"
+GUIDED_INTAKE_TASK_ID = "V13-GI-001"
+GUIDED_INTAKE_PROTOCOL_RUN_ID = "V13-PMR-003"
+GUIDED_INTAKE_AUTHORITY = "INTERPRETATION_ARTIFACT_ONLY"
+GUIDED_INTAKE_TRANSFER_AUTHORITY = "ARTIFACT_TRANSFER_ONLY"
+GUIDED_INTAKE_CURRENT_GATE = (
+    "HOLD — SEPARATE BUILDER AUTHORITY REQUIRED"
+)
+GUIDED_INTAKE_HANDOFF_FIELD = "Guided Intake Boundary"
+_GUIDED_INTAKE_HASHED_FIELDS = (
+    "objective",
+    "completion_line",
+    "do_not_touch",
+    "unknown",
+    "authority_boundary",
+)
+_GUIDED_INTAKE_TRANSFER_FIELDS = frozenset(
+    {
+        "schema_version",
+        "original_request_sha256",
+        "frozen_intake_sha256",
+        "objective",
+        "completion_line",
+        "do_not_touch",
+        "unknown",
+        "authority_boundary",
+        "as_of_commit",
+        "evidence_packet_identity",
+        "field_hashes",
+    }
+)
 
 EXPECTED_EVIDENCE_IDENTITY = {
     "commit": "970ae5e24e59dada54e1b829229360d9945a0910",
@@ -158,6 +190,17 @@ EXPECTED_EVIDENCE_IDENTITY = {
     ),
     "product_as_of_commit": (
         "63eb260a94595298e2b07b476f7f9d8572c9ef09"
+    ),
+}
+GUIDED_INTAKE_EVIDENCE_IDENTITY = {
+    "commit": "fa9feb3586672df061d5f169541e2f0ea88d0b95",
+    "path": "validation/guided_intake_v0_1_shared_evidence_packet.md",
+    "blob_sha": "54d8fa7988e86d94d16f01beb90a5ed22cbcb52c",
+    "sha256": (
+        "6be28f7e3a2ee3063c173cf5782e8c123f993f6b63a1d557a79b38e8aff4869a"
+    ),
+    "product_as_of_commit": (
+        "d785dbd9fe3ec3c41bbe0771080ad1d0a47f9d48"
     ),
 }
 _ROLE_AUTHORITIES = {
@@ -1177,6 +1220,10 @@ class BridgeSessionController:
             raise ManualBridgeValidationError(
                 "Bridge session boundary must be an object."
             )
+        if boundary.get("bridge_profile") == GUIDED_INTAKE_PROFILE:
+            raise ManualBridgeValidationError(
+                "Use accept_guided_intake for a Guided Intake transfer."
+            )
         with self.store.transaction():
             current = self._guard()
             if current is not None:
@@ -1238,6 +1285,203 @@ class BridgeSessionController:
                 {
                     "boundary_hash": sha256_bytes(_canonical_json(normalized)),
                     "boundary_complete": complete,
+                    "session_id": session_id,
+                },
+                recorded_at=created_at,
+            )
+            session["created_event_id"] = event["event_id"]
+            self._save_session(session)
+            self.store.set_active_session(session_id)
+            self._session_id = session_id
+            return self.snapshot()
+
+    @staticmethod
+    def _guided_intake_hold() -> ManualBridgeConflictError:
+        return ManualBridgeConflictError(
+            "HOLD — TRANSFER ALTERED BOUNDARY"
+        )
+
+    @classmethod
+    def _validated_guided_intake_transfer(
+        cls,
+        transfer: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, str]]:
+        if (
+            not isinstance(transfer, Mapping)
+            or set(transfer) != _GUIDED_INTAKE_TRANSFER_FIELDS
+            or transfer.get("schema_version")
+            != GUIDED_INTAKE_TRANSFER_SCHEMA
+            or not isinstance(transfer.get("objective"), str)
+            or not isinstance(transfer.get("completion_line"), str)
+            or not isinstance(transfer.get("do_not_touch"), list)
+            or not isinstance(transfer.get("unknown"), list)
+            or transfer.get("authority_boundary")
+            != GUIDED_INTAKE_AUTHORITY
+            or not isinstance(transfer.get("as_of_commit"), str)
+            or not _COMMIT.fullmatch(transfer["as_of_commit"])
+            or not isinstance(
+                transfer.get("original_request_sha256"),
+                str,
+            )
+            or not _SHA256.fullmatch(
+                transfer["original_request_sha256"]
+            )
+            or not isinstance(transfer.get("frozen_intake_sha256"), str)
+            or not _SHA256.fullmatch(transfer["frozen_intake_sha256"])
+        ):
+            raise cls._guided_intake_hold()
+
+        evidence = transfer.get("evidence_packet_identity")
+        if (
+            not isinstance(evidence, Mapping)
+            or dict(evidence) != GUIDED_INTAKE_EVIDENCE_IDENTITY
+        ):
+            raise cls._guided_intake_hold()
+
+        declared_hashes = transfer.get("field_hashes")
+        if (
+            not isinstance(declared_hashes, Mapping)
+            or set(declared_hashes) != set(_GUIDED_INTAKE_HASHED_FIELDS)
+        ):
+            raise cls._guided_intake_hold()
+        try:
+            computed_hashes = {
+                field: sha256_bytes(_canonical_json(transfer[field]))
+                for field in _GUIDED_INTAKE_HASHED_FIELDS
+            }
+            exact_transfer = json.loads(
+                _canonical_json(dict(transfer)).decode("utf-8")
+            )
+        except (
+            ManualBridgeValidationError,
+            UnicodeError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise cls._guided_intake_hold() from exc
+        if (
+            not isinstance(exact_transfer, dict)
+            or any(
+                not isinstance(declared_hashes.get(field), str)
+                or declared_hashes[field] != computed_hashes[field]
+                for field in _GUIDED_INTAKE_HASHED_FIELDS
+            )
+        ):
+            raise cls._guided_intake_hold()
+        return exact_transfer, computed_hashes
+
+    def accept_guided_intake(
+        self,
+        transfer: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Accept one exact frozen Guided Intake boundary without authority."""
+
+        exact_transfer, post_transfer_hashes = (
+            self._validated_guided_intake_transfer(transfer)
+        )
+        with self.store.transaction():
+            current = self._guard()
+            if current is not None:
+                raise ManualBridgeConflictError(
+                    "One Manual Bridge session is already active."
+                )
+
+            created_at = self._now()
+            session_id = self._new_id()
+            receipt_body = {
+                "authority_state": GUIDED_INTAKE_TRANSFER_AUTHORITY,
+                "bridge_session_id": session_id,
+                "field_hashes": post_transfer_hashes,
+                "freeze_sha256": exact_transfer[
+                    "frozen_intake_sha256"
+                ],
+                "post_transfer_field_hashes": post_transfer_hashes,
+                "pre_transfer_field_hashes": dict(
+                    exact_transfer["field_hashes"]
+                ),
+                "schema": (
+                    "guided-intake-bridge-transfer-receipt-v0.1"
+                ),
+                "transfer_result": "TRANSFER_ACCEPTED",
+                "transfer_sha256": sha256_bytes(
+                    _canonical_json(exact_transfer)
+                ),
+            }
+            transfer_receipt = {
+                **receipt_body,
+                "receipt_sha256": sha256_bytes(
+                    _canonical_json(receipt_body)
+                ),
+            }
+            boundary = {
+                "active_branch": UNKNOWN,
+                "as_of_commit": exact_transfer["as_of_commit"],
+                "authority_boundary": exact_transfer[
+                    "authority_boundary"
+                ],
+                "bridge_profile": GUIDED_INTAKE_PROFILE,
+                "completion_line": exact_transfer["completion_line"],
+                "current_gate": GUIDED_INTAKE_CURRENT_GATE,
+                "current_state": (
+                    "Frozen Guided Intake accepted for bounded transfer."
+                ),
+                "do_not_continue_boundary": (
+                    "Do not infer execution authority from the Guided Intake "
+                    "artifact; do not merge, publish, release, or self-audit."
+                ),
+                "do_not_touch": _canonical_json(
+                    exact_transfer["do_not_touch"]
+                ).decode("utf-8"),
+                "evidence_packet_identity": dict(
+                    exact_transfer["evidence_packet_identity"]
+                ),
+                "first_one_action": (
+                    "Verify the frozen Guided Intake, Evidence Packet, and "
+                    "Pro Design identities."
+                ),
+                "framework_derived_finding": UNKNOWN,
+                "framework_lens_used": UNKNOWN,
+                "guided_intake_boundary": exact_transfer,
+                "guided_intake_transfer_receipt": transfer_receipt,
+                "missing_closure": (
+                    "Separate Builder authority, bounded implementation, "
+                    "Build Receipt, independent Pro Audit, and Replay remain open."
+                ),
+                "objective": exact_transfer["objective"],
+                "protocol_run_id": GUIDED_INTAKE_PROTOCOL_RUN_ID,
+                "reinterpretation_question": UNKNOWN,
+                "relevant_decision_os_layer": "V13 / Stage 3",
+                "required_next_actor": "Fresh SOL / coding-agent Builder",
+                "task_id": GUIDED_INTAKE_TASK_ID,
+                "what_receiving_ai_owns": (
+                    "Only the implementation bounded by the frozen Guided Intake."
+                ),
+            }
+            session = {
+                "boundary": boundary,
+                "boundary_complete": True,
+                "burden": _default_burden(created_at),
+                "created_at": created_at,
+                "effective_by_role": {},
+                "golden_manifest": None,
+                "hold_reason": None,
+                "imports": [],
+                "outputs": {},
+                "results": _default_result_records(self._new_id),
+                "schema": SCHEMA,
+                "session_id": session_id,
+                "state": "COPY_READY",
+            }
+            event = self._append(
+                "BRIDGE_SESSION_CREATED",
+                {
+                    "boundary_hash": sha256_bytes(
+                        _canonical_json(boundary)
+                    ),
+                    "boundary_complete": True,
+                    "bridge_profile": GUIDED_INTAKE_PROFILE,
+                    "guided_intake_transfer_receipt_sha256": (
+                        transfer_receipt["receipt_sha256"]
+                    ),
                     "session_id": session_id,
                 },
                 recorded_at=created_at,
@@ -1324,13 +1568,26 @@ class BridgeSessionController:
                 )
             boundary = session["boundary"]
             evidence = boundary["evidence_packet_identity"]
+            guided_intake = (
+                boundary.get("bridge_profile") == GUIDED_INTAKE_PROFILE
+            )
+            objective = (
+                _canonical_json(boundary["objective"]).decode("utf-8")
+                if guided_intake
+                else boundary["objective"]
+            )
+            completion_line = (
+                _canonical_json(boundary["completion_line"]).decode("utf-8")
+                if guided_intake
+                else boundary["completion_line"]
+            )
             text = (
                 "# Copy for Pro — Companion Manual Bridge v0.1\n\n"
                 "## Fixed Task Boundary\n\n"
                 f"Task ID: {boundary['task_id']}\n\n"
                 f"Protocol Run ID: {boundary['protocol_run_id']}\n\n"
-                f"Objective: {boundary['objective']}\n\n"
-                f"Completion Line: {boundary['completion_line']}\n\n"
+                f"Objective: {objective}\n\n"
+                f"Completion Line: {completion_line}\n\n"
                 f"Do Not Touch: {boundary['do_not_touch']}\n\n"
                 f"Authority Boundary: {boundary['authority_boundary']}\n\n"
                 "## Frozen Evidence Packet Identity\n\n"
@@ -2010,6 +2267,14 @@ class BridgeSessionController:
                 "Routine Git, tests, fixtures, hashing, app build, smoke, receipt, "
                 "PR, and cleanup work that the authorized Builder can complete."
             )
+            guided_intake = (
+                boundary.get("bridge_profile") == GUIDED_INTAKE_PROFILE
+            )
+            completion_line = (
+                _canonical_json(boundary["completion_line"]).decode("utf-8")
+                if guided_intake
+                else boundary["completion_line"]
+            )
             values = (
                 ("Target Layer", "V13 — Compound Loop / Stage 2 Manual Bridge"),
                 ("Repo Root", repo_root),
@@ -2017,7 +2282,7 @@ class BridgeSessionController:
                 ("Current Gate", "HOLD — SEPARATE BUILDER AUTHORITY REQUIRED"),
                 ("Active Branch", active_branch),
                 ("Next Authorized Action", next_action),
-                ("Completion Line", boundary["completion_line"]),
+                ("Completion Line", completion_line),
                 ("Missing Closure", missing_closure),
                 ("Next Owner", boundary["required_next_actor"]),
                 ("What the Receiving AI Now Owns", receiving_owns),
@@ -2079,6 +2344,47 @@ class BridgeSessionController:
                     "",
                 )
             )
+            if guided_intake:
+                guided_boundary = boundary.get("guided_intake_boundary")
+                if not isinstance(guided_boundary, Mapping):
+                    raise ManualBridgeIntegrityError(
+                        "Guided Intake boundary is missing."
+                    )
+                guided_values = (
+                    (
+                        "Original Request SHA-256",
+                        guided_boundary.get("original_request_sha256"),
+                    ),
+                    (
+                        "Frozen Intake SHA-256",
+                        guided_boundary.get("frozen_intake_sha256"),
+                    ),
+                    ("Objective", guided_boundary.get("objective")),
+                    (
+                        "Completion Line",
+                        guided_boundary.get("completion_line"),
+                    ),
+                    (
+                        "Do Not Touch",
+                        guided_boundary.get("do_not_touch"),
+                    ),
+                    ("Open UNKNOWNs", guided_boundary.get("unknown")),
+                    (
+                        "Guided Intake Authority",
+                        guided_boundary.get("authority_boundary"),
+                    ),
+                )
+                sections.extend(
+                    (f"## {GUIDED_INTAKE_HANDOFF_FIELD}", "")
+                )
+                for label, value in guided_values:
+                    sections.extend(
+                        (
+                            f"{label}:",
+                            _canonical_json(value).decode("utf-8"),
+                            "",
+                        )
+                    )
             payload = "\n".join(sections).encode("utf-8")
             rendered_handoff = payload.decode("utf-8")
             for field in HANDOFF_FIELDS:
@@ -2086,6 +2392,16 @@ class BridgeSessionController:
                     raise ManualBridgeIntegrityError(
                         "Generated handoff has an invalid required-field structure."
                     )
+            if (
+                guided_intake
+                and rendered_handoff.count(
+                    f"## {GUIDED_INTAKE_HANDOFF_FIELD}\n"
+                )
+                != 1
+            ):
+                raise ManualBridgeIntegrityError(
+                    "Generated Guided Intake handoff structure is invalid."
+                )
             generated = self._set_output(
                 session,
                 "EXECUTION_HANDOFF",
@@ -2127,6 +2443,17 @@ class BridgeSessionController:
                 if missing:
                     raise ManualBridgeConflictError(
                         "Execution Handoff required fields are missing."
+                    )
+                if (
+                    session["boundary"].get("bridge_profile")
+                    == GUIDED_INTAKE_PROFILE
+                    and text.count(
+                        f"## {GUIDED_INTAKE_HANDOFF_FIELD}\n"
+                    )
+                    != 1
+                ):
+                    raise ManualBridgeConflictError(
+                        "Guided Intake Boundary is missing."
                     )
             if (
                 role == "GOLDEN_MANIFEST"
@@ -3424,7 +3751,7 @@ class BridgeSessionController:
                     **identity,
                     "content": content,
                 }
-            return {
+            snapshot = {
                 "burden": session["burden"],
                 "error": None,
                 "event_chain_head": self.event_chain_head(),
@@ -3440,3 +3767,11 @@ class BridgeSessionController:
                 },
                 "state": session["state"],
             }
+            guided_intake_transfer = session.get("boundary", {}).get(
+                "guided_intake_transfer_receipt"
+            )
+            if isinstance(guided_intake_transfer, Mapping):
+                snapshot["guided_intake_transfer"] = dict(
+                    guided_intake_transfer
+                )
+            return snapshot

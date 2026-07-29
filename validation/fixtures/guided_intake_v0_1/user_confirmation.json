@@ -1,0 +1,21 @@
+{
+  "question": "Should “ready for the next agent” mean a frozen Guided Intake artifact, or a frozen Guided Intake artifact also copied into Manual Bridge?",
+  "answer": "A frozen Guided Intake artifact is sufficient. Copying it into Manual Bridge remains a separate optional action.",
+  "resulting_delta": {
+    "completion_line": {
+      "text": "Complete when one frozen Guided Intake artifact exists for the captured request, all four generated fields are visible, no material UNKNOWN remains open, and the request and freeze hashes verify.",
+      "testability_status": "TESTABLE",
+      "checks": [
+        {
+          "observable": "One frozen Guided Intake artifact for the captured request",
+          "pass_condition": "Objective, Completion Line, Do Not Touch, and UNKNOWN are visible; no material UNKNOWN is open; request and freeze hashes verify",
+          "evidence_source": "Guided Intake freeze artifact and receipt"
+        }
+      ]
+    },
+    "resolve_unknown_ids": [
+      "UNK-1",
+      "UNK-2"
+    ]
+  }
+}

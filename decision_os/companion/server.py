@@ -23,6 +23,13 @@ from .controller import (
     RepositorySelectionError,
     RunConflictError,
 )
+from .guided_intake import (
+    GuidedIntakeBusyError,
+    GuidedIntakeConflictError,
+    GuidedIntakeError,
+    GuidedIntakeIntegrityError,
+    GuidedIntakeValidationError,
+)
 from .manual_bridge import (
     ManualBridgeConflictError,
     ManualBridgeError,
@@ -34,6 +41,17 @@ from decision_os.acceleration.store import StateIntegrityError
 
 _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_BRIDGE_REQUEST_BYTES = 2 * 1024 * 1024
+_MAX_GUIDED_INTAKE_REQUEST_BYTES = 2 * 1024 * 1024
+_GUIDED_INTAKE_POST_ROUTES = frozenset(
+    {
+        "/api/guided-intake/capture",
+        "/api/guided-intake/confirm",
+        "/api/guided-intake/copy",
+        "/api/guided-intake/freeze",
+        "/api/guided-intake/import-draft",
+        "/api/guided-intake/transfer-to-bridge",
+    }
+)
 _STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -223,7 +241,7 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             return
         if not self._request_allowed():
             return
-        if path == "/api/state":
+        if path in {"/api/state", "/api/guided-intake/state"}:
             try:
                 snapshot = self.server.controller.snapshot()
             except (
@@ -286,11 +304,12 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if not self._request_allowed(state_change=True):
             return
-        maximum_bytes = (
-            _MAX_BRIDGE_REQUEST_BYTES
-            if path.startswith("/api/bridge/")
-            else _MAX_REQUEST_BYTES
-        )
+        if path.startswith("/api/bridge/"):
+            maximum_bytes = _MAX_BRIDGE_REQUEST_BYTES
+        elif path in _GUIDED_INTAKE_POST_ROUTES:
+            maximum_bytes = _MAX_GUIDED_INTAKE_REQUEST_BYTES
+        else:
+            maximum_bytes = _MAX_REQUEST_BYTES
         value = self._read_json(maximum_bytes=maximum_bytes)
         if value is None:
             return
@@ -315,6 +334,73 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                 if set(value) != {"handle"}:
                     raise CompanionError("Revoke request fields are invalid.")
                 snapshot = self.server.controller.revoke_default(value["handle"])
+            elif path == "/api/guided-intake/capture":
+                required = {"original_request"}
+                allowed = required | {"supersedes_request_id"}
+                if (
+                    not required.issubset(value)
+                    or not set(value).issubset(allowed)
+                    or not isinstance(value["original_request"], str)
+                    or (
+                        "supersedes_request_id" in value
+                        and not isinstance(value["supersedes_request_id"], str)
+                    )
+                ):
+                    raise CompanionError(
+                        "Guided Intake capture fields are invalid."
+                    )
+                snapshot = self.server.controller.guided_intake_capture(
+                    value["original_request"],
+                    supersedes_request_id=value.get("supersedes_request_id"),
+                )
+            elif path == "/api/guided-intake/copy":
+                if value:
+                    raise CompanionError(
+                        "Guided Intake copy takes no input."
+                    )
+                snapshot = self.server.controller.guided_intake_copy_for_pro()
+            elif path == "/api/guided-intake/import-draft":
+                if (
+                    set(value) != {"draft_json", "producer_label"}
+                    or not isinstance(value["draft_json"], str)
+                    or not isinstance(value["producer_label"], str)
+                ):
+                    raise CompanionError(
+                        "Guided Intake draft fields are invalid."
+                    )
+                snapshot = self.server.controller.guided_intake_import_draft(
+                    value["draft_json"],
+                    value["producer_label"],
+                )
+            elif path == "/api/guided-intake/confirm":
+                if (
+                    set(value) != {"question", "answer", "resulting_delta"}
+                    or not isinstance(value["question"], str)
+                    or not isinstance(value["answer"], str)
+                    or not isinstance(value["resulting_delta"], dict)
+                ):
+                    raise CompanionError(
+                        "Guided Intake confirmation fields are invalid."
+                    )
+                snapshot = self.server.controller.guided_intake_confirm(
+                    value["question"],
+                    value["answer"],
+                    value["resulting_delta"],
+                )
+            elif path == "/api/guided-intake/freeze":
+                if value:
+                    raise CompanionError(
+                        "Guided Intake freeze takes no input."
+                    )
+                snapshot = self.server.controller.guided_intake_freeze()
+            elif path == "/api/guided-intake/transfer-to-bridge":
+                if value:
+                    raise CompanionError(
+                        "Guided Intake transfer takes no input."
+                    )
+                snapshot = (
+                    self.server.controller.guided_intake_transfer_to_bridge()
+                )
             elif path == "/api/bridge/session":
                 if set(value) != {"boundary"} or not isinstance(
                     value["boundary"],
@@ -459,6 +545,19 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             return
         except (RunConflictError, ApprovalStateError) as exc:
             self._error(HTTPStatus.CONFLICT, str(exc))
+            return
+        except (
+            GuidedIntakeBusyError,
+            GuidedIntakeConflictError,
+            GuidedIntakeIntegrityError,
+        ) as exc:
+            self._error(HTTPStatus.CONFLICT, str(exc))
+            return
+        except GuidedIntakeValidationError as exc:
+            self._error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+        except GuidedIntakeError as exc:
+            self._error(HTTPStatus.BAD_REQUEST, str(exc))
             return
         except (ManualBridgeConflictError, ManualBridgeIntegrityError) as exc:
             self._error(HTTPStatus.CONFLICT, str(exc))

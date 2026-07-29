@@ -1,0 +1,294 @@
+{
+  "schema_version": "guided-intake-freeze-v0.1",
+  "freeze_id": "GI-FREEZE-id-6",
+  "frozen_at": "2026-07-29T00:00:00Z",
+  "product_version": "guided-intake-v0.1",
+  "repository_identity": "8bb8e5b9d66bc4c712fd4ba2aa30a5dd8da1fb2d",
+  "event_chain_head": "b1d335a58798cb9cdd42a00940f3b9dabe9e31e938360ea16d5292330ffb3c4a",
+  "supersedes_freeze_id": null,
+  "supersession_reason": null,
+  "latest_draft_sha256": "b9d7082ab3a3b9f3f1ca37bc452690c92485d41772c6e0ed605e53e765b66eea",
+  "current_gate": "CLEAR ENOUGH TO FREEZE",
+  "field_statuses": {
+    "completion_line": "TESTABLE",
+    "do_not_touch": "PRESERVED",
+    "objective": "PRESERVED",
+    "unknown": "NO_OPEN_MATERIAL"
+  },
+  "original_request_identity": {
+    "request_id": "GI-REQ-id-1",
+    "source_label": "COMPANION_GUIDED_INTAKE_TEXTAREA",
+    "encoding": "UTF-8",
+    "unicode_normalization": "NONE",
+    "line_ending_treatment": "AS_DECODED",
+    "whitespace_identity_bearing": true,
+    "byte_size": 143,
+    "sha256": "881b9fead18114893aff7af04ae86677d3ca23727a2fabf06ac0321bf6731afd",
+    "captured_at": "2026-07-29T00:00:00Z",
+    "supersedes_request_id": null,
+    "superseded_by_request_id": null
+  },
+  "objective": {
+    "text": "Add a Guided Intake box to the Companion; paste an unclear task; get it ready for the next agent",
+    "fidelity_status": "PRESERVED",
+    "atoms": [
+      {
+        "atom_id": "OBJ-1",
+        "text": "Add a Guided Intake box to the Companion",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "Add a Guided Intake box to the Companion",
+            "occurrence": 1,
+            "byte_start": 0,
+            "byte_end": 40,
+            "quote_sha256": "7a505e15c493405d4736afdbf9eeb3616f808408a774057ebe8265c11eef5886"
+          }
+        ]
+      },
+      {
+        "atom_id": "OBJ-2",
+        "text": "paste an unclear task",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "paste an unclear task",
+            "occurrence": 1,
+            "byte_start": 50,
+            "byte_end": 71,
+            "quote_sha256": "01bccbeee09e4005086d6d4407d1c3987b3080fe43f463debfb4f0a5036bbc93"
+          }
+        ]
+      },
+      {
+        "atom_id": "OBJ-3",
+        "text": "get it ready for the next agent",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1,
+            "byte_start": 76,
+            "byte_end": 107,
+            "quote_sha256": "3dd3ccba381e1b7997ec267f8a10e5f1ea7778c87a592960865d5d2a11f781db"
+          }
+        ]
+      }
+    ]
+  },
+  "completion_line": {
+    "text": "Complete when one frozen Guided Intake artifact exists for the captured request, all four generated fields are visible, no material UNKNOWN remains open, and the request and freeze hashes verify.",
+    "testability_status": "TESTABLE",
+    "checks": [
+      {
+        "observable": "One frozen Guided Intake artifact for the captured request",
+        "pass_condition": "Objective, Completion Line, Do Not Touch, and UNKNOWN are visible; no material UNKNOWN is open; request and freeze hashes verify",
+        "evidence_source": "Guided Intake freeze artifact and receipt"
+      }
+    ]
+  },
+  "do_not_touch": [
+    {
+      "item_id": "DNT-1",
+      "text": "Don’t break the current Runner.",
+      "basis_kind": "USER_EXPLICIT",
+      "support": {
+        "kind": "ORIGINAL_REQUEST_QUOTE",
+        "quote": "Don’t break the current Runner.",
+        "occurrence": 1,
+        "byte_start": 109,
+        "byte_end": 142,
+        "quote_sha256": "0fc6ca8ce9a3d1209ce4a0da60ddb371889aa7d9250764ca0e1812f8f13d51af"
+      }
+    },
+    {
+      "item_id": "DNT-REPO-1",
+      "text": "Guided Intake grants no execution authority.",
+      "basis_kind": "REPOSITORY_INVARIANT"
+    },
+    {
+      "item_id": "DNT-REPO-2",
+      "text": "No Guided Intake action may start the Runner.",
+      "basis_kind": "REPOSITORY_INVARIANT"
+    },
+    {
+      "item_id": "DNT-REPO-3",
+      "text": "All repository surfaces outside a separately authorized Builder scope remain protected.",
+      "basis_kind": "REPOSITORY_INVARIANT"
+    },
+    {
+      "item_id": "DNT-REPO-4",
+      "text": "Stage 1 and Stage 2 behavior must remain unchanged unless the accepted design explicitly permits an additive extension.",
+      "basis_kind": "REPOSITORY_INVARIANT"
+    }
+  ],
+  "unknown": [
+    {
+      "unknown_id": "UNK-1",
+      "type": "MODEL_DETECTED_MISSING_FACT",
+      "statement": "The exact observable state meant by “ready for the next agent” is not stated.",
+      "basis": {
+        "kind": "MODEL_DETECTION",
+        "related_original_quotes": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1,
+            "byte_start": 76,
+            "byte_end": 107,
+            "quote_sha256": "3dd3ccba381e1b7997ec267f8a10e5f1ea7778c87a592960865d5d2a11f781db"
+          }
+        ]
+      },
+      "affects": [
+        "COMPLETION_LINE"
+      ],
+      "materiality": "MATERIAL",
+      "effect_on_execution": "HOLD_COMPLETION",
+      "evidence_required": "An explicit user choice of the observable completion state.",
+      "current_state": "RESOLVED_FORWARD_ONLY",
+      "resolution": {
+        "evidence_identity": "GI-CONF-id-5",
+        "evidence_kind": "USER_CONFIRMATION",
+        "resolved_at": "2026-07-29T00:00:00Z",
+        "resulting_field": "COMPLETION_LINE"
+      }
+    },
+    {
+      "unknown_id": "UNK-2",
+      "type": "UNVERIFIED_ASSUMPTION_CANDIDATE",
+      "statement": "Readiness may mean a frozen intake only or a frozen intake copied into Manual Bridge.",
+      "basis": {
+        "kind": "MODEL_DETECTION",
+        "related_original_quotes": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1,
+            "byte_start": 76,
+            "byte_end": 107,
+            "quote_sha256": "3dd3ccba381e1b7997ec267f8a10e5f1ea7778c87a592960865d5d2a11f781db"
+          }
+        ]
+      },
+      "affects": [
+        "COMPLETION_LINE"
+      ],
+      "materiality": "MATERIAL",
+      "effect_on_execution": "NEEDS_USER_CONFIRMATION",
+      "evidence_required": "The user’s explicit frozen-only or Manual Bridge transfer choice.",
+      "current_state": "RESOLVED_FORWARD_ONLY",
+      "resolution": {
+        "evidence_identity": "GI-CONF-id-5",
+        "evidence_kind": "USER_CONFIRMATION",
+        "resolved_at": "2026-07-29T00:00:00Z",
+        "resulting_field": "COMPLETION_LINE"
+      }
+    }
+  ],
+  "confirmations": [
+    {
+      "confirmation_event_id": "GI-CONF-id-5",
+      "draft_id": "GI-DRAFT-id-3",
+      "field": "COMPLETION_LINE",
+      "prior_candidate": {
+        "active_question": {
+          "field": "COMPLETION_LINE",
+          "question": "Should “ready for the next agent” mean a frozen Guided Intake artifact, or a frozen Guided Intake artifact also copied into Manual Bridge?"
+        },
+        "field_value": {
+          "checks": [],
+          "testability_status": "UNKNOWN",
+          "text": "UNKNOWN — “ready for the next agent” does not identify the observable artifact, review state, or transfer condition that constitutes completion."
+        },
+        "unknown": [
+          {
+            "affects": [
+              "COMPLETION_LINE"
+            ],
+            "basis": {
+              "kind": "MODEL_DETECTION",
+              "related_original_quotes": [
+                {
+                  "byte_end": 107,
+                  "byte_start": 76,
+                  "kind": "ORIGINAL_REQUEST_QUOTE",
+                  "occurrence": 1,
+                  "quote": "get it ready for the next agent",
+                  "quote_sha256": "3dd3ccba381e1b7997ec267f8a10e5f1ea7778c87a592960865d5d2a11f781db"
+                }
+              ]
+            },
+            "current_state": "OPEN",
+            "effect_on_execution": "HOLD_COMPLETION",
+            "evidence_required": "An explicit user choice of the observable completion state.",
+            "materiality": "MATERIAL",
+            "statement": "The exact observable state meant by “ready for the next agent” is not stated.",
+            "type": "MODEL_DETECTED_MISSING_FACT",
+            "unknown_id": "UNK-1"
+          },
+          {
+            "affects": [
+              "COMPLETION_LINE"
+            ],
+            "basis": {
+              "kind": "MODEL_DETECTION",
+              "related_original_quotes": [
+                {
+                  "byte_end": 107,
+                  "byte_start": 76,
+                  "kind": "ORIGINAL_REQUEST_QUOTE",
+                  "occurrence": 1,
+                  "quote": "get it ready for the next agent",
+                  "quote_sha256": "3dd3ccba381e1b7997ec267f8a10e5f1ea7778c87a592960865d5d2a11f781db"
+                }
+              ]
+            },
+            "current_state": "OPEN",
+            "effect_on_execution": "NEEDS_USER_CONFIRMATION",
+            "evidence_required": "The user’s explicit frozen-only or Manual Bridge transfer choice.",
+            "materiality": "MATERIAL",
+            "statement": "Readiness may mean a frozen intake only or a frozen intake copied into Manual Bridge.",
+            "type": "UNVERIFIED_ASSUMPTION_CANDIDATE",
+            "unknown_id": "UNK-2"
+          }
+        ]
+      },
+      "question": "Should “ready for the next agent” mean a frozen Guided Intake artifact, or a frozen Guided Intake artifact also copied into Manual Bridge?",
+      "answer": "A frozen Guided Intake artifact is sufficient. Copying it into Manual Bridge remains a separate optional action.",
+      "recorded_at": "2026-07-29T00:00:00Z",
+      "request_id": "GI-REQ-id-1",
+      "resulting_delta": {
+        "completion_line": {
+          "checks": [
+            {
+              "evidence_source": "Guided Intake freeze artifact and receipt",
+              "observable": "One frozen Guided Intake artifact for the captured request",
+              "pass_condition": "Objective, Completion Line, Do Not Touch, and UNKNOWN are visible; no material UNKNOWN is open; request and freeze hashes verify"
+            }
+          ],
+          "testability_status": "TESTABLE",
+          "text": "Complete when one frozen Guided Intake artifact exists for the captured request, all four generated fields are visible, no material UNKNOWN remains open, and the request and freeze hashes verify."
+        },
+        "resolve_unknown_ids": [
+          "UNK-1",
+          "UNK-2"
+        ]
+      },
+      "resulting_delta_sha256": "5df19c6a69c841ce5f7fae9f4a1de49496cc93570ffbd49bdb634166aaa5f09e",
+      "resulting_gate": "CLEAR ENOUGH TO FREEZE"
+    }
+  ],
+  "authority": {
+    "state": "IMMUTABLE_INTERPRETATION_ONLY",
+    "claim": "INTERPRETATION ONLY — NO EXECUTION AUTHORITY",
+    "explanation": "This intake does not start a Runner, authorize a Builder, approve a file change, grant merge permission, or authorize publication or release."
+  },
+  "evidence_packet_identity": {
+    "commit": "fa9feb3586672df061d5f169541e2f0ea88d0b95",
+    "path": "validation/guided_intake_v0_1_shared_evidence_packet.md",
+    "blob_sha": "54d8fa7988e86d94d16f01beb90a5ed22cbcb52c",
+    "sha256": "6be28f7e3a2ee3063c173cf5782e8c123f993f6b63a1d557a79b38e8aff4869a",
+    "product_as_of_commit": "d785dbd9fe3ec3c41bbe0771080ad1d0a47f9d48"
+  }
+}

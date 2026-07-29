@@ -12,6 +12,7 @@ import threading
 import time
 import unittest
 from typing import Any
+from unittest.mock import Mock
 
 from decision_os.acceleration.codex_adapter import (
     CODEX_CLI_VERSION,
@@ -33,6 +34,10 @@ from decision_os.companion.controller import (
     CompanionStateError,
     RepositorySelectionError,
     RunConflictError,
+)
+from decision_os.companion.guided_intake import (
+    GuidedIntakeBusyError,
+    GuidedIntakeIntegrityError,
 )
 from decision_os.companion.manual_bridge import ManualBridgeIntegrityError
 
@@ -533,6 +538,173 @@ class CompanionControllerTest(unittest.TestCase):
             self.assertEqual(run_before, imported["run"])
             self.assertEqual([], imported["defaults"])
             self.assertEqual(1, len(factory.modes))
+
+    def test_guided_intake_lifecycle_is_separate_and_never_starts_runner(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            selected = controller.select_repository(repository)
+            run_before = selected["run"]
+            receipt_before = selected["receipt"]
+            defaults_before = selected["defaults"]
+            bridge_before = selected["manual_bridge"]
+            bridge = controller._bridge
+            self.assertIsNotNone(bridge)
+            guided_intake = Mock()
+            guided_intake.snapshot.return_value = {"state": "TEST_STATE"}
+            controller._guided_intake = guided_intake
+            delta = {"resolve_unknown_ids": []}
+
+            snapshots = (
+                controller.guided_intake_capture("  unclear task\r\n"),
+                controller.guided_intake_copy_for_pro(),
+                controller.guided_intake_import_draft(
+                    '{"schema_version":"test"}',
+                    "Independent Pro",
+                ),
+                controller.guided_intake_confirm(
+                    "What is complete?",
+                    "One frozen intake.",
+                    delta,
+                ),
+                controller.guided_intake_freeze(),
+                controller.guided_intake_transfer_to_bridge(),
+            )
+
+            guided_intake.capture.assert_called_once_with(
+                "  unclear task\r\n",
+                supersedes_request_id=None,
+            )
+            guided_intake.copy_for_pro.assert_called_once_with()
+            guided_intake.import_draft.assert_called_once_with(
+                '{"schema_version":"test"}',
+                "Independent Pro",
+            )
+            guided_intake.confirm.assert_called_once_with(
+                "What is complete?",
+                "One frozen intake.",
+                delta,
+            )
+            guided_intake.freeze.assert_called_once_with()
+            guided_intake.transfer_to_bridge.assert_called_once_with(bridge)
+            for snapshot in snapshots:
+                self.assertEqual({"state": "TEST_STATE"}, snapshot["guided_intake"])
+                self.assertEqual(run_before, snapshot["run"])
+                self.assertEqual(receipt_before, snapshot["receipt"])
+                self.assertEqual(defaults_before, snapshot["defaults"])
+                self.assertEqual(bridge_before, snapshot["manual_bridge"])
+            self.assertEqual(1, len(factory.modes))
+
+    def test_guided_intake_corruption_and_busy_state_are_panel_local(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            selected = controller.select_repository(repository)
+            guided_intake = Mock()
+            controller._guided_intake = guided_intake
+
+            guided_intake.snapshot.side_effect = GuidedIntakeIntegrityError(
+                "sensitive corrupt path"
+            )
+            corrupted = controller.snapshot()
+            self.assertEqual(
+                "BLOCKED_CORRUPT",
+                corrupted["guided_intake"]["state"],
+            )
+            self.assertEqual(
+                (
+                    "Guided Intake state is corrupted. "
+                    "Guided Intake reads and writes are blocked."
+                ),
+                corrupted["guided_intake"]["error"],
+            )
+            self.assertNotIn("sensitive", json.dumps(corrupted))
+            self.assertEqual(selected["run"], corrupted["run"])
+            self.assertEqual(selected["receipt"], corrupted["receipt"])
+
+            guided_intake.snapshot.side_effect = GuidedIntakeBusyError(
+                "sensitive lock detail"
+            )
+            busy = controller.snapshot()
+            self.assertEqual("BUSY", busy["guided_intake"]["state"])
+            self.assertEqual(
+                "Guided Intake is temporarily busy.",
+                busy["guided_intake"]["error"],
+            )
+            self.assertNotIn("sensitive", json.dumps(busy))
+            self.assertEqual(selected["manual_bridge"], busy["manual_bridge"])
+
+    def test_guided_intake_transfer_blocks_repository_switch_and_binds_bridge(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository_a = create_repository(root, "repo-a")
+            repository_b = create_repository(root, "repo-b")
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository_a)
+            bridge_a = controller._bridge
+            self.assertIsNotNone(bridge_a)
+            entered = threading.Event()
+            release = threading.Event()
+            guided_intake = Mock()
+            guided_intake.snapshot.return_value = {"state": "TRANSFERRED"}
+
+            def bounded_transfer(_bridge: Any) -> None:
+                entered.set()
+                release.wait(timeout=5)
+
+            guided_intake.transfer_to_bridge.side_effect = bounded_transfer
+            controller._guided_intake = guided_intake
+            results: list[dict[str, Any]] = []
+            failures: list[BaseException] = []
+
+            def transfer() -> None:
+                try:
+                    results.append(
+                        controller.guided_intake_transfer_to_bridge()
+                    )
+                except BaseException as exc:
+                    failures.append(exc)
+
+            worker = threading.Thread(target=transfer)
+            try:
+                worker.start()
+                self.assertTrue(entered.wait(timeout=5))
+                with self.assertRaisesRegex(
+                    RepositorySelectionError,
+                    "(Manual Bridge|Guided Intake) action",
+                ):
+                    controller.select_repository(repository_b)
+            finally:
+                release.set()
+                worker.join(timeout=5)
+
+            self.assertFalse(worker.is_alive())
+            self.assertEqual([], failures)
+            self.assertEqual(1, len(results))
+            guided_intake.transfer_to_bridge.assert_called_once_with(bridge_a)
+            self.assertEqual(
+                repository_a.resolve(),
+                Path(results[0]["repository"]["path"]),
+            )
+            self.assertEqual(
+                repository_a.resolve(),
+                Path(controller.snapshot()["repository"]["path"]),
+            )
 
     def test_manual_bridge_corruption_is_panel_local(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

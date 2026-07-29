@@ -13,6 +13,15 @@ import unittest
 from decision_os.companion.manual_bridge import (
     EXPECTED_EVIDENCE_IDENTITY,
     GOLDEN_ROLES,
+    GUIDED_INTAKE_AUTHORITY,
+    GUIDED_INTAKE_CURRENT_GATE,
+    GUIDED_INTAKE_EVIDENCE_IDENTITY,
+    GUIDED_INTAKE_HANDOFF_FIELD,
+    GUIDED_INTAKE_PROFILE,
+    GUIDED_INTAKE_PROTOCOL_RUN_ID,
+    GUIDED_INTAKE_TASK_ID,
+    GUIDED_INTAKE_TRANSFER_AUTHORITY,
+    GUIDED_INTAKE_TRANSFER_SCHEMA,
     HANDOFF_FIELDS,
     PRE_BRIDGE_UNKNOWN,
     REPLAY_FIELDS,
@@ -164,6 +173,65 @@ def typed_metadata(role: str, **updates: object) -> dict[str, object]:
     }
     metadata.update(updates)
     return metadata
+
+
+def canonical_json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def guided_intake_transfer(**updates: object) -> dict[str, object]:
+    transfer: dict[str, object] = {
+        "schema_version": GUIDED_INTAKE_TRANSFER_SCHEMA,
+        "original_request_sha256": hashlib.sha256(
+            b"  exact original request\r\nwith trailing space \n"
+        ).hexdigest(),
+        "frozen_intake_sha256": hashlib.sha256(
+            b'{"frozen":"intake"}\n'
+        ).hexdigest(),
+        "objective": "  Preserve 日本語 without normalization.  ",
+        "completion_line": (
+            "A frozen intake is transferred with exact field identities."
+        ),
+        "do_not_touch": [
+            {
+                "basis_kind": "USER_EXPLICIT",
+                "item_id": "DNT-1",
+                "text": "Existing Runner",
+            }
+        ],
+        "unknown": [
+            {
+                "current_state": "OPEN",
+                "statement": "Whether the next actor needs another artifact",
+                "unknown_id": "UNK-1",
+            }
+        ],
+        "authority_boundary": GUIDED_INTAKE_AUTHORITY,
+        "as_of_commit": GUIDED_INTAKE_EVIDENCE_IDENTITY["commit"],
+        "evidence_packet_identity": dict(
+            GUIDED_INTAKE_EVIDENCE_IDENTITY
+        ),
+    }
+    transfer.update(updates)
+    transfer["field_hashes"] = {
+        field: hashlib.sha256(
+            canonical_json_bytes(transfer[field])
+        ).hexdigest()
+        for field in (
+            "objective",
+            "completion_line",
+            "do_not_touch",
+            "unknown",
+            "authority_boundary",
+        )
+    }
+    return transfer
 
 
 class CompanionManualBridgeTest(unittest.TestCase):
@@ -325,6 +393,187 @@ class CompanionManualBridgeTest(unittest.TestCase):
             / f"{sha256_bytes(payload)}.bin"
         )
         self.assertFalse(blob.exists())
+
+    def test_guided_intake_accepts_exact_transfer_hashes_and_unknowns(
+        self,
+    ) -> None:
+        bridge = self.controller()
+        transfer = guided_intake_transfer()
+
+        accepted = bridge.accept_guided_intake(transfer)
+        boundary = accepted["session"]["boundary"]
+        nested = boundary["guided_intake_boundary"]
+        receipt = boundary["guided_intake_transfer_receipt"]
+
+        self.assertEqual(transfer, nested)
+        self.assertEqual(GUIDED_INTAKE_PROFILE, boundary["bridge_profile"])
+        self.assertEqual(GUIDED_INTAKE_TASK_ID, boundary["task_id"])
+        self.assertEqual(
+            GUIDED_INTAKE_PROTOCOL_RUN_ID,
+            boundary["protocol_run_id"],
+        )
+        self.assertEqual(transfer["objective"], boundary["objective"])
+        self.assertEqual(
+            transfer["completion_line"],
+            boundary["completion_line"],
+        )
+        self.assertEqual(
+            canonical_json_bytes(transfer["do_not_touch"]).decode("utf-8"),
+            boundary["do_not_touch"],
+        )
+        self.assertEqual(
+            GUIDED_INTAKE_CURRENT_GATE,
+            boundary["current_gate"],
+        )
+        self.assertEqual(transfer["unknown"], nested["unknown"])
+        self.assertEqual(
+            transfer["field_hashes"],
+            receipt["pre_transfer_field_hashes"],
+        )
+        self.assertEqual(
+            transfer["field_hashes"],
+            receipt["post_transfer_field_hashes"],
+        )
+        self.assertEqual(
+            transfer["field_hashes"],
+            receipt["field_hashes"],
+        )
+        self.assertEqual(
+            transfer["frozen_intake_sha256"],
+            receipt["freeze_sha256"],
+        )
+        self.assertEqual(
+            accepted["session"]["session_id"],
+            receipt["bridge_session_id"],
+        )
+        self.assertEqual("TRANSFER_ACCEPTED", receipt["transfer_result"])
+        self.assertEqual(
+            GUIDED_INTAKE_TRANSFER_AUTHORITY,
+            receipt["authority_state"],
+        )
+        self.assertEqual("COPY_READY", accepted["state"])
+        self.assertIsNone(accepted["hold_reason"])
+        self.assertEqual(receipt, accepted["guided_intake_transfer"])
+
+    def test_guided_intake_rejects_altered_transfer_before_session(
+        self,
+    ) -> None:
+        bridge = self.controller()
+        altered = guided_intake_transfer()
+        altered["objective"] = f"{altered['objective']} expanded"
+
+        with self.assertRaisesRegex(
+            ManualBridgeConflictError,
+            "HOLD — TRANSFER ALTERED BOUNDARY",
+        ):
+            bridge.accept_guided_intake(altered)
+
+        self.assertIsNone(bridge.snapshot()["session"])
+
+    def test_guided_intake_rejects_authority_even_with_matching_hash(
+        self,
+    ) -> None:
+        bridge = self.controller()
+        inflated = guided_intake_transfer(
+            authority_boundary="EXECUTION_AUTHORITY_GRANTED",
+        )
+
+        with self.assertRaisesRegex(
+            ManualBridgeConflictError,
+            "HOLD — TRANSFER ALTERED BOUNDARY",
+        ):
+            bridge.accept_guided_intake(inflated)
+
+        self.assertIsNone(bridge.snapshot()["session"])
+
+    def test_guided_intake_conflicts_with_existing_bridge_session(
+        self,
+    ) -> None:
+        bridge = self.session()
+        existing_id = bridge.snapshot()["session"]["session_id"]
+
+        with self.assertRaisesRegex(
+            ManualBridgeConflictError,
+            "already active",
+        ):
+            bridge.accept_guided_intake(guided_intake_transfer())
+
+        self.assertEqual(
+            existing_id,
+            bridge.snapshot()["session"]["session_id"],
+        )
+
+    def test_guided_intake_handoff_block_is_conditional_and_exact(
+        self,
+    ) -> None:
+        guided_repository = create_repository(self.root, "guided-handoff")
+        bridge = self.controller(guided_repository)
+        transfer = guided_intake_transfer(
+            objective=(
+                "Keep exact text\nwithout allowing "
+                "## Current Gate heading injection"
+            ),
+            completion_line="Transfer stays exact and testable.",
+        )
+        bridge.accept_guided_intake(transfer)
+        bridge.import_artifact(
+            selected_role="PRO_DESIGN",
+            payload=b"guided intake independent pro design",
+            source_path_or_label="guided-intake-pro-design",
+            import_mode="BYTE_EXACT_FILE_IMPORT",
+            metadata=typed_metadata(
+                "PRO_DESIGN",
+                task_id=GUIDED_INTAKE_TASK_ID,
+                protocol_run_id=GUIDED_INTAKE_PROTOCOL_RUN_ID,
+                as_of_commit=transfer["as_of_commit"],
+                evidence_packet_identity=dict(
+                    GUIDED_INTAKE_EVIDENCE_IDENTITY
+                ),
+                objective=transfer["objective"],
+                completion_line=transfer["completion_line"],
+                do_not_touch=transfer["do_not_touch"],
+                authority_boundary=GUIDED_INTAKE_AUTHORITY,
+            ),
+        )
+        generated = bridge.generate_execution_handoff()
+        text = generated["outputs"]["EXECUTION_HANDOFF"]["content"]
+
+        for field in HANDOFF_FIELDS:
+            self.assertEqual(1, text.count(f"## {field}\n"))
+        self.assertEqual(
+            1,
+            text.count(f"## {GUIDED_INTAKE_HANDOFF_FIELD}\n"),
+        )
+        for label, field in (
+            ("Original Request SHA-256", "original_request_sha256"),
+            ("Frozen Intake SHA-256", "frozen_intake_sha256"),
+            ("Objective", "objective"),
+            ("Completion Line", "completion_line"),
+            ("Do Not Touch", "do_not_touch"),
+            ("Open UNKNOWNs", "unknown"),
+            ("Guided Intake Authority", "authority_boundary"),
+        ):
+            rendered = canonical_json_bytes(transfer[field]).decode("utf-8")
+            self.assertIn(f"{label}:\n{rendered}\n", text)
+        self.assertEqual(1, text.count("## Current Gate\n"))
+        frozen = bridge.freeze_output("EXECUTION_HANDOFF")
+        self.assertTrue(
+            frozen["outputs"]["EXECUTION_HANDOFF"]["frozen"]
+        )
+
+        legacy = self.session(
+            self.controller(create_repository(self.root, "legacy-handoff"))
+        )
+        self.import_fixture(legacy, "pro_design_valid.md", "PRO_DESIGN")
+        legacy.generate_execution_handoff()
+        legacy_text = legacy.output_bytes("EXECUTION_HANDOFF").decode(
+            "utf-8"
+        )
+        self.assertNotIn(
+            f"## {GUIDED_INTAKE_HANDOFF_FIELD}\n",
+            legacy_text,
+        )
+        self.assertNotIn("guided_intake_transfer", legacy.snapshot())
 
     def test_identity_fields_remain_separate_and_unknown_is_preserved(self) -> None:
         bridge = self.session()

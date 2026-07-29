@@ -31,6 +31,13 @@ from decision_os.acceleration.store import (
     ActiveDefaultRecord,
     StateIntegrityError,
 )
+from decision_os.companion.guided_intake import (
+    AUTHORITY_CLAIM,
+    AUTHORITY_EXPLANATION,
+    GuidedIntakeBusyError,
+    GuidedIntakeController,
+    GuidedIntakeIntegrityError,
+)
 from decision_os.companion.manual_bridge import (
     BridgeSessionController,
     ManualBridgeBusyError,
@@ -164,11 +171,14 @@ class CompanionController:
         self._default_handles: dict[str, str] = {}
         self._worker: threading.Thread | None = None
         self._bridge: BridgeSessionController | None = None
+        self._guided_intake: GuidedIntakeController | None = None
         self._active_bridge_operations = 0
+        self._active_guided_intake_operations = 0
         self._repository_selection_active = False
         self._load_last_repository()
         if self._repository is not None:
             self._bridge = BridgeSessionController(self._repository)
+            self._guided_intake = GuidedIntakeController(self._repository)
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
@@ -258,6 +268,10 @@ class CompanionController:
                 raise RepositorySelectionError(
                     "A Manual Bridge action is already active."
                 )
+            if self._active_guided_intake_operations:
+                raise RepositorySelectionError(
+                    "A Guided Intake action is already active."
+                )
             if self._repository_selection_active:
                 raise RepositorySelectionError(
                     "Repository selection is already active."
@@ -273,9 +287,14 @@ class CompanionController:
                     raise RepositorySelectionError(
                         "A Manual Bridge action is already active."
                     )
+                if self._active_guided_intake_operations:
+                    raise RepositorySelectionError(
+                        "A Guided Intake action is already active."
+                    )
                 self._write_last_repository(repository)
                 self._repository = repository
                 self._bridge = BridgeSessionController(repository)
+                self._guided_intake = GuidedIntakeController(repository)
                 self._default_handles = {}
                 self._run = self._empty_run()
                 return self._snapshot_locked()
@@ -305,6 +324,12 @@ class CompanionController:
             raise RepositorySelectionError("Choose a local Git repository first.")
         return self._bridge
 
+    def _require_guided_intake(self) -> GuidedIntakeController:
+        self._require_repository()
+        if self._guided_intake is None:
+            raise RepositorySelectionError("Choose a local Git repository first.")
+        return self._guided_intake
+
     @contextmanager
     def _bridge_operation(self) -> Any:
         with self._condition:
@@ -329,6 +354,57 @@ class CompanionController:
             if bridge is not self._bridge:
                 raise RepositorySelectionError(
                     "The selected repository changed during the Bridge action."
+                )
+            return self._snapshot_locked()
+
+    @contextmanager
+    def _guided_intake_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            guided_intake = self._require_guided_intake()
+            self._active_guided_intake_operations += 1
+        try:
+            yield guided_intake
+        finally:
+            with self._condition:
+                self._active_guided_intake_operations -= 1
+                self._condition.notify_all()
+
+    @contextmanager
+    def _guided_intake_bridge_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            guided_intake = self._require_guided_intake()
+            bridge = self._require_bridge()
+            self._active_guided_intake_operations += 1
+            self._active_bridge_operations += 1
+        try:
+            yield guided_intake, bridge
+        finally:
+            with self._condition:
+                self._active_bridge_operations -= 1
+                self._active_guided_intake_operations -= 1
+                self._condition.notify_all()
+
+    def _snapshot_after_guided_intake(
+        self,
+        guided_intake: GuidedIntakeController,
+        bridge: BridgeSessionController | None = None,
+    ) -> dict[str, Any]:
+        with self._condition:
+            if guided_intake is not self._guided_intake:
+                raise RepositorySelectionError(
+                    "The selected repository changed during the Guided Intake action."
+                )
+            if bridge is not None and bridge is not self._bridge:
+                raise RepositorySelectionError(
+                    "The selected repository changed during the Guided Intake transfer."
                 )
             return self._snapshot_locked()
 
@@ -417,6 +493,59 @@ class CompanionController:
                 notes=notes,
             )
             return self._snapshot_after_bridge(bridge)
+
+    def guided_intake_capture(
+        self,
+        original_request: str,
+        *,
+        supersedes_request_id: str | None = None,
+    ) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.capture(
+                original_request,
+                supersedes_request_id=supersedes_request_id,
+            )
+            return self._snapshot_after_guided_intake(guided_intake)
+
+    def guided_intake_copy_for_pro(self) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.copy_for_pro()
+            return self._snapshot_after_guided_intake(guided_intake)
+
+    def guided_intake_import_draft(
+        self,
+        draft_json: str,
+        producer_label: str,
+    ) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.import_draft(draft_json, producer_label)
+            return self._snapshot_after_guided_intake(guided_intake)
+
+    def guided_intake_confirm(
+        self,
+        question: str,
+        answer: str,
+        resulting_delta: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.confirm(question, answer, resulting_delta)
+            return self._snapshot_after_guided_intake(guided_intake)
+
+    def guided_intake_freeze(self) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.freeze()
+            return self._snapshot_after_guided_intake(guided_intake)
+
+    def guided_intake_transfer_to_bridge(self) -> dict[str, Any]:
+        with self._guided_intake_bridge_operation() as (
+            guided_intake,
+            bridge,
+        ):
+            guided_intake.transfer_to_bridge(bridge)
+            return self._snapshot_after_guided_intake(
+                guided_intake,
+                bridge,
+            )
 
     def start_run(self, task: str) -> dict[str, Any]:
         if not isinstance(task, str) or not task.strip():
@@ -735,6 +864,7 @@ class CompanionController:
             receipt = None
             defaults: list[dict[str, str]] = []
             bridge = None
+            guided_intake = None
         else:
             store = AccelerationStore(self._repository)
             receipt = self._public_receipt(
@@ -779,6 +909,37 @@ class CompanionController:
                     },
                     "burden": {},
                 }
+            try:
+                guided_intake = self._require_guided_intake().snapshot()
+            except (
+                GuidedIntakeIntegrityError,
+                GuidedIntakeBusyError,
+            ) as exc:
+                guided_intake = {
+                    "active_question": None,
+                    "authority_claim": AUTHORITY_CLAIM,
+                    "authority_explanation": AUTHORITY_EXPLANATION,
+                    "copy_for_pro_prompt": None,
+                    "error": (
+                        "Guided Intake is temporarily busy."
+                        if isinstance(exc, GuidedIntakeBusyError)
+                        else (
+                            "Guided Intake state is corrupted. "
+                            "Guided Intake reads and writes are blocked."
+                        )
+                    ),
+                    "freeze": None,
+                    "interpretation": None,
+                    "original_request": None,
+                    "request_history": [],
+                    "request_identity": None,
+                    "state": (
+                        "BUSY"
+                        if isinstance(exc, GuidedIntakeBusyError)
+                        else "BLOCKED_CORRUPT"
+                    ),
+                    "transfer_receipt": None,
+                }
         return {
             "repository": repository_view,
             "run": {
@@ -789,6 +950,7 @@ class CompanionController:
             "receipt": receipt,
             "defaults": defaults,
             "manual_bridge": bridge,
+            "guided_intake": guided_intake,
             "supported": (
                 "Read-only work or one exact typed single-file create or modify."
             ),

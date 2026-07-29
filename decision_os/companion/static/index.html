@@ -121,6 +121,130 @@
       <div id="defaults" class="defaults-list"></div>
     </section>
 
+    <section id="guided-intake-card" class="card" aria-labelledby="guided-intake-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">G</p>
+          <h2 id="guided-intake-heading">Guided Intake</h2>
+        </div>
+        <span id="guided-intake-state" class="status">No intake</span>
+      </div>
+      <p id="guided-intake-authority-claim" class="claim-boundary">
+        INTERPRETATION ONLY — NO EXECUTION AUTHORITY
+      </p>
+      <pre
+        id="guided-intake-authority-explanation"
+        class="result-text"
+      ></pre>
+      <p class="boundary">
+        Guided Intake preserves the exact request, makes interpretation
+        explicit, and asks one confirmation question at a time. It never
+        starts a Run or grants approval.
+      </p>
+
+      <h3>Capture</h3>
+      <label for="guided-intake-original-request">Original Request</label>
+      <textarea
+        id="guided-intake-original-request"
+        rows="7"
+        maxlength="65536"
+        placeholder="Paste the exact original request."
+      ></textarea>
+      <button id="guided-intake-capture" class="primary" type="button">
+        Capture Original Request
+      </button>
+
+      <h3>Read-only exact original</h3>
+      <pre id="guided-intake-original-exact" class="result-text"></pre>
+      <p class="path-value">Request identity</p>
+      <pre id="guided-intake-request-identity" class="result-text"></pre>
+
+      <h3>Interpretation</h3>
+      <dl class="metric-grid">
+        <dt>Objective</dt>
+        <dd id="guided-intake-objective"></dd>
+        <dt>Objective fidelity</dt>
+        <dd id="guided-intake-objective-status">UNKNOWN</dd>
+        <dt>Completion Line</dt>
+        <dd id="guided-intake-completion-line"></dd>
+        <dt>Completion testability</dt>
+        <dd id="guided-intake-completion-status">UNKNOWN</dd>
+        <dt>Gate</dt>
+        <dd id="guided-intake-gate">UNKNOWN</dd>
+      </dl>
+      <h3>Objective atoms — exact support and byte ranges</h3>
+      <pre id="guided-intake-objective-atoms" class="result-text"></pre>
+      <h3>Completion checks and evidence sources</h3>
+      <pre id="guided-intake-completion-checks" class="result-text"></pre>
+      <h3>Forward-only confirmation history</h3>
+      <pre
+        id="guided-intake-confirmation-history"
+        class="result-text"
+      ></pre>
+      <h3>Do Not Touch</h3>
+      <ul id="guided-intake-do-not-touch" class="progress-list"></ul>
+      <h3>UNKNOWN</h3>
+      <ul id="guided-intake-unknown" class="progress-list"></ul>
+
+      <h3>Copy for Pro</h3>
+      <button id="guided-intake-copy" class="secondary" type="button">
+        Copy for Pro
+      </button>
+      <pre id="guided-intake-copy-output" class="result-text"></pre>
+
+      <h3>Strict JSON import</h3>
+      <label for="guided-intake-producer-label">Producer label</label>
+      <input
+        id="guided-intake-producer-label"
+        type="text"
+        maxlength="1000"
+        placeholder="Example: ChatGPT Pro"
+      >
+      <label for="guided-intake-draft-json">Draft JSON object</label>
+      <textarea
+        id="guided-intake-draft-json"
+        rows="8"
+        maxlength="262144"
+      >{}</textarea>
+      <button id="guided-intake-import-draft" class="secondary" type="button">
+        Import Strict JSON Draft
+      </button>
+
+      <div id="guided-intake-confirmation" class="hidden">
+        <h3>One active confirmation question</h3>
+        <p id="guided-intake-question-field" class="path-value"></p>
+        <p id="guided-intake-question" class="primary-value"></p>
+        <label for="guided-intake-answer">Answer</label>
+        <textarea
+          id="guided-intake-answer"
+          rows="4"
+          maxlength="65536"
+        ></textarea>
+        <label for="guided-intake-resulting-delta">
+          Resulting-delta JSON object
+        </label>
+        <textarea
+          id="guided-intake-resulting-delta"
+          rows="6"
+          maxlength="262144"
+        >{}</textarea>
+        <button id="guided-intake-confirm" class="primary" type="button">
+          Confirm Answer
+        </button>
+      </div>
+
+      <h3>Freeze and transfer</h3>
+      <button id="guided-intake-freeze" class="secondary" type="button">
+        Freeze Guided Intake
+      </button>
+      <pre id="guided-intake-freeze-identity" class="result-text"></pre>
+      <button id="guided-intake-transfer" class="secondary" type="button">
+        Copy Frozen Intake to Manual Bridge
+      </button>
+      <pre id="guided-intake-transfer-receipt" class="result-text"></pre>
+      <p id="guided-intake-error" class="error hidden" role="alert"></p>
+    </section>
+
     <section class="card" aria-labelledby="bridge-heading">
       <div class="section-heading">
         <div>
