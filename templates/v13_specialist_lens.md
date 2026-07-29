@@ -33,12 +33,20 @@ perspective; it grants no authority and creates no additional Role.
 - Exact Role Contract identity and canonical hash.
 - Exact Task Artifact Packet repository, head, paths, hashes, and as-of time.
 - Exact Lens identity, version, and SHA-256.
-- Assignee and trusted execution context identities.
-- Receiver-side trusted Role Acceptance bound to the exact Contract ID/hash,
-  task, Role, assignee, execution context, and acceptance time.
-- Trusted independence evidence and complete prior-Role binding records,
-  including task, Role, assignee, context, model, and evidence identities.
+- Assignee and execution context identities.
+- A separately supplied Role Grant record and receiver Role Acceptance record
+  bound to the Contract ID/hash, task, Role, assignee, execution context,
+  shared snapshot, as-of time, and explicit revocation state.
+- A supplied independence record bound to the declared prior-Role binding
+  snapshot identity and hash.
+- A supplied prior-Role binding snapshot with its identity, canonical hash,
+  as-of time, completeness boundary, expected record-identity manifest,
+  binding lifecycle times, and explicit revocation states.
 - Before/after target identity when immutability is required.
+
+Supplied records are validator inputs. Their names and internally consistent
+fields do not authenticate an issuer, receiver, execution context, transport,
+record store, provenance, completeness assertion, or revocation truth.
 
 ## Common Failure Patterns
 
@@ -47,17 +55,21 @@ perspective; it grants no authority and creates no additional Role.
 - Omitting `producer_role` or `builder_generated` metadata to conceal a
   same-context Builder/Auditor collision.
 - Omitting a true same-context binding and substituting a claimant-controlled
-  forged different-context binding.
+  different-context binding.
 - Treating Contract-local `role_acceptance: ACCEPTED` as receiver proof.
-- Treating a different model as a different trusted execution context.
+- Reusing a stale or different-snapshot record.
+- Mixing record as-of times across one validation snapshot.
+- Accepting an Auditor before every supplied Builder binding has ended.
+- Treating a different model as a different execution context.
 - Treating a recommendation as an assignment or invocation.
 
 ## Escalation Conditions
 
 Return HOLD or BLOCK when authority, Gate, identity, target, Lens, lifecycle,
-or independence is missing, unknown, expired, revoked, inconsistent, or
-unverifiable. Any new Role, authority, target, operation, or Lens requires a
-new Shin Gate.
+snapshot freshness, completeness boundary, record manifest, revocation state,
+Builder end time, or independence claim is missing, unknown, expired, stale,
+revoked, inconsistent, or unverifiable. Any new Role, authority, target,
+operation, or Lens requires a new Shin Gate.
 
 ## Output Contract
 
@@ -76,3 +88,18 @@ Recommendation: ALLOWED
 Automatic Assignment: PROHIBITED
 Automatic Invocation: PROHIBITED
 ```
+
+Every Role Exit Receipt must also preserve this implementation boundary
+exactly:
+
+```text
+Role Separation Enforcement: VALIDATOR-LEVEL ONLY
+Record Issuer / Authentication / Transport: NOT IMPLEMENTED
+Role Independence: NOT ESTABLISHED
+End-to-End False-Division Prevention: NOT ESTABLISHED
+```
+
+An internally consistent supplied snapshot may satisfy validator conditions,
+but it does not establish record authenticity, real-world completeness, Role
+independence, or end-to-end false-division prevention. No automatic Role
+assignment, specialist invocation, or Stage 5 decision follows.

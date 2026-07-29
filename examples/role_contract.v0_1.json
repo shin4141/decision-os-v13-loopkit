@@ -2,7 +2,7 @@
   "contract_identity": {
     "contract_id": "stage4-example-builder-001",
     "version": "0.1",
-    "contract_hash": "d8754357fff5c86d9b196972608aeaaaf82a9065a1dacb4bb051e1dacc0dad9b"
+    "contract_hash": "6dd126cd5a557c9d2f07d059ca50b6e3c05040934a6dd881c5e6620115734f33"
   },
   "assignment": {
     "task_id": "stage4-example-task-001",
@@ -11,7 +11,7 @@
     "assignment_authority": "Shin",
     "shin_gate_reference": "GO — STAGE 4 v0.1 EXAMPLE BUILDER",
     "assignee_identity": "example-builder",
-    "execution_context_identity": "trusted-context-example-builder-001",
+    "execution_context_identity": "context-example-builder-001",
     "role_acceptance": "ACCEPTED"
   },
   "owned_responsibility": {
@@ -55,7 +55,7 @@
   "specialist_lens": {
     "lens_id": "v13-stage4-specialist-lens",
     "lens_version": "0.1",
-    "lens_hash": "f40ca45c96fc115a4cbd58f5ddb1bb21049e6df3564452061868960c7289a964"
+    "lens_hash": "5e1636a7c576112450d36c4b5fa935d24cb44af741576a111421f0bfba12aa8d"
   },
   "independence_profile": {
     "role_context_independence": "SAME_CONTEXT_ALLOWED",
