@@ -2,7 +2,7 @@
   "contract_identity": {
     "contract_id": "stage4-example-builder-001",
     "version": "0.1",
-    "contract_hash": "bb4527beddf6fb882032201bd2586714c54513779c5cab93a4435d77e421e531"
+    "contract_hash": "d8754357fff5c86d9b196972608aeaaaf82a9065a1dacb4bb051e1dacc0dad9b"
   },
   "assignment": {
     "task_id": "stage4-example-task-001",
@@ -55,7 +55,7 @@
   "specialist_lens": {
     "lens_id": "v13-stage4-specialist-lens",
     "lens_version": "0.1",
-    "lens_hash": "3a1200f872a1c89c93ebebf099cfa63d2721ea765e992adb3ad0b3dd82730bcc"
+    "lens_hash": "f40ca45c96fc115a4cbd58f5ddb1bb21049e6df3564452061868960c7289a964"
   },
   "independence_profile": {
     "role_context_independence": "SAME_CONTEXT_ALLOWED",

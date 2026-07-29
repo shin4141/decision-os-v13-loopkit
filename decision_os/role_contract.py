@@ -205,6 +205,11 @@ REQUEST_FIELDS = frozenset(
 )
 INDEPENDENCE_EVIDENCE_FIELDS = frozenset(
     (
+        "evidence_identity",
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity",
         "role_context_independence",
         "source_review_independence",
         "runtime_execution_independence",
@@ -216,6 +221,7 @@ INDEPENDENCE_EVIDENCE_FIELDS = frozenset(
 )
 PRIOR_BINDING_FIELDS = frozenset(
     (
+        "evidence_identity",
         "task_id",
         "role_id",
         "assignee_identity",
@@ -242,6 +248,18 @@ TRUSTED_ROLE_GRANT_FIELDS = frozenset(
         "shin_gate_reference",
         "assignee_identity",
         "execution_context_identity",
+    )
+)
+TRUSTED_ROLE_ACCEPTANCE_FIELDS = frozenset(
+    (
+        "contract_id",
+        "contract_hash",
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity",
+        "role_acceptance",
+        "accepted_at",
     )
 )
 
@@ -539,39 +557,42 @@ def _contract_semantic_issue(contract: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _independence_assessment(
-    contract: Mapping[str, Any],
-    request: Mapping[str, Any],
-) -> RoleContractAssessment | None:
-    assignment = contract["assignment"]
-    required = contract["independence_profile"]
-    evidence = request["independence_evidence"]
-    bindings = request["prior_role_bindings"]
+def _independence_evidence_valid(evidence: Any) -> bool:
+    return (
+        isinstance(evidence, Mapping)
+        and set(evidence) == INDEPENDENCE_EVIDENCE_FIELDS
+        and evidence.get("role_id") in SUPPORTED_ROLES
+        and all(
+            _is_nonempty_string(evidence.get(field))
+            for field in (
+                "evidence_identity",
+                "task_id",
+                "assignee_identity",
+                "execution_context_identity",
+                "model_identity",
+                "source_review_evidence_reference",
+                "runtime_execution_evidence_reference",
+            )
+        )
+        and evidence.get("role_context_independence")
+        in ROLE_CONTEXT_VALUES
+        and evidence.get("source_review_independence")
+        in SOURCE_REVIEW_VALUES
+        and evidence.get("runtime_execution_independence")
+        in RUNTIME_EXECUTION_VALUES
+        and evidence.get("model_diversity") in MODEL_DIVERSITY_VALUES
+    )
+
+
+def _prior_binding_map(
+    bindings: Any,
+) -> dict[str, Mapping[str, Any]] | None:
     if (
-        not isinstance(evidence, Mapping)
-        or set(evidence) != INDEPENDENCE_EVIDENCE_FIELDS
-        or not isinstance(bindings, Sequence)
+        not isinstance(bindings, Sequence)
         or isinstance(bindings, (str, bytes, bytearray))
     ):
-        return _assessment(RESULT_HOLD, "INDEPENDENCE_UNVERIFIABLE")
-    if (
-        evidence.get("role_context_independence") not in ROLE_CONTEXT_VALUES
-        or evidence.get("source_review_independence")
-        not in SOURCE_REVIEW_VALUES
-        or evidence.get("runtime_execution_independence")
-        not in RUNTIME_EXECUTION_VALUES
-        or evidence.get("model_diversity") not in MODEL_DIVERSITY_VALUES
-        or not _is_nonempty_string(evidence.get("model_identity"))
-        or not _is_nonempty_string(
-            evidence.get("source_review_evidence_reference")
-        )
-        or not _is_nonempty_string(
-            evidence.get("runtime_execution_evidence_reference")
-        )
-    ):
-        return _assessment(RESULT_HOLD, "INDEPENDENCE_UNVERIFIABLE")
-
-    normalized_bindings: list[Mapping[str, Any]] = []
+        return None
+    normalized: dict[str, Mapping[str, Any]] = {}
     for binding in bindings:
         if (
             not isinstance(binding, Mapping)
@@ -582,12 +603,91 @@ def _independence_assessment(
                 for field in PRIOR_BINDING_FIELDS - {"role_id"}
             )
         ):
-            return _assessment(RESULT_HOLD, "INDEPENDENCE_UNVERIFIABLE")
-        normalized_bindings.append(binding)
+            return None
+        evidence_identity = binding["evidence_identity"]
+        if evidence_identity in normalized:
+            return None
+        normalized[evidence_identity] = binding
+    return normalized
+
+
+def _independence_assessment(
+    contract: Mapping[str, Any],
+    request: Mapping[str, Any],
+    trusted_independence_evidence: Any,
+    trusted_prior_role_bindings: Any,
+) -> RoleContractAssessment | None:
+    assignment = contract["assignment"]
+    required = contract["independence_profile"]
+    claimed_evidence = request["independence_evidence"]
+    claimed_bindings = request["prior_role_bindings"]
+
+    if not _independence_evidence_valid(trusted_independence_evidence):
+        return _assessment(
+            RESULT_HOLD,
+            "TRUSTED_INDEPENDENCE_EVIDENCE_REQUIRED",
+        )
+    evidence = trusted_independence_evidence
+    evidence_binding = {
+        "task_id": assignment["task_id"],
+        "role_id": assignment["role_id"],
+        "assignee_identity": assignment["assignee_identity"],
+        "execution_context_identity": assignment[
+            "execution_context_identity"
+        ],
+    }
+    if any(
+        evidence[field] != expected
+        for field, expected in evidence_binding.items()
+    ):
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_INDEPENDENCE_EVIDENCE_MISMATCH",
+        )
+
+    trusted_binding_map = _prior_binding_map(trusted_prior_role_bindings)
+    if trusted_binding_map is None:
+        return _assessment(
+            RESULT_HOLD,
+            "TRUSTED_PRIOR_ROLE_BINDINGS_REQUIRED",
+        )
+    if evidence["evidence_identity"] in trusted_binding_map:
+        return _assessment(
+            RESULT_HOLD,
+            "TRUSTED_EVIDENCE_IDENTITY_COLLISION",
+        )
+
+    evidence_claim_mismatch = (
+        not _independence_evidence_valid(claimed_evidence)
+        or dict(claimed_evidence) != dict(evidence)
+    )
+    claimed_binding_map = _prior_binding_map(claimed_bindings)
+    binding_claim_mismatch = claimed_binding_map is None or (
+        {
+            identity: dict(binding)
+            for identity, binding in claimed_binding_map.items()
+        }
+        != {
+            identity: dict(binding)
+            for identity, binding in trusted_binding_map.items()
+        }
+    )
+    claim_mismatch_codes = (
+        *(
+            ("TRUSTED_INDEPENDENCE_EVIDENCE_MISMATCH",)
+            if evidence_claim_mismatch
+            else ()
+        ),
+        *(
+            ("TRUSTED_PRIOR_ROLE_BINDINGS_MISMATCH",)
+            if binding_claim_mismatch
+            else ()
+        ),
+    )
 
     same_task = [
         binding
-        for binding in normalized_bindings
+        for binding in trusted_binding_map.values()
         if binding["task_id"] == assignment["task_id"]
     ]
     builder_bindings = [
@@ -617,17 +717,33 @@ def _independence_assessment(
         return _assessment(
             RESULT_BLOCK,
             "CONTEXT_INDEPENDENCE_VIOLATION",
+            *claim_mismatch_codes,
+        )
+    if assignment["role_id"] == ROLE_AUDITOR and any(
+        binding["assignee_identity"] == current_assignee
+        for binding in builder_bindings
+    ):
+        return _assessment(
+            RESULT_BLOCK,
+            "BUILDER_AUDITOR_ROLE_COLLISION",
+            *claim_mismatch_codes,
+        )
+    if evidence_claim_mismatch:
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_INDEPENDENCE_EVIDENCE_MISMATCH",
+            *claim_mismatch_codes,
+        )
+    if binding_claim_mismatch:
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_PRIOR_ROLE_BINDINGS_MISMATCH",
         )
     if (
         assignment["role_id"] == ROLE_AUDITOR
         and not builder_bindings
     ):
         return _assessment(RESULT_HOLD, "INDEPENDENCE_UNVERIFIABLE")
-    if assignment["role_id"] == ROLE_AUDITOR and any(
-        binding["assignee_identity"] == current_assignee
-        for binding in builder_bindings
-    ):
-        return _assessment(RESULT_BLOCK, "BUILDER_AUDITOR_ROLE_COLLISION")
 
     source_required = required["source_review_independence"]
     source_observed = evidence["source_review_independence"]
@@ -725,14 +841,72 @@ def _trusted_role_grant_assessment(
     return None
 
 
+def _trusted_role_acceptance_assessment(
+    contract: Mapping[str, Any],
+    trusted_role_acceptance: Any,
+    current: datetime,
+) -> RoleContractAssessment | None:
+    if (
+        not isinstance(trusted_role_acceptance, Mapping)
+        or set(trusted_role_acceptance) != TRUSTED_ROLE_ACCEPTANCE_FIELDS
+    ):
+        return _assessment(RESULT_HOLD, "TRUSTED_ROLE_ACCEPTANCE_REQUIRED")
+
+    identity = contract["contract_identity"]
+    assignment = contract["assignment"]
+    expected_binding = {
+        "contract_id": identity["contract_id"],
+        "contract_hash": identity["contract_hash"],
+        "task_id": assignment["task_id"],
+        "role_id": assignment["role_id"],
+        "assignee_identity": assignment["assignee_identity"],
+        "execution_context_identity": assignment[
+            "execution_context_identity"
+        ],
+    }
+    if any(
+        trusted_role_acceptance[field] != expected
+        for field, expected in expected_binding.items()
+    ):
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_ROLE_ACCEPTANCE_MISMATCH",
+        )
+    if trusted_role_acceptance["role_acceptance"] != "ACCEPTED":
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_ROLE_ACCEPTANCE_NOT_ACCEPTED",
+        )
+
+    accepted_at = _parse_timestamp(trusted_role_acceptance["accepted_at"])
+    if accepted_at is None:
+        return _assessment(
+            RESULT_HOLD,
+            "TRUSTED_ROLE_ACCEPTANCE_UNVERIFIABLE",
+        )
+    lifecycle = contract["lifecycle"]
+    issued = _parse_timestamp(lifecycle["issued_at"])
+    expires = _parse_timestamp(lifecycle["expires_at"])
+    assert issued is not None and expires is not None
+    if accepted_at < issued or accepted_at >= expires or accepted_at > current:
+        return _assessment(
+            RESULT_BLOCK,
+            "TRUSTED_ROLE_ACCEPTANCE_TIME_INVALID",
+        )
+    return None
+
+
 def validate_role_operation(
     contract: Mapping[str, Any] | None,
     request: Mapping[str, Any] | None,
     *,
     trusted_role_grant: Mapping[str, Any] | None = None,
+    trusted_role_acceptance: Mapping[str, Any] | None = None,
+    trusted_independence_evidence: Mapping[str, Any] | None = None,
+    trusted_prior_role_bindings: Sequence[Mapping[str, Any]] | None = None,
     now: datetime | None = None,
 ) -> RoleContractAssessment:
-    """Validate one operation against an out-of-band trusted Role Grant."""
+    """Validate one operation against independently supplied trusted records."""
 
     shape_issue = _contract_shape_issue(contract)
     if shape_issue is not None:
@@ -814,7 +988,20 @@ def validate_role_operation(
     if lifecycle["status"] != "ACTIVE" or current < issued:
         return _assessment(RESULT_HOLD, "ROLE_GRANT_NOT_ACTIVE")
 
-    independence = _independence_assessment(contract, request)
+    acceptance = _trusted_role_acceptance_assessment(
+        contract,
+        trusted_role_acceptance,
+        current,
+    )
+    if acceptance is not None:
+        return acceptance
+
+    independence = _independence_assessment(
+        contract,
+        request,
+        trusted_independence_evidence,
+        trusted_prior_role_bindings,
+    )
     if independence is not None:
         return independence
 

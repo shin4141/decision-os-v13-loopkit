@@ -34,7 +34,10 @@ perspective; it grants no authority and creates no additional Role.
 - Exact Task Artifact Packet repository, head, paths, hashes, and as-of time.
 - Exact Lens identity, version, and SHA-256.
 - Assignee and trusted execution context identities.
-- Independence evidence required by each independent profile field.
+- Receiver-side trusted Role Acceptance bound to the exact Contract ID/hash,
+  task, Role, assignee, execution context, and acceptance time.
+- Trusted independence evidence and complete prior-Role binding records,
+  including task, Role, assignee, context, model, and evidence identities.
 - Before/after target identity when immutability is required.
 
 ## Common Failure Patterns
@@ -43,6 +46,9 @@ perspective; it grants no authority and creates no additional Role.
 - Treating different artifact bytes as independent authorship or review.
 - Omitting `producer_role` or `builder_generated` metadata to conceal a
   same-context Builder/Auditor collision.
+- Omitting a true same-context binding and substituting a claimant-controlled
+  forged different-context binding.
+- Treating Contract-local `role_acceptance: ACCEPTED` as receiver proof.
 - Treating a different model as a different trusted execution context.
 - Treating a recommendation as an assignment or invocation.
 

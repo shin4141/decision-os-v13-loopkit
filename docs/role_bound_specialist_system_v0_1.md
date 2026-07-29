@@ -39,7 +39,8 @@ A Role is Active only when all of the following are established:
 3. a non-placeholder Shin Gate reference exists;
 4. the assignee identity is fixed;
 5. the trusted execution context identity is fixed;
-6. Role Acceptance is `ACCEPTED`;
+6. the Contract claims Role Acceptance and a receiver-side trusted Role
+   Acceptance record establishes `ACCEPTED`;
 7. the complete Role Contract and its canonical hash are fixed;
 8. the Task Artifact Packet is fixed;
 9. the Specialist Lens identity, version, and hash are fixed;
@@ -56,6 +57,47 @@ provenance. `validate_role_operation` therefore requires a
 request. The trusted grant must bind the exact contract ID/hash, task, Role,
 Grant type, Shin authority and Gate reference, assignee, and trusted execution
 context. Contract self-declaration without this out-of-band evidence is HOLD.
+
+The same separation applies to acceptance and independence.
+`validate_role_operation` requires all four trusted inputs independently of
+the claimant-controlled operation request:
+
+```text
+trusted_role_grant
+trusted_role_acceptance
+trusted_independence_evidence
+trusted_prior_role_bindings
+```
+
+The request's `independence_evidence` and `prior_role_bindings` remain claims.
+They must match the trusted records, but they are never the source of truth.
+The trusted independence record binds its evidence identity to the exact task,
+Role, assignee, execution context, and model. Every trusted prior-Role binding
+does the same. Evidence identities must be unique, and the trusted binding
+source must supply the complete same-task binding set. An adapter must not
+construct a `trusted_*` input by copying claimant payload.
+
+The receiver-side Role Acceptance record is also separate from the Contract
+and request:
+
+```json
+{
+  "contract_id": "contract-auditor-001",
+  "contract_hash": "<canonical SHA-256>",
+  "task_id": "task-stage4-001",
+  "role_id": "AUDITOR",
+  "assignee_identity": "auditor-assignee",
+  "execution_context_identity": "trusted-auditor-context",
+  "role_acceptance": "ACCEPTED",
+  "accepted_at": "2026-07-29T00:01:00Z"
+}
+```
+
+It must match the exact Contract ID/hash, task, Role, assignee, and execution
+context. `accepted_at` must be timezone-aware, no earlier than issuance,
+earlier than expiry, and no later than validation time. The Contract's own
+`role_acceptance: ACCEPTED` is a hashed requirement claim, not receiver-side
+proof.
 
 ## Contract identity
 
@@ -106,7 +148,8 @@ The four independence fields are separate and non-substitutable:
 A different model is not a different context. A different context is not an
 independent runtime execution. An independent runtime execution is not
 independent evidence selection. `REQUIRED_NOT_ESTABLISHED`, missing evidence,
-and unknown evidence remain HOLD.
+and unknown evidence remain HOLD. Independence decisions use only the trusted
+out-of-band evidence and binding set. Claim/trusted mismatches are BLOCK.
 
 ## Specialist Lens
 
@@ -135,10 +178,12 @@ Assignment event, Runner/Codex/agent invocation, or Stage 5 decision.
 ## Semantic validation
 
 `decision_os.role_contract.validate_role_operation` validates the complete
-contract, one independently supplied trusted Role Grant, and one requested
-operation. It is deterministic and read-only. It checks explicit authority
-and Gate binding, assignee/context binding, Role Acceptance, exact packet and
-Lens identities, scope and path identity, role-specific forbidden operations,
+contract, one independently supplied trusted Role Grant, one receiver-side
+trusted Role Acceptance record, trusted independence evidence, the complete
+trusted prior-Role binding set, and one requested operation. It is
+deterministic and read-only. It checks explicit authority and Gate binding,
+assignee/context binding, receiver acceptance, exact packet and Lens
+identities, scope and path identity, role-specific forbidden operations,
 lifecycle, each independence dimension, and recommendation inertness.
 
 The first closed attack is same-context false division: a trusted context
@@ -148,5 +193,10 @@ producer metadata, and become Auditor. The trusted context binding produces:
 ```text
 BLOCK — CONTEXT INDEPENDENCE VIOLATION
 ```
+
+Omitting that true same-context Builder binding from the request and replacing
+it with a forged different-context binding does not help: the complete trusted
+binding set still exposes the collision, and the claim/trusted mismatch is
+also recorded.
 
 No automatic assignment or invocation function exists in this module.

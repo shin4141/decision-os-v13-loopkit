@@ -214,7 +214,7 @@ class RoleContractV01Test(unittest.TestCase):
         }
         return contract_with_hash(value)
 
-    def _request(
+    def _independence_evidence(
         self,
         contract: dict[str, object],
     ) -> dict[str, object]:
@@ -222,6 +222,54 @@ class RoleContractV01Test(unittest.TestCase):
         self.assertIsInstance(assignment, dict)
         profile = contract["independence_profile"]
         self.assertIsInstance(profile, dict)
+        role = assignment["role_id"]
+        return {
+            "evidence_identity": f"trusted-{role.lower()}-evidence-001",
+            "task_id": assignment["task_id"],
+            "role_id": role,
+            "assignee_identity": assignment["assignee_identity"],
+            "execution_context_identity": assignment[
+                "execution_context_identity"
+            ],
+            **deepcopy(profile),
+            "model_identity": "same-base-model",
+            "source_review_evidence_reference": (
+                "trusted fixed-artifact review receipt"
+                if role == "AUDITOR"
+                else "trusted full-context allowance record"
+            ),
+            "runtime_execution_evidence_reference": (
+                "trusted read-only reexecution receipt"
+                if role == "AUDITOR"
+                else "trusted not-required record"
+            ),
+        }
+
+    def _prior_role_bindings(
+        self,
+        contract: dict[str, object],
+    ) -> list[dict[str, object]]:
+        assignment = contract["assignment"]
+        self.assertIsInstance(assignment, dict)
+        if assignment["role_id"] == "BUILDER":
+            return []
+        return [
+            {
+                "evidence_identity": "trusted-builder-binding-001",
+                "task_id": assignment["task_id"],
+                "role_id": "BUILDER",
+                "assignee_identity": "builder-assignee",
+                "execution_context_identity": "trusted-builder-context",
+                "model_identity": "same-base-model",
+            }
+        ]
+
+    def _request(
+        self,
+        contract: dict[str, object],
+    ) -> dict[str, object]:
+        assignment = contract["assignment"]
+        self.assertIsInstance(assignment, dict)
         role = assignment["role_id"]
         return {
             "operation": (
@@ -237,35 +285,8 @@ class RoleContractV01Test(unittest.TestCase):
                 contract["task_artifact_packet"]
             ),
             "specialist_lens": deepcopy(contract["specialist_lens"]),
-            "independence_evidence": {
-                **deepcopy(profile),
-                "model_identity": "same-base-model",
-                "source_review_evidence_reference": (
-                    "fixed Task Artifact Packet"
-                    if role == "AUDITOR"
-                    else "Role Contract declaration"
-                ),
-                "runtime_execution_evidence_reference": (
-                    "read-only reexecution receipt"
-                    if role == "AUDITOR"
-                    else "not required by Role Contract"
-                ),
-            },
-            "prior_role_bindings": (
-                []
-                if role == "BUILDER"
-                else [
-                    {
-                        "task_id": assignment["task_id"],
-                        "role_id": "BUILDER",
-                        "assignee_identity": "builder-assignee",
-                        "execution_context_identity": (
-                            "trusted-builder-context"
-                        ),
-                        "model_identity": "same-base-model",
-                    }
-                ]
-            ),
+            "independence_evidence": self._independence_evidence(contract),
+            "prior_role_bindings": self._prior_role_bindings(contract),
             **(
                 {}
                 if role == "BUILDER"
@@ -322,6 +343,27 @@ class RoleContractV01Test(unittest.TestCase):
             ],
         }
 
+    def _trusted_acceptance(
+        self,
+        contract: dict[str, object],
+    ) -> dict[str, object]:
+        identity = contract["contract_identity"]
+        assignment = contract["assignment"]
+        self.assertIsInstance(identity, dict)
+        self.assertIsInstance(assignment, dict)
+        return {
+            "contract_id": identity["contract_id"],
+            "contract_hash": identity["contract_hash"],
+            "task_id": assignment["task_id"],
+            "role_id": assignment["role_id"],
+            "assignee_identity": assignment["assignee_identity"],
+            "execution_context_identity": assignment[
+                "execution_context_identity"
+            ],
+            "role_acceptance": "ACCEPTED",
+            "accepted_at": "2026-07-29T00:01:00Z",
+        }
+
     def _validate(
         self,
         contract: dict[str, object],
@@ -331,6 +373,11 @@ class RoleContractV01Test(unittest.TestCase):
             contract,
             request or self._request(contract),
             trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=self._independence_evidence(
+                contract
+            ),
+            trusted_prior_role_bindings=self._prior_role_bindings(contract),
             now=FIXED_NOW,
         )
 
@@ -354,6 +401,40 @@ class RoleContractV01Test(unittest.TestCase):
                 "coverage_gap_recommendation",
             },
             set(schema["required"]),
+        )
+        self.assertEqual(
+            {
+                "contract_id",
+                "contract_hash",
+                "task_id",
+                "role_id",
+                "assignee_identity",
+                "execution_context_identity",
+                "role_acceptance",
+                "accepted_at",
+            },
+            set(
+                schema["$defs"]["trustedRoleAcceptanceRecord"]["required"]
+            ),
+        )
+        trusted_identity_fields = {
+            "evidence_identity",
+            "task_id",
+            "role_id",
+            "assignee_identity",
+            "execution_context_identity",
+            "model_identity",
+        }
+        self.assertEqual(
+            trusted_identity_fields,
+            set(schema["$defs"]["trustedPriorRoleBinding"]["required"]),
+        )
+        self.assertTrue(
+            trusted_identity_fields.issubset(
+                schema["$defs"]["trustedIndependenceEvidenceRecord"][
+                    "required"
+                ]
+            )
         )
         example = json.loads(
             (REPO_ROOT / "examples" / "role_contract.v0_1.json").read_text(
@@ -412,17 +493,129 @@ class RoleContractV01Test(unittest.TestCase):
         bindings = request["prior_role_bindings"]
         self.assertIsInstance(bindings, list)
         bindings[0]["execution_context_identity"] = "shared-trusted-context"
+        trusted_evidence = self._independence_evidence(contract)
+        trusted_bindings = self._prior_role_bindings(contract)
+        trusted_bindings[0][
+            "execution_context_identity"
+        ] = "shared-trusted-context"
         self.assertNotEqual(self._hash("builder.txt"), self._hash("audit.txt"))
         self.assertNotIn("producer_role", request)
         self.assertNotIn("builder_generated", request)
 
-        result = self._validate(contract, request)
+        result = validate_role_operation(
+            contract,
+            request,
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=trusted_evidence,
+            trusted_prior_role_bindings=trusted_bindings,
+            now=FIXED_NOW,
+        )
 
         self.assertEqual(RESULT_BLOCK, result.result)
         self.assertEqual(
             "BLOCK — CONTEXT INDEPENDENCE VIOLATION",
             result.decision_line,
         )
+
+    def test_claimant_cannot_replace_true_same_context_binding(self) -> None:
+        contract = self._contract("AUDITOR")
+        assignment = contract["assignment"]
+        self.assertIsInstance(assignment, dict)
+        assignment["execution_context_identity"] = "shared-trusted-context"
+        self._rehash(contract)
+
+        request = self._request(contract)
+        request["execution_context_identity"] = "shared-trusted-context"
+        claimed_bindings = request["prior_role_bindings"]
+        self.assertIsInstance(claimed_bindings, list)
+        claimed_bindings[0] = {
+            "evidence_identity": "forged-builder-binding-002",
+            "task_id": assignment["task_id"],
+            "role_id": "BUILDER",
+            "assignee_identity": "builder-assignee",
+            "execution_context_identity": "fake-distinct-context",
+            "model_identity": "same-base-model",
+        }
+
+        trusted_bindings = self._prior_role_bindings(contract)
+        trusted_bindings[0][
+            "execution_context_identity"
+        ] = "shared-trusted-context"
+        result = validate_role_operation(
+            contract,
+            request,
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=self._independence_evidence(
+                contract
+            ),
+            trusted_prior_role_bindings=trusted_bindings,
+            now=FIXED_NOW,
+        )
+
+        self.assertEqual(RESULT_BLOCK, result.result)
+        self.assertEqual(
+            (
+                "CONTEXT_INDEPENDENCE_VIOLATION",
+                "TRUSTED_PRIOR_ROLE_BINDINGS_MISMATCH",
+            ),
+            result.issue_codes,
+        )
+
+    def test_malformed_claims_cannot_downgrade_trusted_context_block(
+        self,
+    ) -> None:
+        contract = self._contract("AUDITOR")
+        assignment = contract["assignment"]
+        self.assertIsInstance(assignment, dict)
+        assignment["execution_context_identity"] = "shared-trusted-context"
+        self._rehash(contract)
+        trusted_evidence = self._independence_evidence(contract)
+        trusted_bindings = self._prior_role_bindings(contract)
+        trusted_bindings[0][
+            "execution_context_identity"
+        ] = "shared-trusted-context"
+
+        malformed_requests = []
+        malformed_evidence = self._request(contract)
+        malformed_evidence["independence_evidence"] = {}
+        malformed_requests.append(
+            (
+                "malformed evidence",
+                malformed_evidence,
+                "TRUSTED_INDEPENDENCE_EVIDENCE_MISMATCH",
+            )
+        )
+        duplicate_bindings = self._request(contract)
+        binding_claims = duplicate_bindings["prior_role_bindings"]
+        self.assertIsInstance(binding_claims, list)
+        binding_claims.append(deepcopy(binding_claims[0]))
+        malformed_requests.append(
+            (
+                "duplicate binding identity",
+                duplicate_bindings,
+                "TRUSTED_PRIOR_ROLE_BINDINGS_MISMATCH",
+            )
+        )
+
+        for label, request, mismatch_issue in malformed_requests:
+            with self.subTest(label=label):
+                result = validate_role_operation(
+                    contract,
+                    request,
+                    trusted_role_grant=self._trusted_grant(contract),
+                    trusted_role_acceptance=self._trusted_acceptance(contract),
+                    trusted_independence_evidence=trusted_evidence,
+                    trusted_prior_role_bindings=trusted_bindings,
+                    now=FIXED_NOW,
+                )
+                self.assertEqual(RESULT_BLOCK, result.result)
+                self.assertEqual(
+                    "CONTEXT_INDEPENDENCE_VIOLATION",
+                    result.issue_codes[0],
+                )
+                self.assertIn(mismatch_issue, result.issue_codes)
 
     def test_builder_cannot_audit_itself(self) -> None:
         contract = self._contract()
@@ -490,6 +683,113 @@ class RoleContractV01Test(unittest.TestCase):
         self.assertEqual(RESULT_BLOCK, result.result)
         self.assertIn("TRUSTED_ROLE_GRANT_MISMATCH", result.issue_codes)
 
+    def test_request_only_independence_claims_are_not_trusted(self) -> None:
+        contract = self._contract()
+        result = validate_role_operation(
+            contract,
+            self._request(contract),
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            now=FIXED_NOW,
+        )
+        self.assertEqual(RESULT_HOLD, result.result)
+        self.assertIn(
+            "TRUSTED_INDEPENDENCE_EVIDENCE_REQUIRED",
+            result.issue_codes,
+        )
+
+    def test_trusted_independence_evidence_binds_all_identities(self) -> None:
+        replacements = {
+            "task_id": "different-task",
+            "role_id": "AUDITOR",
+            "assignee_identity": "different-assignee",
+            "execution_context_identity": "different-context",
+            "model_identity": "different-model",
+            "evidence_identity": "different-evidence",
+        }
+        for field, replacement in replacements.items():
+            with self.subTest(field=field):
+                contract = self._contract()
+                trusted_evidence = self._independence_evidence(contract)
+                trusted_evidence[field] = replacement
+                result = validate_role_operation(
+                    contract,
+                    self._request(contract),
+                    trusted_role_grant=self._trusted_grant(contract),
+                    trusted_role_acceptance=self._trusted_acceptance(contract),
+                    trusted_independence_evidence=trusted_evidence,
+                    trusted_prior_role_bindings=[],
+                    now=FIXED_NOW,
+                )
+                self.assertEqual(RESULT_BLOCK, result.result)
+                self.assertIn(
+                    "TRUSTED_INDEPENDENCE_EVIDENCE_MISMATCH",
+                    result.issue_codes,
+                )
+
+    def test_trusted_prior_role_bindings_are_required_and_unique(self) -> None:
+        contract = self._contract("AUDITOR")
+        common = {
+            "trusted_role_grant": self._trusted_grant(contract),
+            "trusted_role_acceptance": self._trusted_acceptance(contract),
+            "trusted_independence_evidence": (
+                self._independence_evidence(contract)
+            ),
+            "now": FIXED_NOW,
+        }
+        missing = validate_role_operation(
+            contract,
+            self._request(contract),
+            **common,
+        )
+        self.assertEqual(RESULT_HOLD, missing.result)
+        self.assertIn(
+            "TRUSTED_PRIOR_ROLE_BINDINGS_REQUIRED",
+            missing.issue_codes,
+        )
+
+        binding = self._prior_role_bindings(contract)[0]
+        duplicate = validate_role_operation(
+            contract,
+            self._request(contract),
+            trusted_prior_role_bindings=[
+                deepcopy(binding),
+                deepcopy(binding),
+            ],
+            **common,
+        )
+        self.assertEqual(RESULT_HOLD, duplicate.result)
+        self.assertIn(
+            "TRUSTED_PRIOR_ROLE_BINDINGS_REQUIRED",
+            duplicate.issue_codes,
+        )
+
+    def test_trusted_evidence_identities_are_globally_unique(self) -> None:
+        contract = self._contract("AUDITOR")
+        trusted_evidence = self._independence_evidence(contract)
+        trusted_bindings = self._prior_role_bindings(contract)
+        trusted_evidence["evidence_identity"] = trusted_bindings[0][
+            "evidence_identity"
+        ]
+        request = self._request(contract)
+        request["independence_evidence"] = deepcopy(trusted_evidence)
+
+        result = validate_role_operation(
+            contract,
+            request,
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=trusted_evidence,
+            trusted_prior_role_bindings=trusted_bindings,
+            now=FIXED_NOW,
+        )
+
+        self.assertEqual(RESULT_HOLD, result.result)
+        self.assertIn(
+            "TRUSTED_EVIDENCE_IDENTITY_COLLISION",
+            result.issue_codes,
+        )
+
     def test_explicit_assignment_authority_is_required(self) -> None:
         contract = self._contract()
         assignment = contract["assignment"]
@@ -529,6 +829,115 @@ class RoleContractV01Test(unittest.TestCase):
         result = self._validate(contract)
         self.assertEqual(RESULT_BLOCK, result.result)
         self.assertIn("ROLE_ACCEPTANCE_REQUIRED", result.issue_codes)
+
+    def test_contract_acceptance_claim_needs_trusted_receiver_record(
+        self,
+    ) -> None:
+        contract = self._contract()
+        assignment = contract["assignment"]
+        self.assertIsInstance(assignment, dict)
+        self.assertEqual("ACCEPTED", assignment["role_acceptance"])
+
+        result = validate_role_operation(
+            contract,
+            self._request(contract),
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_independence_evidence=self._independence_evidence(
+                contract
+            ),
+            trusted_prior_role_bindings=[],
+            now=FIXED_NOW,
+        )
+
+        self.assertEqual(RESULT_HOLD, result.result)
+        self.assertIn("TRUSTED_ROLE_ACCEPTANCE_REQUIRED", result.issue_codes)
+
+    def test_trusted_role_acceptance_binds_receiver_and_contract(
+        self,
+    ) -> None:
+        replacements = {
+            "contract_id": "different-contract",
+            "contract_hash": "f" * 64,
+            "task_id": "different-task",
+            "role_id": "AUDITOR",
+            "assignee_identity": "different-assignee",
+            "execution_context_identity": "different-context",
+        }
+        for field, replacement in replacements.items():
+            with self.subTest(field=field):
+                contract = self._contract()
+                acceptance = self._trusted_acceptance(contract)
+                acceptance[field] = replacement
+                result = validate_role_operation(
+                    contract,
+                    self._request(contract),
+                    trusted_role_grant=self._trusted_grant(contract),
+                    trusted_role_acceptance=acceptance,
+                    trusted_independence_evidence=(
+                        self._independence_evidence(contract)
+                    ),
+                    trusted_prior_role_bindings=[],
+                    now=FIXED_NOW,
+                )
+                self.assertEqual(RESULT_BLOCK, result.result)
+                self.assertIn(
+                    "TRUSTED_ROLE_ACCEPTANCE_MISMATCH",
+                    result.issue_codes,
+                )
+
+    def test_trusted_role_acceptance_status_and_time_fail_closed(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "role_acceptance",
+                "DECLINED",
+                RESULT_BLOCK,
+                "TRUSTED_ROLE_ACCEPTANCE_NOT_ACCEPTED",
+            ),
+            (
+                "accepted_at",
+                "UNKNOWN",
+                RESULT_HOLD,
+                "TRUSTED_ROLE_ACCEPTANCE_UNVERIFIABLE",
+            ),
+            (
+                "accepted_at",
+                "2026-07-28T23:59:59Z",
+                RESULT_BLOCK,
+                "TRUSTED_ROLE_ACCEPTANCE_TIME_INVALID",
+            ),
+            (
+                "accepted_at",
+                "2026-07-30T00:00:00Z",
+                RESULT_BLOCK,
+                "TRUSTED_ROLE_ACCEPTANCE_TIME_INVALID",
+            ),
+            (
+                "accepted_at",
+                "2026-07-29T13:00:00Z",
+                RESULT_BLOCK,
+                "TRUSTED_ROLE_ACCEPTANCE_TIME_INVALID",
+            ),
+        )
+        for field, replacement, expected_result, expected_issue in cases:
+            with self.subTest(field=field, replacement=replacement):
+                contract = self._contract()
+                acceptance = self._trusted_acceptance(contract)
+                acceptance[field] = replacement
+                result = validate_role_operation(
+                    contract,
+                    self._request(contract),
+                    trusted_role_grant=self._trusted_grant(contract),
+                    trusted_role_acceptance=acceptance,
+                    trusted_independence_evidence=(
+                        self._independence_evidence(contract)
+                    ),
+                    trusted_prior_role_bindings=[],
+                    now=FIXED_NOW,
+                )
+                self.assertEqual(expected_result, result.result)
+                self.assertIn(expected_issue, result.issue_codes)
 
     def test_role_contract_is_required(self) -> None:
         result = validate_role_operation(None, None, now=FIXED_NOW)
@@ -628,12 +1037,22 @@ class RoleContractV01Test(unittest.TestCase):
     def test_unknown_independence_does_not_become_pass(self) -> None:
         contract = self._contract()
         request = self._request(contract)
-        evidence = request["independence_evidence"]
-        self.assertIsInstance(evidence, dict)
-        evidence["runtime_execution_independence"] = "UNKNOWN"
-        result = self._validate(contract, request)
+        trusted_evidence = self._independence_evidence(contract)
+        trusted_evidence["runtime_execution_independence"] = "UNKNOWN"
+        result = validate_role_operation(
+            contract,
+            request,
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=trusted_evidence,
+            trusted_prior_role_bindings=[],
+            now=FIXED_NOW,
+        )
         self.assertEqual(RESULT_HOLD, result.result)
-        self.assertIn("INDEPENDENCE_UNVERIFIABLE", result.issue_codes)
+        self.assertIn(
+            "TRUSTED_INDEPENDENCE_EVIDENCE_REQUIRED",
+            result.issue_codes,
+        )
 
     def test_different_model_name_does_not_establish_context_independence(
         self,
@@ -652,8 +1071,18 @@ class RoleContractV01Test(unittest.TestCase):
         bindings = request["prior_role_bindings"]
         self.assertIsInstance(bindings, list)
         bindings[0]["execution_context_identity"] = "shared-trusted-context"
+        trusted_evidence = deepcopy(evidence)
+        trusted_bindings = deepcopy(bindings)
 
-        result = self._validate(contract, request)
+        result = validate_role_operation(
+            contract,
+            request,
+            trusted_role_grant=self._trusted_grant(contract),
+            trusted_role_acceptance=self._trusted_acceptance(contract),
+            trusted_independence_evidence=trusted_evidence,
+            trusted_prior_role_bindings=trusted_bindings,
+            now=FIXED_NOW,
+        )
 
         self.assertEqual(RESULT_BLOCK, result.result)
         self.assertIn(
