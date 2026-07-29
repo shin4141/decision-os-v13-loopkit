@@ -1,0 +1,92 @@
+{
+  "contract_identity": {
+    "contract_id": "stage4-example-builder-001",
+    "version": "0.1",
+    "contract_hash": "bb4527beddf6fb882032201bd2586714c54513779c5cab93a4435d77e421e531"
+  },
+  "assignment": {
+    "task_id": "stage4-example-task-001",
+    "role_id": "BUILDER",
+    "grant_type": "EXPLICIT_ROLE_GRANT",
+    "assignment_authority": "Shin",
+    "shin_gate_reference": "GO — STAGE 4 v0.1 EXAMPLE BUILDER",
+    "assignee_identity": "example-builder",
+    "execution_context_identity": "trusted-context-example-builder-001",
+    "role_acceptance": "ACCEPTED"
+  },
+  "owned_responsibility": {
+    "responsibility": "Implement only the fixed example target.",
+    "exact_target": [
+      "README.md"
+    ],
+    "next_owner": "Shin"
+  },
+  "operations": {
+    "allowed_operations": [
+      "IMPLEMENT_DESIGN",
+      "READ_TARGET",
+      "RUN_TESTS",
+      "PRODUCE_EXIT_RECEIPT",
+      "GENERATE_COVERAGE_GAP_RECOMMENDATION"
+    ],
+    "forbidden_operations": [
+      "AUDIT_TARGET",
+      "SELF_AUDIT",
+      "MODIFY_ROLE_GRANT",
+      "MODIFY_SPECIALIST_LENS",
+      "MODIFY_OUTSIDE_TARGET",
+      "MERGE",
+      "POST",
+      "INVOKE_SPECIALIST",
+      "START_STAGE_5"
+    ]
+  },
+  "task_artifact_packet": {
+    "repo": "shin4141/decision-os-v13-loopkit",
+    "head": "fe7d51806ac06ae6b4110d7443521abc351d7e87",
+    "paths": [
+      "README.md"
+    ],
+    "artifact_hashes": {
+      "README.md": "d1ec370e2b44b3df732204ccf4e78b0d14b82591163911da1b7854227cf5460a"
+    },
+    "as_of": "2026-07-29T00:00:00Z"
+  },
+  "specialist_lens": {
+    "lens_id": "v13-stage4-specialist-lens",
+    "lens_version": "0.1",
+    "lens_hash": "3a1200f872a1c89c93ebebf099cfa63d2721ea765e992adb3ad0b3dd82730bcc"
+  },
+  "independence_profile": {
+    "role_context_independence": "SAME_CONTEXT_ALLOWED",
+    "source_review_independence": "FULL_PRIOR_CONTEXT_ALLOWED",
+    "runtime_execution_independence": "NOT_REQUIRED",
+    "model_diversity": "SAME_MODEL_ALLOWED"
+  },
+  "completion": {
+    "completion_line": "The fixed example target is implemented and its Role Exit Receipt is complete.",
+    "required_exit_receipt": true,
+    "coverage_gap_required": true
+  },
+  "lifecycle": {
+    "issued_at": "2026-07-29T00:00:00Z",
+    "expires_at": "2026-07-30T00:00:00Z",
+    "revocation_reference": null,
+    "status": "ACTIVE"
+  },
+  "coverage_gap_recommendation": {
+    "coverage_completed": true,
+    "coverage_gap": "NONE DETECTED",
+    "recommended_specialist": "NONE",
+    "reason": "The fixed Builder responsibility is fully covered.",
+    "exact_target": [
+      "README.md"
+    ],
+    "required_evidence": [
+      "Role Exit Receipt"
+    ],
+    "urgency": "NONE",
+    "assignment_authority_required": true,
+    "automatic_invocation": false
+  }
+}
