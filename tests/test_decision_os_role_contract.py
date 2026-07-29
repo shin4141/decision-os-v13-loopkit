@@ -300,6 +300,28 @@ class RoleContractV01Test(unittest.TestCase):
         self.assertIsInstance(identity, dict)
         identity["contract_hash"] = compute_contract_hash(contract)
 
+    def _trusted_grant(
+        self,
+        contract: dict[str, object],
+    ) -> dict[str, object]:
+        identity = contract["contract_identity"]
+        assignment = contract["assignment"]
+        self.assertIsInstance(identity, dict)
+        self.assertIsInstance(assignment, dict)
+        return {
+            "contract_id": identity["contract_id"],
+            "contract_hash": identity["contract_hash"],
+            "task_id": assignment["task_id"],
+            "role_id": assignment["role_id"],
+            "grant_type": assignment["grant_type"],
+            "assignment_authority": assignment["assignment_authority"],
+            "shin_gate_reference": assignment["shin_gate_reference"],
+            "assignee_identity": assignment["assignee_identity"],
+            "execution_context_identity": assignment[
+                "execution_context_identity"
+            ],
+        }
+
     def _validate(
         self,
         contract: dict[str, object],
@@ -308,6 +330,7 @@ class RoleContractV01Test(unittest.TestCase):
         return validate_role_operation(
             contract,
             request or self._request(contract),
+            trusted_role_grant=self._trusted_grant(contract),
             now=FIXED_NOW,
         )
 
@@ -439,8 +462,33 @@ class RoleContractV01Test(unittest.TestCase):
             {"role_id": "BUILDER"},
             now=FIXED_NOW,
         )
-        self.assertEqual(RESULT_INVALID, result.result)
-        self.assertIn("OPERATION_REQUEST_INCOMPLETE", result.issue_codes)
+        self.assertEqual(RESULT_HOLD, result.result)
+        self.assertIn("TRUSTED_ROLE_GRANT_REQUIRED", result.issue_codes)
+
+    def test_contract_self_declaration_is_not_a_trusted_role_grant(
+        self,
+    ) -> None:
+        contract = self._contract()
+        result = validate_role_operation(
+            contract,
+            self._request(contract),
+            now=FIXED_NOW,
+        )
+        self.assertEqual(RESULT_HOLD, result.result)
+        self.assertIn("TRUSTED_ROLE_GRANT_REQUIRED", result.issue_codes)
+
+    def test_trusted_role_grant_must_bind_contract_and_context(self) -> None:
+        contract = self._contract()
+        grant = self._trusted_grant(contract)
+        grant["execution_context_identity"] = "different-context"
+        result = validate_role_operation(
+            contract,
+            self._request(contract),
+            trusted_role_grant=grant,
+            now=FIXED_NOW,
+        )
+        self.assertEqual(RESULT_BLOCK, result.result)
+        self.assertIn("TRUSTED_ROLE_GRANT_MISMATCH", result.issue_codes)
 
     def test_explicit_assignment_authority_is_required(self) -> None:
         contract = self._contract()

@@ -50,6 +50,13 @@ A Role is Active only when all of the following are established:
 Missing, unknown, or unverifiable state never becomes Active. A new Role,
 authority, operation, target, or Lens requires a new Shin Gate.
 
+The Role Contract's own authority fields are declarations, not proof of their
+provenance. `validate_role_operation` therefore requires a
+`trusted_role_grant` supplied independently of the Role Contract and operation
+request. The trusted grant must bind the exact contract ID/hash, task, Role,
+Grant type, Shin authority and Gate reference, assignee, and trusted execution
+context. Contract self-declaration without this out-of-band evidence is HOLD.
+
 ## Contract identity
 
 The schema is
@@ -128,11 +135,11 @@ Assignment event, Runner/Codex/agent invocation, or Stage 5 decision.
 ## Semantic validation
 
 `decision_os.role_contract.validate_role_operation` validates the complete
-contract and one requested operation. It is deterministic and read-only. It
-checks explicit authority and Gate binding, assignee/context binding, Role
-Acceptance, exact packet and Lens identities, scope and path identity,
-role-specific forbidden operations, lifecycle, each independence dimension,
-and recommendation inertness.
+contract, one independently supplied trusted Role Grant, and one requested
+operation. It is deterministic and read-only. It checks explicit authority
+and Gate binding, assignee/context binding, Role Acceptance, exact packet and
+Lens identities, scope and path identity, role-specific forbidden operations,
+lifecycle, each independence dimension, and recommendation inertness.
 
 The first closed attack is same-context false division: a trusted context
 cannot create Builder artifact A, create different Audit artifact B, omit

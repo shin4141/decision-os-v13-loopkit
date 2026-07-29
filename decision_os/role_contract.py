@@ -231,6 +231,19 @@ TARGET_IMMUTABILITY_FIELDS = frozenset(
         "after_artifact_hashes",
     )
 )
+TRUSTED_ROLE_GRANT_FIELDS = frozenset(
+    (
+        "contract_id",
+        "contract_hash",
+        "task_id",
+        "role_id",
+        "grant_type",
+        "assignment_authority",
+        "shin_gate_reference",
+        "assignee_identity",
+        "execution_context_identity",
+    )
+)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _GIT_HEAD_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -683,13 +696,43 @@ def _target_immutability_satisfied(
     )
 
 
+def _trusted_role_grant_assessment(
+    contract: Mapping[str, Any],
+    trusted_role_grant: Any,
+) -> RoleContractAssessment | None:
+    if (
+        not isinstance(trusted_role_grant, Mapping)
+        or set(trusted_role_grant) != TRUSTED_ROLE_GRANT_FIELDS
+    ):
+        return _assessment(RESULT_HOLD, "TRUSTED_ROLE_GRANT_REQUIRED")
+    identity = contract["contract_identity"]
+    assignment = contract["assignment"]
+    expected = {
+        "contract_id": identity["contract_id"],
+        "contract_hash": identity["contract_hash"],
+        "task_id": assignment["task_id"],
+        "role_id": assignment["role_id"],
+        "grant_type": assignment["grant_type"],
+        "assignment_authority": assignment["assignment_authority"],
+        "shin_gate_reference": assignment["shin_gate_reference"],
+        "assignee_identity": assignment["assignee_identity"],
+        "execution_context_identity": assignment[
+            "execution_context_identity"
+        ],
+    }
+    if dict(trusted_role_grant) != expected:
+        return _assessment(RESULT_BLOCK, "TRUSTED_ROLE_GRANT_MISMATCH")
+    return None
+
+
 def validate_role_operation(
     contract: Mapping[str, Any] | None,
     request: Mapping[str, Any] | None,
     *,
+    trusted_role_grant: Mapping[str, Any] | None = None,
     now: datetime | None = None,
 ) -> RoleContractAssessment:
-    """Validate one operation without producing any assignment or side effect."""
+    """Validate one operation against an out-of-band trusted Role Grant."""
 
     shape_issue = _contract_shape_issue(contract)
     if shape_issue is not None:
@@ -710,6 +753,13 @@ def validate_role_operation(
             else RESULT_INVALID
         )
         return _assessment(result, semantic_issue)
+
+    grant_assessment = _trusted_role_grant_assessment(
+        contract,
+        trusted_role_grant,
+    )
+    if grant_assessment is not None:
+        return grant_assessment
 
     request_issue = _request_shape_issue(request)
     if request_issue is not None:
