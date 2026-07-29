@@ -44,6 +44,12 @@ SOURCE_LABEL = "COMPANION_GUIDED_INTAKE_TEXTAREA"
 MAX_ORIGINAL_REQUEST_BYTES = 65_536
 MAX_DRAFT_BYTES = 1_048_576
 GENESIS_EVENT_HASH = "0" * 64
+PURGE_REQUEST_EVENT_KIND = "ORIGINAL_REQUEST_PURGE_REQUESTED"
+PURGE_EVENT_KIND = "ORIGINAL_REQUEST_PURGED"
+PURGE_BLOCK = "BLOCK — ORIGINAL REQUEST UNAVAILABLE"
+PURGE_CONFIRMATION = "EXPLICIT_USER_CONFIRMATION"
+PURGE_BLOB_DELETED = "DELETED_NO_NON_PURGED_REFERENCES"
+PURGE_BLOB_RETAINED = "RETAINED_FOR_NON_PURGED_REFERENCE"
 
 EVIDENCE_PACKET_IDENTITY = {
     "commit": "fa9feb3586672df061d5f169541e2f0ea88d0b95",
@@ -1493,7 +1499,11 @@ class GuidedIntakeStore:
             }
         )
 
-    def load_state(self) -> dict[str, Any]:
+    def load_state(
+        self,
+        *,
+        allow_event_head_mismatch: bool = False,
+    ) -> dict[str, Any]:
         if not self.root.exists():
             return _empty_state()
         if self.root.is_symlink():
@@ -1551,7 +1561,10 @@ class GuidedIntakeStore:
             ) from exc
         events = self.read_events()
         head = events[-1]["event_hash"] if events else GENESIS_EVENT_HASH
-        if state.get("event_chain_head") != head:
+        if (
+            state.get("event_chain_head") != head
+            and not allow_event_head_mismatch
+        ):
             raise GuidedIntakeIntegrityError(
                 "HOLD — GUIDED INTAKE STATE CORRUPT"
             )
@@ -1719,6 +1732,41 @@ class GuidedIntakeStore:
                 "HOLD — GUIDED INTAKE STATE CORRUPT"
             )
         return payload
+
+    def blob_exists(
+        self,
+        collection: str,
+        digest: str,
+        *,
+        suffix: str,
+    ) -> bool:
+        target = self._blob_path(collection, digest, suffix)
+        if target.is_symlink():
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        self._assert_private_directory(self.root)
+        self._assert_private_directory(target.parent)
+        if not target.exists():
+            return False
+        self._assert_private_file(target)
+        return True
+
+    def delete_blob(
+        self,
+        collection: str,
+        digest: str,
+        *,
+        suffix: str,
+    ) -> None:
+        target = self._blob_path(collection, digest, suffix)
+        self.read_blob(collection, digest, suffix=suffix)
+        try:
+            target.unlink()
+        except OSError as exc:
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            ) from exc
 
 
 def _quote_support(
@@ -2909,6 +2957,162 @@ class GuidedIntakeController:
         state["event_chain_head"] = event["event_hash"]
         return event
 
+    def _purge_lifecycle(
+        self,
+        state: Mapping[str, Any],
+    ) -> tuple[
+        dict[str, dict[str, Any]],
+        dict[str, dict[str, Any]],
+    ]:
+        requests = state.get("requests")
+        if not isinstance(requests, dict):
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        observed_request_ids: list[str] = []
+        active_request_id: str | None = None
+        purge_requests: dict[str, dict[str, Any]] = {}
+        purges: dict[str, dict[str, Any]] = {}
+        for event in self.store.read_events():
+            if event["kind"] == "ORIGINAL_REQUEST_CAPTURED":
+                request_id = event["payload"].get("request_id")
+                if (
+                    not isinstance(request_id, str)
+                    or request_id not in requests
+                    or request_id in observed_request_ids
+                    or set(purge_requests) != set(purges)
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+                observed_request_ids.append(request_id)
+                active_request_id = request_id
+                continue
+            if event["kind"] == PURGE_REQUEST_EVENT_KIND:
+                payload = event["payload"]
+                if set(payload) != {
+                    "authority_state",
+                    "confirmation",
+                    "purged_at",
+                    "raw_blob_disposition",
+                    "remaining_non_purged_references",
+                    "request_id",
+                    "request_sha256",
+                }:
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+                request_id = payload.get("request_id")
+                request = requests.get(request_id)
+                request_sha256 = payload.get("request_sha256")
+                remaining = payload.get(
+                    "remaining_non_purged_references"
+                )
+                if (
+                    not isinstance(request_id, str)
+                    or request_id != active_request_id
+                    or request_id not in observed_request_ids
+                    or request_id in purge_requests
+                    or set(purge_requests) != set(purges)
+                    or not isinstance(request, dict)
+                    or request_sha256 != request.get("sha256")
+                    or payload.get("authority_state") != AUTHORITY_STATE
+                    or payload.get("confirmation") != PURGE_CONFIRMATION
+                    or payload.get("purged_at") != event["recorded_at"]
+                    or not isinstance(remaining, int)
+                    or isinstance(remaining, bool)
+                    or remaining < 0
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+                expected_remaining = sum(
+                    observed_id != request_id
+                    and observed_id not in purges
+                    and requests[observed_id].get("sha256")
+                    == request_sha256
+                    for observed_id in observed_request_ids
+                )
+                expected_disposition = (
+                    PURGE_BLOB_RETAINED
+                    if expected_remaining
+                    else PURGE_BLOB_DELETED
+                )
+                if (
+                    remaining != expected_remaining
+                    or payload.get("raw_blob_disposition")
+                    != expected_disposition
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+                purge_requests[request_id] = event
+                continue
+            if event["kind"] != PURGE_EVENT_KIND:
+                continue
+            payload = event["payload"]
+            if set(payload) != {
+                "authority_state",
+                "completed_at",
+                "purge_request_event_hash",
+                "purge_request_event_id",
+                "purged_at",
+                "raw_blob_disposition",
+                "remaining_non_purged_references",
+                "request_id",
+                "request_sha256",
+            }:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            request_id = payload.get("request_id")
+            if not isinstance(request_id, str):
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            purge_request = purge_requests.get(request_id)
+            if not isinstance(purge_request, dict):
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            requested = purge_request["payload"]
+            if (
+                request_id != active_request_id
+                or request_id in purges
+                or payload.get("authority_state") != AUTHORITY_STATE
+                or payload.get("completed_at") != event["recorded_at"]
+                or payload.get("purge_request_event_hash")
+                != purge_request["event_hash"]
+                or payload.get("purge_request_event_id")
+                != purge_request["event_id"]
+                or payload.get("purged_at") != requested["purged_at"]
+                or payload.get("raw_blob_disposition")
+                != requested["raw_blob_disposition"]
+                or payload.get("remaining_non_purged_references")
+                != requested["remaining_non_purged_references"]
+                or payload.get("request_sha256")
+                != requested["request_sha256"]
+            ):
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            purges[str(request_id)] = event
+        return purge_requests, purges
+
+    def _purge_events(
+        self,
+        state: Mapping[str, Any],
+    ) -> dict[str, dict[str, Any]]:
+        _requests, purges = self._purge_lifecycle(state)
+        return purges
+
+    def _request_purge(
+        self,
+        state: Mapping[str, Any],
+        request_id: str,
+    ) -> dict[str, Any] | None:
+        return self._purge_events(state).get(request_id)
+
     def _active_request(
         self,
         state: Mapping[str, Any],
@@ -2919,6 +3123,8 @@ class GuidedIntakeController:
             raise GuidedIntakeConflictError(
                 "Capture an Original Request first."
             )
+        if self._request_purge(state, str(request_id)) is not None:
+            raise GuidedIntakeConflictError(PURGE_BLOCK)
         digest = record.get("sha256")
         if not isinstance(digest, str):
             raise GuidedIntakeIntegrityError(
@@ -3254,7 +3460,18 @@ class GuidedIntakeController:
     def _verify_persisted_history(
         self,
         state: Mapping[str, Any],
+        *,
+        pending_purge_request_id: str | None = None,
     ) -> None:
+        purge_request_events, purge_events = self._purge_lifecycle(state)
+        pending_purge_ids = set(purge_request_events) - set(purge_events)
+        if pending_purge_ids and pending_purge_ids != {
+            pending_purge_request_id
+        }:
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        purged_request_ids = set(purge_request_events)
         confirmations_by_id = {
             item["confirmation_event_id"]: item
             for item in state["confirmations"]
@@ -3278,6 +3495,8 @@ class GuidedIntakeController:
                 "ORIGINAL_REQUEST_CAPTURED",
                 "PRO_DRAFT_IMPORTED",
                 "USER_CONFIRMATION_RECORDED",
+                PURGE_REQUEST_EVENT_KIND,
+                PURGE_EVENT_KIND,
             }:
                 replayed_current_freeze_sha = None
             if event["kind"] == "ORIGINAL_REQUEST_CAPTURED":
@@ -3515,10 +3734,75 @@ class GuidedIntakeController:
             raise GuidedIntakeIntegrityError(
                 "HOLD — GUIDED INTAKE STATE CORRUPT"
             )
-        for request in state["requests"].values():
+        for freeze in state["freezes"].values():
+            if freeze["purged"] is not (
+                freeze["request_id"] in purged_request_ids
+            ):
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+        request_ids_by_sha256: dict[str, list[str]] = {}
+        for request_id, request in state["requests"].items():
+            request_ids_by_sha256.setdefault(
+                request["sha256"],
+                [],
+            ).append(request_id)
+        for digest, request_ids in request_ids_by_sha256.items():
+            non_purged_ids = [
+                request_id
+                for request_id in request_ids
+                if request_id not in purged_request_ids
+            ]
+            exists = self.store.blob_exists(
+                "original-requests",
+                digest,
+                suffix=".utf8",
+            )
+            if not non_purged_ids:
+                if exists:
+                    pending_event = purge_request_events.get(
+                        pending_purge_request_id
+                    )
+                    if (
+                        pending_purge_request_id not in request_ids
+                        or pending_purge_request_id
+                        not in pending_purge_ids
+                        or not isinstance(pending_event, dict)
+                        or pending_event["payload"].get(
+                            "raw_blob_disposition"
+                        )
+                        != PURGE_BLOB_DELETED
+                    ):
+                        raise GuidedIntakeIntegrityError(
+                            "HOLD — GUIDED INTAKE STATE CORRUPT"
+                        )
+                    payload = self.store.read_blob(
+                        "original-requests",
+                        digest,
+                        suffix=".utf8",
+                    )
+                    try:
+                        payload.decode("utf-8")
+                    except UnicodeDecodeError as exc:
+                        raise GuidedIntakeIntegrityError(
+                            "HOLD — GUIDED INTAKE STATE CORRUPT"
+                        ) from exc
+                    if any(
+                        len(payload)
+                        != state["requests"][request_id]["byte_size"]
+                        for request_id in request_ids
+                    ):
+                        raise GuidedIntakeIntegrityError(
+                            "HOLD — GUIDED INTAKE STATE CORRUPT"
+                        )
+                continue
+            if not exists:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
             payload = self.store.read_blob(
                 "original-requests",
-                request["sha256"],
+                digest,
                 suffix=".utf8",
             )
             try:
@@ -3527,7 +3811,11 @@ class GuidedIntakeController:
                 raise GuidedIntakeIntegrityError(
                     "HOLD — GUIDED INTAKE STATE CORRUPT"
                 ) from exc
-            if len(payload) != request["byte_size"]:
+            if any(
+                len(payload)
+                != state["requests"][request_id]["byte_size"]
+                for request_id in request_ids
+            ):
                 raise GuidedIntakeIntegrityError(
                     "HOLD — GUIDED INTAKE STATE CORRUPT"
                 )
@@ -3553,7 +3841,10 @@ class GuidedIntakeController:
                     "HOLD — GUIDED INTAKE STATE CORRUPT"
                 )
         request_id = state.get("active_request_id")
-        if isinstance(request_id, str):
+        if (
+            isinstance(request_id, str)
+            and request_id not in purged_request_ids
+        ):
             request = state["requests"][request_id]
             payload = self.store.read_blob(
                 "original-requests",
@@ -3694,6 +3985,239 @@ class GuidedIntakeController:
             )
             self.store.save_state(state)
             return self._snapshot_from_state(state)
+
+    def _load_purge_state(
+        self,
+        request_id: str,
+        request_sha256: str,
+    ) -> tuple[dict[str, Any], bool]:
+        state = self.store.load_state(
+            allow_event_head_mismatch=True,
+        )
+        events = self.store.read_events()
+        persisted_head = state["event_chain_head"]
+        current_head = (
+            events[-1]["event_hash"] if events else GENESIS_EVENT_HASH
+        )
+        if persisted_head == current_head:
+            return state, False
+        if persisted_head == GENESIS_EVENT_HASH:
+            trailing = events
+        else:
+            matching = [
+                index
+                for index, event in enumerate(events)
+                if event["event_hash"] == persisted_head
+            ]
+            if len(matching) != 1:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            trailing = events[matching[0] + 1 :]
+        if len(trailing) != 1 or trailing[0]["kind"] not in {
+            PURGE_REQUEST_EVENT_KIND,
+            PURGE_EVENT_KIND,
+        }:
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        request = state["requests"].get(state["active_request_id"])
+        if (
+            not isinstance(request, dict)
+            or request["request_id"] != request_id
+            or request["sha256"] != request_sha256
+            or request["superseded_by_request_id"] is not None
+        ):
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        purge_requests, purges = self._purge_lifecycle(state)
+        trailing_event = trailing[0]
+        if trailing_event["kind"] == PURGE_REQUEST_EVENT_KIND:
+            purge_request = purge_requests.get(request_id)
+            if (
+                not isinstance(purge_request, dict)
+                or purge_request["event_hash"]
+                != trailing_event["event_hash"]
+            ):
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            for freeze in state["freezes"].values():
+                if freeze["request_id"] == request_id:
+                    freeze["purged"] = True
+            state["copy_prompt_request_id"] = None
+            state["event_chain_head"] = trailing_event["event_hash"]
+            self._verify_persisted_history(
+                state,
+                pending_purge_request_id=request_id,
+            )
+            self.store.save_state(state)
+            return state, False
+        purge_event = purges.get(request_id)
+        if (
+            not isinstance(purge_event, dict)
+            or purge_event["event_hash"] != trailing_event["event_hash"]
+        ):
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        state["event_chain_head"] = trailing_event["event_hash"]
+        self._verify_persisted_history(state)
+        self.store.save_state(state)
+        return state, True
+
+    def _complete_purge(
+        self,
+        state: dict[str, Any],
+        purge_request: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        payload = purge_request["payload"]
+        request_sha256 = payload["request_sha256"]
+        if (
+            payload["raw_blob_disposition"] == PURGE_BLOB_DELETED
+            and self.store.blob_exists(
+                "original-requests",
+                request_sha256,
+                suffix=".utf8",
+            )
+        ):
+            self.store.delete_blob(
+                "original-requests",
+                request_sha256,
+                suffix=".utf8",
+            )
+        completed_at = self._now()
+        completion_event = self._append(
+            state,
+            PURGE_EVENT_KIND,
+            {
+                "authority_state": AUTHORITY_STATE,
+                "completed_at": completed_at,
+                "purge_request_event_hash": purge_request["event_hash"],
+                "purge_request_event_id": purge_request["event_id"],
+                "purged_at": payload["purged_at"],
+                "raw_blob_disposition": payload[
+                    "raw_blob_disposition"
+                ],
+                "remaining_non_purged_references": payload[
+                    "remaining_non_purged_references"
+                ],
+                "request_id": payload["request_id"],
+                "request_sha256": request_sha256,
+            },
+            event_id=self._new_id("GI-PURGE"),
+            recorded_at=completed_at,
+        )
+        self.store.save_state(state)
+        snapshot = self._snapshot_from_state(state)
+        purge = snapshot.get("purge")
+        if (
+            not isinstance(purge, dict)
+            or purge.get("event_hash") != completion_event["event_hash"]
+        ):
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+        return snapshot
+
+    def purge(
+        self,
+        request_id: str,
+        request_sha256: str,
+        confirmed: bool,
+    ) -> dict[str, Any]:
+        if (
+            not isinstance(request_id, str)
+            or _SAFE_ID.fullmatch(request_id) is None
+            or not isinstance(request_sha256, str)
+            or _SHA256.fullmatch(request_sha256) is None
+        ):
+            raise GuidedIntakeValidationError(
+                "Original Request purge identity is invalid."
+            )
+        if confirmed is not True:
+            raise GuidedIntakeValidationError(
+                "Explicit Original Request purge confirmation is required."
+            )
+        with self.store.transaction():
+            state, recovered_completion = self._load_purge_state(
+                request_id,
+                request_sha256,
+            )
+            if recovered_completion:
+                return self._snapshot_from_state(state)
+            self._verify_persisted_history(
+                state,
+                pending_purge_request_id=request_id,
+            )
+            active_request_id = state.get("active_request_id")
+            request = state.get("requests", {}).get(active_request_id)
+            if not isinstance(request, dict):
+                raise GuidedIntakeConflictError(
+                    "Capture an Original Request first."
+                )
+            if request_id != active_request_id:
+                if request_id in state["requests"]:
+                    raise GuidedIntakeConflictError(
+                        "HOLD — ORIGINAL REQUEST PURGE STALE"
+                    )
+                raise GuidedIntakeConflictError(
+                    "Original Request purge identity does not match the current request."
+                )
+            if request_sha256 != request.get("sha256"):
+                raise GuidedIntakeConflictError(
+                    "Original Request purge identity does not match the current request."
+                )
+            purge_requests, purges = self._purge_lifecycle(state)
+            if request_id in purges:
+                raise GuidedIntakeConflictError(
+                    "Original Request is already purged."
+                )
+            if request_id in purge_requests:
+                return self._complete_purge(
+                    state,
+                    purge_requests[request_id],
+                )
+            if request.get("superseded_by_request_id") is not None:
+                raise GuidedIntakeConflictError(
+                    "HOLD — ORIGINAL REQUEST PURGE STALE"
+                )
+            remaining_non_purged = sum(
+                candidate_id != request_id
+                and candidate_id not in purges
+                and candidate.get("sha256") == request_sha256
+                for candidate_id, candidate in state["requests"].items()
+            )
+            disposition = (
+                PURGE_BLOB_RETAINED
+                if remaining_non_purged
+                else PURGE_BLOB_DELETED
+            )
+            purged_at = self._now()
+            for freeze in state["freezes"].values():
+                if freeze["request_id"] == request_id:
+                    freeze["purged"] = True
+            state["copy_prompt_request_id"] = None
+            purge_request = self._append(
+                state,
+                PURGE_REQUEST_EVENT_KIND,
+                {
+                    "authority_state": AUTHORITY_STATE,
+                    "confirmation": PURGE_CONFIRMATION,
+                    "purged_at": purged_at,
+                    "raw_blob_disposition": disposition,
+                    "remaining_non_purged_references": (
+                        remaining_non_purged
+                    ),
+                    "request_id": request_id,
+                    "request_sha256": request_sha256,
+                },
+                event_id=self._new_id("GI-PURGE-REQUEST"),
+                recorded_at=purged_at,
+            )
+            self.store.save_state(state)
+            return self._complete_purge(state, purge_request)
 
     def _validate_draft(
         self,
@@ -4646,8 +5170,22 @@ class GuidedIntakeController:
         self._verify_persisted_history(state)
         request_id = state.get("active_request_id")
         request = state.get("requests", {}).get(request_id)
+        purge_request_events, purge_events = self._purge_lifecycle(
+            state
+        )
+        purge_event = (
+            purge_events.get(request_id)
+            if isinstance(request_id, str)
+            else None
+        )
+        purge_request_event = (
+            purge_request_events.get(request_id)
+            if isinstance(request_id, str)
+            else None
+        )
+        request_is_purged = purge_event is not None
         original: str | None = None
-        if isinstance(request, dict):
+        if isinstance(request, dict) and not request_is_purged:
             payload = self.store.read_blob(
                 "original-requests",
                 request["sha256"],
@@ -4661,12 +5199,20 @@ class GuidedIntakeController:
                 ) from exc
         draft_id = state.get("active_draft_id")
         draft = state.get("drafts", {}).get(draft_id)
-        if isinstance(request, dict) and isinstance(draft, dict):
+        if (
+            not request_is_purged
+            and isinstance(request, dict)
+            and isinstance(draft, dict)
+        ):
             self._verified_active_draft(state, request)
-        interpretation = deepcopy(state.get("current_interpretation"))
+        interpretation = (
+            None
+            if request_is_purged
+            else deepcopy(state.get("current_interpretation"))
+        )
         question = (
             deepcopy(draft.get("active_question"))
-            if isinstance(draft, dict)
+            if isinstance(draft, dict) and not request_is_purged
             else None
         )
         freeze_id = state.get("latest_freeze_id")
@@ -4685,7 +5231,9 @@ class GuidedIntakeController:
             interpretation if isinstance(interpretation, dict) else None,
         )
         transfer_receipt = state.get("transfer_receipt")
-        if (
+        if request_is_purged:
+            lifecycle = PURGE_BLOCK
+        elif (
             current_freeze
             and isinstance(transfer_receipt, dict)
             and transfer_receipt.get("freeze_sha256")
@@ -4712,6 +5260,7 @@ class GuidedIntakeController:
         if (
             isinstance(request, dict)
             and original is not None
+            and not request_is_purged
             and state.get("copy_prompt_request_id") == request_id
         ):
             prompt = self._pro_prompt(original, request)
@@ -4724,22 +5273,58 @@ class GuidedIntakeController:
             if isinstance(request, dict)
             else None
         )
+        purge = None
+        if (
+            isinstance(purge_event, dict)
+            and isinstance(purge_request_event, dict)
+        ):
+            purge = {
+                "completed_at": purge_event["recorded_at"],
+                "confirmation": purge_request_event["payload"][
+                    "confirmation"
+                ],
+                "event_hash": purge_event["event_hash"],
+                "event_id": purge_event["event_id"],
+                "purge_request_event_hash": purge_request_event[
+                    "event_hash"
+                ],
+                "purge_request_event_id": purge_request_event[
+                    "event_id"
+                ],
+                "purged_at": purge_request_event["recorded_at"],
+                "raw_blob_disposition": purge_request_event["payload"][
+                    "raw_blob_disposition"
+                ],
+                "remaining_non_purged_references": purge_request_event[
+                    "payload"
+                ]["remaining_non_purged_references"],
+                "request_id": purge_request_event["payload"][
+                    "request_id"
+                ],
+                "request_sha256": purge_request_event["payload"][
+                    "request_sha256"
+                ],
+            }
         return {
             "active_question": question,
             "authority_claim": AUTHORITY_CLAIM,
             "authority_explanation": AUTHORITY_EXPLANATION,
             "confirmation_history": deepcopy(
                 self._request_confirmations(state, request_id)
-                if isinstance(request_id, str)
+                if isinstance(request_id, str) and not request_is_purged
                 else []
             ),
             "copy_for_pro_prompt": prompt,
             "error": None,
+            "fidelity_evaluation": (
+                "BLOCKED" if request_is_purged else "AVAILABLE"
+            ),
             "freeze": (
                 {
                     "freeze_id": freeze["freeze_id"],
                     "frozen_at": freeze["frozen_at"],
                     "current": current_freeze,
+                    "purged": freeze["purged"],
                     "receipt": {
                         **freeze_receipt,
                         "receipt_sha256": freeze["receipt_sha256"],
@@ -4758,8 +5343,20 @@ class GuidedIntakeController:
                 if isinstance(freeze, dict)
                 else None
             ),
+            "historical_identity": (
+                "PRESERVED" if request_is_purged else None
+            ),
             "interpretation": interpretation,
+            "judgment_reuse": (
+                "BLOCKED" if request_is_purged else "AVAILABLE"
+            ),
             "original_request": original,
+            "purge": purge,
+            "raw_source_availability": (
+                "UNAVAILABLE"
+                if request_is_purged
+                else ("AVAILABLE" if isinstance(request, dict) else "NONE")
+            ),
             "request_history": [
                 {
                     key: value
@@ -4770,6 +5367,7 @@ class GuidedIntakeController:
             ],
             "request_identity": public_request,
             "state": lifecycle,
+            "transfer_state": PURGE_BLOCK if request_is_purged else None,
             "transfer_receipt": deepcopy(state.get("transfer_receipt")),
         }
 

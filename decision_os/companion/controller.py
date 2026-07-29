@@ -536,6 +536,20 @@ class CompanionController:
             guided_intake.freeze()
             return self._snapshot_after_guided_intake(guided_intake)
 
+    def guided_intake_purge(
+        self,
+        request_id: str,
+        request_sha256: str,
+        confirmed: bool,
+    ) -> dict[str, Any]:
+        with self._guided_intake_operation() as guided_intake:
+            guided_intake.purge(
+                request_id,
+                request_sha256,
+                confirmed,
+            )
+            return self._snapshot_after_guided_intake(guided_intake)
+
     def guided_intake_transfer_to_bridge(self) -> dict[str, Any]:
         with self._guided_intake_bridge_operation() as (
             guided_intake,
@@ -928,9 +942,13 @@ class CompanionController:
                             "Guided Intake reads and writes are blocked."
                         )
                     ),
+                    "fidelity_evaluation": "BLOCKED",
                     "freeze": None,
                     "interpretation": None,
+                    "judgment_reuse": "BLOCKED",
                     "original_request": None,
+                    "purge": None,
+                    "raw_source_availability": "UNKNOWN",
                     "request_history": [],
                     "request_identity": None,
                     "state": (

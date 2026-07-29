@@ -11,6 +11,8 @@ let connectionGeneration = 0;
 let bridgeRepositoryPath = null;
 let guidedRepositoryPath = null;
 let guidedInputError = "";
+let guidedPurgeConfirmationIdentity = null;
+let guidedPurgedInputClearedIdentity = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const GUIDED_INTAKE_AUTHORITY_CLAIM =
@@ -244,6 +246,7 @@ const guidedIntakeActionIds = [
   "guided-intake-import-draft",
   "guided-intake-confirm",
   "guided-intake-freeze",
+  "guided-intake-purge",
   "guided-intake-transfer",
 ];
 
@@ -253,6 +256,7 @@ const guidedIntakeInputIds = [
   "guided-intake-draft-json",
   "guided-intake-answer",
   "guided-intake-resulting-delta",
+  "guided-intake-purge-confirm",
 ];
 
 function resetGuidedIntakeDrafts() {
@@ -261,7 +265,23 @@ function resetGuidedIntakeDrafts() {
   byId("guided-intake-draft-json").value = "{}";
   byId("guided-intake-answer").value = "";
   byId("guided-intake-resulting-delta").value = "{}";
+  byId("guided-intake-purge-confirm").checked = false;
+  guidedPurgeConfirmationIdentity = null;
+  guidedPurgedInputClearedIdentity = null;
   guidedInputError = "";
+}
+
+function guidedRequestIdentityKey(panel) {
+  const identity = panel && panel.request_identity;
+  if (
+    !identity ||
+    typeof identity !== "object" ||
+    !identity.request_id ||
+    !identity.sha256
+  ) {
+    return null;
+  }
+  return `${identity.request_id}:${identity.sha256}`;
 }
 
 function renderGuidedIntake(intake, repository) {
@@ -290,6 +310,26 @@ function renderGuidedIntake(intake, repository) {
     panel && panel.freeze && typeof panel.freeze === "object"
       ? panel.freeze
       : null;
+  const purged = Boolean(
+    panel && panel.state === "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+  );
+  const currentPurgeIdentity = guidedRequestIdentityKey(panel);
+  if (
+    purged &&
+    guidedPurgedInputClearedIdentity !== currentPurgeIdentity
+  ) {
+    byId("guided-intake-original-request").value = "";
+    guidedPurgedInputClearedIdentity = currentPurgeIdentity;
+  } else if (!purged) {
+    guidedPurgedInputClearedIdentity = null;
+  }
+  if (
+    byId("guided-intake-purge-confirm").checked &&
+    guidedPurgeConfirmationIdentity !== currentPurgeIdentity
+  ) {
+    byId("guided-intake-purge-confirm").checked = false;
+    guidedPurgeConfirmationIdentity = null;
+  }
 
   setText("guided-intake-state", panel ? panel.state || "No intake" : "No intake");
   setText(
@@ -304,11 +344,27 @@ function renderGuidedIntake(intake, repository) {
   );
   setText(
     "guided-intake-original-exact",
-    panel ? panel.original_request || "" : "",
+    purged ? "UNAVAILABLE" : panel ? panel.original_request || "" : "",
   );
   setText(
     "guided-intake-request-identity",
     panel ? displayValue(panel.request_identity) : "",
+  );
+  setText(
+    "guided-intake-raw-source-availability",
+    panel ? displayValue(panel.raw_source_availability, "UNKNOWN") : "UNKNOWN",
+  );
+  setText(
+    "guided-intake-judgment-reuse",
+    panel ? displayValue(panel.judgment_reuse, "UNKNOWN") : "UNKNOWN",
+  );
+  setText(
+    "guided-intake-fidelity-evaluation",
+    panel ? displayValue(panel.fidelity_evaluation, "UNKNOWN") : "UNKNOWN",
+  );
+  setText(
+    "guided-intake-purge-status",
+    panel ? displayValue(panel.purge) : "",
   );
   setText("guided-intake-objective", objective.text || "");
   setText(
@@ -389,6 +445,7 @@ function renderGuidedIntake(intake, repository) {
   );
   const hasOriginal = Boolean(panel && panel.original_request);
   const freezeIsCurrent = Boolean(freeze && freeze.current === true);
+  const purgeIdentity = panel && panel.request_identity;
   byId("guided-intake-original-request").disabled = !usable;
   byId("guided-intake-capture").disabled =
     !usable ||
@@ -411,6 +468,14 @@ function renderGuidedIntake(intake, repository) {
     !activeQuestion ||
     byId("guided-intake-answer").value.trim().length === 0 ||
     byId("guided-intake-resulting-delta").value.trim().length === 0;
+  byId("guided-intake-purge-confirm").disabled =
+    !usable || !hasOriginal || purged;
+  byId("guided-intake-purge").disabled =
+    !usable ||
+    !hasOriginal ||
+    purged ||
+    !(purgeIdentity && typeof purgeIdentity === "object") ||
+    !byId("guided-intake-purge-confirm").checked;
   byId("guided-intake-freeze").disabled =
     !usable ||
     !hasOriginal ||
@@ -992,6 +1057,44 @@ byId("guided-intake-freeze").addEventListener("click", async () => {
   await postJSON("/api/guided-intake/freeze", {});
 });
 
+byId("guided-intake-purge").addEventListener("click", async () => {
+  try {
+    const identity = latestState?.guided_intake?.request_identity;
+    if (
+      !identity ||
+      typeof identity !== "object" ||
+      !identity.request_id ||
+      !identity.sha256
+    ) {
+      throw new RequestRejectedError(
+        "There is no current Original Request identity to purge.",
+      );
+    }
+    if (
+      !byId("guided-intake-purge-confirm").checked ||
+      guidedPurgeConfirmationIdentity !==
+        guidedRequestIdentityKey(latestState.guided_intake)
+    ) {
+      throw new RequestRejectedError(
+        "Explicit Original Request purge confirmation is required.",
+      );
+    }
+    clearGuidedInputError();
+    const state = await postJSON("/api/guided-intake/purge", {
+      request_id: identity.request_id,
+      request_sha256: identity.sha256,
+      confirmed: true,
+    });
+    if (state) {
+      byId("guided-intake-purge-confirm").checked = false;
+      guidedPurgeConfirmationIdentity = null;
+      renderGuidedIntake(state.guided_intake, state.repository);
+    }
+  } catch (error) {
+    showGuidedInputError(error);
+  }
+});
+
 byId("guided-intake-transfer").addEventListener("click", async () => {
   clearGuidedInputError();
   await postJSON("/api/guided-intake/transfer-to-bridge", {});
@@ -999,6 +1102,11 @@ byId("guided-intake-transfer").addEventListener("click", async () => {
 
 for (const id of guidedIntakeInputIds) {
   byId(id).addEventListener("input", () => {
+    if (id === "guided-intake-purge-confirm") {
+      guidedPurgeConfirmationIdentity = byId(id).checked
+        ? guidedRequestIdentityKey(latestState?.guided_intake)
+        : null;
+    }
     guidedInputError = "";
     if (connected && latestState) {
       renderGuidedIntake(latestState.guided_intake, latestState.repository);

@@ -1967,6 +1967,739 @@ class GuidedIntakeTestCase(unittest.TestCase):
         )
         self.assertTrue(old_path.is_file())
 
+    def test_later_confirmation_invalidates_old_freeze_and_new_freeze_transfers(
+        self,
+    ) -> None:
+        confirmed = self.confirm_ambiguous()
+        first_confirmation = deepcopy(confirmed["confirmation_history"])
+        first = self.controller.freeze()
+        first_freeze_path = (
+            self.controller.store.root
+            / "freezes"
+            / f"{first['freeze']['sha256']}.json"
+        )
+        first_receipt_path = (
+            self.controller.store.root
+            / "receipts"
+            / f"{first['freeze']['receipt']['receipt_sha256']}.json"
+        )
+        first_freeze_bytes = first_freeze_path.read_bytes()
+        first_receipt_bytes = first_receipt_path.read_bytes()
+
+        later = clear_draft()
+        later["objective"] = {
+            "text": "UNKNOWN — the bounded objective requires confirmation.",
+            "atoms": [],
+        }
+        later["unknown"] = [
+            {
+                "unknown_id": "UNK-LATER-OBJECTIVE",
+                "type": "MODEL_DETECTED_MISSING_FACT",
+                "statement": "The bounded objective requires confirmation.",
+                "basis": {
+                    "kind": "MODEL_DETECTION",
+                    "related_original_quotes": [],
+                },
+                "affects": ["OBJECTIVE"],
+                "materiality": "MATERIAL",
+                "effect_on_execution": "HOLD_OBJECTIVE",
+                "evidence_required": "A later explicit objective confirmation.",
+                "current_state": "OPEN",
+            }
+        ]
+        later["clarification_candidate"] = {
+            "field": "OBJECTIVE",
+            "question": "Should the objective remain limited to Guided Intake?",
+        }
+        imported = self.import_value(later)
+        question = imported["active_question"]["question"]
+        after_confirmation = self.controller.confirm(
+            question,
+            "Keep the objective limited to Guided Intake.",
+            {
+                "objective": {
+                    "text": "Keep the objective limited to Guided Intake.",
+                    "atoms": [
+                        {
+                            "atom_id": "OBJ-LATER-CONFIRMATION",
+                            "text": (
+                                "Keep the objective limited to Guided Intake."
+                            ),
+                            "support": [
+                                {
+                                    "kind": "USER_CONFIRMATION",
+                                    "event_id": "ACTIVE_CONFIRMATION",
+                                }
+                            ],
+                        }
+                    ],
+                },
+                "resolve_unknown_ids": ["UNK-LATER-OBJECTIVE"],
+            },
+        )
+        self.assertEqual(
+            len(first_confirmation) + 1,
+            len(after_confirmation["confirmation_history"]),
+        )
+        self.assertEqual(
+            first_confirmation,
+            after_confirmation["confirmation_history"][:-1],
+        )
+
+        stale_bridge = RecordingBridge()
+        with self.assertRaisesRegex(
+            GuidedIntakeConflictError,
+            "HOLD — INTAKE AS-OF STALE",
+        ):
+            self.controller.transfer_to_bridge(stale_bridge)
+        self.assertEqual([], stale_bridge.calls)
+
+        second = self.controller.freeze()
+        state = self.controller.store.load_state()
+        old_record = state["freezes"][first["freeze"]["freeze_id"]]
+        self.assertEqual(
+            second["freeze"]["freeze_id"],
+            old_record["superseded_by_freeze_id"],
+        )
+        self.assertEqual(
+            first["freeze"]["freeze_id"],
+            second["freeze"]["supersedes_freeze_id"],
+        )
+        self.assertEqual(first_freeze_bytes, first_freeze_path.read_bytes())
+        self.assertEqual(first_receipt_bytes, first_receipt_path.read_bytes())
+        self.assertEqual(
+            2,
+            sum(
+                event["kind"] == "USER_CONFIRMATION_RECORDED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+
+        latest_bridge = RecordingBridge()
+        transferred = self.controller.transfer_to_bridge(latest_bridge)
+        self.assertEqual(1, len(latest_bridge.calls))
+        self.assertEqual(
+            second["freeze"]["sha256"],
+            transferred["transfer_receipt"]["freeze_sha256"],
+        )
+
+    def test_purge_requires_confirmation_and_exact_current_identity(self) -> None:
+        captured = self.controller.capture("Purge this exact source.")
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+
+        with self.assertRaises(GuidedIntakeValidationError):
+            self.controller.purge(
+                identity["request_id"],
+                identity["sha256"],
+                False,
+            )
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                "GI-REQ-WRONG",
+                identity["sha256"],
+                True,
+            )
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                identity["request_id"],
+                "0" * 64,
+                True,
+            )
+
+        self.assertTrue(source_path.is_file())
+        self.assertFalse(
+            any(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            )
+        )
+        self.assertEqual(
+            "Purge this exact source.",
+            self.controller.snapshot()["original_request"],
+        )
+
+    def test_purge_rejects_stale_superseded_and_duplicate_requests(self) -> None:
+        first = self.controller.capture("First exact source.")
+        second = self.controller.capture(
+            "Second exact source.",
+            first["request_identity"]["request_id"],
+        )
+        first_identity = first["request_identity"]
+        second_identity = second["request_identity"]
+
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                first_identity["request_id"],
+                first_identity["sha256"],
+                True,
+            )
+
+        purged = self.controller.purge(
+            second_identity["request_id"],
+            second_identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            second_identity["request_id"],
+            purged["purge"]["request_id"],
+        )
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                second_identity["request_id"],
+                second_identity["sha256"],
+                True,
+            )
+        purge_events = [
+            event
+            for event in self.controller.store.read_events()
+            if event["kind"] == "ORIGINAL_REQUEST_PURGED"
+        ]
+        self.assertEqual(1, len(purge_events))
+
+    def test_failed_unique_blob_delete_can_resume_without_new_purge_event(
+        self,
+    ) -> None:
+        captured = self.controller.capture("Retry one failed purge delete.")
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        original_delete = self.controller.store.delete_blob
+
+        def fail_delete(
+            _collection: str,
+            _digest: str,
+            *,
+            suffix: str,
+        ) -> None:
+            self.assertEqual(".utf8", suffix)
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+
+        self.controller.store.delete_blob = fail_delete  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(
+                GuidedIntakeIntegrityError,
+                "STATE CORRUPT",
+            ):
+                self.controller.purge(
+                    identity["request_id"],
+                    identity["sha256"],
+                    True,
+                )
+        finally:
+            self.controller.store.delete_blob = original_delete  # type: ignore[method-assign]
+
+        self.assertTrue(source_path.is_file())
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        self.assertEqual(
+            0,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+        self.assertEqual(
+            1,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGE_REQUESTED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+
+        recovered = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        self.assertFalse(source_path.exists())
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            recovered["state"],
+        )
+        self.assertEqual(
+            1,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                identity["request_id"],
+                identity["sha256"],
+                True,
+            )
+
+    def test_duplicate_purge_does_not_delete_recreated_corrupt_blob(
+        self,
+    ) -> None:
+        source = "Do not accept recreated bytes after completed purge."
+        captured = self.controller.capture(source)
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        source_path.write_bytes(source.encode("utf-8"))
+        os.chmod(source_path, 0o600)
+
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.purge(
+                identity["request_id"],
+                identity["sha256"],
+                True,
+            )
+        self.assertTrue(source_path.is_file())
+        self.assertEqual(
+            1,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+
+    def test_purge_resumes_after_delete_before_completion_event(
+        self,
+    ) -> None:
+        captured = self.controller.capture(
+            "Resume after deletion but before purge completion."
+        )
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        original_append = self.controller._append
+
+        def fail_completion(
+            state: dict[str, object],
+            kind: str,
+            payload: dict[str, object],
+            *,
+            event_id: str | None = None,
+            recorded_at: str | None = None,
+        ) -> dict[str, object]:
+            if kind == "ORIGINAL_REQUEST_PURGED":
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            return original_append(
+                state,
+                kind,
+                payload,
+                event_id=event_id,
+                recorded_at=recorded_at,
+            )
+
+        self.controller._append = fail_completion  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(
+                GuidedIntakeIntegrityError,
+                "STATE CORRUPT",
+            ):
+                self.controller.purge(
+                    identity["request_id"],
+                    identity["sha256"],
+                    True,
+                )
+        finally:
+            self.controller._append = original_append  # type: ignore[method-assign]
+
+        self.assertFalse(source_path.exists())
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        recovered = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            recovered["state"],
+        )
+        self.assertEqual(
+            [
+                "ORIGINAL_REQUEST_PURGE_REQUESTED",
+                "ORIGINAL_REQUEST_PURGED",
+            ],
+            [
+                event["kind"]
+                for event in self.controller.store.read_events()
+                if event["kind"].startswith("ORIGINAL_REQUEST_PURGE")
+            ],
+        )
+
+    def test_purge_recovers_request_event_after_state_save_failure(
+        self,
+    ) -> None:
+        captured = self.controller.capture(
+            "Recover a purge request event after state save failure."
+        )
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        original_save = self.controller.store.save_state
+
+        def fail_save(_state: dict[str, object]) -> None:
+            raise GuidedIntakeIntegrityError(
+                "HOLD — GUIDED INTAKE STATE CORRUPT"
+            )
+
+        self.controller.store.save_state = fail_save  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(
+                GuidedIntakeIntegrityError,
+                "STATE CORRUPT",
+            ):
+                self.controller.purge(
+                    identity["request_id"],
+                    identity["sha256"],
+                    True,
+                )
+        finally:
+            self.controller.store.save_state = original_save  # type: ignore[method-assign]
+
+        self.assertTrue(source_path.is_file())
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        recovered = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        self.assertFalse(source_path.exists())
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            recovered["state"],
+        )
+        self.assertEqual(
+            [
+                "ORIGINAL_REQUEST_PURGE_REQUESTED",
+                "ORIGINAL_REQUEST_PURGED",
+            ],
+            [
+                event["kind"]
+                for event in self.controller.store.read_events()
+                if event["kind"].startswith("ORIGINAL_REQUEST_PURGE")
+            ],
+        )
+
+    def test_purge_recovers_completion_event_after_state_save_failure(
+        self,
+    ) -> None:
+        captured = self.controller.capture(
+            "Recover a purge completion event after state save failure."
+        )
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        original_save = self.controller.store.save_state
+        save_calls = 0
+
+        def fail_second_save(state: dict[str, object]) -> None:
+            nonlocal save_calls
+            save_calls += 1
+            if save_calls == 2:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+            original_save(state)
+
+        self.controller.store.save_state = fail_second_save  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(
+                GuidedIntakeIntegrityError,
+                "STATE CORRUPT",
+            ):
+                self.controller.purge(
+                    identity["request_id"],
+                    identity["sha256"],
+                    True,
+                )
+        finally:
+            self.controller.store.save_state = original_save  # type: ignore[method-assign]
+
+        self.assertFalse(source_path.exists())
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        recovered = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            recovered["state"],
+        )
+        self.assertEqual(
+            1,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+        with self.assertRaises(GuidedIntakeConflictError):
+            self.controller.purge(
+                identity["request_id"],
+                identity["sha256"],
+                True,
+            )
+
+    def test_unique_source_purge_is_forward_only_and_preserves_history(
+        self,
+    ) -> None:
+        self.capture_and_import_clear()
+        frozen = self.controller.freeze()
+        identity = frozen["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        freeze_path = (
+            self.controller.store.root
+            / "freezes"
+            / f"{frozen['freeze']['sha256']}.json"
+        )
+        receipt_sha256 = frozen["freeze"]["receipt"]["receipt_sha256"]
+        receipt_path = (
+            self.controller.store.root
+            / "receipts"
+            / f"{receipt_sha256}.json"
+        )
+        freeze_bytes = freeze_path.read_bytes()
+        receipt_bytes = receipt_path.read_bytes()
+        events_before = deepcopy(self.controller.store.read_events())
+        event_bytes_before = self.controller.store.events_path.read_bytes()
+
+        purged = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        purge = purged["purge"]
+        self.assertEqual(identity["request_id"], purge["request_id"])
+        self.assertEqual(identity["sha256"], purge["request_sha256"])
+        self.assertEqual("2026-07-29T00:00:00Z", purge["purged_at"])
+        self.assertEqual("EXPLICIT_USER_CONFIRMATION", purge["confirmation"])
+        self.assertEqual(
+            "DELETED_NO_NON_PURGED_REFERENCES",
+            purge["raw_blob_disposition"],
+        )
+        self.assertEqual(0, purge["remaining_non_purged_references"])
+        self.assertRegex(purge["event_id"], r"^GI-PURGE-")
+        self.assertRegex(purge["event_hash"], r"^[0-9a-f]{64}$")
+
+        self.assertFalse(source_path.exists())
+        self.assertEqual(freeze_bytes, freeze_path.read_bytes())
+        self.assertEqual(receipt_bytes, receipt_path.read_bytes())
+        self.assertEqual(frozen["freeze"]["sha256"], purged["freeze"]["sha256"])
+        self.assertEqual(
+            receipt_sha256,
+            purged["freeze"]["receipt"]["receipt_sha256"],
+        )
+        state = self.controller.store.load_state()
+        self.assertTrue(
+            state["freezes"][frozen["freeze"]["freeze_id"]]["purged"]
+        )
+
+        events_after = self.controller.store.read_events()
+        self.assertEqual(events_before, events_after[:-2])
+        self.assertEqual(
+            "ORIGINAL_REQUEST_PURGE_REQUESTED",
+            events_after[-2]["kind"],
+        )
+        self.assertEqual("ORIGINAL_REQUEST_PURGED", events_after[-1]["kind"])
+        self.assertEqual(
+            "2026-07-29T00:00:00Z",
+            events_after[-1]["recorded_at"],
+        )
+        self.assertEqual(
+            identity["request_id"],
+            events_after[-1]["payload"]["request_id"],
+        )
+        self.assertEqual(
+            identity["sha256"],
+            events_after[-1]["payload"]["request_sha256"],
+        )
+        self.assertTrue(
+            self.controller.store.events_path.read_bytes().startswith(
+                event_bytes_before
+            )
+        )
+
+        replayed = self.controller.snapshot()
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            replayed["state"],
+        )
+        self.assertIsNone(replayed["original_request"])
+        self.assertIsNone(replayed["interpretation"])
+        self.assertEqual("UNAVAILABLE", replayed["raw_source_availability"])
+        self.assertEqual("BLOCKED", replayed["judgment_reuse"])
+        self.assertEqual("BLOCKED", replayed["fidelity_evaluation"])
+        self.assertEqual("PRESERVED", replayed["historical_identity"])
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            replayed["transfer_state"],
+        )
+        self.assertNotIn(AMBIGUOUS_REQUEST, json.dumps(replayed))
+
+        for operation in (
+            self.controller.copy_for_pro,
+            lambda: self.import_value(clear_draft()),
+            self.controller.freeze,
+        ):
+            with self.subTest(operation=operation):
+                with self.assertRaisesRegex(
+                    GuidedIntakeConflictError,
+                    "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+                ):
+                    operation()
+        bridge = RecordingBridge()
+        with self.assertRaisesRegex(
+            GuidedIntakeConflictError,
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+        ):
+            self.controller.transfer_to_bridge(bridge)
+        self.assertEqual([], bridge.calls)
+
+    def test_shared_hash_purge_retains_blob_for_non_purged_request(self) -> None:
+        source = "One shared content-addressed source."
+        first = self.controller.capture(source)
+        second = self.controller.capture(
+            source,
+            first["request_identity"]["request_id"],
+        )
+        identity = second["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+
+        purged = self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            "RETAINED_FOR_NON_PURGED_REFERENCE",
+            purged["purge"]["raw_blob_disposition"],
+        )
+        self.assertEqual(
+            1,
+            purged["purge"]["remaining_non_purged_references"],
+        )
+        self.assertTrue(source_path.is_file())
+        self.assertEqual(
+            source.encode("utf-8"),
+            self.controller.store.read_blob(
+                "original-requests",
+                identity["sha256"],
+                suffix=".utf8",
+            ),
+        )
+        self.assertIsNone(purged["original_request"])
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            purged["state"],
+        )
+
+    def test_shared_hash_blob_is_deleted_after_all_requests_are_purged(
+        self,
+    ) -> None:
+        source = "Recreated shared source."
+        first = self.controller.capture(source)
+        first_identity = first["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{first_identity['sha256']}.utf8"
+        )
+        first_purge = self.controller.purge(
+            first_identity["request_id"],
+            first_identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            "DELETED_NO_NON_PURGED_REFERENCES",
+            first_purge["purge"]["raw_blob_disposition"],
+        )
+        self.assertFalse(source_path.exists())
+
+        second = self.controller.capture(
+            source,
+            first_identity["request_id"],
+        )
+        second_identity = second["request_identity"]
+        self.assertTrue(source_path.is_file())
+        self.assertEqual(source, second["original_request"])
+        second_purge = self.controller.purge(
+            second_identity["request_id"],
+            second_identity["sha256"],
+            True,
+        )
+        self.assertEqual(
+            "DELETED_NO_NON_PURGED_REFERENCES",
+            second_purge["purge"]["raw_blob_disposition"],
+        )
+        self.assertEqual(
+            0,
+            second_purge["purge"]["remaining_non_purged_references"],
+        )
+        self.assertFalse(source_path.exists())
+        self.assertEqual(
+            2,
+            sum(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            ),
+        )
+
     def test_transfer_preserves_exact_fields_hashes_and_starts_nothing(self) -> None:
         self.capture_and_import_clear()
         frozen = self.controller.freeze()
@@ -2246,6 +2979,62 @@ class GuidedIntakeTestCase(unittest.TestCase):
             second["request_identity"]["request_id"]
         ]["sha256"] = first["request_identity"]["sha256"]
         self.controller.store.save_state(state)
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+
+    def test_manual_raw_deletion_is_not_a_valid_purge(self) -> None:
+        captured = self.controller.capture("Manual deletion is not purge.")
+        identity = captured["request_identity"]
+        source_path = (
+            self.controller.store.root
+            / "original-requests"
+            / f"{identity['sha256']}.utf8"
+        )
+        source_path.unlink()
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+        self.assertFalse(
+            any(
+                event["kind"] == "ORIGINAL_REQUEST_PURGED"
+                for event in self.controller.store.read_events()
+            )
+        )
+
+    def test_purge_projection_without_event_fails_closed(self) -> None:
+        self.capture_and_import_clear()
+        frozen = self.controller.freeze()
+        state = self.controller.store.load_state()
+        state["freezes"][frozen["freeze"]["freeze_id"]]["purged"] = True
+        self.controller.store.save_state(state)
+        with self.assertRaisesRegex(
+            GuidedIntakeIntegrityError,
+            "STATE CORRUPT",
+        ):
+            self.controller.snapshot()
+
+    def test_corrupted_purge_event_fails_closed(self) -> None:
+        captured = self.controller.capture("Corrupt the purge event.")
+        identity = captured["request_identity"]
+        self.controller.purge(
+            identity["request_id"],
+            identity["sha256"],
+            True,
+        )
+        events_path = self.controller.store.events_path
+        raw = events_path.read_bytes()
+        corrupted = raw.replace(
+            b'"ORIGINAL_REQUEST_PURGED"',
+            b'"ORIGINAL_REQUEST_PURGEX"',
+            1,
+        )
+        self.assertNotEqual(raw, corrupted)
+        events_path.write_bytes(corrupted)
         with self.assertRaisesRegex(
             GuidedIntakeIntegrityError,
             "STATE CORRUPT",

@@ -159,6 +159,31 @@
       <p class="path-value">Request identity</p>
       <pre id="guided-intake-request-identity" class="result-text"></pre>
 
+      <h3>Explicit raw-source purge</h3>
+      <p class="boundary">
+        Purge applies only to the exact current Request identity shown above.
+        It makes the raw Original Request unavailable and blocks transfer,
+        judgment reuse, and fidelity evaluation. Historical hashes and receipts
+        remain preserved. Purge grants no execution authority and never starts
+        a Run.
+      </p>
+      <dl class="metric-grid">
+        <dt>Raw source availability</dt>
+        <dd id="guided-intake-raw-source-availability">UNKNOWN</dd>
+        <dt>Judgment reuse</dt>
+        <dd id="guided-intake-judgment-reuse">UNKNOWN</dd>
+        <dt>Fidelity evaluation</dt>
+        <dd id="guided-intake-fidelity-evaluation">UNKNOWN</dd>
+      </dl>
+      <label>
+        <input id="guided-intake-purge-confirm" type="checkbox">
+        I explicitly confirm purge of this exact Original Request.
+      </label>
+      <button id="guided-intake-purge" class="secondary" type="button">
+        Purge Exact Original Request
+      </button>
+      <pre id="guided-intake-purge-status" class="result-text"></pre>
+
       <h3>Interpretation</h3>
       <dl class="metric-grid">
         <dt>Objective</dt>

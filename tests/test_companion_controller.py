@@ -599,6 +599,48 @@ class CompanionControllerTest(unittest.TestCase):
                 self.assertEqual(bridge_before, snapshot["manual_bridge"])
             self.assertEqual(1, len(factory.modes))
 
+    def test_guided_intake_purge_wrapper_is_exact_and_never_starts_runner(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            selected = controller.select_repository(repository)
+            run_before = selected["run"]
+            receipt_before = selected["receipt"]
+            defaults_before = selected["defaults"]
+            bridge_before = selected["manual_bridge"]
+            guided_intake = Mock()
+            guided_intake.snapshot.return_value = {
+                "state": "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            }
+            controller._guided_intake = guided_intake
+            request_id = "GI-REQ-EXACT"
+            request_sha256 = "a" * 64
+
+            snapshot = controller.guided_intake_purge(
+                request_id,
+                request_sha256,
+                True,
+            )
+
+            guided_intake.purge.assert_called_once_with(
+                request_id,
+                request_sha256,
+                True,
+            )
+            self.assertEqual(
+                {"state": "BLOCK — ORIGINAL REQUEST UNAVAILABLE"},
+                snapshot["guided_intake"],
+            )
+            self.assertEqual(run_before, snapshot["run"])
+            self.assertEqual(receipt_before, snapshot["receipt"])
+            self.assertEqual(defaults_before, snapshot["defaults"])
+            self.assertEqual(bridge_before, snapshot["manual_bridge"])
+            self.assertEqual(1, len(factory.modes))
+
     def test_guided_intake_corruption_and_busy_state_are_panel_local(
         self,
     ) -> None:

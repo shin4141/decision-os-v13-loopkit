@@ -49,6 +49,7 @@ _GUIDED_INTAKE_POST_ROUTES = frozenset(
         "/api/guided-intake/copy",
         "/api/guided-intake/freeze",
         "/api/guided-intake/import-draft",
+        "/api/guided-intake/purge",
         "/api/guided-intake/transfer-to-bridge",
     }
 )
@@ -393,6 +394,22 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                         "Guided Intake freeze takes no input."
                     )
                 snapshot = self.server.controller.guided_intake_freeze()
+            elif path == "/api/guided-intake/purge":
+                if (
+                    set(value)
+                    != {"request_id", "request_sha256", "confirmed"}
+                    or not isinstance(value["request_id"], str)
+                    or not isinstance(value["request_sha256"], str)
+                    or type(value["confirmed"]) is not bool
+                ):
+                    raise CompanionError(
+                        "Guided Intake purge fields are invalid."
+                    )
+                snapshot = self.server.controller.guided_intake_purge(
+                    value["request_id"],
+                    value["request_sha256"],
+                    value["confirmed"],
+                )
             elif path == "/api/guided-intake/transfer-to-bridge":
                 if value:
                     raise CompanionError(
