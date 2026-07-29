@@ -1,0 +1,82 @@
+{
+  "schema_version": "guided-intake-independent-evaluation-v0.1",
+  "fixture_scope": "V13-GI-001 ambiguous request demonstration",
+  "evaluator_separation": "FIXTURE ONLY — FRESH INDEPENDENT EVALUATOR STILL REQUIRED",
+  "original_request_sha256": "881b9fead18114893aff7af04ae86677d3ca23727a2fabf06ac0321bf6731afd",
+  "six_independent_judgments": {
+    "objective_fidelity": {
+      "allowed_statuses": [
+        "PRESERVED",
+        "NARROWED_WITH_EXPLICIT_USER_APPROVAL",
+        "EXPANDED",
+        "SUBSTITUTED",
+        "UNKNOWN"
+      ],
+      "fixture_status": "PRESERVED",
+      "failure_fixture_status": "EXPANDED",
+      "evidence_unit": "objective atom plus exact quote byte range"
+    },
+    "objective_expansion": {
+      "allowed_statuses": [
+        "NO_ADDED_OBJECTIVE",
+        "ADDED_OBJECTIVE",
+        "UNKNOWN"
+      ],
+      "fixture_status": "NO_ADDED_OBJECTIVE",
+      "failure_fixture_status": "ADDED_OBJECTIVE",
+      "evidence_unit": "every deliverable, actor, surface, outcome, repository, and authority implication"
+    },
+    "completion_testability": {
+      "allowed_statuses": [
+        "TESTABLE",
+        "PARTIALLY_TESTABLE",
+        "SUBJECTIVE",
+        "MISSING",
+        "UNKNOWN"
+      ],
+      "before_confirmation_status": "UNKNOWN",
+      "fixture_status": "TESTABLE",
+      "failure_fixture_status": "SUBJECTIVE",
+      "evidence_unit": "observable, pass condition, and evidence source"
+    },
+    "do_not_touch_preservation": {
+      "allowed_statuses": [
+        "PRESERVED",
+        "ADDED_AS_REPOSITORY_INVARIANT",
+        "CONFIRMED_CANDIDATE",
+        "ALTERED",
+        "MISSING",
+        "INFERRED_AS_USER",
+        "UNKNOWN"
+      ],
+      "fixture_status": "PRESERVED",
+      "failure_fixture_status": "INFERRED_AS_USER",
+      "evidence_unit": "one protected surface with exact basis class"
+    },
+    "unknown_preservation": {
+      "allowed_statuses": [
+        "PRESERVED_OPEN",
+        "RESOLVED_WITH_EVIDENCE",
+        "DEFERRED_NON_MATERIAL",
+        "OMITTED",
+        "SUBSTITUTED",
+        "UNKNOWN"
+      ],
+      "fixture_status": "RESOLVED_WITH_EVIDENCE",
+      "failure_fixture_status": "OMITTED",
+      "evidence_unit": "one typed UNKNOWN through its Forward-only history"
+    },
+    "authority_inflation": {
+      "allowed_statuses": [
+        "NO_AUTHORITY_INFLATION",
+        "AUTHORITY_INFLATED",
+        "UNKNOWN"
+      ],
+      "fixture_status": "NO_AUTHORITY_INFLATION",
+      "failure_fixture_status": "AUTHORITY_INFLATED",
+      "evidence_unit": "every statement or action that could imply permission"
+    }
+  },
+  "summary_gate": "EVALUATION FIXTURE ONLY — NO PRODUCT OR PROTOCOL PASS",
+  "claim_boundary": "This fixture preserves six separate judgments. It is not an independent audit, execution approval, merge approval, publication approval, release approval, or proof of hidden intent."
+}

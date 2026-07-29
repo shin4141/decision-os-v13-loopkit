@@ -17,6 +17,12 @@ from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import DecisionType
 from decision_os.acceleration.store import StateIntegrityError
 from decision_os.companion.controller import CompanionController
+from decision_os.companion.guided_intake import (
+    GuidedIntakeBusyError,
+    GuidedIntakeConflictError,
+    GuidedIntakeIntegrityError,
+    GuidedIntakeValidationError,
+)
 from decision_os.companion.server import CompanionServer
 from tests.test_companion_controller import (
     ScriptedFactory,
@@ -36,6 +42,15 @@ BRIDGE_POST_ROUTES = (
     "/api/bridge/manifest/generate",
     "/api/bridge/replay",
     "/api/bridge/observation",
+)
+GUIDED_INTAKE_POST_ROUTES = (
+    "/api/guided-intake/capture",
+    "/api/guided-intake/copy",
+    "/api/guided-intake/import-draft",
+    "/api/guided-intake/confirm",
+    "/api/guided-intake/freeze",
+    "/api/guided-intake/purge",
+    "/api/guided-intake/transfer-to-bridge",
 )
 
 
@@ -242,6 +257,645 @@ class CompanionServerTest(unittest.TestCase):
                 )
                 self.assertEqual(403, status)
 
+    def test_all_guided_intake_routes_keep_private_session_boundary(
+        self,
+    ) -> None:
+        status, _headers, _raw = self.request(
+            "GET",
+            "/api/guided-intake/state",
+        )
+        self.assertEqual(401, status)
+        for path in GUIDED_INTAKE_POST_ROUTES:
+            with self.subTest(path=path, missing="session"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    origin=self.server.origin,
+                )
+                self.assertEqual(401, status)
+
+        cookie, csrf = self.bootstrap()
+        status, _headers, raw = self.request(
+            "GET",
+            "/api/guided-intake/state",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        state = json.loads(raw)
+        self.assertIn("guided_intake", state)
+        self.assertEqual(csrf, state["csrf"])
+        for path in GUIDED_INTAKE_POST_ROUTES:
+            with self.subTest(path=path, missing="origin"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    csrf=csrf,
+                )
+                self.assertEqual(403, status)
+            with self.subTest(path=path, missing="csrf"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(403, status)
+
+    def test_guided_intake_routes_reject_non_exact_bodies(self) -> None:
+        cookie, csrf = self.bootstrap()
+        invalid_requests = (
+            ("/api/guided-intake/capture", {}),
+            (
+                "/api/guided-intake/capture",
+                {"original_request": "task", "unexpected": True},
+            ),
+            (
+                "/api/guided-intake/capture",
+                {"original_request": 1},
+            ),
+            ("/api/guided-intake/copy", {"unexpected": True}),
+            (
+                "/api/guided-intake/import-draft",
+                {"draft_json": "{}", "producer_label": 1},
+            ),
+            (
+                "/api/guided-intake/import-draft",
+                {"draft_json": "{}"},
+            ),
+            (
+                "/api/guided-intake/confirm",
+                {
+                    "question": "q",
+                    "answer": "a",
+                    "resulting_delta": "not-an-object",
+                },
+            ),
+            ("/api/guided-intake/freeze", {"unexpected": True}),
+            (
+                "/api/guided-intake/purge",
+                {
+                    "request_id": "GI-REQ-EXACT",
+                    "request_sha256": "a" * 64,
+                },
+            ),
+            (
+                "/api/guided-intake/purge",
+                {
+                    "confirmed": True,
+                    "request_id": "GI-REQ-EXACT",
+                    "request_sha256": "a" * 64,
+                    "unexpected": True,
+                },
+            ),
+            (
+                "/api/guided-intake/purge",
+                {
+                    "confirmed": "true",
+                    "request_id": "GI-REQ-EXACT",
+                    "request_sha256": "a" * 64,
+                },
+            ),
+            (
+                "/api/guided-intake/purge",
+                {
+                    "confirmed": True,
+                    "request_id": 1,
+                    "request_sha256": "a" * 64,
+                },
+            ),
+            (
+                "/api/guided-intake/purge",
+                {
+                    "confirmed": True,
+                    "request_id": "GI-REQ-EXACT",
+                    "request_sha256": 1,
+                },
+            ),
+            (
+                "/api/guided-intake/transfer-to-bridge",
+                {"unexpected": True},
+            ),
+        )
+        for path, body in invalid_requests:
+            with self.subTest(path=path, body=body):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body=body,
+                    cookie=cookie,
+                    csrf=csrf,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(400, status)
+
+    def test_guided_intake_capture_cap_and_no_runner_dispatch(self) -> None:
+        cookie, csrf = self.bootstrap()
+        original_capture = self.controller.guided_intake_capture
+        captured: list[tuple[str, str | None]] = []
+
+        def capture(
+            original_request: str,
+            *,
+            supersedes_request_id: str | None = None,
+        ) -> dict[str, object]:
+            captured.append((original_request, supersedes_request_id))
+            return self.controller.snapshot()
+
+        self.controller.guided_intake_capture = capture  # type: ignore[method-assign]
+        try:
+            exact_request = "x" * 65_536
+            status, _headers, raw = self.request(
+                "POST",
+                "/api/guided-intake/capture",
+                body={"original_request": exact_request},
+                cookie=cookie,
+                csrf=csrf,
+                origin=self.server.origin,
+            )
+            self.assertEqual(
+                200,
+                status,
+                raw.decode("utf-8", errors="replace"),
+            )
+            self.assertEqual([(exact_request, None)], captured)
+
+            status, _headers, raw = self.request(
+                "POST",
+                "/api/guided-intake/capture",
+                body={"original_request": "not read"},
+                cookie=cookie,
+                csrf=csrf,
+                origin=self.server.origin,
+                declared_content_length=(2 * 1024 * 1024) + 1,
+            )
+            self.assertEqual(413, status)
+            self.assertEqual(
+                {"error": "Request is too large."},
+                json.loads(raw),
+            )
+        finally:
+            self.controller.guided_intake_capture = original_capture  # type: ignore[method-assign]
+
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
+
+    def test_guided_intake_purge_route_forwards_only_exact_payload(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        original_purge = self.controller.guided_intake_purge
+        received: list[tuple[str, str, bool]] = []
+
+        def purge(
+            request_id: str,
+            request_sha256: str,
+            confirmed: bool,
+        ) -> dict[str, object]:
+            received.append((request_id, request_sha256, confirmed))
+            return self.controller.snapshot()
+
+        self.controller.guided_intake_purge = purge  # type: ignore[method-assign]
+        try:
+            body = {
+                "confirmed": True,
+                "request_id": "GI-REQ-EXACT",
+                "request_sha256": "a" * 64,
+            }
+            status, _headers, raw = self.request(
+                "POST",
+                "/api/guided-intake/purge",
+                body=body,
+                cookie=cookie,
+                csrf=csrf,
+                origin=self.server.origin,
+            )
+            self.assertEqual(
+                200,
+                status,
+                raw.decode("utf-8", errors="replace"),
+            )
+            self.assertEqual(
+                [("GI-REQ-EXACT", "a" * 64, True)],
+                received,
+            )
+        finally:
+            self.controller.guided_intake_purge = original_purge  # type: ignore[method-assign]
+
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
+
+    def test_guided_intake_purge_http_identity_confirmation_and_terminal_state(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        original_request = "private exact request\nwith identity-bearing bytes\r\n"
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/capture",
+            body={"original_request": original_request},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        captured = json.loads(raw)["guided_intake"]
+        request_id = captured["request_identity"]["request_id"]
+        request_sha256 = captured["request_identity"]["sha256"]
+
+        attempts = (
+            (
+                {
+                    "confirmed": False,
+                    "request_id": request_id,
+                    "request_sha256": request_sha256,
+                },
+                400,
+            ),
+            (
+                {
+                    "confirmed": True,
+                    "request_id": f"{request_id}-WRONG",
+                    "request_sha256": request_sha256,
+                },
+                409,
+            ),
+            (
+                {
+                    "confirmed": True,
+                    "request_id": request_id,
+                    "request_sha256": "f" * 64,
+                },
+                409,
+            ),
+        )
+        for body, expected_status in attempts:
+            with self.subTest(body=body):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    "/api/guided-intake/purge",
+                    body=body,
+                    cookie=cookie,
+                    csrf=csrf,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(expected_status, status)
+
+        status, _headers, raw = self.request(
+            "GET",
+            "/api/guided-intake/state",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        self.assertEqual(
+            original_request,
+            json.loads(raw)["guided_intake"]["original_request"],
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/purge",
+            body={
+                "confirmed": True,
+                "request_id": request_id,
+                "request_sha256": request_sha256,
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        guided = state["guided_intake"]
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            guided["state"],
+        )
+        self.assertIsNone(guided["original_request"])
+        self.assertIsNone(guided["interpretation"])
+        self.assertEqual("UNAVAILABLE", guided["raw_source_availability"])
+        self.assertEqual("BLOCKED", guided["judgment_reuse"])
+        self.assertEqual("BLOCKED", guided["fidelity_evaluation"])
+        self.assertEqual("PRESERVED", guided["historical_identity"])
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            guided["transfer_state"],
+        )
+        self.assertEqual(
+            {
+                "completed_at",
+                "confirmation",
+                "event_hash",
+                "event_id",
+                "purge_request_event_hash",
+                "purge_request_event_id",
+                "purged_at",
+                "raw_blob_disposition",
+                "remaining_non_purged_references",
+                "request_id",
+                "request_sha256",
+            },
+            set(guided["purge"]),
+        )
+        self.assertEqual(request_id, guided["purge"]["request_id"])
+        self.assertEqual(
+            request_sha256,
+            guided["purge"]["request_sha256"],
+        )
+        self.assertEqual(
+            "EXPLICIT_USER_CONFIRMATION",
+            guided["purge"]["confirmation"],
+        )
+        self.assertEqual(
+            "DELETED_NO_NON_PURGED_REFERENCES",
+            guided["purge"]["raw_blob_disposition"],
+        )
+        self.assertEqual(
+            0,
+            guided["purge"]["remaining_non_purged_references"],
+        )
+        self.assertRegex(guided["purge"]["event_hash"], r"^[0-9a-f]{64}$")
+        self.assertNotIn(original_request, raw.decode("utf-8"))
+        self.assertEqual("idle", state["run"]["state"])
+
+        status, _headers, snapshot_raw = self.request(
+            "GET",
+            "/api/guided-intake/state",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        snapshot = json.loads(snapshot_raw)
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            snapshot["guided_intake"]["state"],
+        )
+        self.assertIsNone(snapshot["guided_intake"]["original_request"])
+        self.assertNotIn(original_request, snapshot_raw.decode("utf-8"))
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/transfer-to-bridge",
+            body={},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(409, status)
+        self.assertEqual(
+            {"error": "BLOCK — ORIGINAL REQUEST UNAVAILABLE"},
+            json.loads(raw),
+        )
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
+
+    def test_guided_intake_error_status_mapping(self) -> None:
+        cookie, csrf = self.bootstrap()
+        original_copy = self.controller.guided_intake_copy_for_pro
+        cases = (
+            (
+                GuidedIntakeValidationError("invalid guided intake"),
+                400,
+            ),
+            (
+                GuidedIntakeConflictError("conflicting guided intake"),
+                409,
+            ),
+            (
+                GuidedIntakeIntegrityError("corrupt guided intake"),
+                409,
+            ),
+            (
+                GuidedIntakeBusyError("busy guided intake"),
+                409,
+            ),
+        )
+        try:
+            for error, expected in cases:
+                def fail(current: Exception = error) -> dict[str, object]:
+                    raise current
+
+                self.controller.guided_intake_copy_for_pro = fail  # type: ignore[method-assign]
+                status, _headers, _raw = self.request(
+                    "POST",
+                    "/api/guided-intake/copy",
+                    body={},
+                    cookie=cookie,
+                    csrf=csrf,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(expected, status)
+        finally:
+            self.controller.guided_intake_copy_for_pro = original_copy  # type: ignore[method-assign]
+
+    def test_guided_intake_bounded_local_smoke(self) -> None:
+        subprocess.run(
+            ("git", "config", "user.email", "smoke@example.test"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "config", "user.name", "Guided Intake Smoke"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "add", "target.txt"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "commit", "-qm", "smoke baseline"),
+            cwd=self.repository,
+            check=True,
+        )
+        cookie, csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+        self.assertEqual(200, status)
+        self.assertIn(b'id="guided-intake-card"', html)
+
+        fixture_root = (
+            Path(__file__).resolve().parents[1]
+            / "validation"
+            / "fixtures"
+            / "guided_intake_v0_1"
+        )
+        original_request = (
+            fixture_root / "ambiguous_request.txt"
+        ).read_text(encoding="utf-8")
+        draft_json = (fixture_root / "pro_draft.json").read_text(
+            encoding="utf-8"
+        )
+        confirmation = json.loads(
+            (fixture_root / "user_confirmation.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/capture",
+            body={"original_request": original_request},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        request_id = state["guided_intake"]["request_identity"]["request_id"]
+        request_sha256 = state["guided_intake"]["request_identity"]["sha256"]
+        self.assertEqual(
+            original_request,
+            state["guided_intake"]["original_request"],
+        )
+        self.assertEqual(
+            hashlib.sha256(original_request.encode("utf-8")).hexdigest(),
+            request_sha256,
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/import-draft",
+            body={
+                "draft_json": draft_json,
+                "producer_label": "LOCAL_SMOKE_PRO_DRAFT",
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        self.assertEqual(
+            "NEEDS USER CONFIRMATION",
+            state["guided_intake"]["interpretation"]["gate"],
+        )
+        self.assertEqual(
+            "UNKNOWN",
+            state["guided_intake"]["interpretation"]["completion_line"][
+                "testability_status"
+            ],
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/freeze",
+            body={},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(409, status)
+        self.assertIn("INTAKE NOT FREEZABLE", json.loads(raw)["error"])
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/confirm",
+            body=confirmation,
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        self.assertEqual(
+            "CLEAR ENOUGH TO FREEZE",
+            state["guided_intake"]["interpretation"]["gate"],
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/freeze",
+            body={},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        freeze_sha256 = state["guided_intake"]["freeze"]["sha256"]
+        freeze_receipt_sha256 = state["guided_intake"]["freeze"]["receipt"][
+            "receipt_sha256"
+        ]
+        self.assertRegex(freeze_sha256, r"^[0-9a-f]{64}$")
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/transfer-to-bridge",
+            body={},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        self.assertEqual("idle", state["run"]["state"])
+        self.assertEqual(
+            "TRANSFERRED WITHOUT EXECUTION",
+            state["guided_intake"]["transfer_receipt"]["result"],
+        )
+        self.assertEqual(
+            freeze_sha256,
+            state["manual_bridge"]["guided_intake_transfer"][
+                "freeze_sha256"
+            ],
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/purge",
+            body={
+                "confirmed": True,
+                "request_id": request_id,
+                "request_sha256": request_sha256,
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        state = json.loads(raw)
+        guided = state["guided_intake"]
+        self.assertEqual(
+            "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+            guided["state"],
+        )
+        self.assertIsNone(guided["original_request"])
+        self.assertEqual("UNAVAILABLE", guided["raw_source_availability"])
+        self.assertEqual("BLOCKED", guided["judgment_reuse"])
+        self.assertEqual("BLOCKED", guided["fidelity_evaluation"])
+        self.assertEqual("PRESERVED", guided["historical_identity"])
+        self.assertEqual(freeze_sha256, guided["freeze"]["sha256"])
+        self.assertEqual(
+            freeze_receipt_sha256,
+            guided["freeze"]["receipt"]["receipt_sha256"],
+        )
+        self.assertEqual("idle", state["run"]["state"])
+        self.assertNotIn(original_request, raw.decode("utf-8"))
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/guided-intake/transfer-to-bridge",
+            body={},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(409, status)
+        self.assertEqual(
+            {"error": "BLOCK — ORIGINAL REQUEST UNAVAILABLE"},
+            json.loads(raw),
+        )
+        self.assertEqual("idle", self.controller.snapshot()["run"]["state"])
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
+
     def test_static_allowlist_blocks_traversal_and_arbitrary_files(self) -> None:
         cookie, _csrf = self.bootstrap()
         for path in (
@@ -280,6 +934,77 @@ class CompanionServerTest(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertIn(b"textContent", javascript)
         self.assertNotIn(b"innerHTML", javascript)
+
+    def test_guided_intake_dom_and_authority_boundary_are_present(self) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+
+        self.assertEqual(200, status)
+        for element_id in (
+            "guided-intake-card",
+            "guided-intake-heading",
+            "guided-intake-state",
+            "guided-intake-authority-explanation",
+            "guided-intake-original-request",
+            "guided-intake-capture",
+            "guided-intake-original-exact",
+            "guided-intake-objective",
+            "guided-intake-objective-atoms",
+            "guided-intake-completion-line",
+            "guided-intake-completion-checks",
+            "guided-intake-do-not-touch",
+            "guided-intake-unknown",
+            "guided-intake-confirmation-history",
+            "guided-intake-copy",
+            "guided-intake-copy-output",
+            "guided-intake-fidelity-evaluation",
+            "guided-intake-producer-label",
+            "guided-intake-draft-json",
+            "guided-intake-import-draft",
+            "guided-intake-question",
+            "guided-intake-answer",
+            "guided-intake-resulting-delta",
+            "guided-intake-confirm",
+            "guided-intake-freeze",
+            "guided-intake-purge-confirm",
+            "guided-intake-purge",
+            "guided-intake-purge-status",
+            "guided-intake-raw-source-availability",
+            "guided-intake-judgment-reuse",
+            "guided-intake-transfer",
+            "guided-intake-error",
+        ):
+            with self.subTest(element_id=element_id):
+                self.assertIn(f'id="{element_id}"'.encode("utf-8"), html)
+        self.assertIn(b"Original Request", html)
+        self.assertIn(b"Objective", html)
+        self.assertIn(b"Completion Line", html)
+        self.assertIn(b"Do Not Touch", html)
+        self.assertIn(b"UNKNOWN", html)
+        self.assertIn(b"exact support and byte ranges", html)
+        self.assertIn(b"Completion checks and evidence sources", html)
+        self.assertIn(b"Forward-only confirmation history", html)
+        normalized_html = " ".join(html.decode("utf-8").split())
+        self.assertIn(
+            (
+                "Purge applies only to the exact current Request identity "
+                "shown above. It makes the raw Original Request unavailable "
+                "and blocks transfer, judgment reuse, and fidelity "
+                "evaluation. Historical hashes and receipts remain preserved. "
+                "Purge grants no execution authority and never starts a Run."
+            ),
+            normalized_html,
+        )
+        self.assertIn(
+            b"I explicitly confirm purge of this exact Original Request.",
+            html,
+        )
+        self.assertIn(b"Purge Exact Original Request", html)
+        self.assertIn(
+            "INTERPRETATION ONLY — NO EXECUTION AUTHORITY".encode("utf-8"),
+            html,
+        )
+        self.assertIn(b'maxlength="65536"', html)
 
     def test_bridge_import_cap_preserves_legacy_cap_and_exact_bytes(
         self,
@@ -493,13 +1218,13 @@ class CompanionServerTest(unittest.TestCase):
         )
 
         self.assertEqual(200, status)
-        text = raw.decode("utf-8")
-        self.assertNotIn("decision_key", text)
-        self.assertNotIn("rule_hash", text)
-        self.assertNotIn("event_hash", text)
-        self.assertNotIn("request_id", text)
-        self.assertNotIn("credential", text)
         state = json.loads(raw)
+        defaults_text = json.dumps(state["defaults"])
+        self.assertNotIn("decision_key", defaults_text)
+        self.assertNotIn("rule_hash", defaults_text)
+        self.assertNotIn("event_hash", defaults_text)
+        self.assertNotIn("request_id", defaults_text)
+        self.assertNotIn("credential", defaults_text)
         self.assertEqual(1, len(state["defaults"]))
         self.assertEqual(
             {"action", "created_at", "handle", "path"},
@@ -587,6 +1312,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 this.className = "";
                 this.dataset = {};
                 this.disabled = false;
+                this.checked = false;
                 this.value = "";
                 this.type = "";
                 this.children = [];
@@ -693,10 +1419,28 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "bridge-replay-baseline",
               "bridge-replay-candidate",
             ];
+            const guidedIntakeButtonIds = [
+              "guided-intake-capture",
+              "guided-intake-copy",
+              "guided-intake-import-draft",
+              "guided-intake-confirm",
+              "guided-intake-freeze",
+              "guided-intake-purge",
+              "guided-intake-transfer",
+            ];
+            const guidedIntakeInputIds = [
+              "guided-intake-original-request",
+              "guided-intake-producer-label",
+              "guided-intake-draft-json",
+              "guided-intake-answer",
+              "guided-intake-resulting-delta",
+              "guided-intake-purge-confirm",
+            ];
             const buttonIds = new Set([
               "choose-repository",
               "new-run",
               "run",
+              ...guidedIntakeButtonIds,
               ...bridgeButtonIds,
             ]);
             const ids = [
@@ -761,6 +1505,45 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "defaults",
               "file-actions",
               "global-error",
+              "guided-intake-answer",
+              "guided-intake-authority-claim",
+              "guided-intake-authority-explanation",
+              "guided-intake-capture",
+              "guided-intake-completion-checks",
+              "guided-intake-completion-line",
+              "guided-intake-completion-status",
+              "guided-intake-confirm",
+              "guided-intake-confirmation-history",
+              "guided-intake-confirmation",
+              "guided-intake-copy",
+              "guided-intake-copy-output",
+              "guided-intake-do-not-touch",
+              "guided-intake-draft-json",
+              "guided-intake-error",
+              "guided-intake-fidelity-evaluation",
+              "guided-intake-freeze",
+              "guided-intake-freeze-identity",
+              "guided-intake-gate",
+              "guided-intake-import-draft",
+              "guided-intake-objective",
+              "guided-intake-objective-atoms",
+              "guided-intake-objective-status",
+              "guided-intake-original-exact",
+              "guided-intake-original-request",
+              "guided-intake-producer-label",
+              "guided-intake-purge",
+              "guided-intake-purge-confirm",
+              "guided-intake-purge-status",
+              "guided-intake-question",
+              "guided-intake-question-field",
+              "guided-intake-raw-source-availability",
+              "guided-intake-request-identity",
+              "guided-intake-resulting-delta",
+              "guided-intake-state",
+              "guided-intake-judgment-reuse",
+              "guided-intake-transfer",
+              "guided-intake-transfer-receipt",
+              "guided-intake-unknown",
               "new-run",
               "progress",
               "progress-card",
@@ -796,6 +1579,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "approval-reason",
               "approval-reason-label",
               "global-error",
+              "guided-intake-confirmation",
+              "guided-intake-error",
               "progress-card",
               "result-card",
               "run-error",
@@ -803,6 +1588,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get(id).classList.toggle("hidden", true);
             }
             elements.get("task").value = "Keep this bounded task";
+            elements.get("guided-intake-draft-json").value = "{}";
+            elements.get("guided-intake-resulting-delta").value = "{}";
 
             const approvalButtons = [
               "allow_once",
@@ -885,6 +1672,44 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 ...overrides,
               };
             }
+            function emptyGuidedIntake(overrides = {}) {
+              return {
+                state: "EMPTY",
+                error: null,
+                original_request: "",
+                request_identity: null,
+                copy_for_pro_prompt: "",
+                interpretation: {
+                  objective: {
+                    text: "",
+                    fidelity_status: "UNKNOWN",
+                    atoms: [],
+                  },
+                  completion_line: {
+                    text: "",
+                    testability_status: "UNKNOWN",
+                    checks: [],
+                  },
+                  do_not_touch: [],
+                  unknown: [],
+                  gate: "UNKNOWN",
+                },
+                active_question: null,
+                confirmation_history: [],
+                fidelity_evaluation: "AVAILABLE",
+                freeze: null,
+                historical_identity: null,
+                judgment_reuse: "AVAILABLE",
+                purge: null,
+                raw_source_availability: "NONE",
+                transfer_state: null,
+                transfer_receipt: null,
+                authority_claim:
+                  "INTERPRETATION ONLY — NO EXECUTION AUTHORITY",
+                authority_explanation: "",
+                ...overrides,
+              };
+            }
             const staleReceipt = {
               status: "STALE_RECEIPT_STATUS",
               verified_saves: 7,
@@ -929,6 +1754,76 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ],
               receipt: staleReceipt,
+              guided_intake: emptyGuidedIntake({
+                state: "AWAITING_CONFIRMATION",
+                original_request:
+                  '</pre><script>globalThis.hostile = true</script>&ORIGINAL',
+                request_identity: {
+                  request_id: "GUIDED-REQUEST-ONE",
+                  sha256: "GUIDED-REQUEST-HASH",
+                },
+                raw_source_availability: "AVAILABLE",
+                copy_for_pro_prompt: "HOSTILE <PROMPT> & COPY",
+                interpretation: {
+                  objective: {
+                    text: "HOSTILE <OBJECTIVE>",
+                    fidelity_status: "EXPLICIT",
+                    atoms: [
+                      {
+                        atom_id: "OBJ-HOSTILE",
+                        text:
+                          "</pre><script>globalThis.atomHostile = true</script>",
+                        support: [
+                          {
+                            kind: "ORIGINAL_REQUEST_QUOTE",
+                            quote: "<script>ATOM_SUPPORT</script>",
+                            quote_sha256: "ATOM-SUPPORT-HASH",
+                            occurrence: 2,
+                            byte_start: 17,
+                            byte_end: 46,
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  completion_line: {
+                    text: "HOSTILE </dd><script>COMPLETE</script>",
+                    testability_status: "TESTABLE",
+                    checks: [
+                      {
+                        observable:
+                          "<script>globalThis.checkHostile = true</script>",
+                        pass_condition: "PASS </pre> & exact",
+                        evidence_source: "<img src=x onerror=alert(1)>",
+                      },
+                    ],
+                  },
+                  do_not_touch: ["<script>DO_NOT_TOUCH</script>"],
+                  unknown: ["UNKNOWN <img src=x>"],
+                  gate: "CONFIRMATION_REQUIRED",
+                },
+                active_question: {
+                  field: "completion_line",
+                  question: "Is <this> the exact completion line?",
+                },
+                confirmation_history: [
+                  {
+                    confirmation_event_id: "GI-CONF-HOSTILE",
+                    field: "COMPLETION_LINE",
+                    question:
+                      "<script>globalThis.historyHostile = true</script>",
+                    answer: "Forward-only <answer>",
+                    resulting_delta: {
+                      completion_line: {
+                        evidence_source: "</pre><script>HISTORY</script>",
+                      },
+                    },
+                    resulting_gate: "CLEAR ENOUGH TO FREEZE",
+                  },
+                ],
+                authority_explanation:
+                  "Full authority explanation.\n<script>literal only</script>\nNo execution, approval, build, merge, publication, or release authority.",
+              }),
               manual_bridge: {
                 state: "DESIGN_IMPORTED",
                 session: {
@@ -966,6 +1861,113 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               },
             };
+            const confirmedGuidedState = {
+              ...completedState,
+              csrf: "csrf-guided-confirmed",
+              guided_intake: {
+                ...completedState.guided_intake,
+                state: "READY_TO_FREEZE",
+                active_question: null,
+                interpretation: {
+                  ...completedState.guided_intake.interpretation,
+                  gate: "CLEAR ENOUGH TO FREEZE",
+                },
+              },
+            };
+            const frozenGuidedState = {
+              ...confirmedGuidedState,
+              csrf: "csrf-guided-frozen",
+              guided_intake: {
+                ...confirmedGuidedState.guided_intake,
+                state: "FROZEN",
+                freeze: {
+                  freeze_id: "GUIDED-FREEZE-ONE",
+                  sha256: "GUIDED-FREEZE-HASH",
+                  current: true,
+                },
+              },
+            };
+            const correctedAfterFreezeState = {
+              ...frozenGuidedState,
+              csrf: "csrf-guided-corrected",
+              guided_intake: {
+                ...frozenGuidedState.guided_intake,
+                state: "READY_TO_FREEZE",
+                freeze: {
+                  ...frozenGuidedState.guided_intake.freeze,
+                  current: false,
+                },
+              },
+            };
+            const refrozenGuidedState = {
+              ...correctedAfterFreezeState,
+              csrf: "csrf-guided-refrozen",
+              guided_intake: {
+                ...correctedAfterFreezeState.guided_intake,
+                state: "FROZEN",
+                freeze: {
+                  freeze_id: "GUIDED-FREEZE-TWO",
+                  sha256: "GUIDED-FREEZE-HASH-TWO",
+                  current: true,
+                },
+              },
+            };
+            const transferredGuidedState = {
+              ...refrozenGuidedState,
+              csrf: "csrf-guided-transferred",
+              guided_intake: {
+                ...refrozenGuidedState.guided_intake,
+                state: "TRANSFERRED_TO_BRIDGE",
+                transfer_receipt: {
+                  transfer_id: "GUIDED-TRANSFER-ONE",
+                },
+              },
+            };
+            const purgedGuidedState = {
+              ...transferredGuidedState,
+              csrf: "csrf-guided-purged",
+              guided_intake: {
+                ...transferredGuidedState.guided_intake,
+                active_question: null,
+                confirmation_history: [],
+                copy_for_pro_prompt: null,
+                fidelity_evaluation: "BLOCKED",
+                freeze: {
+                  ...transferredGuidedState.guided_intake.freeze,
+                  current: false,
+                  purged: true,
+                },
+                historical_identity: "PRESERVED",
+                interpretation: null,
+                judgment_reuse: "BLOCKED",
+                original_request: null,
+                purge: {
+                  confirmation: "EXPLICIT_USER_CONFIRMATION",
+                  event_hash: "PURGE-EVENT-HASH",
+                  event_id: "GI-PURGE-ONE",
+                  purged_at: "2026-07-29T00:00:00Z",
+                  raw_blob_disposition:
+                    "DELETED_NO_NON_PURGED_REFERENCES",
+                  remaining_non_purged_references: 0,
+                  request_id: "GUIDED-REQUEST-ONE",
+                  request_sha256: "GUIDED-REQUEST-HASH",
+                },
+                raw_source_availability: "UNAVAILABLE",
+                state: "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+                transfer_state: "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+              },
+            };
+            const changedPurgeIdentityState = {
+              ...transferredGuidedState,
+              csrf: "csrf-guided-identity-changed",
+              guided_intake: {
+                ...transferredGuidedState.guided_intake,
+                request_identity: {
+                  request_id: "GUIDED-REQUEST-TWO",
+                  sha256: "GUIDED-REQUEST-HASH-TWO",
+                },
+              },
+            };
             const approvalState = {
               ...completedState,
               csrf: "csrf-two",
@@ -994,6 +1996,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }),
               defaults: [],
               receipt: null,
+              guided_intake: emptyGuidedIntake(),
               manual_bridge: {
                 state: "BOUNDARY_INCOMPLETE",
                 session: null,
@@ -1102,6 +2105,432 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 elements.get("defaults").children[0].children[1];
               assert.strictEqual(firstRevoke.disabled, false);
 
+              assert.strictEqual(
+                elements.get("guided-intake-state").textContent,
+                "AWAITING_CONFIRMATION",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-authority-claim").textContent,
+                "INTERPRETATION ONLY — NO EXECUTION AUTHORITY",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-authority-explanation").textContent,
+                "Full authority explanation.\n" +
+                  "<script>literal only</script>\n" +
+                  "No execution, approval, build, merge, publication, or release authority.",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-exact").textContent,
+                '</pre><script>globalThis.hostile = true</script>&ORIGINAL',
+              );
+              assert.strictEqual(sandbox.hostile, undefined);
+              assert.strictEqual(
+                elements.get("guided-intake-objective").textContent,
+                "HOSTILE <OBJECTIVE>",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-completion-line").textContent,
+                "HOSTILE </dd><script>COMPLETE</script>",
+              );
+              const objectiveAtomsText =
+                elements.get("guided-intake-objective-atoms").textContent;
+              assert.strictEqual(
+                objectiveAtomsText.includes(
+                  "</pre><script>globalThis.atomHostile = true</script>",
+                ),
+                true,
+              );
+              assert.strictEqual(
+                objectiveAtomsText.includes('"byte_start": 17'),
+                true,
+              );
+              assert.strictEqual(
+                objectiveAtomsText.includes('"byte_end": 46'),
+                true,
+              );
+              assert.strictEqual(
+                objectiveAtomsText.includes(
+                  '"quote": "<script>ATOM_SUPPORT</script>"',
+                ),
+                true,
+              );
+              const completionChecksText =
+                elements.get("guided-intake-completion-checks").textContent;
+              assert.strictEqual(
+                completionChecksText.includes(
+                  '"evidence_source": "<img src=x onerror=alert(1)>"',
+                ),
+                true,
+              );
+              assert.strictEqual(
+                completionChecksText.includes("PASS </pre> & exact"),
+                true,
+              );
+              const confirmationHistoryText =
+                elements.get("guided-intake-confirmation-history").textContent;
+              assert.strictEqual(
+                confirmationHistoryText.includes("GI-CONF-HOSTILE"),
+                true,
+              );
+              assert.strictEqual(
+                confirmationHistoryText.includes(
+                  "<script>globalThis.historyHostile = true</script>",
+                ),
+                true,
+              );
+              assert.strictEqual(sandbox.atomHostile, undefined);
+              assert.strictEqual(sandbox.checkHostile, undefined);
+              assert.strictEqual(sandbox.historyHostile, undefined);
+              assert.strictEqual(
+                elements.get("guided-intake-do-not-touch").textContent,
+                "<script>DO_NOT_TOUCH</script>",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-unknown").textContent,
+                "UNKNOWN <img src=x>",
+              );
+              assert.strictEqual(hidden("guided-intake-confirmation"), false);
+              assert.strictEqual(elements.get("guided-intake-capture").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-copy").disabled, false);
+              assert.strictEqual(
+                elements.get("guided-intake-import-draft").disabled,
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-confirm").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-freeze").disabled, true);
+              assert.strictEqual(
+                elements.get("guided-intake-raw-source-availability").textContent,
+                "AVAILABLE",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-judgment-reuse").textContent,
+                "AVAILABLE",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-fidelity-evaluation").textContent,
+                "AVAILABLE",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge-confirm").disabled,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge").disabled,
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+
+              const guidedFetchStart = fetchCalls.length;
+              elements.get("guided-intake-original-request").value =
+                "CAPTURE <script>literal</script> & exact";
+              await elements
+                .get("guided-intake-original-request")
+                .dispatch("input");
+              assert.strictEqual(elements.get("guided-intake-capture").disabled, false);
+              fetchQueue.push(() => Promise.resolve(response(completedState)));
+              await elements.get("guided-intake-capture").dispatch("click");
+              await settle();
+              const captureRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                captureRequest.path,
+                "/api/guided-intake/capture",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(captureRequest.options.body),
+                {
+                  original_request:
+                    "CAPTURE <script>literal</script> & exact",
+                  supersedes_request_id: "GUIDED-REQUEST-ONE",
+                },
+              );
+
+              fetchQueue.push(() => Promise.resolve(response(completedState)));
+              await elements.get("guided-intake-copy").dispatch("click");
+              await settle();
+              assert.strictEqual(
+                fetchCalls.at(-1).path,
+                "/api/guided-intake/copy",
+              );
+              assert.strictEqual(
+                clipboardWrites.at(-1),
+                "HOSTILE <PROMPT> & COPY",
+              );
+
+              elements.get("guided-intake-producer-label").value =
+                "Pro <producer>";
+              elements.get("guided-intake-draft-json").value = "[]";
+              await elements.get("guided-intake-producer-label").dispatch("input");
+              await elements.get("guided-intake-draft-json").dispatch("input");
+              const beforeInvalidDraft = fetchCalls.length;
+              await elements.get("guided-intake-import-draft").dispatch("click");
+              await settle();
+              assert.strictEqual(fetchCalls.length, beforeInvalidDraft);
+              assert.strictEqual(
+                elements.get("guided-intake-error").textContent,
+                "Guided Intake draft must be a strict JSON object.",
+              );
+              elements.get("guided-intake-draft-json").value =
+                '{"objective":{"text":"one"},"objective":{"text":"<script>draft</script>"}}';
+              await elements.get("guided-intake-draft-json").dispatch("input");
+              fetchQueue.push(() => Promise.resolve(response(completedState)));
+              await elements.get("guided-intake-import-draft").dispatch("click");
+              await settle();
+              const importRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                importRequest.path,
+                "/api/guided-intake/import-draft",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(importRequest.options.body),
+                {
+                  draft_json:
+                    '{"objective":{"text":"one"},"objective":{"text":"<script>draft</script>"}}',
+                  producer_label: "Pro <producer>",
+                },
+              );
+
+              elements.get("guided-intake-answer").value =
+                "Yes, exact <answer>.";
+              elements.get("guided-intake-resulting-delta").value =
+                '{"completion_line":{"text":"Done & verified"}}';
+              await elements.get("guided-intake-answer").dispatch("input");
+              await elements.get("guided-intake-resulting-delta").dispatch("input");
+              assert.strictEqual(elements.get("guided-intake-confirm").disabled, false);
+              fetchQueue.push(() =>
+                Promise.resolve(response(confirmedGuidedState)),
+              );
+              await elements.get("guided-intake-confirm").dispatch("click");
+              await settle();
+              const confirmRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                confirmRequest.path,
+                "/api/guided-intake/confirm",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(confirmRequest.options.body),
+                {
+                  question: "Is <this> the exact completion line?",
+                  answer: "Yes, exact <answer>.",
+                  resulting_delta: {
+                    completion_line: { text: "Done & verified" },
+                  },
+                },
+              );
+              assert.strictEqual(elements.get("guided-intake-freeze").disabled, false);
+
+              fetchQueue.push(() => Promise.resolve(response(frozenGuidedState)));
+              await elements.get("guided-intake-freeze").dispatch("click");
+              await settle();
+              assert.strictEqual(
+                fetchCalls.at(-1).path,
+                "/api/guided-intake/freeze",
+              );
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-freeze-identity")
+                  .textContent.includes("GUIDED-FREEZE-ONE"),
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, false);
+
+              assert.strictEqual(
+                elements.get("guided-intake-producer-label").disabled,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-draft-json").disabled,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-import-draft").disabled,
+                false,
+              );
+              elements.get("guided-intake-draft-json").value =
+                '{"forward_correction":"after current freeze"}';
+              await elements.get("guided-intake-draft-json").dispatch("input");
+              fetchQueue.push(() =>
+                Promise.resolve(response(correctedAfterFreezeState)),
+              );
+              await elements.get("guided-intake-import-draft").dispatch("click");
+              await settle();
+              const postFreezeImportRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                postFreezeImportRequest.path,
+                "/api/guided-intake/import-draft",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(postFreezeImportRequest.options.body),
+                {
+                  draft_json:
+                    '{"forward_correction":"after current freeze"}',
+                  producer_label: "Pro <producer>",
+                },
+              );
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-freeze").disabled, false);
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-freeze-identity")
+                  .textContent.includes('"current": false'),
+                true,
+              );
+
+              fetchQueue.push(() => Promise.resolve(response(refrozenGuidedState)));
+              await elements.get("guided-intake-freeze").dispatch("click");
+              await settle();
+              assert.strictEqual(
+                fetchCalls.at(-1).path,
+                "/api/guided-intake/freeze",
+              );
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-freeze-identity")
+                  .textContent.includes("GUIDED-FREEZE-TWO"),
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, false);
+
+              fetchQueue.push(() =>
+                Promise.resolve(response(transferredGuidedState)),
+              );
+              await elements.get("guided-intake-transfer").dispatch("click");
+              await settle();
+              assert.strictEqual(
+                fetchCalls.at(-1).path,
+                "/api/guided-intake/transfer-to-bridge",
+              );
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-transfer-receipt")
+                  .textContent.includes("GUIDED-TRANSFER-ONE"),
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+
+              elements.get("guided-intake-purge-confirm").checked = true;
+              await elements.get("guided-intake-purge-confirm").dispatch("input");
+              assert.strictEqual(
+                elements.get("guided-intake-purge").disabled,
+                false,
+              );
+              fetchQueue.push(() =>
+                Promise.resolve(response(changedPurgeIdentityState)),
+              );
+              await runNextTimer();
+              assert.strictEqual(
+                elements.get("guided-intake-purge-confirm").checked,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge").disabled,
+                true,
+              );
+              fetchQueue.push(() =>
+                Promise.resolve(response(transferredGuidedState)),
+              );
+              await runNextTimer();
+
+              const beforeUnconfirmedPurge = fetchCalls.length;
+              await elements.get("guided-intake-purge").dispatch("click");
+              await settle();
+              assert.strictEqual(fetchCalls.length, beforeUnconfirmedPurge);
+              assert.strictEqual(
+                elements.get("guided-intake-error").textContent,
+                "Explicit Original Request purge confirmation is required.",
+              );
+
+              elements.get("guided-intake-purge-confirm").checked = true;
+              await elements.get("guided-intake-purge-confirm").dispatch("input");
+              assert.strictEqual(
+                elements.get("guided-intake-purge").disabled,
+                false,
+              );
+              fetchQueue.push(() =>
+                Promise.resolve(response(purgedGuidedState)),
+              );
+              await elements.get("guided-intake-purge").dispatch("click");
+              await settle();
+              const purgeRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                purgeRequest.path,
+                "/api/guided-intake/purge",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(purgeRequest.options.body),
+                {
+                  request_id: "GUIDED-REQUEST-ONE",
+                  request_sha256: "GUIDED-REQUEST-HASH",
+                  confirmed: true,
+                },
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-state").textContent,
+                "BLOCK — ORIGINAL REQUEST UNAVAILABLE",
+              );
+            assert.strictEqual(
+              elements.get("guided-intake-original-exact").textContent,
+              "UNAVAILABLE",
+            );
+            assert.strictEqual(
+              elements.get("guided-intake-original-request").value,
+              "",
+            );
+            assert.strictEqual(
+              elements.get("guided-intake-raw-source-availability").textContent,
+              "UNAVAILABLE",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-judgment-reuse").textContent,
+                "BLOCKED",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-fidelity-evaluation").textContent,
+                "BLOCKED",
+              );
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-purge-status")
+                  .textContent.includes("GI-PURGE-ONE"),
+                true,
+              );
+              assert.strictEqual(
+                elements
+                  .get("guided-intake-purge-status")
+                  .textContent.includes(
+                    "DELETED_NO_NON_PURGED_REFERENCES",
+                  ),
+                true,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge-confirm").checked,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge-confirm").disabled,
+                true,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge").disabled,
+                true,
+              );
+              assert.strictEqual(elements.get("guided-intake-copy").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-freeze").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+              const guidedFetches = fetchCalls.slice(guidedFetchStart);
+              const guidedMutationFetches = guidedFetches.filter(
+                (call) => call.options.method === "POST",
+              );
+              assert.strictEqual(
+                guidedMutationFetches.every((call) =>
+                  call.path.startsWith("/api/guided-intake/"),
+                ),
+                true,
+              );
+              assert.strictEqual(
+                guidedFetches.some((call) => call.path === "/api/run"),
+                false,
+              );
+
               fetchQueue.push(() => Promise.resolve(response(approvalState)));
               await runNextTimer();
               assert.strictEqual(hidden("approval-overlay"), false);
@@ -1124,6 +2553,16 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("bridge-replay-baseline").value = '{"stale":"base"}';
               elements.get("bridge-replay-candidate").value =
                 '{"stale":"candidate"}';
+              elements.get("guided-intake-original-request").value =
+                "STALE_GUIDED_REQUEST";
+              elements.get("guided-intake-producer-label").value =
+                "STALE_GUIDED_PRODUCER";
+              elements.get("guided-intake-draft-json").value =
+                '{"stale":"draft"}';
+              elements.get("guided-intake-answer").value =
+                "STALE_GUIDED_ANSWER";
+              elements.get("guided-intake-resulting-delta").value =
+                '{"stale":"delta"}';
 
               fetchQueue.push(() =>
                 Promise.reject(new TypeError("fetch failed")),
@@ -1161,6 +2600,68 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(elements.get("claim-boundary").textContent, "");
               assert.strictEqual(elements.get("defaults").children.length, 0);
+              assert.strictEqual(
+                elements.get("guided-intake-state").textContent,
+                "No intake",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-authority-claim").textContent,
+                "INTERPRETATION ONLY — NO EXECUTION AUTHORITY",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-authority-explanation").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-exact").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-raw-source-availability").textContent,
+                "UNKNOWN",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-judgment-reuse").textContent,
+                "UNKNOWN",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-fidelity-evaluation").textContent,
+                "UNKNOWN",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge-status").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-purge-confirm").checked,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-objective-atoms").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-completion-checks").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-confirmation-history").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-copy-output").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-freeze-identity").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-transfer-receipt").textContent,
+                "",
+              );
+              assert.strictEqual(hidden("guided-intake-confirmation"), true);
+              assert.strictEqual(hidden("guided-intake-error"), true);
               assert.strictEqual(
                 elements.get("bridge-state").textContent,
                 "No session",
@@ -1210,6 +2711,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               for (const button of approvalButtons) {
                 assert.strictEqual(button.disabled, true);
               }
+              for (const id of guidedIntakeButtonIds) {
+                assert.strictEqual(elements.get(id).disabled, true, id);
+              }
+              for (const id of guidedIntakeInputIds) {
+                assert.strictEqual(elements.get(id).disabled, true, id);
+              }
               for (const id of bridgeButtonIds) {
                 assert.strictEqual(elements.get(id).disabled, true, id);
               }
@@ -1228,6 +2735,26 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(
                 elements.get("bridge-replay-candidate").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-request").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-producer-label").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-draft-json").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-answer").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-resulting-delta").value,
                 "{}",
               );
               assert.strictEqual(pendingRevoke.disabled, true);
@@ -1256,6 +2783,30 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(
+                elements.get("guided-intake-state").textContent,
+                "EMPTY",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-objective-atoms").textContent,
+                "[]",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-completion-checks").textContent,
+                "[]",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-confirmation-history").textContent,
+                "[]",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-request").disabled,
+                false,
+              );
+              assert.strictEqual(elements.get("guided-intake-capture").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-copy").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-freeze").disabled, true);
+              assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
               assert.strictEqual(
                 elements.get("bridge-state").textContent,
                 "BOUNDARY_INCOMPLETE",
@@ -1297,6 +2848,16 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("bridge-metadata").value = '{"repo":"A"}';
               elements.get("bridge-replay-baseline").value = '{"repo":"A"}';
               elements.get("bridge-replay-candidate").value = '{"repo":"A"}';
+              elements.get("guided-intake-original-request").value =
+                "REPOSITORY_A_GUIDED_REQUEST";
+              elements.get("guided-intake-producer-label").value =
+                "REPOSITORY_A_GUIDED_PRODUCER";
+              elements.get("guided-intake-draft-json").value =
+                '{"repo":"A"}';
+              elements.get("guided-intake-answer").value =
+                "REPOSITORY_A_GUIDED_ANSWER";
+              elements.get("guided-intake-resulting-delta").value =
+                '{"repo":"A"}';
               fetchQueue.push(() =>
                 Promise.resolve(response(switchedRepositoryState)),
               );
@@ -1317,6 +2878,26 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(
                 elements.get("bridge-replay-candidate").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-request").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-producer-label").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-draft-json").value,
+                "{}",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-answer").value,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-resulting-delta").value,
                 "{}",
               );
 

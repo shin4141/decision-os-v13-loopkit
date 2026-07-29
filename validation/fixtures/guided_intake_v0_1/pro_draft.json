@@ -1,0 +1,110 @@
+{
+  "schema_version": "guided-intake-draft-v0.1",
+  "source_request_sha256": "881b9fead18114893aff7af04ae86677d3ca23727a2fabf06ac0321bf6731afd",
+  "objective": {
+    "text": "Add a Guided Intake box to the Companion; paste an unclear task; get it ready for the next agent",
+    "atoms": [
+      {
+        "atom_id": "OBJ-1",
+        "text": "Add a Guided Intake box to the Companion",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "Add a Guided Intake box to the Companion",
+            "occurrence": 1
+          }
+        ]
+      },
+      {
+        "atom_id": "OBJ-2",
+        "text": "paste an unclear task",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "paste an unclear task",
+            "occurrence": 1
+          }
+        ]
+      },
+      {
+        "atom_id": "OBJ-3",
+        "text": "get it ready for the next agent",
+        "support": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1
+          }
+        ]
+      }
+    ]
+  },
+  "completion_line": {
+    "text": "UNKNOWN — “ready for the next agent” does not identify the observable artifact, review state, or transfer condition that constitutes completion.",
+    "testability_status": "UNKNOWN",
+    "checks": []
+  },
+  "do_not_touch": [
+    {
+      "item_id": "DNT-1",
+      "text": "Don’t break the current Runner.",
+      "basis_kind": "USER_EXPLICIT",
+      "support": {
+        "kind": "ORIGINAL_REQUEST_QUOTE",
+        "quote": "Don’t break the current Runner.",
+        "occurrence": 1
+      }
+    }
+  ],
+  "unknown": [
+    {
+      "unknown_id": "UNK-1",
+      "type": "MODEL_DETECTED_MISSING_FACT",
+      "statement": "The exact observable state meant by “ready for the next agent” is not stated.",
+      "basis": {
+        "kind": "MODEL_DETECTION",
+        "related_original_quotes": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1
+          }
+        ]
+      },
+      "affects": [
+        "COMPLETION_LINE"
+      ],
+      "materiality": "MATERIAL",
+      "effect_on_execution": "HOLD_COMPLETION",
+      "evidence_required": "An explicit user choice of the observable completion state.",
+      "current_state": "OPEN"
+    },
+    {
+      "unknown_id": "UNK-2",
+      "type": "UNVERIFIED_ASSUMPTION_CANDIDATE",
+      "statement": "Readiness may mean a frozen intake only or a frozen intake copied into Manual Bridge.",
+      "basis": {
+        "kind": "MODEL_DETECTION",
+        "related_original_quotes": [
+          {
+            "kind": "ORIGINAL_REQUEST_QUOTE",
+            "quote": "get it ready for the next agent",
+            "occurrence": 1
+          }
+        ]
+      },
+      "affects": [
+        "COMPLETION_LINE"
+      ],
+      "materiality": "MATERIAL",
+      "effect_on_execution": "NEEDS_USER_CONFIRMATION",
+      "evidence_required": "The user’s explicit frozen-only or Manual Bridge transfer choice.",
+      "current_state": "OPEN"
+    }
+  ],
+  "authority_claim": "NONE",
+  "clarification_candidate": {
+    "field": "COMPLETION_LINE",
+    "question": "Should “ready for the next agent” mean a frozen Guided Intake artifact, or a frozen Guided Intake artifact also copied into Manual Bridge?"
+  }
+}
