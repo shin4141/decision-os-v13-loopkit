@@ -96,8 +96,9 @@ After an E2 `REJECT`, E1 novelty is compared through a canonical semantic
 signature over conservative lexical inventories for the fixed discovery
 claim, observed failure, mechanism, and strongest falsifier. Unicode
 compatibility forms, case, whitespace, punctuation, control or invisible
-characters, anchor ordering, and word or list ordering do not create a
-materially new lineage by themselves.
+characters, the combining grapheme joiner, variation selectors, anchor
+ordering, and word or list ordering do not create a materially new lineage by
+themselves.
 
 ### E2 — independent audit
 
@@ -267,8 +268,11 @@ Append performs opening and closing repository-HEAD checks. The final check,
 event append, and event-head update run under a fail-closed publication state.
 A post-publication HEAD check clears that state only when the expected HEAD is
 still current; drift or interruption leaves an explicit unreadable publication
-state. E4 additionally verifies commit ancestry, Git blobs, and artifact hashes
-against its bound HEAD. A drifted repository cannot publish a readable event.
+state. Every atomic marker, event-head, immutable blob, and receipt replacement,
+and marker deletion, fsyncs its parent directory. Reopening after a crash with
+an uncleared marker fails closed. E4 additionally verifies commit ancestry, Git
+blobs, and artifact hashes against its bound HEAD. A drifted repository cannot
+publish a readable event.
 
 Each manual-transport event also embeds a hashed transport receipt containing
 the mode, source label, declared and observed exact-byte hashes,
@@ -312,7 +316,8 @@ missing `run_type` as `bounded_task`; the current server emits it explicitly.
 Stage 5 operations return `run_type: intelligence_transplant` and never enter
 the bounded-task adapter path. When the typed Run is Stage 5, both the
 top-level `run` and `intelligence_transplant` panel are derived from the same
-fresh verified projection; the cached Run is not a maturity or Gate authority.
+fresh verified projection. The private Run cache is synchronized to that same
+projection and is not an independent maturity or Gate authority.
 
 The Stage 5 UI is read-only. It shows Delta State, Gate, missing evidence, next
 one action, prohibited next actions, evidence identities, lifecycle, and

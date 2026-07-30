@@ -1405,6 +1405,10 @@ class CompanionController:
             run = self._intelligence_transplant_run(
                 intelligence_transplant
             )
+            # Stage 5 maturity is always derived from the freshly verified
+            # projection above.  Keep the private cache synchronized so a
+            # later operation or projection cannot reuse stale maturity.
+            self._run = deepcopy(run)
         else:
             run = {
                 key: value

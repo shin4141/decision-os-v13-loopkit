@@ -810,10 +810,20 @@ def _canonical_semantic_text(value: Any) -> str:
     if not isinstance(value, str):
         return ""
     normalized = unicodedata.normalize("NFKC", value).casefold()
+
+    def is_material_character(character: str) -> bool:
+        codepoint = ord(character)
+        return (
+            unicodedata.category(character)[:1] in {"L", "M", "N"}
+            and character != "\u034f"
+            and not 0xFE00 <= codepoint <= 0xFE0F
+            and not 0xE0100 <= codepoint <= 0xE01EF
+        )
+
     characters = (
         character
         for character in normalized
-        if unicodedata.category(character)[:1] in {"L", "M", "N"}
+        if is_material_character(character)
     )
     return "".join(sorted(characters))
 

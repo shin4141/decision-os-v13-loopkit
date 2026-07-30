@@ -829,6 +829,10 @@ class CompanionControllerTest(unittest.TestCase):
                 snapshot["intelligence_transplant"]["current_gate"],
             )
             self.assertNotIn("sensitive", json.dumps(snapshot))
+            self.assertEqual(
+                selected["repository"],
+                snapshot["repository"],
+            )
             self.assertEqual(selected["run"], snapshot["run"])
             self.assertEqual(selected["receipt"], snapshot["receipt"])
             self.assertEqual(
@@ -901,6 +905,71 @@ class CompanionControllerTest(unittest.TestCase):
             self.assertEqual("ACTIVE", snapshot["run"]["execution_status"])
             self.assertEqual("REVOKED", snapshot["run"]["delta_state"])
             self.assertEqual("HOLD", snapshot["run"]["current_gate"])
+            self.assertEqual("REVOKED", controller._run["delta_state"])
+            self.assertEqual("HOLD", controller._run["current_gate"])
+
+            candidate = intelligence_transplant_projection(
+                execution_status="ACTIVE",
+                delta_state="CANDIDATE",
+                current_gate="HOLD",
+                missing_evidence=["E4_IMPLEMENTATION"],
+            )
+            intelligence_transplant.snapshot.return_value = candidate
+
+            later = controller.snapshot()
+
+            self.assertEqual(candidate, later["intelligence_transplant"])
+            self.assertEqual(
+                "CANDIDATE",
+                later["run"]["delta_state"],
+            )
+            self.assertEqual(
+                "CANDIDATE",
+                controller._run["delta_state"],
+            )
+            self.assertNotEqual(
+                "IMPLEMENTED",
+                controller._run["delta_state"],
+            )
+
+            intelligence_transplant.attach_object.return_value = implemented
+            intelligence_transplant.snapshot.return_value = revoked
+            later_payload = (
+                b'{"object_id":"E1-NEXT-OPERATION",'
+                b'"object_type":"E1_DISCOVERY"}'
+            )
+
+            after_later_operation = (
+                controller.intelligence_transplant_attach_evidence(
+                    payload=later_payload,
+                    mode="BYTE_EXACT_FILE_IMPORT",
+                    source_path_or_label="later-e1.json",
+                    declared_sha256=hashlib.sha256(
+                        later_payload
+                    ).hexdigest(),
+                    context_evidence_ref=None,
+                    as_of="2026-07-30T00:01:00Z",
+                )
+            )
+
+            self.assertEqual(
+                "REVOKED",
+                after_later_operation["run"]["delta_state"],
+            )
+            self.assertEqual(
+                "HOLD",
+                after_later_operation["run"]["current_gate"],
+            )
+            self.assertEqual(
+                "REVOKED",
+                controller._run["delta_state"],
+            )
+            self.assertEqual("HOLD", controller._run["current_gate"])
+            self.assertNotEqual("GO", controller._run["current_gate"])
+            self.assertEqual(
+                2,
+                intelligence_transplant.attach_object.call_count,
+            )
 
     def test_stage5_corruption_replaces_cached_run_projection(
         self,
@@ -961,7 +1030,40 @@ class CompanionControllerTest(unittest.TestCase):
             )
             self.assertEqual("NONE", snapshot["run"]["delta_state"])
             self.assertEqual("BLOCK", snapshot["run"]["current_gate"])
+            self.assertEqual(
+                "FAIL",
+                snapshot["run"]["structural_validation"],
+            )
             self.assertNotIn("sensitive", json.dumps(snapshot))
+            self.assertEqual(
+                "NOT_ESTABLISHED",
+                controller._run["execution_status"],
+            )
+            self.assertEqual("NONE", controller._run["delta_state"])
+            self.assertEqual("BLOCK", controller._run["current_gate"])
+            self.assertEqual(
+                "FAIL",
+                controller._run["structural_validation"],
+            )
+
+            later = controller.snapshot()
+
+            self.assertEqual(
+                "BLOCKED_CORRUPT",
+                later["intelligence_transplant"]["store_state"],
+            )
+            self.assertEqual("NONE", later["run"]["delta_state"])
+            self.assertEqual("BLOCK", later["run"]["current_gate"])
+            self.assertEqual(
+                "FAIL",
+                later["run"]["structural_validation"],
+            )
+            self.assertEqual("NONE", controller._run["delta_state"])
+            self.assertEqual("BLOCK", controller._run["current_gate"])
+            self.assertEqual(
+                "FAIL",
+                controller._run["structural_validation"],
+            )
 
     def test_guided_intake_purge_wrapper_is_exact_and_never_starts_runner(
         self,

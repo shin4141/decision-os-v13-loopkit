@@ -1158,6 +1158,7 @@ class IntelligenceTransplantStore:
                     src_dir_fd=parent,
                     dst_dir_fd=parent,
                 )
+                os.fsync(parent)
                 verified = os.open(
                     target.name,
                     os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),

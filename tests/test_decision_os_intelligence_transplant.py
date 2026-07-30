@@ -930,6 +930,14 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
                 {"mechanism": mechanism.replace("context", "con\ufefftext")},
             ),
             (
+                "variation-selector-16",
+                {"mechanism": mechanism.replace("context", "con\ufe0ftext")},
+            ),
+            (
+                "combining-grapheme-joiner",
+                {"mechanism": mechanism.replace("context", "con\u034ftext")},
+            ),
+            (
                 "control-character",
                 {"mechanism": mechanism.replace("context", "con\u0001text")},
             ),
@@ -980,6 +988,98 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         material = object_with_content_hash(material)
         graph.append(material)
         self.assertTrue(validate_graph(graph, now=FIXED_NOW).valid)
+
+    def test_unicode_mark_only_e1_cannot_reach_candidate_through_fresh_audit(
+        self,
+    ) -> None:
+        full = valid_graph(verdict="REJECT")
+        receipt_end = graph_index(full, AUDIT_COMPLETION_RECEIPT) + 1
+        rejected = full[graph_index(full, E1_DISCOVERY)]
+
+        for suffix, mark in (
+            ("variation-selector-16", "\ufe0f"),
+            ("combining-grapheme-joiner", "\u034f"),
+        ):
+            with self.subTest(suffix=suffix):
+                graph = list(full[:receipt_end])
+
+                candidate = deepcopy(rejected)
+                candidate["object_id"] = f"e1-{suffix}-fresh"
+                candidate["e1_id"] = candidate["object_id"]
+                candidate["as_of"] = timestamp(7)
+                candidate["mechanism"] = str(candidate["mechanism"]).replace(
+                    "context",
+                    f"con{mark}text",
+                )
+                candidate["supersedes"] = None
+                candidate = object_with_content_hash(candidate)
+                graph.append(candidate)
+
+                manifest = deepcopy(
+                    full[graph_index(full, AUDIT_INPUT_MANIFEST)]
+                )
+                manifest["object_id"] = f"audit-manifest-{suffix}-fresh"
+                manifest["manifest_id"] = manifest["object_id"]
+                manifest["as_of"] = timestamp(8)
+                manifest["frozen_as_of"] = timestamp(8)
+                manifest["target_e1_ref"] = exact_ref(candidate)
+                manifest["input_refs"] = [exact_ref(candidate)]
+                manifest["supersedes"] = None
+                manifest = object_with_content_hash(manifest)
+                graph.append(manifest)
+
+                e2 = deepcopy(full[graph_index(full, E2_AUDIT)])
+                e2["object_id"] = f"e2-{suffix}-fresh"
+                e2["e2_id"] = e2["object_id"]
+                e2["as_of"] = timestamp(9)
+                e2["target_e1_ref"] = exact_ref(candidate)
+                e2["audit_manifest_ref"] = exact_ref(manifest)
+                e2["verdict"] = "SURVIVE"
+                e2["required_deltas"] = []
+                e2["supersedes"] = None
+                e2 = object_with_content_hash(e2)
+                graph.append(e2)
+
+                receipt = deepcopy(
+                    full[graph_index(full, AUDIT_COMPLETION_RECEIPT)]
+                )
+                receipt["object_id"] = f"audit-completion-{suffix}-fresh"
+                receipt["receipt_id"] = receipt["object_id"]
+                receipt["as_of"] = timestamp(10)
+                receipt["completed_as_of"] = timestamp(10)
+                receipt["target_e1_ref"] = exact_ref(candidate)
+                receipt["e2_ref"] = exact_ref(e2)
+                receipt["audit_manifest_ref"] = exact_ref(manifest)
+                receipt["verdict"] = "SURVIVE"
+                receipt["supersedes"] = None
+                receipt = object_with_content_hash(receipt)
+                graph.append(receipt)
+
+                e3 = deepcopy(
+                    full[graph_index(full, E3_ACCEPTED_DISCOVERY)]
+                )
+                e3["object_id"] = f"e3-{suffix}-fresh"
+                e3["e3_id"] = e3["object_id"]
+                e3["as_of"] = timestamp(11)
+                e3["e1_ref"] = exact_ref(candidate)
+                e3["e2_ref"] = exact_ref(e2)
+                e3["audit_completion_receipt_ref"] = exact_ref(receipt)
+                e3["accepted_claims"] = [candidate["discovery_claim"]]
+                e3["revision_applied"] = []
+                e3["supersedes"] = None
+                e3 = object_with_content_hash(e3)
+                graph.append(e3)
+
+                self.assertIssue(
+                    graph, "REJECTED_LINEAGE_CANNOT_PROGRESS"
+                )
+                projection = reduce_evidence_graph(graph, now=FIXED_NOW)
+                self.assertEqual(
+                    STRUCTURAL_FAIL,
+                    projection.structural_validation,
+                )
+                self.assertEqual(DELTA_NONE, projection.delta_state)
+                self.assertNotEqual(DELTA_CANDIDATE, projection.delta_state)
 
     def test_cap_cannot_hide_reject_completion_transported_after_cap(self) -> None:
         full = valid_graph(verdict="REJECT")

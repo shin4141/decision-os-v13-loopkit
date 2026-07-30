@@ -5,11 +5,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import select
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 from decision_os.intelligence_transplant import (
     E4_IMPLEMENTATION_BINDING,
@@ -1201,6 +1204,253 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
             "PUBLICATION INVALID",
         ):
             self.controller.snapshot()
+
+    def test_atomic_publication_and_marker_removal_fsync_parent_directory(
+        self,
+    ) -> None:
+        operations: list[tuple[str, str]] = []
+        original_fsync = os.fsync
+        original_replace = os.replace
+        original_unlink = os.unlink
+
+        def observed_fsync(descriptor: int) -> None:
+            original_fsync(descriptor)
+            mode = os.fstat(descriptor).st_mode
+            operations.append(
+                (
+                    "directory-fsync"
+                    if stat.S_ISDIR(mode)
+                    else "file-fsync",
+                    "",
+                )
+            )
+
+        def observed_replace(
+            source: str,
+            target: str,
+            *,
+            src_dir_fd: int | None = None,
+            dst_dir_fd: int | None = None,
+        ) -> None:
+            original_replace(
+                source,
+                target,
+                src_dir_fd=src_dir_fd,
+                dst_dir_fd=dst_dir_fd,
+            )
+            operations.append(("replace", target))
+
+        def observed_unlink(
+            target: str,
+            *,
+            dir_fd: int | None = None,
+        ) -> None:
+            original_unlink(target, dir_fd=dir_fd)
+            operations.append(("unlink", target))
+
+        with (
+            patch(
+                "decision_os.companion.intelligence_transplant.os.fsync",
+                side_effect=observed_fsync,
+            ),
+            patch(
+                "decision_os.companion.intelligence_transplant.os.replace",
+                side_effect=observed_replace,
+            ),
+            patch(
+                "decision_os.companion.intelligence_transplant.os.unlink",
+                side_effect=observed_unlink,
+            ),
+        ):
+            self.freeze_charter()
+            charter = self.controller.store.read_records()[0]
+            seat = deepcopy(valid_graph()[1])
+            seat["charter_ref"] = exact_ref(charter)
+            seat = object_with_content_hash(seat)
+            transport = transport_for(seat, context_ref=None)
+            self.controller.attach_object(seat, transport=transport)
+            events = self.controller.store.read_events()
+            self.controller.store._invalidate_publication(
+                event_count=len(events),
+                event_chain_head=events[-1]["event_hash"],
+                expected_repository_head=current_head(self.repository),
+                observed_repository_head=None,
+            )
+
+        replaced = [
+            target
+            for operation, target in operations
+            if operation == "replace"
+        ]
+        self.assertGreaterEqual(replaced.count("publication-state.json"), 3)
+        self.assertGreaterEqual(replaced.count("event-head.json"), 3)
+        self.assertIn(f"{charter['content_hash']}.json", replaced)
+        self.assertIn(f"{seat['content_hash']}.json", replaced)
+        self.assertIn(
+            f"{transport['transport_receipt']['receipt_sha256']}"
+            ".receipt.json",
+            replaced,
+        )
+        self.assertIn(
+            f"{transport['transport_receipt']['exact_payload_sha256']}.bin",
+            replaced,
+        )
+
+        marker_unlinks = 0
+        for index, (operation, target) in enumerate(operations):
+            if operation == "replace":
+                self.assertEqual(
+                    ("directory-fsync", ""),
+                    operations[index + 1],
+                    msg=f"{target} was not followed by a directory fsync",
+                )
+            elif operation == "unlink" and target == "publication-state.json":
+                marker_unlinks += 1
+                self.assertEqual(
+                    ("directory-fsync", ""),
+                    operations[index + 1],
+                )
+        self.assertEqual(2, marker_unlinks)
+
+    def test_force_killed_publication_reopens_fail_closed(self) -> None:
+        script = """
+from copy import deepcopy
+import sys
+import time
+
+from decision_os.intelligence_transplant import exact_ref, object_with_content_hash
+from decision_os.companion.intelligence_transplant import IntelligenceTransplantController
+from tests.test_companion_intelligence_transplant import (
+    DeterministicIds,
+    FIXED_TIME,
+    transport_for,
+)
+from tests.test_decision_os_intelligence_transplant import valid_graph
+
+repository, phase = sys.argv[1:]
+controller = IntelligenceTransplantController(
+    repository,
+    clock=lambda: FIXED_TIME,
+    id_factory=DeterministicIds("crash"),
+)
+charter = controller.store.read_records()[0]
+seat = deepcopy(valid_graph()[1])
+seat["charter_ref"] = exact_ref(charter)
+seat = object_with_content_hash(seat)
+transport = transport_for(seat, context_ref=None)
+
+if phase == "after-in-progress":
+    original = controller.store._write_publication_state
+    def stop_after_in_progress(**kwargs):
+        original(**kwargs)
+        if kwargs["status"] == "IN_PROGRESS":
+            print(phase, flush=True)
+            time.sleep(60)
+    controller.store._write_publication_state = stop_after_in_progress
+elif phase == "before-event-head":
+    def stop_before_event_head(**kwargs):
+        print(phase, flush=True)
+        time.sleep(60)
+    controller.store._write_event_head = stop_before_event_head
+elif phase == "before-marker-clear":
+    def stop_before_marker_clear():
+        print(phase, flush=True)
+        time.sleep(60)
+    controller.store._clear_publication_state = stop_before_marker_clear
+else:
+    raise AssertionError(phase)
+
+controller.attach_object(seat, transport=transport)
+"""
+        expected_counts = {
+            "after-in-progress": (1, 1),
+            "before-event-head": (2, 1),
+            "before-marker-clear": (2, 2),
+        }
+        for phase, (event_count, head_count) in expected_counts.items():
+            with self.subTest(phase=phase):
+                repository = create_repository(
+                    self.root,
+                    f"publication-crash-{phase}",
+                )
+                controller = IntelligenceTransplantController(
+                    repository,
+                    clock=lambda: FIXED_TIME,
+                    id_factory=DeterministicIds(f"parent-{phase}"),
+                )
+                charter, source = charter_for(repository)
+                controller.freeze_charter(
+                    charter,
+                    charter_source=source,
+                )
+                child = subprocess.Popen(
+                    (
+                        sys.executable,
+                        "-B",
+                        "-c",
+                        script,
+                        str(repository),
+                        phase,
+                    ),
+                    cwd=Path(__file__).resolve().parents[1],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                try:
+                    assert child.stdout is not None
+                    ready, _, _ = select.select(
+                        [child.stdout],
+                        [],
+                        [],
+                        10,
+                    )
+                    self.assertTrue(
+                        ready,
+                        msg=f"{phase} child did not reach the crash point.",
+                    )
+                    self.assertEqual(phase, child.stdout.readline().strip())
+                finally:
+                    child.kill()
+                    _, stderr = child.communicate(timeout=5)
+                self.assertNotEqual(
+                    0,
+                    child.returncode,
+                    msg=stderr,
+                )
+
+                publication_state = json.loads(
+                    controller.store.publication_state_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual(
+                    "IN_PROGRESS",
+                    publication_state["publication_status"],
+                )
+                self.assertEqual(
+                    event_count,
+                    len(
+                        controller.store.events_path.read_bytes().splitlines()
+                    ),
+                )
+                event_head = json.loads(
+                    controller.store.event_head_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual(head_count, event_head["event_count"])
+
+                reopened = IntelligenceTransplantController(
+                    repository,
+                    clock=lambda: FIXED_TIME,
+                    id_factory=DeterministicIds(f"reopen-{phase}"),
+                )
+                with self.assertRaisesRegex(
+                    IntelligenceTransplantIntegrityError,
+                    "PUBLICATION INVALID",
+                ):
+                    reopened.snapshot()
 
     def test_lower_manifest_head_drift_is_rejected_before_append(self) -> None:
         self.freeze_charter()
