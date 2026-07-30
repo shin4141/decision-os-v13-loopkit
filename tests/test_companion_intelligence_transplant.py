@@ -666,9 +666,20 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
             "MANUAL_PRO_DRAFT",
         )
         frozen = guided.freeze()
+        before_source = {
+            path.relative_to(guided.store.root).as_posix(): path.read_bytes()
+            for path in guided.store.root.rglob("*")
+            if path.is_file()
+        }
 
         source = guided.charter_source()
+        after_source = {
+            path.relative_to(guided.store.root).as_posix(): path.read_bytes()
+            for path in guided.store.root.rglob("*")
+            if path.is_file()
+        }
 
+        self.assertEqual(before_source, after_source)
         self.assertEqual(
             frozen["interpretation"]["completion_line"]["text"],
             source["completion_line"],
@@ -689,8 +700,19 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
         (self.repository / "later.txt").write_text("later\n", encoding="utf-8")
         git(self.repository, "add", "later.txt")
         git(self.repository, "commit", "-qm", "later")
+        before_stale_source = {
+            path.relative_to(guided.store.root).as_posix(): path.read_bytes()
+            for path in guided.store.root.rglob("*")
+            if path.is_file()
+        }
         with self.assertRaises(GuidedIntakeConflictError):
             guided.charter_source()
+        after_stale_source = {
+            path.relative_to(guided.store.root).as_posix(): path.read_bytes()
+            for path in guided.store.root.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(before_stale_source, after_stale_source)
 
     def test_concurrent_duplicate_append_has_one_effective_event(self) -> None:
         self.freeze_charter()
@@ -936,6 +958,249 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
                     context_ref=exact_ref(unbound_graph[-2]),
                 ),
             )
+
+    def test_replace_and_graft_cannot_promote_e4_to_implemented(
+        self,
+    ) -> None:
+        graph = graph_through_real_e4(self.repository)
+        charter = graph[0]
+        self.controller.freeze_charter(
+            charter,
+            charter_source={
+                "completion_line": charter["completion_line"],
+                "freeze_id": charter["source_freeze_id"],
+                "frozen_intake_sha256": charter[
+                    "source_freeze_sha256"
+                ],
+                "repository_head": charter["repository_head"],
+            },
+        )
+        for index, record in enumerate(graph[1:-1], start=1):
+            transported = transport_for(
+                record,
+                context_ref=(
+                    None
+                    if record["object_type"] == SEAT_ASSIGNMENT_RECEIPT
+                    else exact_ref(graph[index - 1])
+                ),
+            )
+            if record["object_type"] == "AUDIT_INPUT_MANIFEST":
+                self.controller.freeze_manifest(
+                    record,
+                    transport=transported,
+                )
+            else:
+                self.controller.attach_object(
+                    record,
+                    transport=transported,
+                )
+        event_count = len(self.controller.store.read_events())
+        e4_transport = transport_for(
+            graph[-1],
+            context_ref=exact_ref(graph[-2]),
+        )
+        head = current_head(self.repository)
+        base = str(graph[-1]["repository_base"])
+
+        git(self.repository, "replace", head, base)
+        with self.assertRaisesRegex(
+            IntelligenceTransplantConflictError,
+            "GIT INTERPRETATION UNSAFE",
+        ):
+            self.controller.attach_object(
+                graph[-1],
+                transport=e4_transport,
+            )
+        git(self.repository, "replace", "-d", head)
+        self.assertEqual(
+            event_count,
+            len(self.controller.store.read_events()),
+        )
+        self.assertNotEqual(
+            "IMPLEMENTED",
+            self.controller.snapshot()["delta_state"],
+        )
+
+        grafts_path = self.repository / ".git" / "info" / "grafts"
+        grafts_path.write_text(f"{head} {base}\n", encoding="ascii")
+        with self.assertRaisesRegex(
+            IntelligenceTransplantConflictError,
+            "GIT INTERPRETATION UNSAFE",
+        ):
+            self.controller.attach_object(
+                graph[-1],
+                transport=e4_transport,
+            )
+        grafts_path.unlink()
+        self.assertEqual(
+            event_count,
+            len(self.controller.store.read_events()),
+        )
+        self.assertNotEqual(
+            "IMPLEMENTED",
+            self.controller.snapshot()["delta_state"],
+        )
+
+    def test_snapshot_rejects_replace_grafts_config_and_missing_e4_blob(
+        self,
+    ) -> None:
+        graph = graph_through_real_e4(self.repository)
+        charter = graph[0]
+        self.controller.freeze_charter(
+            charter,
+            charter_source={
+                "completion_line": charter["completion_line"],
+                "freeze_id": charter["source_freeze_id"],
+                "frozen_intake_sha256": charter[
+                    "source_freeze_sha256"
+                ],
+                "repository_head": charter["repository_head"],
+            },
+        )
+        for index, record in enumerate(graph[1:], start=1):
+            transported = transport_for(
+                record,
+                context_ref=(
+                    None
+                    if record["object_type"] == SEAT_ASSIGNMENT_RECEIPT
+                    else exact_ref(graph[index - 1])
+                ),
+            )
+            if record["object_type"] == "AUDIT_INPUT_MANIFEST":
+                self.controller.freeze_manifest(
+                    record,
+                    transport=transported,
+                )
+            else:
+                self.controller.attach_object(
+                    record,
+                    transport=transported,
+                )
+        self.assertEqual(
+            "IMPLEMENTED",
+            self.controller.snapshot()["delta_state"],
+        )
+        head = current_head(self.repository)
+        base = str(graph[-1]["repository_base"])
+        git(self.repository, "replace", head, base)
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "GIT INTERPRETATION UNSAFE",
+        ):
+            self.controller.snapshot()
+        git(self.repository, "replace", "-d", head)
+
+        grafts_path = self.repository / ".git" / "info" / "grafts"
+        grafts_path.write_text(f"{head} {base}\n", encoding="ascii")
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "GIT INTERPRETATION UNSAFE",
+        ):
+            self.controller.snapshot()
+        grafts_path.unlink()
+
+        git(self.repository, "config", "core.useReplaceRefs", "true")
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "GIT INTERPRETATION UNSAFE",
+        ):
+            self.controller.snapshot()
+        git(self.repository, "config", "--unset", "core.useReplaceRefs")
+        self.assertEqual(
+            "IMPLEMENTED",
+            self.controller.snapshot()["delta_state"],
+        )
+        blob_id = str(graph[-1]["changed_artifacts"][0]["git_blob"])
+        blob_path = (
+            self.repository
+            / ".git"
+            / "objects"
+            / blob_id[:2]
+            / blob_id[2:]
+        )
+        self.assertTrue(blob_path.is_file())
+        blob_path.unlink()
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "GIT EVIDENCE INVALID",
+        ):
+            self.controller.snapshot()
+
+    def test_repository_drift_during_event_head_write_invalidates_publication(
+        self,
+    ) -> None:
+        self.freeze_charter()
+        charter = self.controller.store.read_records()[0]
+        seat = deepcopy(valid_graph()[1])
+        seat["charter_ref"] = exact_ref(charter)
+        seat = object_with_content_hash(seat)
+        transport = transport_for(seat, context_ref=None)
+        original_write_event_head = self.controller.store._write_event_head
+
+        def drift_during_head_write(
+            *,
+            event_count: int,
+            event_chain_head: str,
+        ) -> None:
+            (self.repository / "publication-drift.txt").write_text(
+                "drift during publication\n",
+                encoding="utf-8",
+            )
+            git(self.repository, "add", "publication-drift.txt")
+            git(self.repository, "commit", "-qm", "drift during publication")
+            original_write_event_head(
+                event_count=event_count,
+                event_chain_head=event_chain_head,
+            )
+
+        self.controller.store._write_event_head = (  # type: ignore[method-assign]
+            drift_during_head_write
+        )
+        try:
+            with self.assertRaisesRegex(
+                IntelligenceTransplantIntegrityError,
+                "PUBLICATION INVALID",
+            ):
+                self.controller.attach_object(
+                    seat,
+                    transport=transport,
+                )
+        finally:
+            self.controller.store._write_event_head = (  # type: ignore[method-assign]
+                original_write_event_head
+            )
+
+        publication_state = json.loads(
+            self.controller.store.publication_state_path.read_text(
+                encoding="utf-8"
+            )
+        )
+        invalid_head = json.loads(
+            self.controller.store.event_head_path.read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual("INVALID", publication_state["publication_status"])
+        self.assertEqual(publication_state, invalid_head)
+        self.assertNotEqual(
+            publication_state["expected_repository_head"],
+            publication_state["observed_repository_head"],
+        )
+        self.assertEqual(
+            2,
+            len(self.controller.store.events_path.read_bytes().splitlines()),
+        )
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "PUBLICATION INVALID",
+        ):
+            self.controller.snapshot()
+        self.controller.store.publication_state_path.unlink()
+        with self.assertRaisesRegex(
+            IntelligenceTransplantIntegrityError,
+            "PUBLICATION INVALID",
+        ):
+            self.controller.snapshot()
 
     def test_lower_manifest_head_drift_is_rejected_before_append(self) -> None:
         self.freeze_charter()

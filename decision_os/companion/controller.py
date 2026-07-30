@@ -1398,13 +1398,22 @@ class CompanionController:
                         )
                     ),
                 }
-        return {
-            "repository": repository_view,
-            "run": {
+        if (
+            self._run.get("run_type") == "intelligence_transplant"
+            and intelligence_transplant is not None
+        ):
+            run = self._intelligence_transplant_run(
+                intelligence_transplant
+            )
+        else:
+            run = {
                 key: value
                 for key, value in self._run.items()
                 if key != "receipt_before"
-            },
+            }
+        return {
+            "repository": repository_view,
+            "run": run,
             "receipt": receipt,
             "defaults": defaults,
             "manual_bridge": bridge,

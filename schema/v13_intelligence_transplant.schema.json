@@ -176,6 +176,8 @@
       "additionalProperties": false,
       "required": [
         "accepted_claim",
+        "implementation_requirements",
+        "implementation_scope",
         "required_control_behavior",
         "asset_identity",
         "asset_version",
@@ -185,6 +187,10 @@
       ],
       "properties": {
         "accepted_claim": {"$ref": "#/$defs/nonEmptyString"},
+        "implementation_requirements": {
+          "$ref": "#/$defs/nonEmptyStringList"
+        },
+        "implementation_scope": {"$ref": "#/$defs/nonEmptyStringList"},
         "required_control_behavior": {"$ref": "#/$defs/nonEmptyString"},
         "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
         "asset_version": {"$ref": "#/$defs/nonEmptyString"},
@@ -830,6 +836,9 @@
             "e4_ref",
             "trial_manifest_ref",
             "completion_receipt_ref",
+            "active_asset_identity",
+            "active_asset_version",
+            "active_asset_hash",
             "source_task_id",
             "new_task_id",
             "failure_family_id",
@@ -845,6 +854,9 @@
             "e4_ref": {"$ref": "#/$defs/objectRef"},
             "trial_manifest_ref": {"$ref": "#/$defs/objectRef"},
             "completion_receipt_ref": {"$ref": "#/$defs/objectRef"},
+            "active_asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_version": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_hash": {"$ref": "#/$defs/sha256"},
             "source_task_id": {"$ref": "#/$defs/nonEmptyString"},
             "new_task_id": {"$ref": "#/$defs/nonEmptyString"},
             "failure_family_id": {"$ref": "#/$defs/nonEmptyString"},

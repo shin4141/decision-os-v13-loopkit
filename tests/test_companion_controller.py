@@ -831,6 +831,137 @@ class CompanionControllerTest(unittest.TestCase):
             self.assertNotIn("sensitive", json.dumps(snapshot))
             self.assertEqual(selected["run"], snapshot["run"])
             self.assertEqual(selected["receipt"], snapshot["receipt"])
+            self.assertEqual(
+                selected["defaults"],
+                snapshot["defaults"],
+            )
+            self.assertEqual(
+                selected["manual_bridge"],
+                snapshot["manual_bridge"],
+            )
+            self.assertEqual(
+                selected["guided_intake"],
+                snapshot["guided_intake"],
+            )
+
+    def test_stage5_run_and_panel_share_fresh_revoked_projection(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository)
+            implemented = intelligence_transplant_projection(
+                execution_status="ACTIVE",
+                delta_state="IMPLEMENTED",
+                current_gate="GO",
+                missing_evidence=[],
+            )
+            revoked = intelligence_transplant_projection(
+                execution_status="ACTIVE",
+                delta_state="REVOKED",
+                current_gate="HOLD",
+                missing_evidence=["FORWARD_ONLY_REPLACEMENT"],
+            )
+            intelligence_transplant = Mock()
+            intelligence_transplant.attach_object.return_value = implemented
+            intelligence_transplant.snapshot.return_value = revoked
+            controller._intelligence_transplant = intelligence_transplant
+            payload = (
+                b'{"object_id":"E1-EXTERNAL-REVOKE",'
+                b'"object_type":"E1_DISCOVERY"}'
+            )
+
+            snapshot = controller.intelligence_transplant_attach_evidence(
+                payload=payload,
+                mode="BYTE_EXACT_FILE_IMPORT",
+                source_path_or_label="e1.json",
+                declared_sha256=hashlib.sha256(payload).hexdigest(),
+                context_evidence_ref=None,
+                as_of="2026-07-30T00:00:00Z",
+            )
+
+            self.assertEqual(revoked, snapshot["intelligence_transplant"])
+            self.assertEqual(
+                snapshot["intelligence_transplant"]["execution_status"],
+                snapshot["run"]["execution_status"],
+            )
+            self.assertEqual(
+                snapshot["intelligence_transplant"]["delta_state"],
+                snapshot["run"]["delta_state"],
+            )
+            self.assertEqual(
+                snapshot["intelligence_transplant"]["current_gate"],
+                snapshot["run"]["current_gate"],
+            )
+            self.assertEqual("ACTIVE", snapshot["run"]["execution_status"])
+            self.assertEqual("REVOKED", snapshot["run"]["delta_state"])
+            self.assertEqual("HOLD", snapshot["run"]["current_gate"])
+
+    def test_stage5_corruption_replaces_cached_run_projection(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            controller.select_repository(repository)
+            implemented = intelligence_transplant_projection(
+                execution_status="ACTIVE",
+                delta_state="IMPLEMENTED",
+                current_gate="GO",
+                missing_evidence=[],
+            )
+            intelligence_transplant = Mock()
+            intelligence_transplant.attach_object.return_value = implemented
+            intelligence_transplant.snapshot.side_effect = (
+                IntelligenceTransplantIntegrityError(
+                    "sensitive Stage 5 path"
+                )
+            )
+            controller._intelligence_transplant = intelligence_transplant
+            payload = (
+                b'{"object_id":"E1-CORRUPT-AFTER-CACHE",'
+                b'"object_type":"E1_DISCOVERY"}'
+            )
+
+            snapshot = controller.intelligence_transplant_attach_evidence(
+                payload=payload,
+                mode="BYTE_EXACT_FILE_IMPORT",
+                source_path_or_label="e1.json",
+                declared_sha256=hashlib.sha256(payload).hexdigest(),
+                context_evidence_ref=None,
+                as_of="2026-07-30T00:00:00Z",
+            )
+
+            panel = snapshot["intelligence_transplant"]
+            self.assertEqual("BLOCKED_CORRUPT", panel["store_state"])
+            self.assertEqual(
+                panel["execution_status"],
+                snapshot["run"]["execution_status"],
+            )
+            self.assertEqual(
+                panel["delta_state"],
+                snapshot["run"]["delta_state"],
+            )
+            self.assertEqual(
+                panel["current_gate"],
+                snapshot["run"]["current_gate"],
+            )
+            self.assertEqual(
+                "NOT_ESTABLISHED",
+                snapshot["run"]["execution_status"],
+            )
+            self.assertEqual("NONE", snapshot["run"]["delta_state"])
+            self.assertEqual("BLOCK", snapshot["run"]["current_gate"])
+            self.assertNotIn("sensitive", json.dumps(snapshot))
 
     def test_guided_intake_purge_wrapper_is_exact_and_never_starts_runner(
         self,

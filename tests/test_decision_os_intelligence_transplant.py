@@ -326,6 +326,10 @@ def valid_graph(
         claim_bindings=[
             {
                 "accepted_claim": e1["discovery_claim"],
+                "implementation_requirements": list(
+                    e3["implementation_requirements"]
+                ),
+                "implementation_scope": list(e3["implementation_scope"]),
                 "required_control_behavior": (
                     "Stop action until context identity matches."
                 ),
@@ -488,6 +492,9 @@ def valid_graph(
         e4_ref=exact_ref(e4),
         trial_manifest_ref=exact_ref(manifest),
         completion_receipt_ref=exact_ref(completion),
+        active_asset_identity=manifest["active_asset_identity"],
+        active_asset_version=manifest["active_asset_version"],
+        active_asset_hash=manifest["active_asset_hash"],
         source_task_id=manifest["source_task_id"],
         new_task_id=manifest["new_task_id"],
         failure_family_id=manifest["failure_family_id"],
@@ -554,6 +561,56 @@ def rehash_graph(graph: list[dict[str, object]]) -> list[dict[str, object]]:
         updated[str(record["object_id"])] = record
         result.append(record)
     return result
+
+
+def relabeled_lower_manifest(
+    source: dict[str, object],
+    *,
+    prefix: str,
+    minute: int = 18,
+) -> dict[str, object]:
+    manifest = deepcopy(source)
+    manifest["object_id"] = f"{prefix}-manifest"
+    manifest["manifest_id"] = manifest["object_id"]
+    manifest["as_of"] = timestamp(minute)
+    manifest["effective_as_of"] = timestamp(minute)
+    manifest["trial_id"] = f"{prefix}-trial"
+    manifest["new_task_id"] = f"{prefix}-task"
+    allowed_inputs = manifest["allowed_input_manifest"]
+    assert isinstance(allowed_inputs, list)
+    allowed_inputs[0] = {
+        "input_class": "NEW_TASK",
+        "task_id": manifest["new_task_id"],
+        "sha256": manifest["new_task_hash"],
+    }
+    manifest["allowed_input_manifest_hash"] = hashlib.sha256(
+        canonical_json(allowed_inputs)
+    ).hexdigest()
+    manifest["supersedes"] = None
+    return object_with_content_hash(manifest)
+
+
+def relabeled_lower_completion(
+    source: dict[str, object],
+    manifest: dict[str, object],
+    *,
+    prefix: str,
+) -> dict[str, object]:
+    completion = deepcopy(source)
+    completion["object_id"] = f"{prefix}-completion"
+    completion["receipt_id"] = completion["object_id"]
+    completion["as_of"] = timestamp(22)
+    completion["started_as_of"] = timestamp(19)
+    completion["asset_activated_as_of"] = timestamp(20)
+    completion["failure_observed_as_of"] = timestamp(21)
+    completion["completed_as_of"] = timestamp(22)
+    completion["trial_manifest_ref"] = exact_ref(manifest)
+    completion["trial_id"] = manifest["trial_id"]
+    completion["actual_input_manifest_hash"] = manifest[
+        "allowed_input_manifest_hash"
+    ]
+    completion["supersedes"] = None
+    return object_with_content_hash(completion)
 
 
 def control(
@@ -844,6 +901,86 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         graph = rehash_graph(graph)
         self.assertIssue(graph, "REJECTED_LINEAGE_CANNOT_PROGRESS")
 
+    def test_rejected_e1_requires_substantive_lexical_change(self) -> None:
+        full = valid_graph(verdict="REJECT")
+        receipt_end = graph_index(full, AUDIT_COMPLETION_RECEIPT) + 1
+        rejected = full[graph_index(full, E1_DISCOVERY)]
+        mechanism = str(rejected["mechanism"])
+        falsifier = str(rejected["strongest_falsifier"])
+        presentation_only = (
+            (
+                "anchor-reversal",
+                {
+                    "evidence_anchors": list(
+                        reversed(rejected["evidence_anchors"])
+                    )
+                },
+            ),
+            ("punctuation", {"mechanism": mechanism + " !!!"}),
+            (
+                "zero-width-space",
+                {"mechanism": mechanism.replace("context", "con\u200btext")},
+            ),
+            (
+                "word-joiner",
+                {"mechanism": mechanism.replace("context", "con\u2060text")},
+            ),
+            (
+                "byte-order-mark",
+                {"mechanism": mechanism.replace("context", "con\ufefftext")},
+            ),
+            (
+                "control-character",
+                {"mechanism": mechanism.replace("context", "con\u0001text")},
+            ),
+            (
+                "mechanism-word-order",
+                {
+                    "mechanism": (
+                        "Before context identity was checked, the path "
+                        "admitted action."
+                    )
+                },
+            ),
+            (
+                "falsifier-word-order",
+                {
+                    "strongest_falsifier": (
+                        "With the guard active, the same failure occurs."
+                    )
+                },
+            ),
+        )
+        for suffix, updates in presentation_only:
+            with self.subTest(suffix=suffix):
+                graph = list(full[:receipt_end])
+                candidate = deepcopy(rejected)
+                candidate["object_id"] = f"e1-{suffix}"
+                candidate["e1_id"] = f"e1-{suffix}"
+                candidate["as_of"] = timestamp(7)
+                candidate.update(updates)
+                candidate = object_with_content_hash(candidate)
+                graph.append(candidate)
+                self.assertIssue(
+                    graph, "REJECTED_LINEAGE_CANNOT_PROGRESS"
+                )
+
+        graph = full[:receipt_end]
+        material = deepcopy(rejected)
+        material["object_id"] = "e1-materially-new"
+        material["e1_id"] = "e1-materially-new"
+        material["as_of"] = timestamp(7)
+        material["evidence_anchors"] = list(
+            reversed(material["evidence_anchors"])
+        )
+        material["mechanism"] = mechanism.replace(
+            "admitted",
+            "blocked",
+        )
+        material = object_with_content_hash(material)
+        graph.append(material)
+        self.assertTrue(validate_graph(graph, now=FIXED_NOW).valid)
+
     def test_cap_cannot_hide_reject_completion_transported_after_cap(self) -> None:
         full = valid_graph(verdict="REJECT")
         e2_end = graph_index(full, E2_AUDIT) + 1
@@ -890,6 +1027,50 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         graph = rehash_graph(graph)
         assessment = validate_graph(graph, now=FIXED_NOW)
         self.assertIn("BEHAVIORAL_ACTIVATION_MISSING", assessment.issue_codes)
+
+    def test_e4_consumes_all_requirements_and_scope_paths(self) -> None:
+        graph = valid_graph()
+        e3_index = graph_index(graph, E3_ACCEPTED_DISCOVERY)
+        graph[e3_index]["implementation_requirements"].append(
+            "Reject a missing context identity before action."
+        )
+        graph = rehash_graph(graph)
+        self.assertIssue(graph, "CLAIM_BINDING_INCOMPLETE")
+
+        graph = valid_graph()
+        e3_index = graph_index(graph, E3_ACCEPTED_DISCOVERY)
+        graph[e3_index]["implementation_scope"].append(
+            "tests/test_context_guard.py"
+        )
+        graph = rehash_graph(graph)
+        self.assertIssue(graph, "CLAIM_BINDING_INCOMPLETE")
+
+    def test_e4_accepts_multiple_scope_paths_bound_to_changed_artifacts(self) -> None:
+        graph = valid_graph()
+        e3_index = graph_index(graph, E3_ACCEPTED_DISCOVERY)
+        e4_index = graph_index(graph, E4_IMPLEMENTATION_BINDING)
+        second_path = "tests/test_context_guard.py"
+        graph[e3_index]["implementation_scope"].append(second_path)
+        graph[e4_index]["changed_artifacts"].append(
+            {
+                "path": second_path,
+                "git_blob": "5" * 40,
+                "sha256": "e" * 64,
+                "asset_identity": "context-guard-test",
+                "asset_version": "v0.1",
+                "asset_type": "test",
+            }
+        )
+        graph[e4_index]["claim_bindings"][0][
+            "implementation_scope"
+        ].append(second_path)
+        graph = rehash_graph(graph)
+        through_e4 = graph[: graph_index(graph, E4_IMPLEMENTATION_BINDING) + 1]
+        self.assertTrue(validate_graph(through_e4, now=FIXED_NOW).valid)
+        self.assertEqual(
+            DELTA_IMPLEMENTED,
+            reduce_evidence_graph(through_e4, now=FIXED_NOW).delta_state,
+        )
 
     def test_repository_head_drift_is_invalid(self) -> None:
         graph = valid_graph()
@@ -1070,6 +1251,101 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         graph[manifest_index]["effective_as_of"] = timestamp(12, 30)
         graph = rehash_graph(graph)
         self.assertIssue(graph, "LOWER_RUN_MANIFEST_NOT_PREFROZEN")
+
+    def test_lower_run_context_cannot_reuse_implementation_context(self) -> None:
+        graph = valid_graph()
+        implementation_seat = graph[
+            graph_index(
+                graph,
+                SEAT_ASSIGNMENT_RECEIPT,
+                seat_name="IMPLEMENTATION",
+            )
+        ]
+        lower_seat_index = graph_index(
+            graph,
+            SEAT_ASSIGNMENT_RECEIPT,
+            seat_name="LOWER_RUN",
+        )
+        manifest_index = graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)
+        completion_index = graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        implementation_context = implementation_seat[
+            "assignee_context_identity"
+        ]
+        graph[lower_seat_index][
+            "assignee_context_identity"
+        ] = implementation_context
+        graph[manifest_index][
+            "lower_runtime_context_identity"
+        ] = implementation_context
+        graph[completion_index][
+            "lower_runtime_context_identity"
+        ] = implementation_context
+        graph = rehash_graph(graph)
+        self.assertIssue(graph, "CONTEXT_INDEPENDENCE_VIOLATION")
+        self.assertNotEqual(
+            DELTA_REUSED,
+            reduce_evidence_graph(graph, now=FIXED_NOW).delta_state,
+        )
+
+    def test_unbound_active_asset_cannot_reach_reused(self) -> None:
+        graph = valid_graph()
+        e4_index = graph_index(graph, E4_IMPLEMENTATION_BINDING)
+        manifest_index = graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)
+        completion_index = graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        e5_index = graph_index(graph, E5_REUSE)
+        unbound = {
+            "path": "decision_os/unbound_active.py",
+            "git_blob": "5" * 40,
+            "sha256": "e" * 64,
+            "asset_identity": "unbound-active",
+            "asset_version": "v0.1",
+            "asset_type": "guard",
+        }
+        graph[e4_index]["changed_artifacts"].append(unbound)
+        active = (
+            unbound["asset_identity"],
+            unbound["asset_version"],
+            unbound["sha256"],
+        )
+        manifest = graph[manifest_index]
+        (
+            manifest["active_asset_identity"],
+            manifest["active_asset_version"],
+            manifest["active_asset_hash"],
+        ) = active
+        manifest["allowed_input_manifest"][2] = {
+            "input_class": "ACTIVE_ASSET",
+            "asset_identity": active[0],
+            "asset_version": active[1],
+            "asset_hash": active[2],
+        }
+        manifest["allowed_input_manifest_hash"] = hashlib.sha256(
+            canonical_json(manifest["allowed_input_manifest"])
+        ).hexdigest()
+        completion = graph[completion_index]
+        (
+            completion["active_asset_identity"],
+            completion["active_asset_version"],
+            completion["active_asset_hash"],
+        ) = active
+        trace = completion["asset_activation_trace"]
+        (
+            trace["asset_identity"],
+            trace["asset_version"],
+            trace["asset_hash"],
+        ) = active
+        e5 = graph[e5_index]
+        (
+            e5["active_asset_identity"],
+            e5["active_asset_version"],
+            e5["active_asset_hash"],
+        ) = active
+        graph = rehash_graph(graph)
+        self.assertIssue(graph, "ASSET_BINDING_MISMATCH")
+        self.assertNotEqual(
+            DELTA_REUSED,
+            reduce_evidence_graph(graph, now=FIXED_NOW).delta_state,
+        )
 
     def test_upper_context_and_shin_answer_leakage_are_invalid(self) -> None:
         for injected in ("UPPER_CONVERSATION:secret", "SHIN_CORRECTION:answer"):
@@ -1343,6 +1619,282 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         replay["supersedes"] = None
         replay = object_with_content_hash(replay)
         graph.append(replay)
+        self.assertIssue(graph, "STALE_DEPENDENCY_REFERENCE")
+
+    def test_direct_e5_revoke_rejects_detached_duplicate_trial(self) -> None:
+        graph = valid_graph()
+        old_e5 = graph[graph_index(graph, E5_REUSE)]
+        graph.append(
+            control(
+                graph,
+                action="REVOKE",
+                target=old_e5,
+                minute=17,
+                object_id="revoke-e5-direct",
+            )
+        )
+        duplicate = deepcopy(old_e5)
+        duplicate["object_id"] = "e5-detached-duplicate"
+        duplicate["e5_id"] = "e5-detached-duplicate"
+        duplicate["as_of"] = timestamp(18)
+        duplicate["supersedes"] = None
+        duplicate = object_with_content_hash(duplicate)
+        graph.append(duplicate)
+        assessment = validate_graph(graph, now=FIXED_NOW)
+        self.assertIn("FORWARD_REPLACEMENT_REQUIRED", assessment.issue_codes)
+        self.assertIn("STALE_DEPENDENCY_REFERENCE", assessment.issue_codes)
+        self.assertNotEqual(
+            DELTA_REUSED,
+            reduce_evidence_graph(graph, now=FIXED_NOW).delta_state,
+        )
+
+    def test_direct_e5_revoke_rejects_relabelled_trial_evidence(self) -> None:
+        for metadata_mode in (
+            "labels-only",
+            "extra-forbidden-class",
+            "boundary-label",
+        ):
+            with self.subTest(metadata_mode=metadata_mode):
+                graph = valid_graph()
+                old_e5 = graph[graph_index(graph, E5_REUSE)]
+                old_manifest = graph[
+                    graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)
+                ]
+                old_completion = graph[
+                    graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+                ]
+                graph.append(
+                    control(
+                        graph,
+                        action="REVOKE",
+                        target=old_e5,
+                        minute=17,
+                        object_id=f"revoke-e5-{metadata_mode}",
+                    )
+                )
+                manifest = relabeled_lower_manifest(
+                    old_manifest,
+                    prefix=f"relabelled-{metadata_mode}",
+                )
+                if metadata_mode == "extra-forbidden-class":
+                    manifest["forbidden_input_classes"].append(
+                        "UNRELATED_EXTRA_CLASS"
+                    )
+                elif metadata_mode == "boundary-label":
+                    boundary = (
+                        str(manifest["minimum_execution_boundary"])
+                        + " Label only."
+                    )
+                    manifest["minimum_execution_boundary"] = boundary
+                    manifest["allowed_input_manifest"][3]["boundary"] = (
+                        boundary
+                    )
+                    manifest["allowed_input_manifest_hash"] = hashlib.sha256(
+                        canonical_json(manifest["allowed_input_manifest"])
+                    ).hexdigest()
+                manifest = object_with_content_hash(manifest)
+                graph.append(manifest)
+                completion = relabeled_lower_completion(
+                    old_completion,
+                    manifest,
+                    prefix=f"relabelled-{metadata_mode}",
+                )
+                graph.append(completion)
+                e5 = deepcopy(old_e5)
+                e5["object_id"] = f"e5-relabelled-{metadata_mode}"
+                e5["e5_id"] = e5["object_id"]
+                e5["as_of"] = timestamp(23)
+                e5["trial_manifest_ref"] = exact_ref(manifest)
+                e5["completion_receipt_ref"] = exact_ref(completion)
+                e5["new_task_id"] = manifest["new_task_id"]
+                e5["supersedes"] = exact_ref(old_e5)
+                e5 = object_with_content_hash(e5)
+                graph.append(e5)
+                graph = rehash_graph(graph)
+
+                assessment = validate_graph(graph, now=FIXED_NOW)
+                self.assertIn(
+                    "STALE_DEPENDENCY_REFERENCE",
+                    assessment.issue_codes,
+                )
+                self.assertNotEqual(
+                    DELTA_REUSED,
+                    reduce_evidence_graph(
+                        graph, now=FIXED_NOW
+                    ).delta_state,
+                )
+
+    def test_direct_e5_revoke_accepts_new_prefrozen_trial_lineage(self) -> None:
+        graph = valid_graph()
+        old_e5 = graph[graph_index(graph, E5_REUSE)]
+        old_manifest = graph[graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)]
+        old_completion = graph[
+            graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        ]
+        graph.append(
+            control(
+                graph,
+                action="REVOKE",
+                target=old_e5,
+                minute=17,
+                object_id="revoke-e5-before-fresh-trial",
+            )
+        )
+
+        manifest = deepcopy(old_manifest)
+        manifest["object_id"] = "lower-manifest-fresh"
+        manifest["manifest_id"] = "lower-manifest-fresh"
+        manifest["as_of"] = timestamp(18)
+        manifest["effective_as_of"] = timestamp(18)
+        manifest["trial_id"] = "trial-fresh"
+        manifest["new_task_id"] = "new-task-fresh"
+        manifest["new_task_hash"] = "7" * 64
+        manifest["allowed_input_manifest"][0] = {
+            "input_class": "NEW_TASK",
+            "task_id": manifest["new_task_id"],
+            "sha256": manifest["new_task_hash"],
+        }
+        manifest["allowed_input_manifest_hash"] = hashlib.sha256(
+            canonical_json(manifest["allowed_input_manifest"])
+        ).hexdigest()
+        manifest["supersedes"] = None
+        manifest = object_with_content_hash(manifest)
+        graph.append(manifest)
+
+        completion = deepcopy(old_completion)
+        completion["object_id"] = "lower-completion-fresh"
+        completion["receipt_id"] = "lower-completion-fresh"
+        completion["as_of"] = timestamp(22)
+        completion["completed_as_of"] = timestamp(22)
+        completion["started_as_of"] = timestamp(19)
+        completion["asset_activated_as_of"] = timestamp(20)
+        completion["failure_observed_as_of"] = timestamp(21)
+        completion["trial_manifest_ref"] = exact_ref(manifest)
+        completion["trial_id"] = manifest["trial_id"]
+        completion["actual_input_manifest_hash"] = manifest[
+            "allowed_input_manifest_hash"
+        ]
+        completion["supersedes"] = None
+        completion = object_with_content_hash(completion)
+        graph.append(completion)
+
+        e5 = deepcopy(old_e5)
+        e5["object_id"] = "e5-fresh-trial"
+        e5["e5_id"] = "e5-fresh-trial"
+        e5["as_of"] = timestamp(23)
+        e5["trial_manifest_ref"] = exact_ref(manifest)
+        e5["completion_receipt_ref"] = exact_ref(completion)
+        e5["source_task_id"] = manifest["source_task_id"]
+        e5["new_task_id"] = manifest["new_task_id"]
+        e5["supersedes"] = exact_ref(old_e5)
+        e5 = object_with_content_hash(e5)
+        graph.append(e5)
+        graph = rehash_graph(graph)
+        self.assertTrue(validate_graph(graph, now=FIXED_NOW).valid)
+        self.assertEqual(
+            DELTA_REUSED,
+            reduce_evidence_graph(graph, now=FIXED_NOW).delta_state,
+        )
+
+    def test_revoked_lower_trial_records_cannot_be_repackaged(self) -> None:
+        graph = valid_graph()
+        target_manifest = graph[
+            graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)
+        ]
+        graph.append(
+            control(
+                graph,
+                action="REVOKE",
+                target=target_manifest,
+                minute=17,
+                object_id="revoke-lower-manifest",
+            )
+        )
+        manifest_successor = relabeled_lower_manifest(
+            target_manifest,
+            prefix="revoked-manifest-relabel",
+        )
+        manifest_successor["supersedes"] = exact_ref(target_manifest)
+        manifest_successor = object_with_content_hash(manifest_successor)
+        graph.append(manifest_successor)
+        self.assertIssue(graph, "STALE_DEPENDENCY_REFERENCE")
+
+        graph = valid_graph()
+        target_manifest = graph[
+            graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)
+        ]
+        target_completion = graph[
+            graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        ]
+        graph.append(
+            control(
+                graph,
+                action="REVOKE",
+                target=target_completion,
+                minute=17,
+                object_id="revoke-lower-completion",
+            )
+        )
+        manifest_successor = relabeled_lower_manifest(
+            target_manifest,
+            prefix="revoked-completion-relabel",
+        )
+        graph.append(manifest_successor)
+        completion_successor = relabeled_lower_completion(
+            target_completion,
+            manifest_successor,
+            prefix="revoked-completion-relabel",
+        )
+        completion_successor["supersedes"] = exact_ref(target_completion)
+        completion_successor = object_with_content_hash(completion_successor)
+        graph.append(completion_successor)
+        graph = rehash_graph(graph)
+        self.assertIssue(graph, "STALE_DEPENDENCY_REFERENCE")
+
+    def test_superseded_lower_trial_records_cannot_be_referenced_later(self) -> None:
+        graph = valid_graph()
+        old_manifest = graph[graph_index(graph, LOWER_RUN_TRIAL_MANIFEST)]
+        manifest_successor = deepcopy(old_manifest)
+        manifest_successor["object_id"] = "lower-manifest-successor"
+        manifest_successor["manifest_id"] = "lower-manifest-successor"
+        manifest_successor["as_of"] = timestamp(17)
+        manifest_successor["effective_as_of"] = timestamp(17)
+        manifest_successor["supersedes"] = exact_ref(old_manifest)
+        manifest_successor = object_with_content_hash(manifest_successor)
+        graph.append(manifest_successor)
+        old_completion = graph[
+            graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        ]
+        replay_completion = deepcopy(old_completion)
+        replay_completion["object_id"] = "completion-old-manifest-replay"
+        replay_completion["receipt_id"] = "completion-old-manifest-replay"
+        replay_completion["as_of"] = timestamp(18)
+        replay_completion["completed_as_of"] = timestamp(18)
+        replay_completion["supersedes"] = exact_ref(old_completion)
+        replay_completion = object_with_content_hash(replay_completion)
+        graph.append(replay_completion)
+        self.assertIssue(graph, "STALE_DEPENDENCY_REFERENCE")
+
+        graph = valid_graph()
+        old_completion = graph[
+            graph_index(graph, LOWER_RUN_COMPLETION_RECEIPT)
+        ]
+        completion_successor = deepcopy(old_completion)
+        completion_successor["object_id"] = "lower-completion-successor"
+        completion_successor["receipt_id"] = "lower-completion-successor"
+        completion_successor["as_of"] = timestamp(17)
+        completion_successor["completed_as_of"] = timestamp(17)
+        completion_successor["supersedes"] = exact_ref(old_completion)
+        completion_successor = object_with_content_hash(completion_successor)
+        graph.append(completion_successor)
+        old_e5 = graph[graph_index(graph, E5_REUSE)]
+        replay_e5 = deepcopy(old_e5)
+        replay_e5["object_id"] = "e5-old-completion-replay"
+        replay_e5["e5_id"] = "e5-old-completion-replay"
+        replay_e5["as_of"] = timestamp(18)
+        replay_e5["supersedes"] = exact_ref(old_e5)
+        replay_e5 = object_with_content_hash(replay_e5)
+        graph.append(replay_e5)
         self.assertIssue(graph, "STALE_DEPENDENCY_REFERENCE")
 
     def test_rollback_must_target_current_effective_e4(self) -> None:

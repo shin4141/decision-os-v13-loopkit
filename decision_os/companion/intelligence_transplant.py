@@ -112,6 +112,41 @@ _HEAD_FIELDS = {
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,200}$")
+_UNSAFE_GIT_CONFIG = re.compile(
+    r"^(?:"
+    r"core\.(?:alternaterefscommand|alternaterefsprefixes|attributesfile|"
+    r"usereplacerefs|worktree)"
+    r"|diff\.external"
+    r"|diff\..+\.(?:command|textconv)"
+    r"|extensions\.(?:partialclone|worktreeconfig)"
+    r"|filter\."
+    r"|include(?:if)?\."
+    r"|remote\..+\.promisor"
+    r")"
+)
+_GIT_ENVIRONMENT_OVERRIDES = frozenset(
+    {
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_ATTR_NOSYSTEM",
+        "GIT_CEILING_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_CONFIG",
+        "GIT_DIR",
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+        "GIT_EXEC_PATH",
+        "GIT_GRAFT_FILE",
+        "GIT_INDEX_FILE",
+        "GIT_NAMESPACE",
+        "GIT_NO_LAZY_FETCH",
+        "GIT_NO_REPLACE_OBJECTS",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_OPTIONAL_LOCKS",
+        "GIT_PREFIX",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_SHALLOW_FILE",
+        "GIT_WORK_TREE",
+    }
+)
 
 
 class IntelligenceTransplantError(RuntimeError):
@@ -171,22 +206,74 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _git_common_directory(repository: Path) -> Path:
+def _raw_git_environment() -> dict[str, str]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _GIT_ENVIRONMENT_OVERRIDES
+        and not key.startswith("GIT_CONFIG_")
+        and key != "GIT_CONFIG_PARAMETERS"
+    }
+    environment.update(
+        {
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "LC_ALL": "C",
+        }
+    )
+    return environment
+
+
+def _raw_git_command(
+    repository: Path,
+    *arguments: str,
+    text: bool = False,
+    timeout: float = 20,
+) -> subprocess.CompletedProcess[Any]:
     try:
-        completed = subprocess.run(
+        return subprocess.run(
             (
                 "git",
+                "--no-replace-objects",
+                "-c",
+                "core.attributesFile=/dev/null",
+                "-c",
+                "core.useReplaceRefs=false",
+                "-c",
+                "diff.external=",
+                "-c",
+                "diff.renames=false",
                 "-C",
                 str(repository),
-                "rev-parse",
-                "--git-common-dir",
+                *arguments,
             ),
             capture_output=True,
             check=False,
+            env=_raw_git_environment(),
+            text=text,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT EVIDENCE UNAVAILABLE"
+        ) from exc
+
+
+def _git_common_directory(repository: Path) -> Path:
+    try:
+        completed = _raw_git_command(
+            repository,
+            "rev-parse",
+            "--git-common-dir",
             text=True,
             timeout=10,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except IntelligenceTransplantConflictError as exc:
         raise IntelligenceTransplantValidationError(
             "Selected repository identity could not be resolved."
         ) from exc
@@ -205,16 +292,111 @@ def _git_common_directory(repository: Path) -> Path:
         ) from exc
 
 
+def _assert_raw_git_evidence_mode(repository: Path) -> None:
+    layout = _raw_git_command(
+        repository,
+        "rev-parse",
+        "--git-common-dir",
+        "--git-dir",
+        "--show-object-format",
+        text=True,
+    )
+    layout_lines = layout.stdout.splitlines()
+    if (
+        layout.returncode != 0
+        or len(layout_lines) != 3
+        or layout_lines[2].strip() != "sha1"
+    ):
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+        )
+    resolved_directories: list[Path] = []
+    for value in layout_lines[:2]:
+        candidate = Path(value.strip())
+        if not candidate.is_absolute():
+            candidate = repository / candidate
+        try:
+            resolved_directories.append(candidate.resolve(strict=True))
+        except OSError as exc:
+            raise IntelligenceTransplantConflictError(
+                "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+            ) from exc
+    common_directory, git_directory = resolved_directories
+    grafts_paths = {
+        common_directory / "info" / "grafts",
+        git_directory / "info" / "grafts",
+    }
+    alternates_path = common_directory / "objects" / "info" / "alternates"
+    if (
+        any(os.path.lexists(path) for path in grafts_paths)
+        or os.path.lexists(alternates_path)
+    ):
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+        )
+
+    replacement_refs = _raw_git_command(
+        repository,
+        "for-each-ref",
+        "--format=%(refname)",
+        "refs/replace/",
+        text=True,
+    )
+    if replacement_refs.returncode != 0 or replacement_refs.stdout.strip():
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+        )
+
+    local_config = _raw_git_command(
+        repository,
+        "config",
+        "--no-includes",
+        "--show-scope",
+        "--name-only",
+        "--get-regexp",
+        ".*",
+        text=True,
+    )
+    if local_config.returncode not in {0, 1}:
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+        )
+    config_keys: set[str] = set()
+    for line in local_config.stdout.splitlines():
+        try:
+            scope, key = line.split("\t", 1)
+        except ValueError as exc:
+            raise IntelligenceTransplantConflictError(
+                "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+            ) from exc
+        if scope in {"local", "worktree"}:
+            config_keys.add(key.strip().lower())
+    if any(_UNSAFE_GIT_CONFIG.match(key) for key in config_keys):
+        raise IntelligenceTransplantConflictError(
+            "HOLD — STAGE 5 GIT INTERPRETATION UNSAFE"
+        )
+
+
 def _repository_head(repository: Path) -> str:
     try:
-        completed = subprocess.run(
-            ("git", "-C", str(repository), "rev-parse", "HEAD"),
-            capture_output=True,
-            check=False,
+        _assert_raw_git_evidence_mode(repository)
+        completed = _raw_git_command(
+            repository,
+            "rev-parse",
+            "--verify",
+            "HEAD^{commit}",
             text=True,
             timeout=10,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except (
+        IntelligenceTransplantConflictError,
+        IntelligenceTransplantValidationError,
+    ) as exc:
+        if (
+            isinstance(exc, IntelligenceTransplantConflictError)
+            and "GIT INTERPRETATION UNSAFE" in str(exc)
+        ):
+            raise
         raise IntelligenceTransplantConflictError(
             "HOLD — STAGE 5 REPOSITORY AS-OF STALE"
         ) from exc
@@ -231,18 +413,7 @@ def _git_command(
     *arguments: str,
     text: bool = False,
 ) -> subprocess.CompletedProcess[Any]:
-    try:
-        return subprocess.run(
-            ("git", "-C", str(repository), *arguments),
-            capture_output=True,
-            check=False,
-            text=text,
-            timeout=20,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise IntelligenceTransplantConflictError(
-            "HOLD — STAGE 5 GIT EVIDENCE UNAVAILABLE"
-        ) from exc
+    return _raw_git_command(repository, *arguments, text=text)
 
 
 def _safe_git_path(value: Any) -> str:
@@ -349,6 +520,9 @@ def _verify_e4_git_binding(
     changed = _git_command(
         repository,
         "diff",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--no-renames",
         "--name-only",
         "-z",
         base,
@@ -445,6 +619,8 @@ def _verify_rollback_git_binding(
     changed = _git_command(
         repository,
         "diff",
+        "--no-ext-diff",
+        "--no-textconv",
         "--name-only",
         "--no-renames",
         "-z",
@@ -644,6 +820,7 @@ class IntelligenceTransplantStore:
         )
         self.events_path = self.root / "events.ndjson"
         self.event_head_path = self.root / "event-head.json"
+        self.publication_state_path = self.root / "publication-state.json"
         with self._locks_guard:
             self._lock = self._locks.setdefault(
                 str(self.root),
@@ -1156,6 +1333,107 @@ class IntelligenceTransplantStore:
             immutable=False,
         )
 
+    @staticmethod
+    def _publication_state(
+        *,
+        event_count: int,
+        event_chain_head: str,
+        expected_repository_head: str,
+        observed_repository_head: str | None,
+        status: str,
+    ) -> dict[str, Any]:
+        body = {
+            "event_chain_head": event_chain_head,
+            "event_count": event_count,
+            "expected_repository_head": expected_repository_head,
+            "observed_repository_head": observed_repository_head,
+            "publication_status": status,
+            "schema_version": STORE_SCHEMA,
+        }
+        return {
+            **body,
+            "state_sha256": _sha256(canonical_json(body)),
+        }
+
+    def _write_publication_state(
+        self,
+        *,
+        event_count: int,
+        event_chain_head: str,
+        expected_repository_head: str,
+        observed_repository_head: str | None,
+        status: str,
+    ) -> None:
+        state = self._publication_state(
+            event_count=event_count,
+            event_chain_head=event_chain_head,
+            expected_repository_head=expected_repository_head,
+            observed_repository_head=observed_repository_head,
+            status=status,
+        )
+        self._atomic_write(
+            self.publication_state_path,
+            canonical_json(state),
+            immutable=False,
+        )
+
+    def _clear_publication_state(self) -> None:
+        self._assert_safe_path(self.publication_state_path)
+        try:
+            with self._directory_descriptor(self.root) as parent:
+                descriptor = os.open(
+                    self.publication_state_path.name,
+                    os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+                    dir_fd=parent,
+                )
+                try:
+                    self._assert_open_private_file(descriptor)
+                finally:
+                    os.close(descriptor)
+                os.unlink(self.publication_state_path.name, dir_fd=parent)
+                os.fsync(parent)
+        except IntelligenceTransplantIntegrityError:
+            raise
+        except OSError as exc:
+            raise IntelligenceTransplantIntegrityError(
+                "HOLD — STAGE 5 PUBLICATION INVALID"
+            ) from exc
+
+    def _invalidate_publication(
+        self,
+        *,
+        event_count: int,
+        event_chain_head: str,
+        expected_repository_head: str,
+        observed_repository_head: str | None,
+    ) -> None:
+        state = self._publication_state(
+            event_count=event_count,
+            event_chain_head=event_chain_head,
+            expected_repository_head=expected_repository_head,
+            observed_repository_head=observed_repository_head,
+            status="INVALID",
+        )
+        try:
+            self._atomic_write(
+                self.publication_state_path,
+                canonical_json(state),
+                immutable=False,
+            )
+        finally:
+            self._atomic_write(
+                self.event_head_path,
+                canonical_json(state),
+                immutable=False,
+            )
+
+    def _assert_publication_ready(self) -> None:
+        if os.path.lexists(self.publication_state_path):
+            self._assert_safe_path(self.publication_state_path)
+            raise IntelligenceTransplantIntegrityError(
+                "HOLD — STAGE 5 PUBLICATION INVALID"
+            )
+
     def _read_event_head(self) -> dict[str, Any]:
         self._assert_safe_path(self.event_head_path)
         try:
@@ -1167,6 +1445,10 @@ class IntelligenceTransplantStore:
             raise IntelligenceTransplantIntegrityError(
                 "HOLD — STAGE 5 STORE CORRUPT"
             ) from exc
+        if anchor.get("publication_status") in {"IN_PROGRESS", "INVALID"}:
+            raise IntelligenceTransplantIntegrityError(
+                "HOLD — STAGE 5 PUBLICATION INVALID"
+            )
         body = {
             key: value
             for key, value in anchor.items()
@@ -1256,6 +1538,14 @@ class IntelligenceTransplantStore:
         with self.transaction(write=False):
             if not self.root.exists():
                 return []
+            self._assert_publication_ready()
+            try:
+                _assert_raw_git_evidence_mode(self.repository)
+            except (
+                IntelligenceTransplantConflictError,
+                IntelligenceTransplantValidationError,
+            ) as exc:
+                raise IntelligenceTransplantIntegrityError(str(exc)) from exc
             if not self.events_path.exists():
                 if self.event_head_path.exists():
                     raise IntelligenceTransplantIntegrityError(
@@ -1330,6 +1620,7 @@ class IntelligenceTransplantStore:
             event_ids: set[str] = set()
             previous = GENESIS_EVENT_HASH
             known_refs: set[tuple[str, str]] = set()
+            verified_records: list[dict[str, Any]] = []
             for raw_line in raw.splitlines():
                 if not raw_line:
                     raise IntelligenceTransplantIntegrityError(
@@ -1480,11 +1771,40 @@ class IntelligenceTransplantStore:
                         raise IntelligenceTransplantIntegrityError(
                             "HOLD — STAGE 5 STORE CORRUPT"
                         )
+                try:
+                    if record.get("object_type") == E4_IMPLEMENTATION_BINDING:
+                        _verify_e4_git_binding(
+                            self.repository,
+                            record,
+                            str(record.get("repository_head")),
+                        )
+                    elif (
+                        record.get("object_type") == MANUAL_CONTROL_RECEIPT
+                        and record.get("control_action") == "ROLLBACK"
+                    ):
+                        _verify_rollback_git_binding(
+                            self.repository,
+                            record,
+                            str(
+                                record.get(
+                                    "post_rollback_repository_head"
+                                )
+                            ),
+                            verified_records,
+                        )
+                except (
+                    IntelligenceTransplantConflictError,
+                    IntelligenceTransplantValidationError,
+                ) as exc:
+                    raise IntelligenceTransplantIntegrityError(
+                        "HOLD — STAGE 5 GIT EVIDENCE INVALID"
+                    ) from exc
                 previous = event["event_hash"]
                 event_ids.add(event["event_id"])
                 known_refs.add(
                     (record["object_id"], record["content_hash"])
                 )
+                verified_records.append(record)
                 events.append(event)
             anchor = self._read_event_head()
             if (
@@ -1494,6 +1814,13 @@ class IntelligenceTransplantStore:
                 raise IntelligenceTransplantIntegrityError(
                     "HOLD — STAGE 5 STORE CORRUPT"
                 )
+            try:
+                _assert_raw_git_evidence_mode(self.repository)
+            except (
+                IntelligenceTransplantConflictError,
+                IntelligenceTransplantValidationError,
+            ) as exc:
+                raise IntelligenceTransplantIntegrityError(str(exc)) from exc
             return events
 
     def read_records(self) -> list[dict[str, Any]]:
@@ -1606,11 +1933,20 @@ class IntelligenceTransplantStore:
                 raise IntelligenceTransplantConflictError(
                     "HOLD — STAGE 5 APPEND INPUT CHANGED"
                 )
+            event_count = len(events) + 1
+            self._write_publication_state(
+                event_count=event_count,
+                event_chain_head=event["event_hash"],
+                expected_repository_head=expected_repository_head,
+                observed_repository_head=None,
+                status="IN_PROGRESS",
+            )
             self._ensure_directories()
             self._assert_safe_path(self.events_path)
             flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
+            event_appended = False
             try:
                 with self._directory_descriptor(self.root) as parent:
                     descriptor = os.open(
@@ -1626,14 +1962,72 @@ class IntelligenceTransplantStore:
                         stream.flush()
                         os.fsync(stream.fileno())
                     descriptor = None
+                event_appended = True
                 self._write_event_head(
-                    event_count=len(events) + 1,
+                    event_count=event_count,
                     event_chain_head=event["event_hash"],
                 )
-            except OSError as exc:
+            except Exception as exc:
+                if event_appended:
+                    try:
+                        self._invalidate_publication(
+                            event_count=event_count,
+                            event_chain_head=event["event_hash"],
+                            expected_repository_head=(
+                                expected_repository_head
+                            ),
+                            observed_repository_head=None,
+                        )
+                    except Exception:
+                        pass
+                if isinstance(exc, IntelligenceTransplantError):
+                    raise
                 raise IntelligenceTransplantIntegrityError(
                     "HOLD — STAGE 5 EVENT APPEND FAILED"
                 ) from exc
+            try:
+                observed_repository_head = _repository_head(
+                    self.repository
+                )
+            except IntelligenceTransplantError as exc:
+                try:
+                    self._invalidate_publication(
+                        event_count=event_count,
+                        event_chain_head=event["event_hash"],
+                        expected_repository_head=expected_repository_head,
+                        observed_repository_head=None,
+                    )
+                except Exception:
+                    pass
+                raise IntelligenceTransplantIntegrityError(
+                    "HOLD — STAGE 5 PUBLICATION INVALID"
+                ) from exc
+            if observed_repository_head != expected_repository_head:
+                try:
+                    self._invalidate_publication(
+                        event_count=event_count,
+                        event_chain_head=event["event_hash"],
+                        expected_repository_head=expected_repository_head,
+                        observed_repository_head=observed_repository_head,
+                    )
+                except Exception:
+                    pass
+                raise IntelligenceTransplantIntegrityError(
+                    "HOLD — STAGE 5 PUBLICATION INVALID"
+                )
+            try:
+                self._clear_publication_state()
+            except IntelligenceTransplantError:
+                try:
+                    self._invalidate_publication(
+                        event_count=event_count,
+                        event_chain_head=event["event_hash"],
+                        expected_repository_head=expected_repository_head,
+                        observed_repository_head=observed_repository_head,
+                    )
+                except Exception:
+                    pass
+                raise
             return event
 
 

@@ -92,6 +92,13 @@ E1 binds the charter failure family and predicate, Discovery seat and context,
 observed failure, proposed mechanism, strongest falsifier, discovery claims,
 and evidence anchors. E1 alone never creates a candidate.
 
+After an E2 `REJECT`, E1 novelty is compared through a canonical semantic
+signature over conservative lexical inventories for the fixed discovery
+claim, observed failure, mechanism, and strongest falsifier. Unicode
+compatibility forms, case, whitespace, punctuation, control or invisible
+characters, anchor ordering, and word or list ordering do not create a
+materially new lineage by themselves.
+
 ### E2 — independent audit
 
 Before E2, an `AUDIT_INPUT_MANIFEST` freezes the current E1 ID/hash, allowed
@@ -124,6 +131,10 @@ E4 binds the current E3 to one concrete `test`, `guard`, `rule`, `schema`, or
 - changed paths, Git blobs, SHA-256 values, and asset version;
 - a one-to-one mapping from every accepted claim through required control
   behavior, concrete asset, and behavioral activation verification;
+- complete consumption of every E3 implementation requirement through required
+  control behavior, a concrete asset, and behavioral verification;
+- complete binding of every E3 implementation-scope path to a declared changed
+  artifact;
 - focused and regression results;
 - a rollback path.
 
@@ -141,6 +152,11 @@ source task, failure family and predicate, allowed and prohibited inputs,
 active E4 asset identity/version/hash, repository HEAD, lower runtime context,
 and owner attestation.
 
+The active asset must be one of the assets actually used by an E4 claim
+binding; presence only in `changed_artifacts` is insufficient. The manifest,
+completion receipt, activation trace, and E5 fix the same asset identity,
+version, and hash.
+
 The allowed input manifest is exact and ordered: new-task bytes, repository
 HEAD, active asset identity/version/hash, and the minimum execution boundary.
 No additional input class is accepted.
@@ -152,6 +168,10 @@ receipt, event sequence, and completion time.
 The new task must differ from the source task while preserving the fixed
 failure family and predicate. Upper-conversation content, hidden reasoning,
 accepted answers, and owner corrections are forbidden inputs.
+
+The lower runtime context is distinct from the Discovery, Audit, and
+Implementation contexts. Its Seat Assignment, trial manifest, and completion
+receipt must bind the same lower context identity.
 
 The only causal proof modes are:
 
@@ -180,6 +200,12 @@ automatically inherit the replacement.
 - Replacing E3 returns the lineage to `CANDIDATE` until a new E4 exists.
 - Replacing E4 requires a new E5.
 - An E2 `REJECT` requires a materially new E1 and new lineage.
+- Revoking E5 requires an exact forward supersession plus a new pre-frozen
+  lower-Run manifest and a new completion receipt with materially different
+  task/input/result evidence before `REUSED` can return. Relabeling object,
+  trial, task, context, reference, or timestamp identities is insufficient.
+- Revoked or superseded lower-Run manifests and completion receipts cannot be
+  reused by a detached E5.
 
 CAP, CAP release, revoke, and rollback use `MANUAL_CONTROL_RECEIPT`. Every
 effective control fixes the action, target ID/hash, reason, timestamp, Decision
@@ -209,6 +235,7 @@ Stage 5 uses an additive repository-private namespace:
 <git-common-dir>/decision-os/intelligence-transplant/v0.1/
   events.ndjson
   event-head.json
+  publication-state.json  # transient IN_PROGRESS / persistent INVALID marker
   charters/sha256/<content_hash>.json
   evidence/sha256/<content_hash>.json
   manifests/sha256/<content_hash>.json
@@ -229,9 +256,19 @@ Maturity is always reduced from the verified event chain. No writable maturity
 field is an authority source. Corruption fails closed and does not silently
 restore an older state.
 
-Append performs opening and closing repository-HEAD checks. E4 additionally
-verifies commit ancestry, Git blobs, and artifact hashes against its bound
-HEAD. A drifted repository cannot publish the event.
+Raw Git evidence commands disable replacement-object interpretation, sanitize
+the ambient Git environment and global/system config, and fix diff behavior.
+Replace refs, legacy grafts, alternate object stores, identity-sensitive
+local/worktree configuration, and a non-SHA-1 object format fail closed. E4
+and rollback commit/tree/blob bindings are reverified from raw Git evidence on
+every event-chain read.
+
+Append performs opening and closing repository-HEAD checks. The final check,
+event append, and event-head update run under a fail-closed publication state.
+A post-publication HEAD check clears that state only when the expected HEAD is
+still current; drift or interruption leaves an explicit unreadable publication
+state. E4 additionally verifies commit ancestry, Git blobs, and artifact hashes
+against its bound HEAD. A drifted repository cannot publish a readable event.
 
 Each manual-transport event also embeds a hashed transport receipt containing
 the mode, source label, declared and observed exact-byte hashes,
@@ -273,7 +310,9 @@ Route category and object type must agree.
 The Companion `run` response is a typed union. Legacy clients may treat a
 missing `run_type` as `bounded_task`; the current server emits it explicitly.
 Stage 5 operations return `run_type: intelligence_transplant` and never enter
-the bounded-task adapter path.
+the bounded-task adapter path. When the typed Run is Stage 5, both the
+top-level `run` and `intelligence_transplant` panel are derived from the same
+fresh verified projection; the cached Run is not a maturity or Gate authority.
 
 The Stage 5 UI is read-only. It shows Delta State, Gate, missing evidence, next
 one action, prohibited next actions, evidence identities, lifecycle, and
@@ -282,10 +321,10 @@ All untrusted values are rendered with `textContent`.
 
 ## Product rollback
 
-To remove the Stage 5 product surface, revert the additive implementation
-commit. Do not delete or rewrite the private Stage 5 store. Older Companion
-versions ignore the unknown directory. A later reintroduction rebuilds the
-projection from the verified event chain.
+To remove the Stage 5 product surface, revert the complete additive Stage 5
+change set, including its bounded-repair commit. Do not delete or rewrite the
+private Stage 5 store. Older Companion versions ignore the unknown directory.
+A later reintroduction rebuilds the projection from the verified event chain.
 
 If store integrity fails, reads and writes stop in `BLOCKED_CORRUPT`. Recovery
 requires a separately designed repair that preserves event and blob identity;

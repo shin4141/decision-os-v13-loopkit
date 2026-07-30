@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import re
+import unicodedata
 from typing import Any, Iterable, Mapping, Sequence
 
 
@@ -378,6 +379,9 @@ OBJECT_FIELDS: dict[str, frozenset[str]] = {
             "e4_ref",
             "trial_manifest_ref",
             "completion_receipt_ref",
+            "active_asset_identity",
+            "active_asset_version",
+            "active_asset_hash",
             "source_task_id",
             "new_task_id",
             "failure_family_id",
@@ -800,6 +804,116 @@ def _is_string_list(
     return not unique or len(value) == len(set(value))
 
 
+def _canonical_semantic_text(value: Any) -> str:
+    """Return a conservative lexical inventory for E1 novelty checks."""
+
+    if not isinstance(value, str):
+        return ""
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    characters = (
+        character
+        for character in normalized
+        if unicodedata.category(character)[:1] in {"L", "M", "N"}
+    )
+    return "".join(sorted(characters))
+
+
+def _e1_material_signature(record: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return fixed semantic E1 fields; evidence-list edits are not novelty."""
+
+    return tuple(
+        _canonical_semantic_text(record.get(field))
+        for field in (
+            "discovery_claim",
+            "observed_failure",
+            "mechanism",
+            "strongest_falsifier",
+        )
+    )
+
+
+def _lower_manifest_semantic_signature(record: Mapping[str, Any]) -> bytes:
+    """Bind lower-run evidence while excluding relabelable wrapper identity."""
+
+    return canonical_json(
+        {
+            "source_task_hash": record.get("source_task_hash"),
+            "new_task_hash": record.get("new_task_hash"),
+            "failure_family_id": record.get("failure_family_id"),
+            "failure_predicate": _canonical_semantic_text(
+                record.get("failure_predicate")
+            ),
+            "repository_head": record.get("repository_head"),
+            "active_asset_hash": record.get("active_asset_hash"),
+            "input_separation_attestation": record.get(
+                "input_separation_attestation"
+            ),
+        }
+    )
+
+
+def _lower_completion_semantic_signature(
+    record: Mapping[str, Any],
+    manifest: Mapping[str, Any] | None,
+) -> bytes:
+    """Bind lower-run results without receipt, ref, label, or time relabels."""
+
+    trace = record.get("asset_activation_trace")
+    trace = trace if isinstance(trace, Mapping) else {}
+    interception = trace.get("interception_point")
+    interception = interception if isinstance(interception, Mapping) else {}
+    contrast = record.get("controlled_contrast")
+    if isinstance(contrast, Mapping):
+        fixed_variables = contrast.get("fixed_variables")
+        normalized_contrast: Any = {
+            "fixed_variables": (
+                sorted(
+                    _canonical_semantic_text(item)
+                    for item in fixed_variables
+                    if isinstance(item, str)
+                )
+                if isinstance(fixed_variables, list)
+                else fixed_variables
+            ),
+            "only_changed_condition": contrast.get("only_changed_condition"),
+            "off_result": contrast.get("off_result"),
+            "on_result": contrast.get("on_result"),
+        }
+    else:
+        normalized_contrast = contrast
+    manifest_signature = (
+        hashlib.sha256(_lower_manifest_semantic_signature(manifest)).hexdigest()
+        if manifest is not None
+        else None
+    )
+    return canonical_json(
+        {
+            "manifest_evidence_sha256": manifest_signature,
+            "active_asset_hash": record.get("active_asset_hash"),
+            "activation_trace": {
+                "active_asset_hash": trace.get("asset_hash"),
+                "failure_predicate": _canonical_semantic_text(
+                    trace.get("failure_predicate")
+                ),
+                "interception_mode": interception.get("mode"),
+                "observed_effect": interception.get("observed_effect"),
+            },
+            "causal_proof_mode": record.get("causal_proof_mode"),
+            "controlled_contrast": normalized_contrast,
+            "detection_or_prevention_result": record.get(
+                "detection_or_prevention_result"
+            ),
+            "human_rescue": record.get("human_rescue"),
+            "no_rescue_attestation": record.get("no_rescue_attestation"),
+            "event_sequence": record.get("event_sequence"),
+            "evaluator_receipt": _canonical_semantic_text(
+                record.get("evaluator_receipt")
+            ),
+            "cryptographic_identity": record.get("cryptographic_identity"),
+        }
+    )
+
+
 def _parse_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str):
         return None
@@ -834,6 +948,44 @@ def _is_ref(value: Any) -> bool:
         and _SAFE_ID_RE.fullmatch(value["object_id"]) is not None
         and _is_sha256(value.get("content_hash"))
     )
+
+
+def _resolve_exact_type(
+    record: Mapping[str, Any],
+    field: str,
+    expected_type: str,
+    registry: Mapping[str, Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    reference = record.get(field)
+    if not _is_ref(reference):
+        return None
+    target = registry.get(str(reference.get("object_id")))
+    if (
+        target is None
+        or target.get("object_type") != expected_type
+        or target.get("content_hash") != reference.get("content_hash")
+    ):
+        return None
+    return target
+
+
+def _lower_manifest_for_evidence(
+    record: Mapping[str, Any],
+    registry: Mapping[str, Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    if record.get("object_type") == LOWER_RUN_TRIAL_MANIFEST:
+        return record
+    if record.get("object_type") in (
+        LOWER_RUN_COMPLETION_RECEIPT,
+        E5_REUSE,
+    ):
+        return _resolve_exact_type(
+            record,
+            "trial_manifest_ref",
+            LOWER_RUN_TRIAL_MANIFEST,
+            registry,
+        )
+    return None
 
 
 def _declared_ref(record: Mapping[str, Any], field: str) -> Any:
@@ -923,6 +1075,8 @@ def _activation_evidence_valid(value: Any) -> bool:
 def _claim_binding_valid(value: Any) -> bool:
     required = {
         "accepted_claim",
+        "implementation_requirements",
+        "implementation_scope",
         "required_control_behavior",
         "asset_identity",
         "asset_version",
@@ -933,6 +1087,8 @@ def _claim_binding_valid(value: Any) -> bool:
     return (
         isinstance(value, Mapping)
         and set(value) == required
+        and _is_string_list(value.get("implementation_requirements"))
+        and _is_string_list(value.get("implementation_scope"))
         and all(
             _is_nonempty_string(value.get(field))
             for field in (
@@ -1456,6 +1612,9 @@ def _local_object_issues(record: Any) -> set[str]:
                     "completion_receipt_ref",
                 )
             )
+            and _is_nonempty_string(record.get("active_asset_identity"))
+            and _is_nonempty_string(record.get("active_asset_version"))
+            and _is_sha256(record.get("active_asset_hash"))
             and all(
                 _is_nonempty_string(record.get(field))
                 for field in (
@@ -1785,6 +1944,9 @@ def validate_graph(
             "audit_completion_receipt_ref",
         ),
         E4_IMPLEMENTATION_BINDING: ("e3_ref",),
+        LOWER_RUN_TRIAL_MANIFEST: ("e4_ref", "trial_id"),
+        LOWER_RUN_COMPLETION_RECEIPT: ("trial_manifest_ref",),
+        E5_REUSE: ("e4_ref",),
     }
     for object_type, fields in lineage_fields.items():
         current_by_lineage: dict[bytes, Mapping[str, Any]] = {}
@@ -1865,6 +2027,126 @@ def validate_graph(
             revoked_at = revoked_positions.get(reference["object_id"])
             if revoked_at is not None and revoked_at <= record_position:
                 issues.add("STALE_DEPENDENCY_REFERENCE")
+
+    # Revocation cannot be bypassed by repackaging the same lower-run trial
+    # evidence under detached object identities. A revoked E5 can only advance
+    # through a later, newly frozen manifest and its later completion receipt.
+    direct_revocations: list[tuple[int, Mapping[str, Any]]] = []
+    for control_position, control_record in enumerate(objects):
+        if (
+            control_record.get("object_type") != MANUAL_CONTROL_RECEIPT
+            or control_record.get("control_action") != "REVOKE"
+        ):
+            continue
+        target = registry.get(str(control_record.get("target_object_id")))
+        if (
+            target is not None
+            and target.get("content_hash")
+            == control_record.get("target_content_hash")
+        ):
+            direct_revocations.append((control_position, target))
+
+    for record_position, record in enumerate(objects):
+        for control_position, revoked in direct_revocations:
+            if record_position <= control_position:
+                continue
+            revoked_type = revoked.get("object_type")
+            object_type = record.get("object_type")
+            if (
+                revoked_type == LOWER_RUN_TRIAL_MANIFEST
+                and object_type == LOWER_RUN_TRIAL_MANIFEST
+            ):
+                if _lower_manifest_semantic_signature(
+                    record
+                ) == _lower_manifest_semantic_signature(revoked):
+                    issues.add("STALE_DEPENDENCY_REFERENCE")
+            elif (
+                revoked_type == LOWER_RUN_COMPLETION_RECEIPT
+                and object_type == LOWER_RUN_COMPLETION_RECEIPT
+            ):
+                old_manifest = _lower_manifest_for_evidence(revoked, registry)
+                new_manifest = _lower_manifest_for_evidence(record, registry)
+                if (
+                    old_manifest is None
+                    or new_manifest is None
+                    or _lower_manifest_semantic_signature(new_manifest)
+                    == _lower_manifest_semantic_signature(old_manifest)
+                    or _lower_completion_semantic_signature(
+                        record, new_manifest
+                    )
+                    == _lower_completion_semantic_signature(
+                        revoked, old_manifest
+                    )
+                ):
+                    issues.add("STALE_DEPENDENCY_REFERENCE")
+            elif (
+                revoked_type == E5_REUSE
+                and object_type == E5_REUSE
+            ):
+                old_manifest_ref = revoked.get("trial_manifest_ref")
+                new_manifest_ref = record.get("trial_manifest_ref")
+                old_manifest = _lower_manifest_for_evidence(
+                    revoked, registry
+                )
+                new_manifest = _lower_manifest_for_evidence(record, registry)
+                old_completion = _resolve_exact_type(
+                    revoked,
+                    "completion_receipt_ref",
+                    LOWER_RUN_COMPLETION_RECEIPT,
+                    registry,
+                )
+                new_completion = _resolve_exact_type(
+                    record,
+                    "completion_receipt_ref",
+                    LOWER_RUN_COMPLETION_RECEIPT,
+                    registry,
+                )
+                new_manifest_position = (
+                    position_by_id.get(str(new_manifest.get("object_id")))
+                    if new_manifest is not None
+                    else None
+                )
+                completion_position = (
+                    position_by_id.get(str(new_completion.get("object_id")))
+                    if new_completion is not None
+                    else None
+                )
+                if (
+                    new_manifest_ref == old_manifest_ref
+                    or record.get("completion_receipt_ref")
+                    == revoked.get("completion_receipt_ref")
+                    or old_manifest is None
+                    or new_manifest is None
+                    or old_completion is None
+                    or new_completion is None
+                    or new_manifest_position is None
+                    or new_manifest_position <= control_position
+                    or completion_position is None
+                    or completion_position <= control_position
+                    or _lower_manifest_semantic_signature(new_manifest)
+                    == _lower_manifest_semantic_signature(old_manifest)
+                    or _lower_completion_semantic_signature(
+                        new_completion, new_manifest
+                    )
+                    == _lower_completion_semantic_signature(
+                        old_completion, old_manifest
+                    )
+                ):
+                    issues.add("STALE_DEPENDENCY_REFERENCE")
+
+    # The first E5 after a direct E5 revocation must stay on the exact
+    # forward-only chain even if relabelable references change.
+    for control_position, revoked in direct_revocations:
+        if revoked.get("object_type") != E5_REUSE:
+            continue
+        predecessor = revoked
+        for candidate in objects[control_position + 1 :]:
+            if candidate.get("object_type") != E5_REUSE:
+                continue
+            if candidate.get("supersedes") != exact_ref(predecessor):
+                issues.add("FORWARD_REPLACEMENT_REQUIRED")
+            else:
+                predecessor = candidate
 
     def dep(record: Mapping[str, Any], field: str) -> Mapping[str, Any] | None:
         return resolved.get((str(record.get("object_id")), field))
@@ -2042,17 +2324,48 @@ def validate_graph(
                 for item in artifacts
                 if isinstance(item, Mapping)
             }
+            artifact_paths = {
+                item.get("path")
+                for item in artifacts
+                if isinstance(item, Mapping)
+            }
             binding_claims = [
                 item.get("accepted_claim")
                 for item in bindings
                 if isinstance(item, Mapping)
             ]
+            bound_requirements = [
+                requirement
+                for item in bindings
+                if isinstance(item, Mapping)
+                for requirement in item.get("implementation_requirements", ())
+            ]
+            bound_scope = [
+                scope_path
+                for item in bindings
+                if isinstance(item, Mapping)
+                for scope_path in item.get("implementation_scope", ())
+            ]
             accepted_claims = (
                 list(e3.get("accepted_claims", ())) if e3 is not None else []
+            )
+            implementation_requirements = (
+                list(e3.get("implementation_requirements", ()))
+                if e3 is not None
+                else []
+            )
+            implementation_scope = (
+                list(e3.get("implementation_scope", ()))
+                if e3 is not None
+                else []
             )
             if (
                 len(binding_claims) != len(set(binding_claims))
                 or set(binding_claims) != set(accepted_claims)
+                or len(bound_requirements) != len(set(bound_requirements))
+                or set(bound_requirements) != set(implementation_requirements)
+                or len(bound_scope) != len(set(bound_scope))
+                or set(bound_scope) != set(implementation_scope)
                 or any(
                     (
                         item.get("asset_identity"),
@@ -2063,6 +2376,7 @@ def validate_graph(
                     for item in bindings
                     if isinstance(item, Mapping)
                 )
+                or any(scope_path not in artifact_paths for scope_path in bound_scope)
             ):
                 issues.add("CLAIM_BINDING_INCOMPLETE")
             if any(
@@ -2139,6 +2453,15 @@ def validate_graph(
                     for item in e4.get("changed_artifacts", ())
                     if isinstance(item, Mapping)
                 }
+                claim_bound_asset_keys = {
+                    (
+                        item.get("asset_identity"),
+                        item.get("asset_version"),
+                        item.get("asset_hash"),
+                    )
+                    for item in e4.get("claim_bindings", ())
+                    if isinstance(item, Mapping)
+                }
                 active_key = (
                     record.get("active_asset_identity"),
                     record.get("active_asset_version"),
@@ -2146,6 +2469,7 @@ def validate_graph(
                 )
                 if (
                     active_key not in artifact_keys
+                    or active_key not in claim_bound_asset_keys
                     or record.get("repository_head") != e4.get("repository_head")
                 ):
                     issues.add("ASSET_BINDING_MISMATCH")
@@ -2153,7 +2477,8 @@ def validate_graph(
             for candidate in objects:
                 if (
                     candidate.get("object_type") == SEAT_ASSIGNMENT_RECEIPT
-                    and candidate.get("seat") in ("DISCOVERY", "AUDIT")
+                    and candidate.get("seat")
+                    in ("DISCOVERY", "AUDIT", "IMPLEMENTATION")
                     and candidate.get("assignee_context_identity") == context_id
                 ):
                     issues.add("CONTEXT_INDEPENDENCE_VIOLATION")
@@ -2256,6 +2581,11 @@ def validate_graph(
             e4 = dep(record, "e4_ref")
             manifest = dep(record, "trial_manifest_ref")
             completion = dep(record, "completion_receipt_ref")
+            e5_active = (
+                record.get("active_asset_identity"),
+                record.get("active_asset_version"),
+                record.get("active_asset_hash"),
+            )
             if manifest is not None and (
                 record.get("source_task_id") != manifest.get("source_task_id")
                 or record.get("new_task_id") != manifest.get("new_task_id")
@@ -2280,6 +2610,31 @@ def validate_graph(
                 or completion.get("human_rescue") != "NONE"
             ):
                 issues.add("CAUSAL_TRACE_MISMATCH")
+            if manifest is not None:
+                manifest_active = (
+                    manifest.get("active_asset_identity"),
+                    manifest.get("active_asset_version"),
+                    manifest.get("active_asset_hash"),
+                )
+                if e5_active != manifest_active:
+                    issues.add("ASSET_BINDING_MISMATCH")
+            if completion is not None:
+                completion_active = (
+                    completion.get("active_asset_identity"),
+                    completion.get("active_asset_version"),
+                    completion.get("active_asset_hash"),
+                )
+                trace = completion.get("asset_activation_trace")
+                trace_active = (
+                    trace.get("asset_identity"),
+                    trace.get("asset_version"),
+                    trace.get("asset_hash"),
+                ) if isinstance(trace, Mapping) else ()
+                if (
+                    e5_active != completion_active
+                    or e5_active != trace_active
+                ):
+                    issues.add("ASSET_BINDING_MISMATCH")
             if (
                 e4 is not None
                 and manifest is not None
@@ -2444,13 +2799,6 @@ def validate_graph(
                 rejected_e1.append(
                     (candidate_position, target, candidate)
                 )
-    material_fields = (
-        "discovery_claim",
-        "observed_failure",
-        "mechanism",
-        "strongest_falsifier",
-        "evidence_anchors",
-    )
     blocked_after_reject = {
         AUDIT_INPUT_MANIFEST,
         E2_AUDIT,
@@ -2483,9 +2831,8 @@ def validate_graph(
         for rejected_position, rejected, _ in rejected_e1:
             if candidate_position <= rejected_position or candidate is rejected:
                 continue
-            if all(
-                candidate.get(field) == rejected.get(field)
-                for field in material_fields
+            if _e1_material_signature(candidate) == _e1_material_signature(
+                rejected
             ):
                 issues.add("REJECTED_LINEAGE_CANNOT_PROGRESS")
 
