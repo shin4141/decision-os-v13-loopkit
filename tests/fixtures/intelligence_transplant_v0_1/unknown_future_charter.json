@@ -1,0 +1,28 @@
+{
+  "as_of": "2026-07-30T00:00:00Z",
+  "authority_mode": "MANUAL_OWNER_ATTESTED",
+  "charter_gate": "GO",
+  "charter_hash": "9ab345ce4a6cb0afd5bc9bb9b16737d34e4c22fec8e533b15b8c31ce672e4d41",
+  "charter_id": "charter-001",
+  "completion_line": "A causal Stage 5 reuse is structurally demonstrated.",
+  "content_hash": "9ab345ce4a6cb0afd5bc9bb9b16737d34e4c22fec8e533b15b8c31ce672e4d41",
+  "decision_owner": "Shin",
+  "decision_owner_attestation": "Shin manually attests this exact record and hash.",
+  "failure_family_id": "failure-family-context-loss",
+  "failure_predicate": "The agent acts without the fixed context guard.",
+  "not_allowed_next": [
+    "Do not merge or release.",
+    "Do not invoke an external model."
+  ],
+  "object_id": "charter-001",
+  "object_type": "RUN_CHARTER",
+  "repository_head": "1111111111111111111111111111111111111111",
+  "run_id": "stage5-run-001",
+  "run_type": "intelligence_transplant",
+  "schema_version": "decision-os.intelligence-transplant.v9",
+  "source_freeze_id": "freeze-guided-001",
+  "source_freeze_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "source_task_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "source_task_id": "source-task-001",
+  "supersedes": null
+}

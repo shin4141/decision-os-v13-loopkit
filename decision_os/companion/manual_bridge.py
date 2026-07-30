@@ -126,6 +126,9 @@ MODEL_VERIFICATION_STATES = frozenset(
     }
 )
 IMPORT_MODES = frozenset({"BYTE_EXACT_FILE_IMPORT", "PASTE_CAPTURE"})
+INTELLIGENCE_TRANSPLANT_TRANSPORT_SCHEMA = (
+    "intelligence-transplant-transport-receipt-v0.1"
+)
 _OUTPUT_EVENT_KINDS = {
     "COPY_FOR_PRO": "COPY_FOR_PRO_GENERATED",
     "EXECUTION_HANDOFF": "EXECUTION_HANDOFF_GENERATED",
@@ -253,6 +256,9 @@ _BURDEN_FIELDS = (
     "fields_lost_or_altered_during_transfer",
 )
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,200}$")
+_INTELLIGENCE_TRANSPLANT_SAFE_ID = re.compile(
+    r"^[A-Za-z0-9_.:-]{1,200}$"
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _JSON_FENCE = re.compile(
@@ -321,6 +327,115 @@ def _timestamp(value: datetime | str) -> str:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _aware_timestamp(value: datetime | str) -> str:
+    """Normalize one timezone-aware Stage 5 transport timestamp."""
+
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value:
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ManualBridgeValidationError(
+                "Stage 5 transport as_of must be timezone-aware."
+            ) from exc
+    else:
+        raise ManualBridgeValidationError(
+            "Stage 5 transport as_of must be timezone-aware."
+        )
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ManualBridgeValidationError(
+            "Stage 5 transport as_of must be timezone-aware."
+        )
+    return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def build_intelligence_transplant_transport(
+    *,
+    payload: bytes,
+    source_path_or_label: str,
+    mode: str,
+    declared_sha256: str | None,
+    context_evidence_ref: Mapping[str, Any] | None,
+    as_of: datetime | str,
+) -> dict[str, Any]:
+    """Build one session-independent exact-byte Stage 5 transport receipt.
+
+    The returned ``payload`` is an internal hand-off to the dedicated Stage 5
+    store.  It is never included in the persisted receipt or a legacy Manual
+    Bridge session.
+    """
+
+    if not isinstance(payload, bytes) or not payload:
+        raise ManualBridgeValidationError(
+            "Stage 5 transport requires non-empty exact bytes."
+        )
+    if len(payload) > MAX_ARTIFACT_BYTES:
+        raise ManualBridgeValidationError(
+            "Stage 5 transport exceeds the 1 MiB limit."
+        )
+    if mode not in IMPORT_MODES:
+        raise ManualBridgeValidationError(
+            "Stage 5 transport mode is unsupported."
+        )
+    if (
+        not isinstance(source_path_or_label, str)
+        or not source_path_or_label
+        or len(source_path_or_label) > 1000
+        or "\n" in source_path_or_label
+        or "\r" in source_path_or_label
+        or "\x00" in source_path_or_label
+    ):
+        raise ManualBridgeValidationError(
+            "Stage 5 transport source label is invalid."
+        )
+    exact_payload_sha256 = sha256_bytes(payload)
+    if (
+        not isinstance(declared_sha256, str)
+        or not _SHA256.fullmatch(declared_sha256)
+        or declared_sha256 != exact_payload_sha256
+    ):
+        raise ManualBridgeValidationError(
+            "Declared SHA-256 does not match exact Stage 5 payload bytes."
+        )
+    if context_evidence_ref is not None:
+        if not isinstance(context_evidence_ref, Mapping):
+            raise ManualBridgeValidationError(
+                "Stage 5 context evidence reference is invalid."
+            )
+        context_ref = dict(context_evidence_ref)
+        if (
+            set(context_ref) != {"content_hash", "object_id"}
+            or not isinstance(context_ref["object_id"], str)
+            or not _INTELLIGENCE_TRANSPLANT_SAFE_ID.fullmatch(
+                context_ref["object_id"]
+            )
+            or not isinstance(context_ref["content_hash"], str)
+            or not _SHA256.fullmatch(context_ref["content_hash"])
+        ):
+            raise ManualBridgeValidationError(
+                "Stage 5 context evidence reference is invalid."
+            )
+    else:
+        context_ref = None
+    receipt_body = {
+        "as_of": _aware_timestamp(as_of),
+        "context_evidence_ref": context_ref,
+        "declared_sha256": declared_sha256,
+        "exact_payload_sha256": exact_payload_sha256,
+        "mode": mode,
+        "schema_version": INTELLIGENCE_TRANSPLANT_TRANSPORT_SCHEMA,
+        "source_path_or_label": source_path_or_label,
+    }
+    return {
+        "payload": payload,
+        "transport_receipt": {
+            **receipt_body,
+            "receipt_sha256": sha256_bytes(_canonical_json(receipt_body)),
+        },
+    }
 
 
 def _clean_scalar(value: Any) -> str:

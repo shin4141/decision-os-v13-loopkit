@@ -36,7 +36,7 @@
       </p>
     </section>
 
-    <section class="card" aria-labelledby="task-heading">
+    <section id="bounded-task-card" class="card" aria-labelledby="task-heading">
       <div class="section-heading">
         <div>
           <p class="step">2</p>
@@ -55,6 +55,77 @@
         modify. No shell, dependencies, deletes, renames, MCP, or subagents.
       </p>
       <button id="run" class="primary" type="button">Run</button>
+    </section>
+
+    <section
+      id="intelligence-transplant-card"
+      class="card hidden"
+      aria-labelledby="intelligence-transplant-heading"
+    >
+      <div class="section-heading">
+        <div>
+          <p class="step">5</p>
+          <h2 id="intelligence-transplant-heading">
+            Intelligence Transplant Run
+          </h2>
+        </div>
+        <span id="intelligence-transplant-gate" class="status">HOLD</span>
+      </div>
+      <p class="boundary">
+        This panel is read-only. Evidence transport never starts Codex,
+        assigns a Role, invokes a model, or authorizes the next loop.
+      </p>
+      <dl class="metric-grid">
+        <dt>Run ID</dt>
+        <dd id="intelligence-transplant-run-id">UNKNOWN</dd>
+        <dt>Execution Status</dt>
+        <dd id="intelligence-transplant-execution-status">NOT_ESTABLISHED</dd>
+        <dt>Delta State</dt>
+        <dd id="intelligence-transplant-delta-state">NONE</dd>
+        <dt>Structural Validation</dt>
+        <dd id="intelligence-transplant-structural-validation">UNKNOWN</dd>
+        <dt>Authority Provenance</dt>
+        <dd id="intelligence-transplant-authority-provenance">
+          MANUAL OWNER ATTESTED
+        </dd>
+        <dt>Cryptographic Provenance</dt>
+        <dd id="intelligence-transplant-cryptographic-provenance">
+          NOT ESTABLISHED
+        </dd>
+        <dt>Generalized Transplant</dt>
+        <dd id="intelligence-transplant-generalized-transplant">
+          NOT ESTABLISHED
+        </dd>
+      </dl>
+      <p class="claim-boundary">
+        Local manual authority receipt —not cryptographic identity proof.
+      </p>
+      <h3>Missing Evidence</h3>
+      <ul
+        id="intelligence-transplant-missing-evidence"
+        class="progress-list"
+      ></ul>
+      <h3>Next One Action</h3>
+      <p id="intelligence-transplant-next-action" class="primary-value"></p>
+      <h3>Not Allowed Next</h3>
+      <ul
+        id="intelligence-transplant-not-allowed-next"
+        class="progress-list"
+      ></ul>
+      <h3>Active CAP</h3>
+      <pre id="intelligence-transplant-active-cap" class="result-text"></pre>
+      <h3>Evidence Objects</h3>
+      <pre
+        id="intelligence-transplant-evidence-objects"
+        class="result-text"
+      ></pre>
+      <h3>Lineage</h3>
+      <pre id="intelligence-transplant-lineage" class="result-text"></pre>
+      <p
+        id="intelligence-transplant-error"
+        class="error hidden"
+        role="alert"
+      ></p>
     </section>
 
     <section id="progress-card" class="card hidden" aria-labelledby="progress-heading">
@@ -92,7 +163,7 @@
         <span id="receipt-status" class="status">No repository</span>
       </div>
       <div class="receipt-columns">
-        <div>
+        <div id="bounded-run-receipt-column">
           <h3>Current Run</h3>
           <dl id="run-receipt" class="metric-grid"></dl>
         </div>

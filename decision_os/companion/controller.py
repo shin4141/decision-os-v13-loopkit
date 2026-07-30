@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
+from copy import deepcopy
 import io
 import json
 import os
@@ -31,6 +32,10 @@ from decision_os.acceleration.store import (
     ActiveDefaultRecord,
     StateIntegrityError,
 )
+from decision_os.intelligence_transplant import (
+    IntelligenceTransplantError as CoreIntelligenceTransplantError,
+    strict_json_object,
+)
 from decision_os.companion.guided_intake import (
     AUTHORITY_CLAIM,
     AUTHORITY_EXPLANATION,
@@ -38,10 +43,17 @@ from decision_os.companion.guided_intake import (
     GuidedIntakeController,
     GuidedIntakeIntegrityError,
 )
+from decision_os.companion.intelligence_transplant import (
+    IntelligenceTransplantBusyError,
+    IntelligenceTransplantController,
+    IntelligenceTransplantIntegrityError,
+    IntelligenceTransplantValidationError,
+)
 from decision_os.companion.manual_bridge import (
     BridgeSessionController,
     ManualBridgeBusyError,
     ManualBridgeIntegrityError,
+    build_intelligence_transplant_transport,
 )
 
 
@@ -83,6 +95,22 @@ PickerRunner = Callable[[Path], str | None]
 
 _TERMINAL_STATES = frozenset(
     {"completed", "denied", "unsupported", "needs_attention"}
+)
+_INTELLIGENCE_TRANSPLANT_EVIDENCE_TYPES = frozenset(
+    {
+        "E1_DISCOVERY",
+        "E2_AUDIT",
+        "E3_ACCEPTED_DISCOVERY",
+        "E4_IMPLEMENTATION_BINDING",
+        "E5_REUSE",
+    }
+)
+_INTELLIGENCE_TRANSPLANT_RECEIPT_TYPES = frozenset(
+    {
+        "AUDIT_COMPLETION_RECEIPT",
+        "LOWER_RUN_COMPLETION_RECEIPT",
+        "SEAT_ASSIGNMENT_RECEIPT",
+    }
 )
 _LIFECYCLE_MESSAGES = {
     "starting": "Preparing the bounded task.",
@@ -172,17 +200,25 @@ class CompanionController:
         self._worker: threading.Thread | None = None
         self._bridge: BridgeSessionController | None = None
         self._guided_intake: GuidedIntakeController | None = None
+        self._intelligence_transplant: (
+            IntelligenceTransplantController | None
+        ) = None
         self._active_bridge_operations = 0
         self._active_guided_intake_operations = 0
+        self._active_intelligence_transplant_operations = 0
         self._repository_selection_active = False
         self._load_last_repository()
         if self._repository is not None:
             self._bridge = BridgeSessionController(self._repository)
             self._guided_intake = GuidedIntakeController(self._repository)
+            self._intelligence_transplant = IntelligenceTransplantController(
+                self._repository
+            )
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
         return {
+            "run_type": "bounded_task",
             "state": "idle",
             "progress": [],
             "result": "",
@@ -272,6 +308,10 @@ class CompanionController:
                 raise RepositorySelectionError(
                     "A Guided Intake action is already active."
                 )
+            if self._active_intelligence_transplant_operations:
+                raise RepositorySelectionError(
+                    "An Intelligence Transplant action is already active."
+                )
             if self._repository_selection_active:
                 raise RepositorySelectionError(
                     "Repository selection is already active."
@@ -291,10 +331,17 @@ class CompanionController:
                     raise RepositorySelectionError(
                         "A Guided Intake action is already active."
                     )
+                if self._active_intelligence_transplant_operations:
+                    raise RepositorySelectionError(
+                        "An Intelligence Transplant action is already active."
+                    )
                 self._write_last_repository(repository)
                 self._repository = repository
                 self._bridge = BridgeSessionController(repository)
                 self._guided_intake = GuidedIntakeController(repository)
+                self._intelligence_transplant = (
+                    IntelligenceTransplantController(repository)
+                )
                 self._default_handles = {}
                 self._run = self._empty_run()
                 return self._snapshot_locked()
@@ -330,6 +377,14 @@ class CompanionController:
             raise RepositorySelectionError("Choose a local Git repository first.")
         return self._guided_intake
 
+    def _require_intelligence_transplant(
+        self,
+    ) -> IntelligenceTransplantController:
+        self._require_repository()
+        if self._intelligence_transplant is None:
+            raise RepositorySelectionError("Choose a local Git repository first.")
+        return self._intelligence_transplant
+
     @contextmanager
     def _bridge_operation(self) -> Any:
         with self._condition:
@@ -364,6 +419,10 @@ class CompanionController:
                 raise RepositorySelectionError(
                     "Repository selection is already active."
                 )
+            if self._active_intelligence_transplant_operations:
+                raise GuidedIntakeBusyError(
+                    "An Intelligence Transplant action is already active."
+                )
             guided_intake = self._require_guided_intake()
             self._active_guided_intake_operations += 1
         try:
@@ -379,6 +438,10 @@ class CompanionController:
             if self._repository_selection_active:
                 raise RepositorySelectionError(
                     "Repository selection is already active."
+                )
+            if self._active_intelligence_transplant_operations:
+                raise GuidedIntakeBusyError(
+                    "An Intelligence Transplant action is already active."
                 )
             guided_intake = self._require_guided_intake()
             bridge = self._require_bridge()
@@ -407,6 +470,134 @@ class CompanionController:
                     "The selected repository changed during the Guided Intake transfer."
                 )
             return self._snapshot_locked()
+
+    @contextmanager
+    def _intelligence_transplant_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            self._require_no_active_run()
+            if self._active_guided_intake_operations:
+                raise IntelligenceTransplantBusyError(
+                    "A Guided Intake action is already active."
+                )
+            intelligence_transplant = (
+                self._require_intelligence_transplant()
+            )
+            self._active_intelligence_transplant_operations += 1
+        try:
+            yield intelligence_transplant
+        finally:
+            with self._condition:
+                self._active_intelligence_transplant_operations -= 1
+                self._condition.notify_all()
+
+    @contextmanager
+    def _guided_intake_transplant_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            self._require_no_active_run()
+            if self._active_guided_intake_operations:
+                raise GuidedIntakeBusyError(
+                    "A Guided Intake action is already active."
+                )
+            if self._active_intelligence_transplant_operations:
+                raise IntelligenceTransplantBusyError(
+                    "An Intelligence Transplant action is already active."
+                )
+            guided_intake = self._require_guided_intake()
+            intelligence_transplant = (
+                self._require_intelligence_transplant()
+            )
+            self._active_guided_intake_operations += 1
+            self._active_intelligence_transplant_operations += 1
+        try:
+            with guided_intake.store.transaction(
+                write=False,
+                timeout_seconds=0.05,
+            ):
+                yield guided_intake, intelligence_transplant
+        finally:
+            with self._condition:
+                self._active_intelligence_transplant_operations -= 1
+                self._active_guided_intake_operations -= 1
+                self._condition.notify_all()
+
+    @staticmethod
+    def _intelligence_transplant_run(
+        projection: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        run = deepcopy(dict(projection))
+        run.update(
+            {
+                "run_type": "intelligence_transplant",
+                "state": "active",
+                "progress": [],
+                "result": "",
+                "file_actions": [],
+                "runtime": None,
+                "receipt_delta": None,
+                "approval": None,
+                "error": projection.get("error"),
+            }
+        )
+        return run
+
+    def _snapshot_after_intelligence_transplant(
+        self,
+        intelligence_transplant: IntelligenceTransplantController,
+        projection: Mapping[str, Any],
+        guided_intake: GuidedIntakeController | None = None,
+    ) -> dict[str, Any]:
+        with self._condition:
+            if intelligence_transplant is not self._intelligence_transplant:
+                raise RepositorySelectionError(
+                    "The selected repository changed during the "
+                    "Intelligence Transplant action."
+                )
+            if (
+                guided_intake is not None
+                and guided_intake is not self._guided_intake
+            ):
+                raise RepositorySelectionError(
+                    "The selected repository changed during the "
+                    "Intelligence Transplant Charter action."
+                )
+            self._run = self._intelligence_transplant_run(projection)
+            return self._snapshot_locked()
+
+    @staticmethod
+    def _transport_json_object(payload: bytes) -> dict[str, Any]:
+        try:
+            return strict_json_object(payload)
+        except CoreIntelligenceTransplantError as exc:
+            raise IntelligenceTransplantValidationError(
+                "Intelligence Transplant payload must be one strict JSON object."
+            ) from exc
+
+    @staticmethod
+    def _intelligence_transplant_transport(
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+    ) -> dict[str, Any]:
+        return build_intelligence_transplant_transport(
+            payload=payload,
+            source_path_or_label=source_path_or_label,
+            mode=mode,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+        )
 
     def start_bridge_session(
         self,
@@ -561,6 +752,187 @@ class CompanionController:
                 bridge,
             )
 
+    def intelligence_transplant_freeze_charter(
+        self,
+        record: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        if not isinstance(record, Mapping):
+            raise IntelligenceTransplantValidationError(
+                "Run Charter must be an object."
+            )
+        with self._guided_intake_transplant_operation() as (
+            guided_intake,
+            intelligence_transplant,
+        ):
+            charter_source = guided_intake.charter_source()
+            expected_source = {
+                "completion_line": charter_source["completion_line"],
+                "repository_head": charter_source["repository_head"],
+                "source_freeze_id": charter_source["freeze_id"],
+                "source_freeze_sha256": (
+                    charter_source["frozen_intake_sha256"]
+                ),
+            }
+            if any(
+                record.get(key) != expected
+                for key, expected in expected_source.items()
+            ):
+                raise IntelligenceTransplantValidationError(
+                    "Run Charter does not match the current Guided Intake freeze."
+                )
+            projection = intelligence_transplant.freeze_charter(
+                dict(record),
+                charter_source=charter_source,
+                repository_head=charter_source["repository_head"],
+            )
+            return self._snapshot_after_intelligence_transplant(
+                intelligence_transplant,
+                projection,
+                guided_intake,
+            )
+
+    def _intelligence_transplant_attach(
+        self,
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+        operation: str,
+    ) -> dict[str, Any]:
+        record = self._transport_json_object(payload)
+        object_type = record.get("object_type")
+        if operation == "evidence":
+            allowed_types = _INTELLIGENCE_TRANSPLANT_EVIDENCE_TYPES
+        elif operation == "receipt":
+            allowed_types = _INTELLIGENCE_TRANSPLANT_RECEIPT_TYPES
+        elif operation == "manifest":
+            allowed_types = frozenset(
+                {"AUDIT_INPUT_MANIFEST", "LOWER_RUN_TRIAL_MANIFEST"}
+            )
+        elif operation == "control":
+            allowed_types = frozenset({"MANUAL_CONTROL_RECEIPT"})
+        else:
+            raise IntelligenceTransplantValidationError(
+                "Intelligence Transplant operation is invalid."
+            )
+        if object_type not in allowed_types:
+            raise IntelligenceTransplantValidationError(
+                "Intelligence Transplant object type does not match the route."
+            )
+        transport = self._intelligence_transplant_transport(
+            payload=payload,
+            mode=mode,
+            source_path_or_label=source_path_or_label,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+        )
+        with self._intelligence_transplant_operation() as (
+            intelligence_transplant
+        ):
+            if operation == "manifest":
+                projection = intelligence_transplant.freeze_manifest(
+                    record,
+                    transport=transport,
+                )
+            elif operation == "control":
+                projection = intelligence_transplant.record_control(
+                    record,
+                    transport=transport,
+                )
+            else:
+                projection = intelligence_transplant.attach_object(
+                    record,
+                    transport=transport,
+                )
+            return self._snapshot_after_intelligence_transplant(
+                intelligence_transplant,
+                projection,
+            )
+
+    def intelligence_transplant_freeze_manifest(
+        self,
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+    ) -> dict[str, Any]:
+        return self._intelligence_transplant_attach(
+            payload=payload,
+            mode=mode,
+            source_path_or_label=source_path_or_label,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+            operation="manifest",
+        )
+
+    def intelligence_transplant_attach_evidence(
+        self,
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+    ) -> dict[str, Any]:
+        return self._intelligence_transplant_attach(
+            payload=payload,
+            mode=mode,
+            source_path_or_label=source_path_or_label,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+            operation="evidence",
+        )
+
+    def intelligence_transplant_attach_receipt(
+        self,
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+    ) -> dict[str, Any]:
+        return self._intelligence_transplant_attach(
+            payload=payload,
+            mode=mode,
+            source_path_or_label=source_path_or_label,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+            operation="receipt",
+        )
+
+    def intelligence_transplant_record_control(
+        self,
+        *,
+        payload: bytes,
+        mode: str,
+        source_path_or_label: str,
+        declared_sha256: str,
+        context_evidence_ref: Mapping[str, Any] | None,
+        as_of: str,
+    ) -> dict[str, Any]:
+        return self._intelligence_transplant_attach(
+            payload=payload,
+            mode=mode,
+            source_path_or_label=source_path_or_label,
+            declared_sha256=declared_sha256,
+            context_evidence_ref=context_evidence_ref,
+            as_of=as_of,
+            operation="control",
+        )
+
     def start_run(self, task: str) -> dict[str, Any]:
         if not isinstance(task, str) or not task.strip():
             raise CompanionError("Enter one bounded task before running.")
@@ -568,7 +940,18 @@ class CompanionController:
             raise CompanionError("The bounded task exceeds the local size limit.")
         with self._condition:
             repository = self._require_repository()
+            if (
+                self._run.get("run_type") == "intelligence_transplant"
+                and self._run.get("state") == "active"
+            ):
+                raise RunConflictError(
+                    "One Intelligence Transplant Run is already active."
+                )
             self._require_no_active_run()
+            if self._active_intelligence_transplant_operations:
+                raise RunConflictError(
+                    "An Intelligence Transplant action is already active."
+                )
             before = self._safe_receipt(repository)
             self._run = self._empty_run()
             self._run["state"] = "running"
@@ -763,6 +1146,10 @@ class CompanionController:
         with self._condition:
             self._require_repository()
             self._require_no_active_run()
+            if self._active_intelligence_transplant_operations:
+                raise RunConflictError(
+                    "An Intelligence Transplant action is already active."
+                )
             self._run = self._empty_run()
             self._approval_choice = None
             return self._snapshot_locked()
@@ -879,6 +1266,7 @@ class CompanionController:
             defaults: list[dict[str, str]] = []
             bridge = None
             guided_intake = None
+            intelligence_transplant = None
         else:
             store = AccelerationStore(self._repository)
             receipt = self._public_receipt(
@@ -958,17 +1346,83 @@ class CompanionController:
                     ),
                     "transfer_receipt": None,
                 }
-        return {
-            "repository": repository_view,
-            "run": {
+            try:
+                intelligence_transplant = (
+                    self._require_intelligence_transplant().snapshot()
+                )
+            except (
+                IntelligenceTransplantIntegrityError,
+                IntelligenceTransplantBusyError,
+            ) as exc:
+                busy = isinstance(exc, IntelligenceTransplantBusyError)
+                intelligence_transplant = {
+                    "run_id": None,
+                    "run_type": "intelligence_transplant",
+                    "execution_status": "NOT_ESTABLISHED",
+                    "delta_state": "NONE",
+                    "current_gate": "HOLD" if busy else "BLOCK",
+                    "missing_evidence": [
+                        (
+                            "STAGE5_STORE_BUSY"
+                            if busy
+                            else "STAGE5_STORE_INTEGRITY"
+                        )
+                    ],
+                    "next_one_action": (
+                        "Retry the read after the bounded store operation."
+                        if busy
+                        else (
+                            "Repair the Stage 5 store from verified event "
+                            "and blob identities."
+                        )
+                    ),
+                    "not_allowed_next": [
+                        "STATE_PROMOTION",
+                        "MODEL_INVOCATION",
+                        "ROLE_ASSIGNMENT",
+                    ],
+                    "evidence_objects": [],
+                    "lineage": [],
+                    "active_cap": None,
+                    "generalized_transplant": "NOT ESTABLISHED",
+                    "structural_validation": "UNKNOWN" if busy else "FAIL",
+                    "authority_provenance": "MANUAL OWNER ATTESTED",
+                    "cryptographic_provenance": "NOT ESTABLISHED",
+                    "store_state": "BUSY" if busy else "BLOCKED_CORRUPT",
+                    "error": (
+                        "Intelligence Transplant is temporarily busy."
+                        if busy
+                        else (
+                            "Intelligence Transplant state is corrupted. "
+                            "Stage 5 reads and writes are blocked."
+                        )
+                    ),
+                }
+        if (
+            self._run.get("run_type") == "intelligence_transplant"
+            and intelligence_transplant is not None
+        ):
+            run = self._intelligence_transplant_run(
+                intelligence_transplant
+            )
+            # Stage 5 maturity is always derived from the freshly verified
+            # projection above.  Keep the private cache synchronized so a
+            # later operation or projection cannot reuse stale maturity.
+            self._run = deepcopy(run)
+        else:
+            run = {
                 key: value
                 for key, value in self._run.items()
                 if key != "receipt_before"
-            },
+            }
+        return {
+            "repository": repository_view,
+            "run": run,
             "receipt": receipt,
             "defaults": defaults,
             "manual_bridge": bridge,
             "guided_intake": guided_intake,
+            "intelligence_transplant": intelligence_transplant,
             "supported": (
                 "Read-only work or one exact typed single-file create or modify."
             ),
