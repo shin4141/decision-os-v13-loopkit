@@ -11,6 +11,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+from unittest.mock import Mock
 from urllib.parse import urlsplit
 
 from decision_os.acceleration.engine import AccelerationEngine
@@ -52,6 +53,13 @@ GUIDED_INTAKE_POST_ROUTES = (
     "/api/guided-intake/purge",
     "/api/guided-intake/transfer-to-bridge",
 )
+INTELLIGENCE_TRANSPLANT_POST_ROUTES = (
+    "/api/intelligence-transplant/charter/freeze",
+    "/api/intelligence-transplant/manifest/freeze",
+    "/api/intelligence-transplant/evidence/attach",
+    "/api/intelligence-transplant/receipt/attach",
+    "/api/intelligence-transplant/control/record",
+)
 
 
 class CompanionServerTest(unittest.TestCase):
@@ -91,6 +99,7 @@ class CompanionServerTest(unittest.TestCase):
         path: str,
         *,
         body: dict[str, object] | None = None,
+        raw_body: bytes | None = None,
         cookie: str | None = None,
         csrf: str | None = None,
         origin: str | None = None,
@@ -111,9 +120,14 @@ class CompanionServerTest(unittest.TestCase):
             headers["X-Decision-OS-CSRF"] = csrf
         if origin is not None:
             headers["Origin"] = origin
-        payload = None
+        self.assertFalse(
+            body is not None and raw_body is not None,
+            "request body must use one encoding",
+        )
+        payload = raw_body
         if body is not None:
             payload = json.dumps(body).encode("utf-8")
+        if payload is not None:
             headers["Content-Type"] = "application/json"
             headers["Content-Length"] = str(
                 declared_content_length
@@ -304,6 +318,329 @@ class CompanionServerTest(unittest.TestCase):
                     origin=self.server.origin,
                 )
                 self.assertEqual(403, status)
+
+    def test_all_intelligence_transplant_posts_require_private_boundary(
+        self,
+    ) -> None:
+        for path in INTELLIGENCE_TRANSPLANT_POST_ROUTES:
+            with self.subTest(path=path, missing="session"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    origin=self.server.origin,
+                )
+                self.assertEqual(401, status)
+
+        cookie, csrf = self.bootstrap()
+        for path in INTELLIGENCE_TRANSPLANT_POST_ROUTES:
+            with self.subTest(path=path, missing="origin"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    csrf=csrf,
+                )
+                self.assertEqual(403, status)
+            with self.subTest(path=path, missing="csrf"):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body={},
+                    cookie=cookie,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(403, status)
+
+    def test_intelligence_transplant_routes_reject_non_exact_bodies(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        transport_payload = '{"object_type":"E1_DISCOVERY"}'
+        transport = {
+            "as_of": "2026-07-30T00:00:00Z",
+            "context_evidence_ref": None,
+            "declared_sha256": hashlib.sha256(
+                transport_payload.encode("utf-8")
+            ).hexdigest(),
+            "mode": "PASTE_CAPTURE",
+            "payload_text": transport_payload,
+            "source_path_or_label": "e1.json",
+        }
+        invalid_requests = [
+            ("/api/intelligence-transplant/charter/freeze", {}),
+            (
+                "/api/intelligence-transplant/charter/freeze",
+                {"record": {}, "unexpected": True},
+            ),
+            (
+                "/api/intelligence-transplant/charter/freeze",
+                {"record": []},
+            ),
+            *[
+                (path, {})
+                for path in INTELLIGENCE_TRANSPLANT_POST_ROUTES[1:]
+            ],
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {**transport, "unexpected": True},
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {
+                    **transport,
+                    "payload_base64": "e30=",
+                },
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {**transport, "context_evidence_ref": "not-an-object"},
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {**transport, "declared_sha256": 1},
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {**transport, "declared_sha256": None},
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {**transport, "as_of": 1},
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {
+                    **transport,
+                    "mode": "BYTE_EXACT_FILE_IMPORT",
+                },
+            ),
+            (
+                "/api/intelligence-transplant/evidence/attach",
+                {
+                    **{
+                        key: value
+                        for key, value in transport.items()
+                        if key != "payload_text"
+                    },
+                    "mode": "BYTE_EXACT_FILE_IMPORT",
+                    "payload_base64": "%%%not-base64%%%",
+                },
+            ),
+        ]
+        for path, body in invalid_requests:
+            with self.subTest(path=path, body=body):
+                status, _headers, _raw = self.request(
+                    "POST",
+                    path,
+                    body=body,
+                    cookie=cookie,
+                    csrf=csrf,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(400, status)
+
+    def test_intelligence_transplant_outer_json_is_strict_only_there(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        original_charter = (
+            self.controller.intelligence_transplant_freeze_charter
+        )
+        original_start_run = self.controller.start_run
+        charter = Mock(side_effect=AssertionError("invalid JSON dispatched"))
+        bounded_tasks: list[str] = []
+
+        def start_run(task: str) -> dict[str, object]:
+            bounded_tasks.append(task)
+            return self.controller.snapshot()
+
+        self.controller.intelligence_transplant_freeze_charter = charter  # type: ignore[method-assign]
+        self.controller.start_run = start_run  # type: ignore[method-assign]
+        try:
+            for raw_body in (
+                b'{"record":{"object_type":"RUN_CHARTER",'
+                b'"object_type":"E1_DISCOVERY"}}',
+                b'{"record":{"object_type":NaN}}',
+                b'{"record":{},"record":{}}',
+            ):
+                with self.subTest(raw_body=raw_body):
+                    status, _headers, _raw = self.request(
+                        "POST",
+                        "/api/intelligence-transplant/charter/freeze",
+                        raw_body=raw_body,
+                        cookie=cookie,
+                        csrf=csrf,
+                        origin=self.server.origin,
+                    )
+                    self.assertEqual(400, status)
+
+            status, _headers, raw = self.request(
+                "POST",
+                "/api/run",
+                raw_body=b'{"task":"first","task":"second"}',
+                cookie=cookie,
+                csrf=csrf,
+                origin=self.server.origin,
+            )
+            self.assertEqual(
+                200,
+                status,
+                raw.decode("utf-8", errors="replace"),
+            )
+            self.assertEqual(["second"], bounded_tasks)
+        finally:
+            self.controller.intelligence_transplant_freeze_charter = (  # type: ignore[method-assign]
+                original_charter
+            )
+            self.controller.start_run = original_start_run  # type: ignore[method-assign]
+
+        charter.assert_not_called()
+
+    def test_intelligence_transplant_routes_never_dispatch_runner(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        original_start_run = self.controller.start_run
+        original_methods = {
+            "charter": (
+                self.controller.intelligence_transplant_freeze_charter
+            ),
+            "manifest": (
+                self.controller.intelligence_transplant_freeze_manifest
+            ),
+            "evidence": (
+                self.controller.intelligence_transplant_attach_evidence
+            ),
+            "receipt": (
+                self.controller.intelligence_transplant_attach_receipt
+            ),
+            "control": (
+                self.controller.intelligence_transplant_record_control
+            ),
+        }
+        received: list[tuple[str, object]] = []
+
+        def charter(record: dict[str, object]) -> dict[str, object]:
+            received.append(("charter", record))
+            return self.controller.snapshot()
+
+        def transport(
+            *,
+            payload: bytes,
+            mode: str,
+            source_path_or_label: str,
+            declared_sha256: str,
+            context_evidence_ref: dict[str, object] | None,
+            as_of: str,
+            label: str,
+        ) -> dict[str, object]:
+            received.append(
+                (
+                    label,
+                    {
+                        "as_of": as_of,
+                        "context_evidence_ref": context_evidence_ref,
+                        "declared_sha256": declared_sha256,
+                        "mode": mode,
+                        "payload": payload,
+                        "source_path_or_label": source_path_or_label,
+                    },
+                )
+            )
+            return self.controller.snapshot()
+
+        self.controller.start_run = Mock(  # type: ignore[method-assign]
+            side_effect=AssertionError("Stage 5 must not start the runner")
+        )
+        self.controller.intelligence_transplant_freeze_charter = charter  # type: ignore[method-assign]
+        self.controller.intelligence_transplant_freeze_manifest = (  # type: ignore[method-assign]
+            lambda **value: transport(label="manifest", **value)
+        )
+        self.controller.intelligence_transplant_attach_evidence = (  # type: ignore[method-assign]
+            lambda **value: transport(label="evidence", **value)
+        )
+        self.controller.intelligence_transplant_attach_receipt = (  # type: ignore[method-assign]
+            lambda **value: transport(label="receipt", **value)
+        )
+        self.controller.intelligence_transplant_record_control = (  # type: ignore[method-assign]
+            lambda **value: transport(label="control", **value)
+        )
+        try:
+            status, _headers, raw = self.request(
+                "POST",
+                "/api/intelligence-transplant/charter/freeze",
+                body={"record": {"object_type": "RUN_CHARTER"}},
+                cookie=cookie,
+                csrf=csrf,
+                origin=self.server.origin,
+            )
+            self.assertEqual(
+                200,
+                status,
+                raw.decode("utf-8", errors="replace"),
+            )
+            for label, path in (
+                ("manifest", "/api/intelligence-transplant/manifest/freeze"),
+                ("evidence", "/api/intelligence-transplant/evidence/attach"),
+                ("receipt", "/api/intelligence-transplant/receipt/attach"),
+                ("control", "/api/intelligence-transplant/control/record"),
+            ):
+                payload_text = f'{{"route_label":"{label}"}}'
+                status, _headers, raw = self.request(
+                    "POST",
+                    path,
+                    body={
+                        "as_of": "2026-07-30T00:00:00Z",
+                        "context_evidence_ref": None,
+                        "declared_sha256": hashlib.sha256(
+                            payload_text.encode("utf-8")
+                        ).hexdigest(),
+                        "mode": "PASTE_CAPTURE",
+                        "payload_text": payload_text,
+                        "source_path_or_label": f"{label}.json",
+                    },
+                    cookie=cookie,
+                    csrf=csrf,
+                    origin=self.server.origin,
+                )
+                self.assertEqual(
+                    200,
+                    status,
+                    raw.decode("utf-8", errors="replace"),
+                )
+        finally:
+            self.controller.start_run = original_start_run  # type: ignore[method-assign]
+            self.controller.intelligence_transplant_freeze_charter = (  # type: ignore[method-assign]
+                original_methods["charter"]
+            )
+            self.controller.intelligence_transplant_freeze_manifest = (  # type: ignore[method-assign]
+                original_methods["manifest"]
+            )
+            self.controller.intelligence_transplant_attach_evidence = (  # type: ignore[method-assign]
+                original_methods["evidence"]
+            )
+            self.controller.intelligence_transplant_attach_receipt = (  # type: ignore[method-assign]
+                original_methods["receipt"]
+            )
+            self.controller.intelligence_transplant_record_control = (  # type: ignore[method-assign]
+                original_methods["control"]
+            )
+
+        self.assertEqual(
+            ["charter", "manifest", "evidence", "receipt", "control"],
+            [label for label, _value in received],
+        )
+        for label, value in received[1:]:
+            self.assertIsInstance(value, dict)
+            self.assertEqual(
+                f'{{"route_label":"{label}"}}'.encode("utf-8"),
+                value["payload"],
+            )
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
 
     def test_guided_intake_routes_reject_non_exact_bodies(self) -> None:
         cookie, csrf = self.bootstrap()
@@ -1128,6 +1465,60 @@ class CompanionServerTest(unittest.TestCase):
             html,
         )
 
+    def test_intelligence_transplant_dom_is_read_only_and_boundary_exact(
+        self,
+    ) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+        self.assertEqual(200, status)
+        for element_id in (
+            "intelligence-transplant-card",
+            "intelligence-transplant-heading",
+            "intelligence-transplant-gate",
+            "intelligence-transplant-run-id",
+            "intelligence-transplant-execution-status",
+            "intelligence-transplant-delta-state",
+            "intelligence-transplant-structural-validation",
+            "intelligence-transplant-authority-provenance",
+            "intelligence-transplant-cryptographic-provenance",
+            "intelligence-transplant-generalized-transplant",
+            "intelligence-transplant-missing-evidence",
+            "intelligence-transplant-next-action",
+            "intelligence-transplant-not-allowed-next",
+            "intelligence-transplant-active-cap",
+            "intelligence-transplant-evidence-objects",
+            "intelligence-transplant-lineage",
+            "intelligence-transplant-error",
+        ):
+            with self.subTest(element_id=element_id):
+                self.assertIn(f'id="{element_id}"'.encode("utf-8"), html)
+        normalized_html = " ".join(html.decode("utf-8").split())
+        self.assertIn("Structural Validation", normalized_html)
+        self.assertIn("Authority Provenance", normalized_html)
+        self.assertIn("MANUAL OWNER ATTESTED", normalized_html)
+        self.assertIn("Cryptographic Provenance", normalized_html)
+        self.assertIn("NOT ESTABLISHED", normalized_html)
+        self.assertIn(
+            (
+                "Local manual authority receipt —not cryptographic "
+                "identity proof."
+            ),
+            normalized_html,
+        )
+        section = normalized_html.split(
+            'id="intelligence-transplant-card"',
+            1,
+        )[1].split("</section>", 1)[0]
+        self.assertNotIn("<button", section)
+
+        status, _headers, javascript = self.request(
+            "GET",
+            "/app.js",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        self.assertNotIn(b'postJSON("/api/intelligence-transplant', javascript)
+
     def test_one_active_run_and_browser_reconnect(self) -> None:
         cookie, csrf = self.bootstrap()
         status, _headers, _raw = self.request(
@@ -1500,6 +1891,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "bridge-start",
               "bridge-state",
               "bridge-task-id",
+              "bounded-task-card",
+              "bounded-run-receipt-column",
               "choose-repository",
               "claim-boundary",
               "defaults",
@@ -1544,6 +1937,22 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "guided-intake-transfer",
               "guided-intake-transfer-receipt",
               "guided-intake-unknown",
+              "intelligence-transplant-active-cap",
+              "intelligence-transplant-authority-provenance",
+              "intelligence-transplant-card",
+              "intelligence-transplant-cryptographic-provenance",
+              "intelligence-transplant-delta-state",
+              "intelligence-transplant-error",
+              "intelligence-transplant-evidence-objects",
+              "intelligence-transplant-execution-status",
+              "intelligence-transplant-gate",
+              "intelligence-transplant-generalized-transplant",
+              "intelligence-transplant-lineage",
+              "intelligence-transplant-missing-evidence",
+              "intelligence-transplant-next-action",
+              "intelligence-transplant-not-allowed-next",
+              "intelligence-transplant-run-id",
+              "intelligence-transplant-structural-validation",
               "new-run",
               "progress",
               "progress-card",
@@ -1581,6 +1990,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "global-error",
               "guided-intake-confirmation",
               "guided-intake-error",
+              "intelligence-transplant-card",
+              "intelligence-transplant-error",
               "progress-card",
               "result-card",
               "run-error",
@@ -1754,6 +2165,36 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ],
               receipt: staleReceipt,
+              intelligence_transplant: {
+                run_id: "IT-RUN-STALE",
+                run_type: "intelligence_transplant",
+                execution_status: "ACTIVE",
+                delta_state: "CANDIDATE",
+                current_gate: "HOLD",
+                missing_evidence: [
+                  "</li><script>globalThis.stage5Hostile = true</script>",
+                ],
+                next_one_action: "Attach current E4.",
+                not_allowed_next: ["MODEL_INVOCATION", "ROLE_ASSIGNMENT"],
+                evidence_objects: [
+                  {
+                    object_id: "E3-ONE",
+                    content_hash: "<script>literal-stage5-hash</script>",
+                  },
+                ],
+                lineage: [
+                  {
+                    from: "E1-ONE",
+                    to: "E3-ONE",
+                  },
+                ],
+                active_cap: null,
+                generalized_transplant: "NOT_ESTABLISHED",
+                structural_validation: "PASS",
+                authority_provenance: "MANUAL_OWNER_ATTESTED",
+                cryptographic_provenance: "NOT_ESTABLISHED",
+                error: null,
+              },
               guided_intake: emptyGuidedIntake({
                 state: "AWAITING_CONFIRMATION",
                 original_request:
@@ -1983,6 +2424,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               }),
             };
+            const selectedStage5State = {
+              ...completedState,
+              csrf: "csrf-stage5-selected",
+              run: {
+                ...completedState.intelligence_transplant,
+                state: "active",
+              },
+            };
             const recoveredState = {
               csrf: "csrf-recovered",
               repository: {
@@ -2073,6 +2522,39 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(
+                hidden("intelligence-transplant-card"),
+                false,
+              );
+              assert.strictEqual(
+                elements.get("intelligence-transplant-run-id").textContent,
+                "IT-RUN-STALE",
+              );
+              assert.strictEqual(
+                elements.get(
+                  "intelligence-transplant-authority-provenance",
+                ).textContent,
+                "MANUAL OWNER ATTESTED",
+              );
+              assert.strictEqual(
+                elements.get(
+                  "intelligence-transplant-cryptographic-provenance",
+                ).textContent,
+                "NOT ESTABLISHED",
+              );
+              assert.strictEqual(
+                elements.get(
+                  "intelligence-transplant-generalized-transplant",
+                ).textContent,
+                "NOT ESTABLISHED",
+              );
+              assert.strictEqual(
+                elements.get(
+                  "intelligence-transplant-missing-evidence",
+                ).textContent.includes("<script>"),
+                true,
+              );
+              assert.strictEqual(sandbox.stage5Hostile, undefined);
               assert.strictEqual(
                 elements.get("bridge-state").textContent,
                 "DESIGN_IMPORTED",
@@ -2219,6 +2701,28 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 true,
               );
               assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+
+              fetchQueue.push(() =>
+                Promise.resolve(response(selectedStage5State)),
+              );
+              await runNextTimer();
+              assert.strictEqual(hidden("bounded-task-card"), true);
+              assert.strictEqual(
+                hidden("bounded-run-receipt-column"),
+                true,
+              );
+              assert.strictEqual(hidden("progress-card"), true);
+              assert.strictEqual(hidden("result-card"), true);
+              assert.strictEqual(elements.get("run").disabled, true);
+              assert.strictEqual(elements.get("task").disabled, true);
+              assert.strictEqual(
+                hidden("intelligence-transplant-card"),
+                false,
+              );
+              assert.strictEqual(
+                elements.get("intelligence-transplant-run-id").textContent,
+                "IT-RUN-STALE",
+              );
 
               const guidedFetchStart = fetchCalls.length;
               elements.get("guided-intake-original-request").value =
@@ -2600,6 +3104,26 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(elements.get("claim-boundary").textContent, "");
               assert.strictEqual(elements.get("defaults").children.length, 0);
+              assert.strictEqual(
+                hidden("intelligence-transplant-card"),
+                true,
+              );
+              for (const id of [
+                "intelligence-transplant-run-id",
+                "intelligence-transplant-execution-status",
+                "intelligence-transplant-delta-state",
+                "intelligence-transplant-structural-validation",
+                "intelligence-transplant-authority-provenance",
+                "intelligence-transplant-cryptographic-provenance",
+                "intelligence-transplant-generalized-transplant",
+                "intelligence-transplant-next-action",
+                "intelligence-transplant-active-cap",
+                "intelligence-transplant-evidence-objects",
+                "intelligence-transplant-lineage",
+                "intelligence-transplant-error",
+              ]) {
+                assert.strictEqual(elements.get(id).textContent, "", id);
+              }
               assert.strictEqual(
                 elements.get("guided-intake-state").textContent,
                 "No intake",

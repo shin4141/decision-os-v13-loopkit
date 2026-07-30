@@ -30,6 +30,13 @@ from .guided_intake import (
     GuidedIntakeIntegrityError,
     GuidedIntakeValidationError,
 )
+from .intelligence_transplant import (
+    IntelligenceTransplantBusyError,
+    IntelligenceTransplantConflictError,
+    IntelligenceTransplantError,
+    IntelligenceTransplantIntegrityError,
+    IntelligenceTransplantValidationError,
+)
 from .manual_bridge import (
     ManualBridgeConflictError,
     ManualBridgeError,
@@ -42,6 +49,7 @@ from decision_os.acceleration.store import StateIntegrityError
 _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_BRIDGE_REQUEST_BYTES = 2 * 1024 * 1024
 _MAX_GUIDED_INTAKE_REQUEST_BYTES = 2 * 1024 * 1024
+_MAX_INTELLIGENCE_TRANSPLANT_REQUEST_BYTES = 2 * 1024 * 1024
 _GUIDED_INTAKE_POST_ROUTES = frozenset(
     {
         "/api/guided-intake/capture",
@@ -51,6 +59,15 @@ _GUIDED_INTAKE_POST_ROUTES = frozenset(
         "/api/guided-intake/import-draft",
         "/api/guided-intake/purge",
         "/api/guided-intake/transfer-to-bridge",
+    }
+)
+_INTELLIGENCE_TRANSPLANT_POST_ROUTES = frozenset(
+    {
+        "/api/intelligence-transplant/charter/freeze",
+        "/api/intelligence-transplant/manifest/freeze",
+        "/api/intelligence-transplant/evidence/attach",
+        "/api/intelligence-transplant/receipt/attach",
+        "/api/intelligence-transplant/control/record",
     }
 )
 _STATIC_FILES = {
@@ -70,6 +87,19 @@ _CSP = (
     "form-action 'none'; "
     "frame-ancestors 'none'"
 )
+
+
+def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("Duplicate JSON object key.")
+        value[key] = item
+    return value
+
+
+def _reject_non_finite_json(constant: str) -> None:
+    raise ValueError(f"Non-finite JSON number: {constant}")
 
 
 class CompanionHTTPServer(ThreadingHTTPServer):
@@ -275,6 +305,7 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         self,
         *,
         maximum_bytes: int = _MAX_REQUEST_BYTES,
+        strict: bool = False,
     ) -> dict[str, Any] | None:
         if self.headers.get_content_type() != "application/json":
             self._error(
@@ -292,8 +323,16 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Request is too large.")
             return None
         try:
-            value = json.loads(self.rfile.read(length))
-        except (UnicodeError, json.JSONDecodeError):
+            raw = self.rfile.read(length)
+            if strict:
+                value = json.loads(
+                    raw,
+                    object_pairs_hook=_strict_object,
+                    parse_constant=_reject_non_finite_json,
+                )
+            else:
+                value = json.loads(raw)
+        except (UnicodeError, ValueError):
             self._error(HTTPStatus.BAD_REQUEST, "Request JSON is invalid.")
             return None
         if not isinstance(value, dict):
@@ -301,17 +340,90 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             return None
         return value
 
+    @staticmethod
+    def _transport_payload(
+        value: dict[str, Any],
+    ) -> tuple[bytes, dict[str, Any]]:
+        common = {
+            "mode",
+            "source_path_or_label",
+            "declared_sha256",
+            "context_evidence_ref",
+            "as_of",
+        }
+        payload_fields = {"payload_base64", "payload_text"} & set(value)
+        if (
+            set(value) != common | payload_fields
+            or len(payload_fields) != 1
+            or not isinstance(value["mode"], str)
+            or not isinstance(value["source_path_or_label"], str)
+            or not isinstance(value["declared_sha256"], str)
+            or (
+                value["context_evidence_ref"] is not None
+                and not isinstance(value["context_evidence_ref"], dict)
+            )
+            or not isinstance(value["as_of"], str)
+        ):
+            raise CompanionError(
+                "Intelligence Transplant transport fields are invalid."
+            )
+        mode = value["mode"]
+        if mode == "BYTE_EXACT_FILE_IMPORT":
+            encoded = value.get("payload_base64")
+            if not isinstance(encoded, str) or "payload_text" in value:
+                raise CompanionError(
+                    "Intelligence Transplant byte-exact payload is invalid."
+                )
+            try:
+                payload = base64.b64decode(
+                    encoded.encode("ascii"),
+                    validate=True,
+                )
+            except (UnicodeError, ValueError, binascii.Error) as exc:
+                raise CompanionError(
+                    "Intelligence Transplant byte-exact payload is invalid."
+                ) from exc
+        elif mode == "PASTE_CAPTURE":
+            captured = value.get("payload_text")
+            if not isinstance(captured, str) or "payload_base64" in value:
+                raise CompanionError(
+                    "Intelligence Transplant paste payload is invalid."
+                )
+            try:
+                payload = captured.encode("utf-8")
+            except UnicodeEncodeError as exc:
+                raise CompanionError(
+                    "Intelligence Transplant paste payload is invalid."
+                ) from exc
+        else:
+            raise CompanionError(
+                "Intelligence Transplant transport mode is invalid."
+            )
+        metadata = {
+            "mode": mode,
+            "source_path_or_label": value["source_path_or_label"],
+            "declared_sha256": value["declared_sha256"],
+            "context_evidence_ref": value["context_evidence_ref"],
+            "as_of": value["as_of"],
+        }
+        return payload, metadata
+
     def do_POST(self) -> None:
         path = urlsplit(self.path).path
         if not self._request_allowed(state_change=True):
             return
         if path.startswith("/api/bridge/"):
             maximum_bytes = _MAX_BRIDGE_REQUEST_BYTES
+        elif path in _INTELLIGENCE_TRANSPLANT_POST_ROUTES:
+            maximum_bytes = _MAX_INTELLIGENCE_TRANSPLANT_REQUEST_BYTES
         elif path in _GUIDED_INTAKE_POST_ROUTES:
             maximum_bytes = _MAX_GUIDED_INTAKE_REQUEST_BYTES
         else:
             maximum_bytes = _MAX_REQUEST_BYTES
-        value = self._read_json(maximum_bytes=maximum_bytes)
+        value = self._read_json(
+            maximum_bytes=maximum_bytes,
+            strict=path in _INTELLIGENCE_TRANSPLANT_POST_ROUTES,
+        )
         if value is None:
             return
         try:
@@ -335,6 +447,54 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                 if set(value) != {"handle"}:
                     raise CompanionError("Revoke request fields are invalid.")
                 snapshot = self.server.controller.revoke_default(value["handle"])
+            elif path == "/api/intelligence-transplant/charter/freeze":
+                if set(value) != {"record"} or not isinstance(
+                    value["record"],
+                    dict,
+                ):
+                    raise CompanionError(
+                        "Intelligence Transplant Charter fields are invalid."
+                    )
+                snapshot = (
+                    self.server.controller
+                    .intelligence_transplant_freeze_charter(value["record"])
+                )
+            elif path == "/api/intelligence-transplant/manifest/freeze":
+                payload, metadata = self._transport_payload(value)
+                snapshot = (
+                    self.server.controller
+                    .intelligence_transplant_freeze_manifest(
+                        payload=payload,
+                        **metadata,
+                    )
+                )
+            elif path == "/api/intelligence-transplant/evidence/attach":
+                payload, metadata = self._transport_payload(value)
+                snapshot = (
+                    self.server.controller
+                    .intelligence_transplant_attach_evidence(
+                        payload=payload,
+                        **metadata,
+                    )
+                )
+            elif path == "/api/intelligence-transplant/receipt/attach":
+                payload, metadata = self._transport_payload(value)
+                snapshot = (
+                    self.server.controller
+                    .intelligence_transplant_attach_receipt(
+                        payload=payload,
+                        **metadata,
+                    )
+                )
+            elif path == "/api/intelligence-transplant/control/record":
+                payload, metadata = self._transport_payload(value)
+                snapshot = (
+                    self.server.controller
+                    .intelligence_transplant_record_control(
+                        payload=payload,
+                        **metadata,
+                    )
+                )
             elif path == "/api/guided-intake/capture":
                 required = {"original_request"}
                 allowed = required | {"supersedes_request_id"}
@@ -574,6 +734,27 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
             return
         except GuidedIntakeError as exc:
+            self._error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+        except IntelligenceTransplantBusyError:
+            self._error(
+                HTTPStatus.CONFLICT,
+                "Intelligence Transplant is temporarily busy.",
+            )
+            return
+        except IntelligenceTransplantIntegrityError:
+            self._error(
+                HTTPStatus.CONFLICT,
+                "Intelligence Transplant state is corrupted.",
+            )
+            return
+        except IntelligenceTransplantConflictError as exc:
+            self._error(HTTPStatus.CONFLICT, str(exc))
+            return
+        except IntelligenceTransplantValidationError as exc:
+            self._error(HTTPStatus.BAD_REQUEST, str(exc))
+            return
+        except IntelligenceTransplantError as exc:
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
             return
         except (ManualBridgeConflictError, ManualBridgeIntegrityError) as exc:

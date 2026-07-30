@@ -1,0 +1,944 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/v13-intelligence-transplant.schema.json",
+  "title": "Decision-OS V13 Stage 5 Intelligence Transplant v0.1",
+  "description": "Exact structural records for the manual-owner-attested Stage 5 evidence graph. Structural validity does not establish cryptographic provenance, real-world identity, external independence, hidden-input absence, or generalized transplant.",
+  "oneOf": [
+    {"$ref": "#/$defs/runCharter"},
+    {"$ref": "#/$defs/seatAssignmentReceipt"},
+    {"$ref": "#/$defs/auditInputManifest"},
+    {"$ref": "#/$defs/e1Discovery"},
+    {"$ref": "#/$defs/e2Audit"},
+    {"$ref": "#/$defs/auditCompletionReceipt"},
+    {"$ref": "#/$defs/e3AcceptedDiscovery"},
+    {"$ref": "#/$defs/e4ImplementationBinding"},
+    {"$ref": "#/$defs/lowerRunTrialManifest"},
+    {"$ref": "#/$defs/lowerRunCompletionReceipt"},
+    {"$ref": "#/$defs/e5Reuse"},
+    {"$ref": "#/$defs/manualControlReceipt"}
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,200}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "nonEmptyStringList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "objectRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_id", "content_hash"],
+      "properties": {
+        "object_id": {"$ref": "#/$defs/safeId"},
+        "content_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "baseRecord": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "object_type",
+        "object_id",
+        "run_id",
+        "as_of",
+        "supersedes",
+        "content_hash"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "decision-os.intelligence-transplant.v0.1"
+        },
+        "object_type": {
+          "enum": [
+            "RUN_CHARTER",
+            "SEAT_ASSIGNMENT_RECEIPT",
+            "AUDIT_INPUT_MANIFEST",
+            "E1_DISCOVERY",
+            "E2_AUDIT",
+            "AUDIT_COMPLETION_RECEIPT",
+            "E3_ACCEPTED_DISCOVERY",
+            "E4_IMPLEMENTATION_BINDING",
+            "LOWER_RUN_TRIAL_MANIFEST",
+            "LOWER_RUN_COMPLETION_RECEIPT",
+            "E5_REUSE",
+            "MANUAL_CONTROL_RECEIPT"
+          ]
+        },
+        "object_id": {"$ref": "#/$defs/safeId"},
+        "run_id": {"$ref": "#/$defs/safeId"},
+        "as_of": {"type": "string", "format": "date-time"},
+        "supersedes": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/objectRef"}
+          ]
+        },
+        "content_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "authorityFields": {
+      "type": "object",
+      "required": [
+        "authority_mode",
+        "decision_owner",
+        "decision_owner_attestation"
+      ],
+      "properties": {
+        "authority_mode": {"const": "MANUAL_OWNER_ATTESTED"},
+        "decision_owner": {"const": "Shin"},
+        "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "cryptographicBoundary": {
+      "type": "object",
+      "required": ["cryptographic_identity"],
+      "properties": {
+        "cryptographic_identity": {"const": "NOT_ESTABLISHED"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "git_blob",
+        "sha256",
+        "asset_identity",
+        "asset_version",
+        "asset_type"
+      ],
+      "properties": {
+        "path": {"$ref": "#/$defs/nonEmptyString"},
+        "git_blob": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_version": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_type": {
+          "enum": ["test", "guard", "rule", "schema", "validator"]
+        }
+      }
+    },
+    "behavioralVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "evidence_ref", "observed_behavior"],
+      "properties": {
+        "mode": {
+          "enum": [
+            "ADVERSARIAL_BEHAVIOR_TEST",
+            "RUNTIME_INTERCEPTION_TRACE",
+            "CONTROLLED_CONTRAST"
+          ]
+        },
+        "evidence_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "observed_behavior": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "activationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "trace_ref", "activation_point"],
+      "properties": {
+        "mode": {
+          "enum": [
+            "RUNTIME_TRACE",
+            "ADVERSARIAL_TRIGGER_TRACE",
+            "CONTROLLED_CONTRAST"
+          ]
+        },
+        "trace_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "activation_point": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "claimBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_claim",
+        "required_control_behavior",
+        "asset_identity",
+        "asset_version",
+        "asset_hash",
+        "behavioral_verification",
+        "activation_evidence"
+      ],
+      "properties": {
+        "accepted_claim": {"$ref": "#/$defs/nonEmptyString"},
+        "required_control_behavior": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_version": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_hash": {"$ref": "#/$defs/sha256"},
+        "behavioral_verification": {"$ref": "#/$defs/behavioralVerification"},
+        "activation_evidence": {"$ref": "#/$defs/activationEvidence"}
+      }
+    },
+    "revisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_delta", "revision_applied"],
+      "properties": {
+        "required_delta": {"$ref": "#/$defs/nonEmptyString"},
+        "revision_applied": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "activationTrace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_identity",
+        "asset_version",
+        "asset_hash",
+        "e4_ref",
+        "failure_predicate",
+        "interception_point"
+      ],
+      "properties": {
+        "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_version": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_hash": {"$ref": "#/$defs/sha256"},
+        "e4_ref": {"$ref": "#/$defs/objectRef"},
+        "failure_predicate": {"$ref": "#/$defs/nonEmptyString"},
+        "interception_point": {"$ref": "#/$defs/interceptionPoint"}
+      }
+    },
+    "interceptionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "event_ref", "observed_effect"],
+      "properties": {
+        "mode": {
+          "enum": [
+            "PRE_ACTION_CONTROL_INTERCEPTION",
+            "FAILURE_PREDICATE_PREVENTION"
+          ]
+        },
+        "event_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "observed_effect": {"enum": ["INTERCEPTED", "PREVENTED"]}
+      }
+    },
+    "controlledContrast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixed_variables",
+        "only_changed_condition",
+        "off_result",
+        "on_result"
+      ],
+      "properties": {
+        "fixed_variables": {
+          "const": [
+            "new_task_bytes",
+            "repository_head",
+            "runtime_context",
+            "input_manifest"
+          ]
+        },
+        "only_changed_condition": {"const": "ACTIVE_ASSET_ENABLED"},
+        "off_result": {"const": "FAILURE_OBSERVED"},
+        "on_result": {"enum": ["INTERCEPTED", "PREVENTED"]}
+      }
+    },
+    "newTaskInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_class", "task_id", "sha256"],
+      "properties": {
+        "input_class": {"const": "NEW_TASK"},
+        "task_id": {"$ref": "#/$defs/nonEmptyString"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "repositoryStateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_class", "repository_head"],
+      "properties": {
+        "input_class": {"const": "REPOSITORY_STATE"},
+        "repository_head": {"$ref": "#/$defs/gitCommit"}
+      }
+    },
+    "activeAssetInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_class",
+        "asset_identity",
+        "asset_version",
+        "asset_hash"
+      ],
+      "properties": {
+        "input_class": {"const": "ACTIVE_ASSET"},
+        "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_version": {"$ref": "#/$defs/nonEmptyString"},
+        "asset_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "minimumExecutionBoundaryInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_class", "boundary"],
+      "properties": {
+        "input_class": {"const": "MINIMUM_EXECUTION_BOUNDARY"},
+        "boundary": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "allowedInputManifest": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/newTaskInput"},
+        {"$ref": "#/$defs/repositoryStateInput"},
+        {"$ref": "#/$defs/activeAssetInput"},
+        {"$ref": "#/$defs/minimumExecutionBoundaryInput"}
+      ],
+      "items": false
+    },
+    "rollbackArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "post_rollback_state", "git_blob", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/nonEmptyString"},
+        "post_rollback_state": {"enum": ["PRESENT", "DELETED"]},
+        "git_blob": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+          ]
+        },
+        "sha256": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/sha256"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"post_rollback_state": {"const": "PRESENT"}},
+            "required": ["post_rollback_state"]
+          },
+          "then": {
+            "properties": {
+              "git_blob": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
+          },
+          "else": {
+            "properties": {
+              "git_blob": {"type": "null"},
+              "sha256": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "runCharter": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {
+          "type": "object",
+          "required": [
+            "charter_id",
+            "charter_hash",
+            "run_type",
+            "source_freeze_id",
+            "source_freeze_sha256",
+            "source_task_id",
+            "source_task_hash",
+            "completion_line",
+            "repository_head",
+            "failure_family_id",
+            "failure_predicate",
+            "charter_gate",
+            "not_allowed_next"
+          ],
+          "properties": {
+            "object_type": {"const": "RUN_CHARTER"},
+            "charter_id": {"$ref": "#/$defs/safeId"},
+            "charter_hash": {"$ref": "#/$defs/sha256"},
+            "run_type": {"const": "intelligence_transplant"},
+            "source_freeze_id": {"$ref": "#/$defs/nonEmptyString"},
+            "source_freeze_sha256": {"$ref": "#/$defs/sha256"},
+            "source_task_id": {"$ref": "#/$defs/nonEmptyString"},
+            "source_task_hash": {"$ref": "#/$defs/sha256"},
+            "completion_line": {"$ref": "#/$defs/nonEmptyString"},
+            "repository_head": {"$ref": "#/$defs/gitCommit"},
+            "failure_family_id": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_predicate": {"$ref": "#/$defs/nonEmptyString"},
+            "charter_gate": {"enum": ["GO", "HOLD", "CAP", "BLOCK"]},
+            "not_allowed_next": {"$ref": "#/$defs/stringList"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "seatAssignmentReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {"$ref": "#/$defs/cryptographicBoundary"},
+        {
+          "type": "object",
+          "required": [
+            "receipt_id",
+            "receipt_hash",
+            "charter_ref",
+            "seat",
+            "assignee_context_identity",
+            "assignment_scope",
+            "allowed_inputs",
+            "not_allowed_inputs",
+            "effective_as_of"
+          ],
+          "properties": {
+            "object_type": {"const": "SEAT_ASSIGNMENT_RECEIPT"},
+            "receipt_id": {"$ref": "#/$defs/safeId"},
+            "receipt_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "seat": {
+              "enum": ["DISCOVERY", "AUDIT", "IMPLEMENTATION", "LOWER_RUN"]
+            },
+            "assignee_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "assignment_scope": {"$ref": "#/$defs/nonEmptyString"},
+            "allowed_inputs": {"$ref": "#/$defs/nonEmptyStringList"},
+            "not_allowed_inputs": {"$ref": "#/$defs/nonEmptyStringList"},
+            "effective_as_of": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "auditInputManifest": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {
+          "type": "object",
+          "required": [
+            "manifest_id",
+            "manifest_hash",
+            "charter_ref",
+            "target_e1_ref",
+            "audit_assignment_ref",
+            "input_refs",
+            "forbidden_input_classes",
+            "frozen_as_of"
+          ],
+          "properties": {
+            "object_type": {"const": "AUDIT_INPUT_MANIFEST"},
+            "manifest_id": {"$ref": "#/$defs/safeId"},
+            "manifest_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "target_e1_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "input_refs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/objectRef"}
+            },
+            "forbidden_input_classes": {"$ref": "#/$defs/nonEmptyStringList"},
+            "frozen_as_of": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "e1Discovery": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {
+          "type": "object",
+          "required": [
+            "e1_id",
+            "charter_ref",
+            "discovery_assignment_ref",
+            "discovery_context_identity",
+            "failure_family_id",
+            "failure_predicate",
+            "discovery_claim",
+            "observed_failure",
+            "mechanism",
+            "strongest_falsifier",
+            "evidence_anchors",
+            "decision_owner_attestation"
+          ],
+          "properties": {
+            "object_type": {"const": "E1_DISCOVERY"},
+            "e1_id": {"$ref": "#/$defs/safeId"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "discovery_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "discovery_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_family_id": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_predicate": {"$ref": "#/$defs/nonEmptyString"},
+            "discovery_claim": {"$ref": "#/$defs/nonEmptyString"},
+            "observed_failure": {"$ref": "#/$defs/nonEmptyString"},
+            "mechanism": {"$ref": "#/$defs/nonEmptyString"},
+            "strongest_falsifier": {"$ref": "#/$defs/nonEmptyString"},
+            "evidence_anchors": {"$ref": "#/$defs/nonEmptyStringList"},
+            "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "e2Audit": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {
+          "type": "object",
+          "required": [
+            "e2_id",
+            "charter_ref",
+            "target_e1_ref",
+            "audit_manifest_ref",
+            "audit_assignment_ref",
+            "auditor_context_identity",
+            "verdict",
+            "strongest_counterexample",
+            "required_deltas",
+            "decision_owner_attestation"
+          ],
+          "properties": {
+            "object_type": {"const": "E2_AUDIT"},
+            "e2_id": {"$ref": "#/$defs/safeId"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "target_e1_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_manifest_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "auditor_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "verdict": {"enum": ["SURVIVE", "REVISE", "REJECT"]},
+            "strongest_counterexample": {"$ref": "#/$defs/nonEmptyString"},
+            "required_deltas": {"$ref": "#/$defs/stringList"},
+            "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "auditCompletionReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {"$ref": "#/$defs/cryptographicBoundary"},
+        {
+          "type": "object",
+          "required": [
+            "receipt_id",
+            "receipt_hash",
+            "charter_ref",
+            "target_e1_ref",
+            "e2_ref",
+            "audit_manifest_ref",
+            "audit_assignment_ref",
+            "verdict",
+            "completed_as_of"
+          ],
+          "properties": {
+            "object_type": {"const": "AUDIT_COMPLETION_RECEIPT"},
+            "receipt_id": {"$ref": "#/$defs/safeId"},
+            "receipt_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "target_e1_ref": {"$ref": "#/$defs/objectRef"},
+            "e2_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_manifest_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "verdict": {"enum": ["SURVIVE", "REVISE", "REJECT"]},
+            "completed_as_of": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "e3AcceptedDiscovery": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {
+          "type": "object",
+          "required": [
+            "e3_id",
+            "charter_ref",
+            "e1_ref",
+            "e2_ref",
+            "audit_completion_receipt_ref",
+            "accepted_claims",
+            "revision_applied",
+            "excluded_claims",
+            "implementation_requirements",
+            "implementation_scope",
+            "forbidden_overclaims",
+            "claim_boundary",
+            "decision_owner_attestation"
+          ],
+          "properties": {
+            "object_type": {"const": "E3_ACCEPTED_DISCOVERY"},
+            "e3_id": {"$ref": "#/$defs/safeId"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "e1_ref": {"$ref": "#/$defs/objectRef"},
+            "e2_ref": {"$ref": "#/$defs/objectRef"},
+            "audit_completion_receipt_ref": {"$ref": "#/$defs/objectRef"},
+            "accepted_claims": {"$ref": "#/$defs/nonEmptyStringList"},
+            "revision_applied": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/revisionBinding"}
+            },
+            "excluded_claims": {"$ref": "#/$defs/stringList"},
+            "implementation_requirements": {"$ref": "#/$defs/nonEmptyStringList"},
+            "implementation_scope": {"$ref": "#/$defs/nonEmptyStringList"},
+            "forbidden_overclaims": {"$ref": "#/$defs/nonEmptyStringList"},
+            "claim_boundary": {
+              "const": "GENERALIZED_TRANSPLANT_NOT_ESTABLISHED"
+            },
+            "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "e4ImplementationBinding": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {
+          "type": "object",
+          "required": [
+            "e4_id",
+            "charter_ref",
+            "e3_ref",
+            "implementation_assignment_ref",
+            "repository_base",
+            "repository_head",
+            "repository_opening_head",
+            "repository_closing_head",
+            "repository_base_is_ancestor",
+            "changed_artifacts",
+            "claim_bindings",
+            "focused_suite_status",
+            "regression_status",
+            "regression_reason",
+            "rollback_path",
+            "decision_owner_attestation"
+          ],
+          "properties": {
+            "object_type": {"const": "E4_IMPLEMENTATION_BINDING"},
+            "e4_id": {"$ref": "#/$defs/safeId"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "e3_ref": {"$ref": "#/$defs/objectRef"},
+            "implementation_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "repository_base": {"$ref": "#/$defs/gitCommit"},
+            "repository_head": {"$ref": "#/$defs/gitCommit"},
+            "repository_opening_head": {"$ref": "#/$defs/gitCommit"},
+            "repository_closing_head": {"$ref": "#/$defs/gitCommit"},
+            "repository_base_is_ancestor": {"type": "boolean"},
+            "changed_artifacts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/artifact"}
+            },
+            "claim_bindings": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/claimBinding"}
+            },
+            "focused_suite_status": {"const": "PASS"},
+            "regression_status": {"enum": ["PASS", "NA"]},
+            "regression_reason": {
+              "type": ["string", "null"],
+              "minLength": 1
+            },
+            "rollback_path": {"$ref": "#/$defs/nonEmptyString"},
+            "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "lowerRunTrialManifest": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {
+          "type": "object",
+          "required": [
+            "manifest_id",
+            "manifest_hash",
+            "charter_ref",
+            "e4_ref",
+            "lower_run_assignment_ref",
+            "trial_id",
+            "new_task_id",
+            "new_task_hash",
+            "source_task_id",
+            "source_task_hash",
+            "failure_family_id",
+            "failure_predicate",
+            "allowed_input_manifest",
+            "allowed_input_manifest_hash",
+            "forbidden_input_classes",
+            "input_separation_attestation",
+            "active_asset_identity",
+            "active_asset_version",
+            "active_asset_hash",
+            "repository_head",
+            "lower_runtime_context_identity",
+            "minimum_execution_boundary",
+            "effective_as_of"
+          ],
+          "properties": {
+            "object_type": {"const": "LOWER_RUN_TRIAL_MANIFEST"},
+            "manifest_id": {"$ref": "#/$defs/safeId"},
+            "manifest_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "e4_ref": {"$ref": "#/$defs/objectRef"},
+            "lower_run_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "trial_id": {"$ref": "#/$defs/safeId"},
+            "new_task_id": {"$ref": "#/$defs/nonEmptyString"},
+            "new_task_hash": {"$ref": "#/$defs/sha256"},
+            "source_task_id": {"$ref": "#/$defs/nonEmptyString"},
+            "source_task_hash": {"$ref": "#/$defs/sha256"},
+            "failure_family_id": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_predicate": {"$ref": "#/$defs/nonEmptyString"},
+            "allowed_input_manifest": {"$ref": "#/$defs/allowedInputManifest"},
+            "allowed_input_manifest_hash": {"$ref": "#/$defs/sha256"},
+            "forbidden_input_classes": {"$ref": "#/$defs/nonEmptyStringList"},
+            "input_separation_attestation": {"const": "UPPER_INPUT_EXCLUDED"},
+            "active_asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_version": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_hash": {"$ref": "#/$defs/sha256"},
+            "repository_head": {"$ref": "#/$defs/gitCommit"},
+            "lower_runtime_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "minimum_execution_boundary": {"$ref": "#/$defs/nonEmptyString"},
+            "effective_as_of": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "lowerRunCompletionReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {"$ref": "#/$defs/cryptographicBoundary"},
+        {
+          "type": "object",
+          "required": [
+            "receipt_id",
+            "receipt_hash",
+            "charter_ref",
+            "trial_manifest_ref",
+            "e4_ref",
+            "trial_id",
+            "actual_input_manifest_hash",
+            "active_asset_identity",
+            "active_asset_version",
+            "active_asset_hash",
+            "asset_activation_trace",
+            "causal_proof_mode",
+            "controlled_contrast",
+            "detection_or_prevention_result",
+            "human_rescue",
+            "no_rescue_attestation",
+            "event_sequence",
+            "lower_runtime_context_identity",
+            "evaluator_context_identity",
+            "evaluator_receipt",
+            "started_as_of",
+            "asset_activated_as_of",
+            "failure_observed_as_of",
+            "completed_as_of"
+          ],
+          "properties": {
+            "object_type": {"const": "LOWER_RUN_COMPLETION_RECEIPT"},
+            "receipt_id": {"$ref": "#/$defs/safeId"},
+            "receipt_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "trial_manifest_ref": {"$ref": "#/$defs/objectRef"},
+            "e4_ref": {"$ref": "#/$defs/objectRef"},
+            "trial_id": {"$ref": "#/$defs/safeId"},
+            "actual_input_manifest_hash": {"$ref": "#/$defs/sha256"},
+            "active_asset_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_version": {"$ref": "#/$defs/nonEmptyString"},
+            "active_asset_hash": {"$ref": "#/$defs/sha256"},
+            "asset_activation_trace": {"$ref": "#/$defs/activationTrace"},
+            "causal_proof_mode": {
+              "enum": ["INTERCEPTION_TRACE", "CONTROLLED_CONTRAST"]
+            },
+            "controlled_contrast": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/controlledContrast"}
+              ]
+            },
+            "detection_or_prevention_result": {
+              "enum": ["INTERCEPTED", "PREVENTED"]
+            },
+            "human_rescue": {"enum": ["NONE", "PRESENT", "INTERRUPTED"]},
+            "no_rescue_attestation": {"const": "NO_HUMAN_RESCUE"},
+            "event_sequence": {
+              "const": [
+                "RUN_STARTED",
+                "ASSET_ACTIVATED",
+                "FAILURE_OBSERVED",
+                "EVALUATED"
+              ]
+            },
+            "lower_runtime_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "evaluator_context_identity": {"$ref": "#/$defs/nonEmptyString"},
+            "evaluator_receipt": {"$ref": "#/$defs/nonEmptyString"},
+            "started_as_of": {"type": "string", "format": "date-time"},
+            "asset_activated_as_of": {"type": "string", "format": "date-time"},
+            "failure_observed_as_of": {"type": "string", "format": "date-time"},
+            "completed_as_of": {"type": "string", "format": "date-time"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "e5Reuse": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {
+          "type": "object",
+          "required": [
+            "e5_id",
+            "charter_ref",
+            "e4_ref",
+            "trial_manifest_ref",
+            "completion_receipt_ref",
+            "source_task_id",
+            "new_task_id",
+            "failure_family_id",
+            "failure_predicate",
+            "causal_proof_mode",
+            "detection_or_prevention_result",
+            "decision_owner_attestation"
+          ],
+          "properties": {
+            "object_type": {"const": "E5_REUSE"},
+            "e5_id": {"$ref": "#/$defs/safeId"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "e4_ref": {"$ref": "#/$defs/objectRef"},
+            "trial_manifest_ref": {"$ref": "#/$defs/objectRef"},
+            "completion_receipt_ref": {"$ref": "#/$defs/objectRef"},
+            "source_task_id": {"$ref": "#/$defs/nonEmptyString"},
+            "new_task_id": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_family_id": {"$ref": "#/$defs/nonEmptyString"},
+            "failure_predicate": {"$ref": "#/$defs/nonEmptyString"},
+            "causal_proof_mode": {
+              "enum": ["INTERCEPTION_TRACE", "CONTROLLED_CONTRAST"]
+            },
+            "detection_or_prevention_result": {
+              "enum": ["INTERCEPTED", "PREVENTED"]
+            },
+            "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "manualControlReceipt": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {"$ref": "#/$defs/cryptographicBoundary"},
+        {
+          "type": "object",
+          "required": [
+            "receipt_id",
+            "receipt_hash",
+            "charter_ref",
+            "control_action",
+            "target_object_id",
+            "target_content_hash",
+            "reason",
+            "effective_as_of",
+            "capped_from",
+            "cap_axis",
+            "cap_limit",
+            "cap_release_condition",
+            "cap_expires_as_of",
+            "release_evidence_refs",
+            "post_rollback_repository_head",
+            "rollback_changed_artifacts"
+          ],
+          "properties": {
+            "object_type": {"const": "MANUAL_CONTROL_RECEIPT"},
+            "receipt_id": {"$ref": "#/$defs/safeId"},
+            "receipt_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "control_action": {
+              "enum": ["CAP", "CAP_RELEASE", "REVOKE", "ROLLBACK"]
+            },
+            "target_object_id": {"$ref": "#/$defs/safeId"},
+            "target_content_hash": {"$ref": "#/$defs/sha256"},
+            "reason": {"$ref": "#/$defs/nonEmptyString"},
+            "effective_as_of": {"type": "string", "format": "date-time"},
+            "capped_from": {
+              "type": ["string", "null"],
+              "enum": [
+                "NONE",
+                "CANDIDATE",
+                "IMPLEMENTED",
+                "REUSED",
+                "REJECTED",
+                "REVOKED",
+                null
+              ]
+            },
+            "cap_axis": {"type": ["string", "null"], "minLength": 1},
+            "cap_limit": {"type": ["string", "null"], "minLength": 1},
+            "cap_release_condition": {
+              "type": ["string", "null"],
+              "minLength": 1
+            },
+            "cap_expires_as_of": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "release_evidence_refs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/objectRef"}
+            },
+            "post_rollback_repository_head": {
+              "oneOf": [
+                {"type": "null"},
+                {"$ref": "#/$defs/gitCommit"}
+              ]
+            },
+            "rollback_changed_artifacts": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/rollbackArtifact"}
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

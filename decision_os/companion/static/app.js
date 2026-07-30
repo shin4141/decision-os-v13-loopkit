@@ -17,6 +17,8 @@ let guidedPurgedInputClearedIdentity = null;
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const GUIDED_INTAKE_AUTHORITY_CLAIM =
   "INTERPRETATION ONLY — NO EXECUTION AUTHORITY";
+const MANUAL_OWNER_AUTHORITY = "MANUAL OWNER ATTESTED";
+const CRYPTOGRAPHIC_PROVENANCE_NOT_ESTABLISHED = "NOT ESTABLISHED";
 
 const byId = (id) => document.getElementById(id);
 
@@ -35,6 +37,7 @@ function setHidden(id, hidden) {
 function statusLabel(state) {
   return {
     idle: "Idle",
+    active: "Active",
     running: "Running",
     completed: "Completed",
     denied: "Denied",
@@ -238,6 +241,118 @@ function renderGuidedList(id, values) {
     item.textContent = displayValue(value, "UNKNOWN");
     target.append(item);
   }
+}
+
+function intelligenceTransplantDisplay(value, fallback) {
+  const displayed = displayValue(value, fallback);
+  return displayed
+    .split("MANUAL_OWNER_ATTESTED")
+    .join(MANUAL_OWNER_AUTHORITY)
+    .split("NOT_ESTABLISHED")
+    .join(CRYPTOGRAPHIC_PROVENANCE_NOT_ESTABLISHED);
+}
+
+function renderIntelligenceTransplant(value, repository) {
+  const panel = value && typeof value === "object" ? value : null;
+  const visible = Boolean(
+    repository &&
+      panel &&
+      (panel.run_id ||
+        panel.error ||
+        panel.store_state === "BLOCKED_CORRUPT" ||
+        panel.store_state === "BUSY"),
+  );
+  setHidden("intelligence-transplant-card", !visible);
+  setText(
+    "intelligence-transplant-gate",
+    panel ? intelligenceTransplantDisplay(panel.current_gate, "UNKNOWN") : "",
+  );
+  setText(
+    "intelligence-transplant-run-id",
+    panel ? intelligenceTransplantDisplay(panel.run_id, "UNKNOWN") : "",
+  );
+  setText(
+    "intelligence-transplant-execution-status",
+    panel
+      ? intelligenceTransplantDisplay(panel.execution_status, "NOT ESTABLISHED")
+      : "",
+  );
+  setText(
+    "intelligence-transplant-delta-state",
+    panel ? intelligenceTransplantDisplay(panel.delta_state, "NONE") : "",
+  );
+  setText(
+    "intelligence-transplant-structural-validation",
+    panel
+      ? intelligenceTransplantDisplay(panel.structural_validation, "UNKNOWN")
+      : "",
+  );
+  setText(
+    "intelligence-transplant-authority-provenance",
+    panel
+      ? intelligenceTransplantDisplay(
+          panel.authority_provenance,
+          MANUAL_OWNER_AUTHORITY,
+        )
+      : "",
+  );
+  setText(
+    "intelligence-transplant-cryptographic-provenance",
+    panel
+      ? intelligenceTransplantDisplay(
+          panel.cryptographic_provenance,
+          CRYPTOGRAPHIC_PROVENANCE_NOT_ESTABLISHED,
+        )
+      : "",
+  );
+  setText(
+    "intelligence-transplant-generalized-transplant",
+    panel
+      ? intelligenceTransplantDisplay(
+          panel.generalized_transplant,
+          CRYPTOGRAPHIC_PROVENANCE_NOT_ESTABLISHED,
+        )
+      : "",
+  );
+  renderGuidedList(
+    "intelligence-transplant-missing-evidence",
+    panel ? panel.missing_evidence : [],
+  );
+  setText(
+    "intelligence-transplant-next-action",
+    panel ? intelligenceTransplantDisplay(panel.next_one_action, "UNKNOWN") : "",
+  );
+  renderGuidedList(
+    "intelligence-transplant-not-allowed-next",
+    panel ? panel.not_allowed_next : [],
+  );
+  setText(
+    "intelligence-transplant-active-cap",
+    panel ? displayValue(panel.active_cap, "None recorded.") : "",
+  );
+  setText(
+    "intelligence-transplant-evidence-objects",
+    panel
+      ? displayValue(
+          Array.isArray(panel.evidence_objects)
+            ? panel.evidence_objects
+            : [],
+          "[]",
+        )
+      : "",
+  );
+  setText(
+    "intelligence-transplant-lineage",
+    panel
+      ? displayValue(
+          panel.lineage || panel.evidence_lineage || [],
+          "[]",
+        )
+      : "",
+  );
+  const error = panel ? panel.error || "" : "";
+  setText("intelligence-transplant-error", error);
+  setHidden("intelligence-transplant-error", !error);
 }
 
 const guidedIntakeActionIds = [
@@ -742,26 +857,65 @@ function render(state) {
     repository ? repository.path : "Select one local Git repository.",
   );
 
-  const running = state.run.state === "running";
+  const run =
+    state.run && typeof state.run === "object"
+      ? state.run
+      : { run_type: "bounded_task", state: "idle" };
+  const runType = run.run_type || "bounded_task";
+  const boundedRun = runType === "bounded_task";
+  const boundedRunView = boundedRun
+    ? run
+    : {
+        run_type: "bounded_task",
+        state: "idle",
+        progress: [],
+        result: "",
+        file_actions: [],
+        runtime: null,
+        receipt_delta: null,
+        approval: null,
+        error: null,
+      };
+  const running = boundedRun && run.state === "running";
+  setHidden("bounded-task-card", !boundedRun);
+  setHidden("bounded-run-receipt-column", !boundedRun);
   byId("run").disabled =
-    running || !repository || byId("task").value.trim().length === 0;
+    !boundedRun ||
+    running ||
+    !repository ||
+    byId("task").value.trim().length === 0;
   byId("choose-repository").disabled = running;
-  byId("task").disabled = running;
+  byId("task").disabled = !boundedRun || running;
 
-  renderProgress(state.run);
-  renderResult(state.run);
-  renderApproval(state.run.approval);
+  renderProgress(boundedRunView);
+  renderResult(boundedRunView);
+  renderApproval(boundedRunView.approval);
   renderDefaults(state.defaults);
 
   setText(
     "receipt-status",
     state.receipt ? state.receipt.status : "No repository",
   );
-  metricRows(byId("run-receipt"), state.run.receipt_delta);
+  metricRows(byId("run-receipt"), boundedRunView.receipt_delta);
   metricRows(byId("repository-receipt"), state.receipt);
   if (state.receipt) {
     setText("claim-boundary", state.receipt.claim_boundary);
   }
+  const persistentTransplant =
+    state.intelligence_transplant &&
+    typeof state.intelligence_transplant === "object"
+      ? state.intelligence_transplant
+      : null;
+  const transplantView =
+    persistentTransplant &&
+    (persistentTransplant.run_id ||
+      persistentTransplant.error ||
+      persistentTransplant.store_state)
+      ? persistentTransplant
+      : runType === "intelligence_transplant"
+        ? run
+        : persistentTransplant;
+  renderIntelligenceTransplant(transplantView, repository);
   renderGuidedIntake(state.guided_intake, repository);
   renderBridge(state.manual_bridge, repository);
 }
@@ -800,6 +954,7 @@ function enterDisconnected() {
   setText("repository-path", DISCONNECTED_MESSAGE);
 
   const emptyRun = {
+    run_type: "bounded_task",
     state: "idle",
     progress: [],
     result: "",
@@ -819,8 +974,10 @@ function enterDisconnected() {
   byId("defaults").replaceChildren();
   setText("receipt-status", "Session ended");
   byId("run-receipt").replaceChildren();
+  setHidden("bounded-run-receipt-column", false);
   byId("repository-receipt").replaceChildren();
   setText("claim-boundary", "");
+  renderIntelligenceTransplant(null, null);
   renderGuidedIntake(null, null);
   renderBridge(null, null);
 

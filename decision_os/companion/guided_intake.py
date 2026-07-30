@@ -4896,6 +4896,42 @@ class GuidedIntakeController:
         )
         return record, artifact
 
+    def charter_source(self) -> dict[str, Any]:
+        """Return the exact current freeze identity needed by a Run Charter.
+
+        This is intentionally a narrow, read-only adapter.  It exposes neither
+        the raw request nor execution authority, and it refuses a freeze whose
+        request, draft, interpretation, or repository HEAD is no longer current.
+        """
+
+        with self.store.transaction(
+            write=False,
+            timeout_seconds=0.05,
+        ):
+            state = self.store.load_state()
+            self._verify_persisted_history(state)
+            request, _original = self._active_request(state)
+            draft, _draft_value = self._verified_active_draft(state, request)
+            record, artifact = self._latest_freeze(state)
+            interpretation = state.get("current_interpretation")
+            if not self._freeze_is_current(
+                state,
+                record,
+                request,
+                draft,
+                interpretation if isinstance(interpretation, dict) else None,
+            ):
+                raise GuidedIntakeConflictError("HOLD — INTAKE AS-OF STALE")
+            repository_head = _repository_head(self.repository)
+            if artifact.get("repository_identity") != repository_head:
+                raise GuidedIntakeConflictError("HOLD — INTAKE AS-OF STALE")
+            return {
+                "completion_line": artifact["completion_line"]["text"],
+                "freeze_id": record["freeze_id"],
+                "frozen_intake_sha256": record["sha256"],
+                "repository_head": repository_head,
+            }
+
     def _read_receipt(self, digest: str) -> dict[str, Any]:
         raw = self.store.read_blob(
             "receipts",

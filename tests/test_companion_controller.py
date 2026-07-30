@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections import deque
+from contextlib import nullcontext
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -39,6 +41,10 @@ from decision_os.companion.guided_intake import (
     GuidedIntakeBusyError,
     GuidedIntakeIntegrityError,
 )
+from decision_os.companion.intelligence_transplant import (
+    IntelligenceTransplantIntegrityError,
+    IntelligenceTransplantValidationError,
+)
 from decision_os.companion.manual_bridge import ManualBridgeIntegrityError
 
 
@@ -48,6 +54,30 @@ EVIDENCE_SHA256 = (
     "847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab"
 )
 PRODUCT_AS_OF_COMMIT = "63eb260a94595298e2b07b476f7f9d8572c9ef09"
+
+
+def intelligence_transplant_projection(
+    **overrides: Any,
+) -> dict[str, Any]:
+    return {
+        "run_id": "IT-RUN-001",
+        "run_type": "intelligence_transplant",
+        "execution_status": "NOT_ESTABLISHED",
+        "delta_state": "NONE",
+        "current_gate": "HOLD",
+        "missing_evidence": ["E1_DISCOVERY"],
+        "next_one_action": "Attach provenance-valid E1.",
+        "not_allowed_next": ["MODEL_INVOCATION", "ROLE_ASSIGNMENT"],
+        "evidence_objects": [],
+        "lineage": [],
+        "active_cap": None,
+        "generalized_transplant": "NOT ESTABLISHED",
+        "structural_validation": "PASS",
+        "authority_provenance": "MANUAL OWNER ATTESTED",
+        "cryptographic_provenance": "NOT ESTABLISHED",
+        "error": None,
+        **overrides,
+    }
 
 
 def bridge_boundary() -> dict[str, Any]:
@@ -598,6 +628,209 @@ class CompanionControllerTest(unittest.TestCase):
                 self.assertEqual(defaults_before, snapshot["defaults"])
                 self.assertEqual(bridge_before, snapshot["manual_bridge"])
             self.assertEqual(1, len(factory.modes))
+
+    def test_intelligence_transplant_is_typed_and_never_starts_runner(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            projection = intelligence_transplant_projection()
+            charter_source = {
+                "completion_line": (
+                    "Stage 5 structural state is restartable."
+                ),
+                "freeze_id": "GI-FREEZE-001",
+                "frozen_intake_sha256": "a" * 64,
+                "repository_head": "b" * 40,
+            }
+            charter = {
+                "object_type": "RUN_CHARTER",
+                "completion_line": charter_source["completion_line"],
+                "repository_head": charter_source["repository_head"],
+                "source_freeze_id": charter_source["freeze_id"],
+                "source_freeze_sha256": (
+                    charter_source["frozen_intake_sha256"]
+                ),
+            }
+            guided_intake = Mock()
+            guided_intake.charter_source.return_value = charter_source
+            guided_intake.snapshot.return_value = {"state": "FROZEN"}
+            guided_intake.store.transaction.return_value = nullcontext()
+            intelligence_transplant = Mock()
+            intelligence_transplant.freeze_charter.return_value = projection
+            intelligence_transplant.snapshot.return_value = projection
+            controller._guided_intake = guided_intake
+            controller._intelligence_transplant = intelligence_transplant
+
+            snapshot = controller.intelligence_transplant_freeze_charter(
+                charter
+            )
+
+            intelligence_transplant.freeze_charter.assert_called_once_with(
+                charter,
+                charter_source=charter_source,
+                repository_head=charter_source["repository_head"],
+            )
+            self.assertEqual(
+                "intelligence_transplant",
+                snapshot["run"]["run_type"],
+            )
+            self.assertEqual("active", snapshot["run"]["state"])
+            self.assertEqual(
+                "NOT_ESTABLISHED",
+                snapshot["run"]["execution_status"],
+            )
+            self.assertIsNone(snapshot["run"]["approval"])
+            self.assertIsNone(snapshot["run"]["runtime"])
+            self.assertEqual(projection, snapshot["intelligence_transplant"])
+            self.assertIsNone(controller._worker)
+            self.assertEqual(1, len(factory.modes))
+
+            with controller._guided_intake_transplant_operation():
+                with self.assertRaises(GuidedIntakeBusyError):
+                    controller.guided_intake_capture("concurrent mutation")
+
+            with self.assertRaises(RunConflictError):
+                controller.start_run("must not dispatch while Stage 5 is active")
+            self.assertIsNone(controller._worker)
+            self.assertEqual(1, len(factory.modes))
+
+            with self.assertRaises(IntelligenceTransplantValidationError):
+                controller.intelligence_transplant_freeze_charter(
+                    {
+                        **charter,
+                        "source_freeze_sha256": "f" * 64,
+                    }
+                )
+            self.assertEqual(
+                1,
+                intelligence_transplant.freeze_charter.call_count,
+            )
+            self.assertEqual(1, len(factory.modes))
+
+            reset = controller.new_run()
+            self.assertEqual("bounded_task", reset["run"]["run_type"])
+            self.assertEqual("idle", reset["run"]["state"])
+            self.assertEqual(projection, reset["intelligence_transplant"])
+            self.assertEqual(1, len(factory.modes))
+
+    def test_intelligence_transplant_transport_is_exact_and_route_typed(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            projection = intelligence_transplant_projection(
+                execution_status="ACTIVE",
+            )
+            intelligence_transplant = Mock()
+            intelligence_transplant.attach_object.return_value = projection
+            intelligence_transplant.snapshot.return_value = projection
+            controller._intelligence_transplant = intelligence_transplant
+            payload = (
+                b'{"object_id":"E1-ONE","object_type":"E1_DISCOVERY"}'
+            )
+            payload_sha256 = hashlib.sha256(payload).hexdigest()
+
+            snapshot = (
+                controller.intelligence_transplant_attach_evidence(
+                    payload=payload,
+                    mode="BYTE_EXACT_FILE_IMPORT",
+                    source_path_or_label="e1.json",
+                    declared_sha256=payload_sha256,
+                    context_evidence_ref=None,
+                    as_of="2026-07-30T00:00:00Z",
+                )
+            )
+
+            attached_record = (
+                intelligence_transplant.attach_object.call_args.args[0]
+            )
+            transport = (
+                intelligence_transplant.attach_object.call_args.kwargs[
+                    "transport"
+                ]
+            )
+            self.assertEqual("E1_DISCOVERY", attached_record["object_type"])
+            self.assertEqual(payload, transport["payload"])
+            self.assertEqual(
+                "BYTE_EXACT_FILE_IMPORT",
+                transport["transport_receipt"]["mode"],
+            )
+            self.assertEqual(
+                "intelligence_transplant",
+                snapshot["run"]["run_type"],
+            )
+            self.assertEqual(1, len(factory.modes))
+
+            with self.assertRaises(IntelligenceTransplantValidationError):
+                controller.intelligence_transplant_attach_receipt(
+                    payload=payload,
+                    mode="BYTE_EXACT_FILE_IMPORT",
+                    source_path_or_label="wrong-route.json",
+                    declared_sha256=payload_sha256,
+                    context_evidence_ref=None,
+                    as_of="2026-07-30T00:00:00Z",
+                )
+            self.assertEqual(
+                1,
+                intelligence_transplant.attach_object.call_count,
+            )
+            duplicate = (
+                b'{"object_type":"E1_DISCOVERY",'
+                b'"object_type":"E1_DISCOVERY"}'
+            )
+            with self.assertRaises(IntelligenceTransplantValidationError):
+                controller.intelligence_transplant_attach_evidence(
+                    payload=duplicate,
+                    mode="BYTE_EXACT_FILE_IMPORT",
+                    source_path_or_label="duplicate.json",
+                    declared_sha256=hashlib.sha256(duplicate).hexdigest(),
+                    context_evidence_ref=None,
+                    as_of="2026-07-30T00:00:00Z",
+                )
+            self.assertEqual(
+                1,
+                intelligence_transplant.attach_object.call_count,
+            )
+
+    def test_intelligence_transplant_corruption_is_panel_local(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("read_only"),
+            )
+            selected = controller.select_repository(repository)
+            intelligence_transplant = Mock()
+            intelligence_transplant.snapshot.side_effect = (
+                IntelligenceTransplantIntegrityError(
+                    "sensitive Stage 5 path"
+                )
+            )
+            controller._intelligence_transplant = intelligence_transplant
+
+            snapshot = controller.snapshot()
+
+            self.assertEqual(
+                "BLOCKED_CORRUPT",
+                snapshot["intelligence_transplant"]["store_state"],
+            )
+            self.assertEqual(
+                "BLOCK",
+                snapshot["intelligence_transplant"]["current_gate"],
+            )
+            self.assertNotIn("sensitive", json.dumps(snapshot))
+            self.assertEqual(selected["run"], snapshot["run"])
+            self.assertEqual(selected["receipt"], snapshot["receipt"])
 
     def test_guided_intake_purge_wrapper_is_exact_and_never_starts_runner(
         self,
