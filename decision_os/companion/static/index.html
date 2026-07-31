@@ -36,6 +36,57 @@
       </p>
     </section>
 
+    <section
+      id="contract-import-card"
+      class="card"
+      aria-labelledby="contract-import-heading"
+    >
+      <div class="section-heading">
+        <div>
+          <p class="step">C</p>
+          <h2 id="contract-import-heading">Import Contract</h2>
+        </div>
+        <span
+          id="contract-import-state"
+          class="status"
+          role="status"
+          aria-live="polite"
+        >No contract</span>
+      </div>
+      <p class="boundary">
+        Load one approved Product Contract from this device as Markdown or
+        plain text. The file stays in this local tab. Import does not start a
+        Run, implement anything, or send the Contract anywhere.
+      </p>
+      <label for="contract-file">Product Contract (.md or .txt)</label>
+      <input id="contract-file" type="file" accept=".md,.txt">
+      <button id="contract-import" class="secondary" type="button" disabled>
+        Import Contract
+      </button>
+      <p id="contract-file-name" class="primary-value">
+        No Contract imported
+      </p>
+      <p id="contract-preview-status" class="path-value">
+        Select a supported local file to preview it.
+      </p>
+      <pre
+        id="contract-preview"
+        class="contract-preview hidden"
+      ></pre>
+      <textarea
+        id="contract-full-content"
+        class="contract-full-content"
+        readonly
+        hidden
+        aria-hidden="true"
+      ></textarea>
+      <p
+        id="contract-import-error"
+        class="error hidden"
+        role="alert"
+      ></p>
+    </section>
+
     <section id="bounded-task-card" class="card" aria-labelledby="task-heading">
       <div class="section-heading">
         <div>

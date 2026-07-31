@@ -28,6 +28,8 @@ body {
 }
 
 button,
+input,
+select,
 textarea {
   font: inherit;
 }
@@ -119,6 +121,7 @@ h3 {
   border-radius: 18px;
   box-shadow: var(--shadow);
   margin-top: 1rem;
+  min-width: 0;
   padding: 1.35rem;
 }
 
@@ -128,6 +131,12 @@ h3 {
   gap: 1rem;
   justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.section-heading > *,
+.file-action > *,
+.default-row > * {
+  min-width: 0;
 }
 
 .step {
@@ -142,6 +151,7 @@ h3 {
   font-size: 1.12rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
+  overflow-wrap: anywhere;
 }
 
 .path-value {
@@ -150,6 +160,15 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin: 0.9rem 0 0.35rem;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
 textarea {
   background: #fbfbfc;
   border: 1px solid var(--line);
@@ -157,12 +176,34 @@ textarea {
   color: var(--ink);
   display: block;
   line-height: 1.5;
+  max-width: 100%;
+  min-width: 0;
   padding: 0.9rem;
-  resize: vertical;
   width: 100%;
 }
 
+textarea {
+  resize: vertical;
+}
+
+input[type="file"] {
+  padding: 0.7rem;
+}
+
+label > input[type="checkbox"],
+label > input[type="radio"] {
+  margin-right: 0.45rem;
+}
+
+label + input,
+label + select,
+label + textarea {
+  margin-bottom: 0.85rem;
+}
+
 textarea:focus,
+input:focus,
+select:focus,
 button:focus-visible {
   outline: 3px solid rgba(37, 87, 214, 0.25);
   outline-offset: 2px;
@@ -230,6 +271,28 @@ button:focus-visible {
   word-break: break-word;
 }
 
+.contract-preview {
+  background: #f7f8fb;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  margin: 0.85rem 0 0;
+  max-height: 18rem;
+  max-width: 100%;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.contract-full-content {
+  display: none;
+}
+
 .file-action,
 .default-row {
   align-items: center;
@@ -241,7 +304,8 @@ button:focus-visible {
 }
 
 .file-action code,
-.default-row code {
+.default-row code,
+.default-row span {
   overflow-wrap: anywhere;
 }
 

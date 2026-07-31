@@ -13,8 +13,12 @@ let guidedRepositoryPath = null;
 let guidedInputError = "";
 let guidedPurgeConfirmationIdentity = null;
 let guidedPurgedInputClearedIdentity = null;
+let importedContract = null;
+let contractImportGeneration = 0;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
+const CONTRACT_PREVIEW_CHARACTERS = 4096;
+const CONTRACT_EXTENSIONS = [".md", ".txt"];
 const GUIDED_INTAKE_AUTHORITY_CLAIM =
   "INTERPRETATION ONLY — NO EXECUTION AUTHORITY";
 const MANUAL_OWNER_AUTHORITY = "MANUAL OWNER ATTESTED";
@@ -32,6 +36,52 @@ function setText(id, value) {
 
 function setHidden(id, hidden) {
   byId(id).classList.toggle("hidden", hidden);
+}
+
+function selectedContractFile() {
+  return byId("contract-file").files?.[0] || null;
+}
+
+function supportedContractFile(file) {
+  if (!file || typeof file.name !== "string") {
+    return false;
+  }
+  const normalized = file.name.toLowerCase();
+  return CONTRACT_EXTENSIONS.some((extension) =>
+    normalized.endsWith(extension),
+  );
+}
+
+function resetContractImport({ clearFile = false } = {}) {
+  importedContract = null;
+  if (clearFile) {
+    byId("contract-file").value = "";
+  }
+  byId("contract-full-content").value = "";
+  setText("contract-import-state", "No contract");
+  setText("contract-file-name", "No Contract imported");
+  setText(
+    "contract-preview-status",
+    "Select a supported local file to preview it.",
+  );
+  setText("contract-preview", "");
+  setHidden("contract-preview", true);
+  setText("contract-import-error", "");
+  setHidden("contract-import-error", true);
+}
+
+function renderContractImportControls() {
+  byId("contract-file").disabled = !connected;
+  byId("contract-import").disabled =
+    !connected || selectedContractFile() === null;
+}
+
+function showContractImportError(message) {
+  resetContractImport();
+  setText("contract-import-state", "Rejected");
+  setText("contract-import-error", message);
+  setHidden("contract-import-error", false);
+  renderContractImportControls();
 }
 
 function statusLabel(state) {
@@ -856,6 +906,7 @@ function render(state) {
     "repository-path",
     repository ? repository.path : "Select one local Git repository.",
   );
+  renderContractImportControls();
 
   const run =
     state.run && typeof state.run === "object"
@@ -922,6 +973,8 @@ function render(state) {
 
 function disableStateChangingControls() {
   byId("choose-repository").disabled = true;
+  byId("contract-file").disabled = true;
+  byId("contract-import").disabled = true;
   byId("run").disabled = true;
   byId("new-run").disabled = true;
   byId("task").disabled = true;
@@ -946,6 +999,8 @@ function enterDisconnected() {
   csrfToken = "";
   bridgeRepositoryPath = null;
   guidedRepositoryPath = null;
+  contractImportGeneration += 1;
+  resetContractImport({ clearFile: true });
   resetBridgeDrafts();
   resetGuidedIntakeDrafts();
   disableStateChangingControls();
@@ -1055,6 +1110,79 @@ async function postJSON(path, value) {
     requestActive = false;
   }
 }
+
+function contractFileSelectionChanged() {
+  contractImportGeneration += 1;
+  resetContractImport();
+  renderContractImportControls();
+}
+
+byId("contract-file").addEventListener("input", contractFileSelectionChanged);
+byId("contract-file").addEventListener("change", contractFileSelectionChanged);
+
+byId("contract-import").addEventListener("click", async () => {
+  const file = selectedContractFile();
+  const generation = ++contractImportGeneration;
+  if (!file) {
+    showContractImportError("Choose one Product Contract file first.");
+    return;
+  }
+  if (!supportedContractFile(file)) {
+    showContractImportError(
+      "Only .md and .txt Product Contract files are supported.",
+    );
+    return;
+  }
+  if (typeof file.text !== "function") {
+    showContractImportError("The Product Contract could not be read locally.");
+    return;
+  }
+
+  let content;
+  try {
+    content = await file.text();
+  } catch (_error) {
+    if (
+      !connected ||
+      generation !== contractImportGeneration ||
+      selectedContractFile() !== file
+    ) {
+      return;
+    }
+    showContractImportError("The Product Contract could not be read locally.");
+    return;
+  }
+  if (
+    !connected ||
+    generation !== contractImportGeneration ||
+    selectedContractFile() !== file
+  ) {
+    return;
+  }
+  if (typeof content !== "string") {
+    showContractImportError("The Product Contract could not be read locally.");
+    return;
+  }
+
+  importedContract = { filename: file.name, content };
+  byId("contract-full-content").value = importedContract.content;
+  setText("contract-import-state", "Imported locally");
+  setText("contract-file-name", importedContract.filename);
+  setText(
+    "contract-preview-status",
+    content.length > CONTRACT_PREVIEW_CHARACTERS
+      ? `Showing first ${CONTRACT_PREVIEW_CHARACTERS} of ${content.length} characters. Full content is retained locally.`
+      : `Showing all ${content.length} characters. Full content is retained locally.`,
+  );
+  setText(
+    "contract-preview",
+    content.slice(0, CONTRACT_PREVIEW_CHARACTERS),
+  );
+  setHidden("contract-preview", false);
+  setText("contract-import-error", "");
+  setHidden("contract-import-error", true);
+  renderContractImportControls();
+});
 
 byId("task").addEventListener("input", () => {
   if (connected && latestState) {
