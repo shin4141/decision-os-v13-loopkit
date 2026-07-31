@@ -5,6 +5,7 @@ import hashlib
 import http.client
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -1272,6 +1273,75 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn(b"textContent", javascript)
         self.assertNotIn(b"innerHTML", javascript)
 
+    def test_contract_import_dom_is_local_only_and_layout_is_bounded(
+        self,
+    ) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+        self.assertEqual(200, status)
+        for element_id in (
+            "contract-import-card",
+            "contract-import-heading",
+            "contract-import-state",
+            "contract-file",
+            "contract-import",
+            "contract-file-name",
+            "contract-preview-status",
+            "contract-preview",
+            "contract-full-content",
+            "contract-import-error",
+        ):
+            with self.subTest(element_id=element_id):
+                self.assertIn(f'id="{element_id}"'.encode("utf-8"), html)
+        self.assertIn(b'accept=".md,.txt"', html)
+        self.assertIn(b"Import Contract", html)
+        normalized_html = " ".join(html.decode("utf-8").split())
+        self.assertIn(
+            (
+                "The file stays in this local tab. Import does not start a "
+                "Run, implement anything, or send the Contract anywhere."
+            ),
+            normalized_html,
+        )
+        full_content_tag = normalized_html.split(
+            'id="contract-full-content"',
+            1,
+        )[1].split(">", 1)[0]
+        self.assertIn("readonly", full_content_tag)
+        self.assertIn("hidden", full_content_tag)
+        self.assertNotIn("maxlength", full_content_tag)
+
+        status, _headers, javascript = self.request(
+            "GET",
+            "/app.js",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        contract_handler = javascript.split(
+            b'byId("contract-import").addEventListener',
+            1,
+        )[1].split(b'byId("task").addEventListener', 1)[0]
+        self.assertIn(b"await file.text()", contract_handler)
+        self.assertIn(b"content.slice(0, CONTRACT_PREVIEW_CHARACTERS)", contract_handler)
+        self.assertNotIn(b"postJSON", contract_handler)
+        self.assertNotIn(b"fetch(", contract_handler)
+
+        status, _headers, stylesheet = self.request(
+            "GET",
+            "/app.css",
+            cookie=cookie,
+        )
+        self.assertEqual(200, status)
+        self.assertIn(
+            b'input:not([type="checkbox"]):not([type="radio"])',
+            stylesheet,
+        )
+        self.assertIn(b".default-row span", stylesheet)
+        self.assertIn(b".primary-value", stylesheet)
+        self.assertIn(b".contract-preview", stylesheet)
+        self.assertIn(b"max-height: 18rem", stylesheet)
+        self.assertIn(b"overflow-wrap: anywhere", stylesheet)
+
     def test_guided_intake_dom_and_authority_boundary_are_present(self) -> None:
         cookie, _csrf = self.bootstrap()
         status, _headers, html = self.request("GET", "/", cookie=cookie)
@@ -1649,6 +1719,140 @@ class CompanionServerTest(unittest.TestCase):
 
 
 class CompanionClientBehaviorTest(unittest.TestCase):
+    def test_desktop_layout_contains_long_contract_without_overflow(
+        self,
+    ) -> None:
+        chrome_candidates = (
+            shutil.which("google-chrome"),
+            shutil.which("chromium"),
+            shutil.which("chromium-browser"),
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        )
+        chrome = next(
+            (
+                candidate
+                for candidate in chrome_candidates
+                if candidate and Path(candidate).is_file()
+            ),
+            None,
+        )
+        self.assertIsNotNone(
+            chrome,
+            "Chrome or Chromium is required for desktop layout verification.",
+        )
+
+        static_root = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+        )
+        html = (static_root / "index.html").read_text(encoding="utf-8")
+        html = html.replace(
+            '<link rel="stylesheet" href="/app.css">',
+            f'<link rel="stylesheet" href="{(static_root / "app.css").as_uri()}">',
+        )
+        long_filename = ("contract-" * 80) + ".md"
+        long_content = "A" * 20000
+        layout_probe = textwrap.dedent(
+            f"""
+            <script>
+              const longFilename = {json.dumps(long_filename)};
+              const longContent = {json.dumps(long_content)};
+              const filename = document.getElementById("contract-file-name");
+              const preview = document.getElementById("contract-preview");
+              const full = document.getElementById("contract-full-content");
+              filename.textContent = longFilename;
+              preview.textContent = longContent.slice(0, 4096);
+              preview.classList.remove("hidden");
+              full.value = longContent;
+              const root = document.documentElement;
+              const control = document.getElementById("bridge-as-of-commit");
+              document.body.dataset.viewportWidth = String(window.innerWidth);
+              document.body.dataset.viewportHeight = String(window.innerHeight);
+              document.body.dataset.horizontalOverflow = String(
+                root.scrollWidth > root.clientWidth
+              );
+              document.body.dataset.previewBounded = String(
+                preview.clientHeight <= 290 &&
+                preview.scrollHeight > preview.clientHeight &&
+                getComputedStyle(preview).overflowY === "auto"
+              );
+              document.body.dataset.controlBlock = String(
+                getComputedStyle(control).display === "block" &&
+                control.getBoundingClientRect().width >= 800
+              );
+              document.body.dataset.fullPreserved = String(
+                full.value === longContent
+              );
+            </script>
+            """
+        ).strip()
+        html = html.replace(
+            '<script src="/app.js" defer></script>',
+            layout_probe,
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            fixture = temporary_root / "companion-layout.html"
+            fixture.write_text(html, encoding="utf-8")
+            chrome_process = subprocess.Popen(
+                [
+                    chrome,
+                    "--headless=new",
+                    "--disable-background-networking",
+                    "--disable-component-update",
+                    "--disable-gpu",
+                    "--disable-sync",
+                    "--force-device-scale-factor=1",
+                    "--no-default-browser-check",
+                    "--no-first-run",
+                    f"--user-data-dir={temporary_root / 'profile'}",
+                    "--window-size=1664,945",
+                    "--dump-dom",
+                    fixture.as_uri(),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            chrome_finished = True
+            try:
+                chrome_stdout, chrome_stderr = chrome_process.communicate(
+                    timeout=20,
+                )
+            except subprocess.TimeoutExpired:
+                # Some macOS Chrome builds keep the headless browser process
+                # alive after --dump-dom has emitted the completed document.
+                chrome_finished = False
+                chrome_process.kill()
+                chrome_stdout, chrome_stderr = chrome_process.communicate()
+
+        if chrome_finished:
+            self.assertEqual(
+                0,
+                chrome_process.returncode,
+                msg=f"Chrome layout probe failed:\n{chrome_stderr}",
+            )
+        self.assertTrue(
+            chrome_stdout.strip(),
+            msg=f"Chrome emitted no layout probe DOM:\n{chrome_stderr}",
+        )
+        body_match = re.search(r"<body ([^>]*)>", chrome_stdout)
+        self.assertIsNotNone(body_match, "Chrome probe body was not emitted.")
+        attributes = dict(
+            re.findall(r'data-([a-z-]+)="([^"]*)"', body_match.group(1))
+        )
+        self.assertEqual("1664", attributes.get("viewport-width"))
+        viewport_height = int(attributes.get("viewport-height", "0"))
+        self.assertGreaterEqual(viewport_height, 850)
+        self.assertLessEqual(viewport_height, 945)
+        self.assertEqual("false", attributes.get("horizontal-overflow"))
+        self.assertEqual("true", attributes.get("preview-bounded"))
+        self.assertEqual("true", attributes.get("control-block"))
+        self.assertEqual("true", attributes.get("full-preserved"))
+
     def test_disconnection_clears_and_disables_stale_ui_until_recovery(
         self,
     ) -> None:
@@ -1704,12 +1908,24 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 this.dataset = {};
                 this.disabled = false;
                 this.checked = false;
-                this.value = "";
+                this.files = [];
+                this._value = "";
                 this.type = "";
                 this.children = [];
                 this.parentNode = null;
                 this.listeners = new Map();
                 this.ownText = "";
+              }
+
+              get value() {
+                return this._value;
+              }
+
+              set value(value) {
+                this._value = value == null ? "" : String(value);
+                if (this._value === "") {
+                  this.files = [];
+                }
               }
 
               get textContent() {
@@ -1829,6 +2045,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             ];
             const buttonIds = new Set([
               "choose-repository",
+              "contract-import",
               "new-run",
               "run",
               ...guidedIntakeButtonIds,
@@ -1842,6 +2059,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "approval-reason",
               "approval-reason-label",
               "approval-repository",
+              "contract-file",
+              "contract-file-name",
+              "contract-full-content",
+              "contract-import",
+              "contract-import-error",
+              "contract-import-state",
+              "contract-preview",
+              "contract-preview-status",
               "bridge-as-of-commit",
               "bridge-authority-boundary",
               "bridge-burden-status",
@@ -1987,6 +2212,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "approval-overlay",
               "approval-reason",
               "approval-reason-label",
+              "contract-import-error",
+              "contract-preview",
               "global-error",
               "guided-intake-confirmation",
               "guided-intake-error",
@@ -2522,6 +2749,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(elements.get("contract-file").disabled, false);
+              assert.strictEqual(elements.get("contract-import").disabled, true);
               assert.strictEqual(
                 hidden("intelligence-transplant-card"),
                 false,
@@ -2701,6 +2930,224 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 true,
               );
               assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
+
+              const contractFetchStart = fetchCalls.length;
+              const boundedTaskBeforeImport = elements.get("task").value;
+              const markdownContent =
+                "# Approved Product Contract\r\n\r\n" +
+                "Unicode: 契約\n" +
+                "<script>globalThis.contractHostile = true</script>";
+              let markdownReads = 0;
+              elements.get("contract-file").files = [
+                {
+                  name: "approved-product-contract.md",
+                  async text() {
+                    markdownReads += 1;
+                    return markdownContent;
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(elements.get("contract-import").disabled, false);
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              assert.strictEqual(markdownReads, 1);
+              assert.strictEqual(
+                elements.get("contract-import-state").textContent,
+                "Imported locally",
+              );
+              assert.strictEqual(
+                elements.get("contract-file-name").textContent,
+                "approved-product-contract.md",
+              );
+              assert.strictEqual(
+                elements.get("contract-preview").textContent,
+                markdownContent,
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                markdownContent,
+              );
+              assert.strictEqual(
+                vm.runInContext("importedContract.content", sandbox),
+                markdownContent,
+              );
+              assert.strictEqual(hidden("contract-preview"), false);
+              assert.strictEqual(hidden("contract-import-error"), true);
+              assert.strictEqual(sandbox.contractHostile, undefined);
+
+              const textContent = "Plain text Contract\r\nkept exactly.\n";
+              let textReads = 0;
+              elements.get("contract-file").files = [
+                {
+                  name: "approved-product-contract.txt",
+                  async text() {
+                    textReads += 1;
+                    return textContent;
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("change");
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              assert.strictEqual(textReads, 1);
+              assert.strictEqual(
+                elements.get("contract-preview").textContent,
+                textContent,
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                textContent,
+              );
+              assert.strictEqual(
+                vm.runInContext("importedContract.content", sandbox),
+                textContent,
+              );
+
+              let rejectStaleRead;
+              const staleFile = {
+                name: "superseded-contract.md",
+                text() {
+                  return new Promise((_resolve, reject) => {
+                    rejectStaleRead = reject;
+                  });
+                },
+              };
+              elements.get("contract-file").files = [staleFile];
+              await elements.get("contract-file").dispatch("input");
+              const staleImport = elements.get("contract-import").dispatch("click");
+              await settle();
+
+              const currentContent = "Current Contract stays retained.";
+              elements.get("contract-file").files = [
+                {
+                  name: "current-contract.md",
+                  async text() {
+                    return currentContent;
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("input");
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              rejectStaleRead(new Error("superseded read failed"));
+              await staleImport;
+              await settle();
+              assert.strictEqual(
+                elements.get("contract-file-name").textContent,
+                "current-contract.md",
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                currentContent,
+              );
+              assert.strictEqual(hidden("contract-import-error"), true);
+
+              let sameFileReadCount = 0;
+              let rejectFirstSameFileRead;
+              const sameFileContent = "Newest same-file import wins.";
+              const sameFile = {
+                name: "same-contract.md",
+                text() {
+                  sameFileReadCount += 1;
+                  if (sameFileReadCount === 1) {
+                    return new Promise((_resolve, reject) => {
+                      rejectFirstSameFileRead = reject;
+                    });
+                  }
+                  return Promise.resolve(sameFileContent);
+                },
+              };
+              elements.get("contract-file").files = [sameFile];
+              await elements.get("contract-file").dispatch("input");
+              const firstSameFileImport =
+                elements.get("contract-import").dispatch("click");
+              await settle();
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              rejectFirstSameFileRead(new Error("first same-file read failed"));
+              await firstSameFileImport;
+              await settle();
+              assert.strictEqual(sameFileReadCount, 2);
+              assert.strictEqual(
+                vm.runInContext("importedContract.content", sandbox),
+                sameFileContent,
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                sameFileContent,
+              );
+              assert.strictEqual(hidden("contract-import-error"), true);
+
+              let unsupportedReads = 0;
+              elements.get("contract-file").files = [
+                {
+                  name: "approved-product-contract.md.exe",
+                  async text() {
+                    unsupportedReads += 1;
+                    return "must not be read";
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("input");
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              assert.strictEqual(unsupportedReads, 0);
+              assert.strictEqual(
+                elements.get("contract-import-state").textContent,
+                "Rejected",
+              );
+              assert.strictEqual(
+                elements.get("contract-import-error").textContent,
+                "Only .md and .txt Product Contract files are supported.",
+              );
+              assert.strictEqual(elements.get("contract-full-content").value, "");
+              assert.strictEqual(hidden("contract-preview"), true);
+              assert.strictEqual(hidden("contract-import-error"), false);
+
+              const longContent = "A".repeat(7000) + "\r\nFULL_TAIL_契約";
+              const longFilename = `${"very-long-contract-name-".repeat(30)}.MD`;
+              elements.get("contract-file").files = [
+                {
+                  name: longFilename,
+                  async text() {
+                    return longContent;
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("input");
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              assert.strictEqual(
+                elements.get("contract-file-name").textContent,
+                longFilename,
+              );
+              assert.strictEqual(
+                elements.get("contract-preview").textContent,
+                longContent.slice(0, 4096),
+              );
+              assert.strictEqual(
+                elements.get("contract-preview").textContent.length,
+                4096,
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                longContent,
+              );
+              assert.strictEqual(
+                vm.runInContext("importedContract.content", sandbox),
+                longContent,
+              );
+              assert.strictEqual(
+                elements.get("contract-preview-status").textContent,
+                `Showing first 4096 of ${longContent.length} characters. Full content is retained locally.`,
+              );
+              assert.strictEqual(fetchCalls.length, contractFetchStart);
+              assert.strictEqual(elements.get("task").value, boundedTaskBeforeImport);
+              assert.strictEqual(
+                fetchCalls.some((call) => call.path === "/api/run"),
+                false,
+              );
 
               fetchQueue.push(() =>
                 Promise.resolve(response(selectedStage5State)),
@@ -3068,10 +3515,29 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("guided-intake-resulting-delta").value =
                 '{"stale":"delta"}';
 
+              let resolveAfterDisconnect;
+              elements.get("contract-file").files = [
+                {
+                  name: "pending-at-disconnect.md",
+                  text() {
+                    return new Promise((resolve) => {
+                      resolveAfterDisconnect = resolve;
+                    });
+                  },
+                },
+              ];
+              await elements.get("contract-file").dispatch("input");
+              const importPendingAtDisconnect =
+                elements.get("contract-import").dispatch("click");
+              await settle();
+
               fetchQueue.push(() =>
                 Promise.reject(new TypeError("fetch failed")),
               );
               await runNextTimer();
+              resolveAfterDisconnect("late content must stay discarded");
+              await importPendingAtDisconnect;
+              await settle();
 
               assert.strictEqual(
                 elements.get("repository-name").textContent,
@@ -3104,6 +3570,24 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(elements.get("claim-boundary").textContent, "");
               assert.strictEqual(elements.get("defaults").children.length, 0);
+              assert.strictEqual(elements.get("contract-file").value, "");
+              assert.strictEqual(elements.get("contract-file").files.length, 0);
+              assert.strictEqual(elements.get("contract-file").disabled, true);
+              assert.strictEqual(elements.get("contract-import").disabled, true);
+              assert.strictEqual(
+                elements.get("contract-import-state").textContent,
+                "No contract",
+              );
+              assert.strictEqual(
+                elements.get("contract-full-content").value,
+                "",
+              );
+              assert.strictEqual(
+                vm.runInContext("importedContract", sandbox),
+                null,
+              );
+              assert.strictEqual(hidden("contract-preview"), true);
+              assert.strictEqual(hidden("contract-import-error"), true);
               assert.strictEqual(
                 hidden("intelligence-transplant-card"),
                 true,
