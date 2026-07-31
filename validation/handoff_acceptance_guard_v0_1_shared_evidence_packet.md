@@ -9,7 +9,7 @@ Current layer: V13 — Design / Execution Separation
 Packet status: FROZEN
 As-of: 2026-07-28T10:23:12+09:00
 Repository: shin4141/decision-os-v13-loopkit
-Repository root observed: /Users/sn/Documents/v13/decision-os-v13-loopkit
+Repository root observed: <repo>
 Exact base commit: 8146ffa26fe7ff0f0c7981f1abb10a4349b23567
 Observation agent: Codex 13-16
 Observation branch: codex/v13-sdfp-001-shared-evidence-freeze

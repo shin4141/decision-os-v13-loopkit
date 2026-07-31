@@ -84,8 +84,8 @@ Identity-bearing product hashes:
 The unchanged `scripts/build_companion_app.sh` completed successfully. It
 installed:
 
-- `/Users/sn/Applications/Decision OS Companion.app`
-- `/Users/sn/Library/Application Support/Decision OS Companion/runtime`
+- `<user-home>/Applications/Decision OS Companion.app`
+- `<user-home>/Library/Application Support/Decision OS Companion/runtime`
 
 The source and installed `guided_intake.py` both had SHA-256
 `a1196abd5a238b72d41a4451da414c0edb27518d1160a9dc2e41ef1dd1b06703`.

@@ -25,7 +25,7 @@ Repository:
 shin4141/decision-os-v13-loopkit
 
 Repository root observed:
-/Users/sn/Documents/v13/decision-os-v13-loopkit
+<repo>
 
 Exact As-of commit:
 63eb260a94595298e2b07b476f7f9d8572c9ef09
