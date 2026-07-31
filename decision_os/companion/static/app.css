@@ -293,6 +293,10 @@ button:focus-visible {
   display: none;
 }
 
+.contract-next-action {
+  margin-top: 1rem;
+}
+
 .file-action,
 .default-row {
   align-items: center;

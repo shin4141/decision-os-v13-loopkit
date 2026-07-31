@@ -13,6 +13,7 @@ let guidedRepositoryPath = null;
 let guidedInputError = "";
 let guidedPurgeConfirmationIdentity = null;
 let guidedPurgedInputClearedIdentity = null;
+let guidedTransferredOriginalRequest = null;
 let importedContract = null;
 let contractImportGeneration = 0;
 
@@ -54,6 +55,7 @@ function supportedContractFile(file) {
 
 function resetContractImport({ clearFile = false } = {}) {
   importedContract = null;
+  guidedTransferredOriginalRequest = null;
   if (clearFile) {
     byId("contract-file").value = "";
   }
@@ -74,6 +76,8 @@ function renderContractImportControls() {
   byId("contract-file").disabled = !connected;
   byId("contract-import").disabled =
     !connected || selectedContractFile() === null;
+  byId("contract-use-guided-intake").disabled =
+    !connected || importedContract === null;
 }
 
 function showContractImportError(message) {
@@ -433,6 +437,7 @@ function resetGuidedIntakeDrafts() {
   byId("guided-intake-purge-confirm").checked = false;
   guidedPurgeConfirmationIdentity = null;
   guidedPurgedInputClearedIdentity = null;
+  guidedTransferredOriginalRequest = null;
   guidedInputError = "";
 }
 
@@ -484,6 +489,7 @@ function renderGuidedIntake(intake, repository) {
     guidedPurgedInputClearedIdentity !== currentPurgeIdentity
   ) {
     byId("guided-intake-original-request").value = "";
+    guidedTransferredOriginalRequest = null;
     guidedPurgedInputClearedIdentity = currentPurgeIdentity;
   } else if (!purged) {
     guidedPurgedInputClearedIdentity = null;
@@ -975,6 +981,7 @@ function disableStateChangingControls() {
   byId("choose-repository").disabled = true;
   byId("contract-file").disabled = true;
   byId("contract-import").disabled = true;
+  byId("contract-use-guided-intake").disabled = true;
   byId("run").disabled = true;
   byId("new-run").disabled = true;
   byId("task").disabled = true;
@@ -1184,6 +1191,24 @@ byId("contract-import").addEventListener("click", async () => {
   renderContractImportControls();
 });
 
+byId("contract-use-guided-intake").addEventListener("click", () => {
+  if (!connected || importedContract === null) {
+    return;
+  }
+  const originalRequestInput = byId("guided-intake-original-request");
+  originalRequestInput.value = importedContract.content;
+  guidedTransferredOriginalRequest = {
+    content: importedContract.content,
+    displayedValue: originalRequestInput.value,
+  };
+  guidedInputError = "";
+  if (latestState) {
+    renderGuidedIntake(latestState.guided_intake, latestState.repository);
+  }
+  byId("guided-intake-card").scrollIntoView?.({ block: "start" });
+  originalRequestInput.focus();
+});
+
 byId("task").addEventListener("input", () => {
   if (connected && latestState) {
     render(latestState);
@@ -1244,7 +1269,15 @@ function clearGuidedInputError() {
 }
 
 byId("guided-intake-capture").addEventListener("click", async () => {
-  const originalRequest = byId("guided-intake-original-request").value;
+  const displayedOriginalRequest = byId(
+    "guided-intake-original-request",
+  ).value;
+  const originalRequest =
+    guidedTransferredOriginalRequest !== null &&
+    displayedOriginalRequest ===
+      guidedTransferredOriginalRequest.displayedValue
+      ? guidedTransferredOriginalRequest.content
+      : displayedOriginalRequest;
   if (originalRequest.trim().length === 0) {
     showGuidedInputError(
       new RequestRejectedError("Original Request must not be empty."),
@@ -1371,6 +1404,7 @@ byId("guided-intake-purge").addEventListener("click", async () => {
       confirmed: true,
     });
     if (state) {
+      guidedTransferredOriginalRequest = null;
       byId("guided-intake-purge-confirm").checked = false;
       guidedPurgeConfirmationIdentity = null;
       renderGuidedIntake(state.guided_intake, state.repository);
@@ -1387,6 +1421,9 @@ byId("guided-intake-transfer").addEventListener("click", async () => {
 
 for (const id of guidedIntakeInputIds) {
   byId(id).addEventListener("input", () => {
+    if (id === "guided-intake-original-request") {
+      guidedTransferredOriginalRequest = null;
+    }
     if (id === "guided-intake-purge-confirm") {
       guidedPurgeConfirmationIdentity = byId(id).checked
         ? guidedRequestIdentityKey(latestState?.guided_intake)
