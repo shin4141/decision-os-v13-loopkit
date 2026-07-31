@@ -15,7 +15,8 @@
     {"$ref": "#/$defs/lowerRunTrialManifest"},
     {"$ref": "#/$defs/lowerRunCompletionReceipt"},
     {"$ref": "#/$defs/e5Reuse"},
-    {"$ref": "#/$defs/manualControlReceipt"}
+    {"$ref": "#/$defs/manualControlReceipt"},
+    {"$ref": "#/$defs/publicClaimManifest"}
   ],
   "$defs": {
     "sha256": {
@@ -82,7 +83,8 @@
             "LOWER_RUN_TRIAL_MANIFEST",
             "LOWER_RUN_COMPLETION_RECEIPT",
             "E5_REUSE",
-            "MANUAL_CONTROL_RECEIPT"
+            "MANUAL_CONTROL_RECEIPT",
+            "PUBLIC_CLAIM_MANIFEST"
           ]
         },
         "object_id": {"$ref": "#/$defs/safeId"},
@@ -191,12 +193,26 @@
           "$ref": "#/$defs/nonEmptyStringList"
         },
         "implementation_scope": {"$ref": "#/$defs/nonEmptyStringList"},
+        "implementation_scope_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/implementationScopeBinding"}
+        },
         "required_control_behavior": {"$ref": "#/$defs/nonEmptyString"},
         "asset_identity": {"$ref": "#/$defs/nonEmptyString"},
         "asset_version": {"$ref": "#/$defs/nonEmptyString"},
         "asset_hash": {"$ref": "#/$defs/sha256"},
         "behavioral_verification": {"$ref": "#/$defs/behavioralVerification"},
         "activation_evidence": {"$ref": "#/$defs/activationEvidence"}
+      }
+    },
+    "implementationScopeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_label", "changed_paths"],
+      "properties": {
+        "scope_label": {"$ref": "#/$defs/nonEmptyString"},
+        "changed_paths": {"$ref": "#/$defs/nonEmptyStringList"}
       }
     },
     "revisionBinding": {
@@ -868,6 +884,360 @@
               "enum": ["INTERCEPTED", "PREVENTED"]
             },
             "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "publicObjectTypeRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_type", "presence"],
+      "properties": {
+        "object_type": {
+          "enum": [
+            "RUN_CHARTER",
+            "SEAT_ASSIGNMENT_RECEIPT",
+            "AUDIT_INPUT_MANIFEST",
+            "E1_DISCOVERY",
+            "E2_AUDIT",
+            "AUDIT_COMPLETION_RECEIPT",
+            "E3_ACCEPTED_DISCOVERY",
+            "E4_IMPLEMENTATION_BINDING",
+            "LOWER_RUN_TRIAL_MANIFEST",
+            "LOWER_RUN_COMPLETION_RECEIPT",
+            "E5_REUSE",
+            "MANUAL_CONTROL_RECEIPT",
+            "PUBLIC_CLAIM_MANIFEST"
+          ]
+        },
+        "presence": {"enum": ["PRESENT", "ABSENT"]}
+      }
+    },
+    "publicNativeGraphPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_status_equals",
+        "delta_state_equals",
+        "current_gate_equals",
+        "object_type_requirements",
+        "missing_evidence_exact",
+        "generalized_boundary_equals"
+      ],
+      "properties": {
+        "execution_status_equals": {
+          "type": ["string", "null"],
+          "enum": ["NOT_ESTABLISHED", "ACTIVE", "CLOSED", null]
+        },
+        "delta_state_equals": {
+          "type": ["string", "null"],
+          "enum": [
+            "NONE",
+            "CANDIDATE",
+            "IMPLEMENTED",
+            "REUSED",
+            "REJECTED",
+            "REVOKED",
+            null
+          ]
+        },
+        "current_gate_equals": {
+          "type": ["string", "null"],
+          "enum": ["GO", "HOLD", "CAP", "BLOCK", null]
+        },
+        "object_type_requirements": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/publicObjectTypeRequirement"}
+        },
+        "missing_evidence_exact": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/stringList"}
+          ]
+        },
+        "generalized_boundary_equals": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      }
+    },
+    "publicEvidenceContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "permitted_evidence_types",
+        "required_verification_mode",
+        "required_observed_behavior",
+        "required_boundary_id"
+      ],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/safeId"},
+        "permitted_evidence_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "DOCUMENTATION_BLOB",
+              "SOURCE_BLOB",
+              "BEHAVIORAL_TRACE",
+              "STAGE5_OBJECT_BUNDLE"
+            ]
+          }
+        },
+        "required_verification_mode": {
+          "enum": [
+            "DOCUMENTARY_BLOB_MATCH",
+            "SOURCE_BLOB_MATCH",
+            "ADVERSARIAL_BEHAVIOR_TEST",
+            "RUNTIME_INTERCEPTION_TRACE",
+            "NATIVE_GRAPH_PREDICATE"
+          ]
+        },
+        "required_observed_behavior": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "required_boundary_id": {"$ref": "#/$defs/safeId"}
+      }
+    },
+    "publicClaimSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_category",
+        "claim_id",
+        "classification_basis",
+        "decision_owner",
+        "decision_owner_attestation",
+        "end_byte",
+        "evidence_contract",
+        "evidence_refs",
+        "exact_text",
+        "exact_text_sha256",
+        "excluded_interpretations",
+        "native_graph_predicate",
+        "qualifier_requirement",
+        "required_evidence_class",
+        "required_formal_run_maturity",
+        "span_type",
+        "start_byte",
+        "surface_id",
+        "surface_sha256"
+      ],
+      "properties": {
+        "claim_category": {
+          "enum": [
+            "BOUNDARY_STATEMENT",
+            "COMPONENT_EXISTENCE",
+            "FORMAL_RUN_MATURITY",
+            "OPERATIONAL_CAPABILITY",
+            "PROCESS_PURPOSE",
+            "SOURCE_EXISTENCE"
+          ]
+        },
+        "claim_id": {"$ref": "#/$defs/safeId"},
+        "classification_basis": {"$ref": "#/$defs/nonEmptyString"},
+        "decision_owner": {"const": "Shin"},
+        "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"},
+        "end_byte": {"type": "integer", "minimum": 1},
+        "evidence_contract": {"$ref": "#/$defs/publicEvidenceContract"},
+        "evidence_refs": {"$ref": "#/$defs/stringList"},
+        "exact_text": {"$ref": "#/$defs/nonEmptyString"},
+        "exact_text_sha256": {"$ref": "#/$defs/sha256"},
+        "excluded_interpretations": {"$ref": "#/$defs/stringList"},
+        "native_graph_predicate": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/publicNativeGraphPredicate"}
+          ]
+        },
+        "qualifier_requirement": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "required_evidence_class": {"$ref": "#/$defs/nonEmptyString"},
+        "required_formal_run_maturity": {
+          "enum": ["NONE", "CANDIDATE", "IMPLEMENTED", "REUSED"]
+        },
+        "span_type": {"const": "CLAIM"},
+        "start_byte": {"type": "integer", "minimum": 0},
+        "surface_id": {"$ref": "#/$defs/safeId"},
+        "surface_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "publicNonClaimSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary_effect",
+        "decision_owner",
+        "decision_owner_attestation",
+        "end_byte",
+        "exact_text",
+        "exact_text_sha256",
+        "non_claim_reason",
+        "span_id",
+        "span_type",
+        "start_byte",
+        "surface_id",
+        "surface_sha256"
+      ],
+      "properties": {
+        "boundary_effect": {"$ref": "#/$defs/nonEmptyString"},
+        "decision_owner": {"const": "Shin"},
+        "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"},
+        "end_byte": {"type": "integer", "minimum": 1},
+        "exact_text": {"$ref": "#/$defs/nonEmptyString"},
+        "exact_text_sha256": {"$ref": "#/$defs/sha256"},
+        "non_claim_reason": {"$ref": "#/$defs/nonEmptyString"},
+        "span_id": {"$ref": "#/$defs/safeId"},
+        "span_type": {"const": "OWNER_ATTESTED_NON_CLAIM"},
+        "start_byte": {"type": "integer", "minimum": 0},
+        "surface_id": {"$ref": "#/$defs/safeId"},
+        "surface_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "publicStructuralSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_bytes_hex",
+        "end_byte",
+        "exact_text",
+        "exact_text_sha256",
+        "span_id",
+        "span_type",
+        "start_byte",
+        "structural_class",
+        "surface_id",
+        "surface_sha256"
+      ],
+      "properties": {
+        "allowed_bytes_hex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})+$"
+        },
+        "end_byte": {"type": "integer", "minimum": 1},
+        "exact_text": {"$ref": "#/$defs/nonEmptyString"},
+        "exact_text_sha256": {"$ref": "#/$defs/sha256"},
+        "span_id": {"$ref": "#/$defs/safeId"},
+        "span_type": {"const": "STRUCTURAL_BYTES"},
+        "start_byte": {"type": "integer", "minimum": 0},
+        "structural_class": {"$ref": "#/$defs/nonEmptyString"},
+        "surface_id": {"$ref": "#/$defs/safeId"},
+        "surface_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "publicGraphDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_mode",
+        "charter_ref",
+        "constraints",
+        "cryptographic_identity",
+        "decision_owner",
+        "decision_owner_attestation",
+        "descriptor_hash",
+        "descriptor_id",
+        "e3_ref",
+        "event_chain_binding_rule",
+        "evidence_type",
+        "external_independence",
+        "generalized_boundary",
+        "implementation_seat_ref",
+        "real_world_identity_authentication",
+        "repository_head",
+        "required_evidence_class",
+        "run_id",
+        "schema_version"
+      ],
+      "properties": {
+        "authority_mode": {"const": "MANUAL_OWNER_ATTESTED"},
+        "charter_ref": {"$ref": "#/$defs/objectRef"},
+        "constraints": {"$ref": "#/$defs/nonEmptyStringList"},
+        "cryptographic_identity": {"const": "NOT_ESTABLISHED"},
+        "decision_owner": {"const": "Shin"},
+        "decision_owner_attestation": {"$ref": "#/$defs/nonEmptyString"},
+        "descriptor_hash": {"$ref": "#/$defs/sha256"},
+        "descriptor_id": {"$ref": "#/$defs/safeId"},
+        "e3_ref": {"$ref": "#/$defs/objectRef"},
+        "event_chain_binding_rule": {"const": "RUNTIME_EXACT_CURRENT_REQUIRED"},
+        "evidence_type": {"const": "STAGE5_OBJECT_BUNDLE"},
+        "external_independence": {"const": "NOT_ESTABLISHED"},
+        "generalized_boundary": {
+          "const": "GENERALIZED_TRANSPLANT_NOT_ESTABLISHED"
+        },
+        "implementation_seat_ref": {"$ref": "#/$defs/objectRef"},
+        "real_world_identity_authentication": {"const": "NOT_ESTABLISHED"},
+        "repository_head": {"$ref": "#/$defs/gitCommit"},
+        "required_evidence_class": {"const": "NATIVE_STAGE5_GRAPH"},
+        "run_id": {"$ref": "#/$defs/safeId"},
+        "schema_version": {
+          "const": "decision-os.native-stage5-graph-descriptor.v0.1"
+        }
+      }
+    },
+    "publicClaimManifest": {
+      "allOf": [
+        {"$ref": "#/$defs/baseRecord"},
+        {"$ref": "#/$defs/authorityFields"},
+        {"$ref": "#/$defs/cryptographicBoundary"},
+        {
+          "type": "object",
+          "required": [
+            "manifest_schema_version",
+            "manifest_id",
+            "manifest_hash",
+            "charter_ref",
+            "e3_ref",
+            "implementation_assignment_ref",
+            "repository_head",
+            "surface_id",
+            "surface_sha256",
+            "surface_utf8_bytes",
+            "surface_encoding",
+            "spans",
+            "evidence_catalog",
+            "generalized_boundary"
+          ],
+          "properties": {
+            "object_type": {"const": "PUBLIC_CLAIM_MANIFEST"},
+            "manifest_schema_version": {
+              "const": "decision-os.public-claim-manifest.v0.1"
+            },
+            "manifest_id": {"$ref": "#/$defs/safeId"},
+            "manifest_hash": {"$ref": "#/$defs/sha256"},
+            "charter_ref": {"$ref": "#/$defs/objectRef"},
+            "e3_ref": {"$ref": "#/$defs/objectRef"},
+            "implementation_assignment_ref": {"$ref": "#/$defs/objectRef"},
+            "repository_head": {"$ref": "#/$defs/gitCommit"},
+            "surface_id": {"$ref": "#/$defs/safeId"},
+            "surface_sha256": {"$ref": "#/$defs/sha256"},
+            "surface_utf8_bytes": {"type": "integer", "minimum": 1},
+            "surface_encoding": {"const": "UTF-8"},
+            "spans": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {"$ref": "#/$defs/publicClaimSpan"},
+                  {"$ref": "#/$defs/publicNonClaimSpan"},
+                  {"$ref": "#/$defs/publicStructuralSpan"}
+                ]
+              }
+            },
+            "evidence_catalog": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/publicGraphDescriptor"}
+            },
+            "generalized_boundary": {
+              "const": "GENERALIZED_TRANSPLANT_NOT_ESTABLISHED"
+            }
           }
         }
       ],

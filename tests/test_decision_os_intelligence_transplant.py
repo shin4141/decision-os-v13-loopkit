@@ -36,6 +36,7 @@ from decision_os.intelligence_transplant import (
     MANUAL_CONTROL_RECEIPT,
     OBJECT_FIELDS,
     OBJECT_TYPES,
+    PUBLIC_CLAIM_MANIFEST,
     RUN_CHARTER,
     SCHEMA_VERSION,
     SEAT_ASSIGNMENT_RECEIPT,
@@ -99,6 +100,7 @@ def signed(
         LOWER_RUN_COMPLETION_RECEIPT: "receipt_id",
         E5_REUSE: "e5_id",
         MANUAL_CONTROL_RECEIPT: "receipt_id",
+        PUBLIC_CLAIM_MANIFEST: "manifest_id",
     }
     special_hashes = {
         RUN_CHARTER: "charter_hash",
@@ -108,6 +110,7 @@ def signed(
         LOWER_RUN_TRIAL_MANIFEST: "manifest_hash",
         LOWER_RUN_COMPLETION_RECEIPT: "receipt_hash",
         MANUAL_CONTROL_RECEIPT: "receipt_hash",
+        PUBLIC_CLAIM_MANIFEST: "manifest_hash",
     }
     value[special_ids[object_type]] = object_id
     if object_type in special_hashes:
@@ -693,7 +696,7 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         variants = {
             entry["$ref"].rsplit("/", 1)[-1] for entry in schema["oneOf"]
         }
-        self.assertEqual(12, len(variants))
+        self.assertEqual(13, len(variants))
         self.assertEqual(
             set(OBJECT_TYPES),
             set(
@@ -704,7 +707,7 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
         )
         for name in variants:
             self.assertFalse(schema["$defs"][name]["unevaluatedProperties"])
-        self.assertEqual(12, len(OBJECT_FIELDS))
+        self.assertEqual(13, len(OBJECT_FIELDS))
 
     def test_committed_charter_fixtures_preserve_version_behavior(self) -> None:
         fixture_root = (
@@ -1171,6 +1174,48 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
             DELTA_IMPLEMENTED,
             reduce_evidence_graph(through_e4, now=FIXED_NOW).delta_state,
         )
+
+    def test_e4_accepts_scope_labels_and_preserves_legacy_path_route(self) -> None:
+        graph = valid_graph()
+        e3_index = graph_index(graph, E3_ACCEPTED_DISCOVERY)
+        e4_index = graph_index(graph, E4_IMPLEMENTATION_BINDING)
+        labels = [
+            "Public claims for the bounded source surface.",
+            "Claim evidence against the current native graph.",
+        ]
+        graph[e3_index]["implementation_scope"] = labels
+        binding = graph[e4_index]["claim_bindings"][0]
+        binding["implementation_scope"] = labels
+        binding["implementation_scope_bindings"] = [
+            {
+                "scope_label": labels[0],
+                "changed_paths": ["decision_os/context_guard.py"],
+            },
+            {
+                "scope_label": labels[1],
+                "changed_paths": ["tests/test_context_guard.py"],
+            },
+        ]
+        graph[e4_index]["changed_artifacts"].append(
+            {
+                "path": "tests/test_context_guard.py",
+                "git_blob": "5" * 40,
+                "sha256": "e" * 64,
+                "asset_identity": "context-guard-test",
+                "asset_version": "v0.1",
+                "asset_type": "test",
+            }
+        )
+        graph = rehash_graph(graph)
+        through_e4 = graph[: graph_index(graph, E4_IMPLEMENTATION_BINDING) + 1]
+        self.assertTrue(validate_graph(through_e4, now=FIXED_NOW).valid)
+
+        broken = deepcopy(through_e4)
+        broken[-1]["claim_bindings"][0]["implementation_scope_bindings"][1][
+            "scope_label"
+        ] = labels[0]
+        broken = rehash_graph(broken)
+        self.assertIssue(broken, "CLAIM_BINDING_INCOMPLETE")
 
     def test_repository_head_drift_is_invalid(self) -> None:
         graph = valid_graph()

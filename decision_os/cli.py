@@ -38,6 +38,14 @@ from .intake_text import render_text as render_intake_text
 from .scan import failure_payload as scan_failure_payload
 from .scan import scan_repository
 from .scan_text import render_text
+from .public_claim_guard import (
+    BLOCK as PUBLIC_CLAIM_BLOCK,
+    RESULT_SCHEMA_VERSION as PUBLIC_CLAIM_RESULT_SCHEMA_VERSION,
+    PublicClaimGuardError,
+    PublicClaimManifestController,
+    evaluation_exit_code as public_claim_exit_code,
+    parse_evaluation_packet,
+)
 
 
 EXIT_USAGE = 2
@@ -71,6 +79,9 @@ HANDOFF_ACCEPTANCE_PROCESS_EXITS = {
     "INTERNAL_ERROR": EXIT_INTERNAL,
     "UNSTABLE_SNAPSHOT": EXIT_UNSTABLE_SNAPSHOT,
 }
+PUBLIC_CLAIM_USAGE = (
+    "decision-os public-claim <repository> <evaluation.json>"
+)
 _HANDOFF_ACCEPTANCE_OPTIONS = (
     "--repo",
     "--handoff",
@@ -628,6 +639,72 @@ def _run_handoff_acceptance(
     return exit_code
 
 
+def _run_public_claim(
+    arguments: Sequence[str],
+    output: TextIO,
+) -> int:
+    if (
+        len(arguments) != 3
+        or arguments[0] != "public-claim"
+        or not arguments[1]
+        or not arguments[2]
+        or arguments[1].startswith("-")
+        or arguments[2].startswith("-")
+    ):
+        _write(
+            {
+                "aggregate_disposition": PUBLIC_CLAIM_BLOCK,
+                "authorization_receipt": None,
+                "authorization_status": "NOT_AUTHORIZED",
+                "error": "USAGE_ERROR",
+                "issue_codes": ["RUNTIME_OVERRIDE_ATTEMPT"],
+                "schema_version": PUBLIC_CLAIM_RESULT_SCHEMA_VERSION,
+                "usage": PUBLIC_CLAIM_USAGE,
+            },
+            output,
+        )
+        return EXIT_USAGE
+    try:
+        packet = parse_evaluation_packet(Path(arguments[2]).read_bytes())
+        result = PublicClaimManifestController(
+            Path(arguments[1])
+        ).evaluate(packet)
+    except PublicClaimGuardError as exc:
+        result = {
+            "aggregate_disposition": exc.disposition,
+            "authorization_receipt": None,
+            "authorization_status": "NOT_AUTHORIZED",
+            "error": str(exc),
+            "issue_codes": [exc.issue_code],
+            "schema_version": PUBLIC_CLAIM_RESULT_SCHEMA_VERSION,
+        }
+        exit_code = 4 if exc.disposition in {"HOLD", "REVISE_REQUIRED"} else 5
+    except (OSError, ValueError):
+        result = {
+            "aggregate_disposition": PUBLIC_CLAIM_BLOCK,
+            "authorization_receipt": None,
+            "authorization_status": "NOT_AUTHORIZED",
+            "error": "EVALUATION_PACKET_INVALID",
+            "issue_codes": ["RUNTIME_OVERRIDE_ATTEMPT"],
+            "schema_version": PUBLIC_CLAIM_RESULT_SCHEMA_VERSION,
+        }
+        exit_code = 5
+    except Exception:
+        result = {
+            "aggregate_disposition": PUBLIC_CLAIM_BLOCK,
+            "authorization_receipt": None,
+            "authorization_status": "NOT_AUTHORIZED",
+            "error": "INTERNAL_ERROR",
+            "issue_codes": ["MANIFEST_TRUST_EVIDENCE_INCOMPLETE"],
+            "schema_version": PUBLIC_CLAIM_RESULT_SCHEMA_VERSION,
+        }
+        exit_code = EXIT_INTERNAL
+    else:
+        exit_code = public_claim_exit_code(result)
+    _write(result, output)
+    return exit_code
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -642,6 +719,9 @@ def main(
 
     if arguments and arguments[0] == "handoff-accept":
         return _run_handoff_acceptance(arguments, output, error)
+
+    if arguments and arguments[0] == "public-claim":
+        return _run_public_claim(arguments, output)
 
     if arguments and arguments[0] == "scan":
         return _run_scan(arguments, output)

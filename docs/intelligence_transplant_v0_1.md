@@ -54,7 +54,9 @@ Generalized transplant remains `NOT ESTABLISHED`.
 
 The executable validator and reducer are in
 `decision_os/intelligence_transplant.py`. The corresponding JSON Schema is
-`schema/v13_intelligence_transplant.schema.json`.
+`schema/v13_intelligence_transplant.schema.json`. The strict bounded runtime
+packet for the evidence-bound public-claim guard is described by
+`schema/v13_public_claim_guard.schema.json`.
 
 Every record:
 
@@ -123,6 +125,55 @@ requirements and scope, and forbidden overclaims are explicit.
 
 `GENERALIZED_TRANSPLANT_NOT_ESTABLISHED` is mandatory.
 
+### Public-claim Manifest sidecar
+
+`PUBLIC_CLAIM_MANIFEST` is a projection-neutral native sidecar. It binds one
+Owner-attested public surface to complete ordered UTF-8 byte spans, exact span
+hashes, fixed claim or non-claim classifications, evidence contracts, native
+graph predicates, repository HEAD, current E3, and the current Implementation
+Seat. Its native identity rules are:
+
+```text
+object_id = manifest_id
+content_hash = manifest_hash
+manifest_schema_version = decision-os.public-claim-manifest.v0.1
+```
+
+The first sidecar for `(run_id, surface_id)` has no predecessor. Every
+successor uses a new ID/hash and supersedes the exact current predecessor.
+README and Reddit surfaces are separate lineages. Historical, superseded,
+revoked, rolled-back, cross-Run, or structurally invalid records never satisfy
+current-object presence.
+
+The sidecar freezes only through the existing native Manifest transaction and
+`MANIFEST_FROZEN` event. Its transported bytes are the complete canonical
+native record. The transport receipt context is the exact current
+Implementation Seat, and its `as_of` equals the record and event time. The
+payload SHA, receipt SHA, event link, immutable stored record, repository HEAD,
+Charter, E3, and Seat are independently verified on fresh readback.
+
+The public-claim guard performs no claim extraction or language
+classification. Every evaluation reopens the native store, verifies the
+requested Manifest ID/content-hash/manifest-hash triple, reconstructs the
+entire surface, builds a current same-Run non-revoked inventory, resolves the
+current exact E3, and mechanically compares declared predicates and evidence
+contracts. `E3_ACCEPTED_DISCOVERY.claim_boundary` is the sole generalized
+boundary truth. Manifest text, a graph descriptor, or caller data cannot
+replace it.
+
+The dispositions are `ALLOW`, `REVISE_REQUIRED`, `HOLD`, and `BLOCK`, in
+increasing severity. An authorization receipt is emitted only when every
+visible claim is `ALLOW`. Documentary or source blobs cannot satisfy an
+operational or Formal-maturity claim. The fixed R13 operational claim requires
+its exact behavioral verification contract. Exact prohibited state
+declarations and exact generalized-success Cartesian-product declarations are
+scanned on every visible claim and Owner-attested non-claim using ASCII case
+folding only.
+
+Adding, replacing, or revoking a sidecar does not enter the E1–E5 chain and
+never changes `execution_status`, `delta_state`, `current_gate`, or
+`missing_evidence`.
+
 ### E4 — implementation binding
 
 E4 binds the current E3 to one concrete `test`, `guard`, `rule`, `schema`, or
@@ -135,7 +186,8 @@ E4 binds the current E3 to one concrete `test`, `guard`, `rule`, `schema`, or
 - complete consumption of every E3 implementation requirement through required
   control behavior, a concrete asset, and behavioral verification;
 - complete binding of every E3 implementation-scope path to a declared changed
-  artifact;
+  artifact, or one-to-one binding of every E3 scope label to a non-empty set
+  of declared changed paths;
 - focused and regression results;
 - a rollback path.
 
@@ -145,6 +197,10 @@ test, runtime interception trace, or controlled contrast; activation evidence
 is separately limited to a runtime trace, adversarial trigger trace, or
 controlled contrast. Every path changed by the bound Git range must be
 declared—an E4 cannot hide an unrelated change in the same commit range.
+Label-valued scope and path identity remain distinct. Mixed label/path binding
+forms, duplicate or unknown labels, empty label bindings, and paths outside
+`changed_artifacts` fail validation. Existing path-valued E4 records retain
+their original validation route.
 
 ### E5 — separate lower Run
 
@@ -294,6 +350,18 @@ The legacy six-role order, Golden manifest bytes, and Structural Replay
 semantics remain unchanged. Stage 5 records are never inserted into a legacy
 Bridge session.
 
+The local command:
+
+```text
+decision-os public-claim <repository> <evaluation.json>
+```
+
+accepts only the strict evaluation packet. It invokes the Guard before any
+authorization output. Runtime attempts to submit Manifest authority fields,
+span or predicate overrides, evidence labels outside the fixed contract, or
+stale repository/event heads fail closed. Evaluation is read-only and stores
+no eligibility flag or authorization result.
+
 ## Companion HTTP and UI
 
 All Stage 5 routes use the existing loopback session, Origin, CSRF, request
@@ -346,4 +414,7 @@ silent fallback to a last-known-good projection is prohibited.
   the same OS identity and full write access remains outside this v0.1 trust
   boundary.
 - One valid similar lower Run does not establish generalization.
+- A public-claim authorization receipt is bounded to one exact surface,
+  Manifest triple, repository HEAD, event-chain head, and supplied evidence.
+  It is not publication approval or evidence of generalized transplant.
 - No external model invocation or Formal Run 001 is part of v0.1.

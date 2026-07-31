@@ -17,6 +17,7 @@ from unittest.mock import patch
 from decision_os.intelligence_transplant import (
     E4_IMPLEMENTATION_BINDING,
     LOWER_RUN_TRIAL_MANIFEST,
+    PUBLIC_CLAIM_MANIFEST,
     RUN_CHARTER,
     SEAT_ASSIGNMENT_RECEIPT,
     canonical_json,
@@ -33,6 +34,7 @@ from decision_os.companion.intelligence_transplant import (
     IntelligenceTransplantController,
     IntelligenceTransplantIntegrityError,
     IntelligenceTransplantValidationError,
+    _MANIFEST_TYPES,
 )
 from decision_os.companion.manual_bridge import (
     BridgeSessionController,
@@ -234,6 +236,16 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
             charter,
             charter_source=source,
             repository_head=str(source["repository_head"]),
+        )
+
+    def test_native_manifest_allowlist_preserves_existing_types(self) -> None:
+        self.assertEqual(
+            {
+                "AUDIT_INPUT_MANIFEST",
+                LOWER_RUN_TRIAL_MANIFEST,
+                PUBLIC_CLAIM_MANIFEST,
+            },
+            set(_MANIFEST_TYPES),
         )
 
     def test_store_is_lazy_private_git_common_dir_and_charter_is_not_active(
