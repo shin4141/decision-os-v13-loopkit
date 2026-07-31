@@ -2990,7 +2990,6 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(elements.get("guided-intake-transfer").disabled, true);
 
-              const contractFetchStart = fetchCalls.length;
               const boundedTaskBeforeImport = elements.get("task").value;
               const markdownContent =
                 "# Approved Product Contract\r\n\r\n" +
@@ -3136,7 +3135,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
 
               let sameFileReadCount = 0;
               let rejectFirstSameFileRead;
-              const sameFileContent = "Newest same-file import wins.";
+              const sameFileContent =
+                "Newest same-file import wins.\r\nUnicode: 契約";
+              const displayedSameFileContent = sameFileContent.replace(
+                /\r\n?/g,
+                "\n",
+              );
               const sameFile = {
                 name: "same-contract.md",
                 text() {
@@ -3178,6 +3182,89 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 false,
               );
 
+              const guidedOriginal = elements.get(
+                "guided-intake-original-request"
+              );
+              await elements
+                .get("contract-use-guided-intake")
+                .dispatch("click");
+              await settle();
+              assert.strictEqual(guidedOriginal.value, displayedSameFileContent);
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content",
+                  sandbox,
+                ),
+                sameFileContent,
+              );
+
+              const preservedDecodedTail =
+                "\r\nUnicode: 契約\n" +
+                "LF stays decoded\n" +
+                "CR stays decoded\r" +
+                "CRLF stays decoded\r\nFULL_TAIL";
+              const longContent =
+                "A".repeat(11698 - preservedDecodedTail.length) +
+                preservedDecodedTail;
+              const displayedLongContent = longContent.replace(/\r\n?/g, "\n");
+              assert.strictEqual(longContent.length, 11698);
+              assert.notStrictEqual(displayedLongContent, longContent);
+              const longFilename = `${"very-long-contract-name-".repeat(30)}.MD`;
+              const longFile = {
+                name: longFilename,
+                async text() {
+                  return longContent;
+                },
+              };
+              elements.get("contract-file").files = [longFile];
+              await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                vm.runInContext("guidedTransferredOriginalRequest", sandbox),
+                null,
+              );
+              assert.strictEqual(guidedOriginal.value, displayedSameFileContent);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
+
+              fetchQueue.push(() => Promise.resolve(response(completedState)));
+              await elements.get("guided-intake-capture").dispatch("click");
+              await settle();
+              const resetBackingCaptureRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                resetBackingCaptureRequest.path,
+                "/api/guided-intake/capture",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(resetBackingCaptureRequest.options.body),
+                {
+                  original_request: displayedSameFileContent,
+                  supersedes_request_id: "GUIDED-REQUEST-ONE",
+                },
+              );
+              assert.notStrictEqual(
+                JSON.parse(resetBackingCaptureRequest.options.body)
+                  .original_request,
+                sameFileContent,
+              );
+
+              elements.get("contract-file").files = [sameFile];
+              await elements.get("contract-file").dispatch("input");
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              await elements
+                .get("contract-use-guided-intake")
+                .dispatch("click");
+              await settle();
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content",
+                  sandbox,
+                ),
+                sameFileContent,
+              );
+
               let unsupportedReads = 0;
               elements.get("contract-file").files = [
                 {
@@ -3189,6 +3276,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                vm.runInContext("guidedTransferredOriginalRequest", sandbox),
+                null,
+              );
+              assert.strictEqual(guidedOriginal.value, displayedSameFileContent);
               assert.strictEqual(
                 elements.get("contract-use-guided-intake").disabled,
                 true,
@@ -3211,26 +3303,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 elements.get("contract-use-guided-intake").disabled,
                 true,
               );
+              assert.strictEqual(
+                vm.runInContext("guidedTransferredOriginalRequest", sandbox),
+                null,
+              );
+              assert.strictEqual(guidedOriginal.value, displayedSameFileContent);
 
-              const preservedDecodedTail =
-                "\r\nUnicode: 契約\n" +
-                "LF stays decoded\n" +
-                "CRLF stays decoded\r\nFULL_TAIL";
-              const longContent =
-                "A".repeat(11698 - preservedDecodedTail.length) +
-                preservedDecodedTail;
-              const displayedLongContent = longContent.replace(/\r\n?/g, "\n");
-              assert.strictEqual(longContent.length, 11698);
-              assert.notStrictEqual(displayedLongContent, longContent);
-              const longFilename = `${"very-long-contract-name-".repeat(30)}.MD`;
-              elements.get("contract-file").files = [
-                {
-                  name: longFilename,
-                  async text() {
-                    return longContent;
-                  },
-                },
-              ];
+              const contractFetchStart = fetchCalls.length;
+              elements.get("contract-file").files = [longFile];
               await elements.get("contract-file").dispatch("input");
               assert.strictEqual(
                 elements.get("contract-use-guided-intake").disabled,
@@ -3273,11 +3353,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 false,
               );
 
-              const guidedOriginal = elements.get(
-                "guided-intake-original-request"
-              );
               const guidedCard = elements.get("guided-intake-card");
-              assert.strictEqual(guidedOriginal.value, "");
+              assert.strictEqual(guidedOriginal.value, displayedSameFileContent);
               const guidedFocusBeforeUse = guidedOriginal.focusCalls.length;
               const guidedOriginalScrollBeforeUse =
                 guidedOriginal.scrollIntoViewCalls.length;
@@ -3329,7 +3406,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(fetchCalls.length, useFetchStart);
               assert.strictEqual(
-                fetchCalls.some(
+                fetchCalls.slice(useFetchStart).some(
                   (call) => call.path === "/api/guided-intake/capture",
                 ),
                 false,

@@ -55,6 +55,7 @@ function supportedContractFile(file) {
 
 function resetContractImport({ clearFile = false } = {}) {
   importedContract = null;
+  guidedTransferredOriginalRequest = null;
   if (clearFile) {
     byId("contract-file").value = "";
   }
