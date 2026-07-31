@@ -64,7 +64,7 @@ Terminal during normal launch and Run:
 not opened
 
 Repository:
-/Users/sn/Documents/v13/decision-os-v13-loopkit
+<repo>
 
 Authentication:
 ChatGPT

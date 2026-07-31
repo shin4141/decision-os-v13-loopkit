@@ -149,7 +149,7 @@ certification.
 
 ```text
 Sanitized receipt path:
-/var/folders/8p/njjq3zy14slbn9jvv4tt82dm0000gn/T/decision-os-verified-save-receipt-5f3e1db436bc.txt
+<local-temp>/<receipt-file>
 
 Receipt SHA-256:
 23c6ced038a0ca2b963ed84463fe25181bbc52dddf08b052e6f6725fb3c40780

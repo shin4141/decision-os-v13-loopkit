@@ -6,7 +6,7 @@ V13 — Compound Loop / Stage 2 Manual Bridge
 
 ## Repo Root
 
-/Users/sn/Documents/v13/decision-os-v13-loopkit
+<repo>
 
 ## Current State
 

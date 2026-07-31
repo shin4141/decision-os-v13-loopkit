@@ -343,7 +343,7 @@ Receipt evidence:
 
 ```text
 Sanitized receipt path:
-/var/folders/8p/njjq3zy14slbn9jvv4tt82dm0000gn/T/decision-os-verified-save-receipt-8b15f620b6f9.txt
+<local-temp>/<receipt-file>
 
 Receipt SHA-256:
 027368f679b7ce1f14bf7ca42bfe686c34c8af313d801f7cc086e0b2a5c3e100

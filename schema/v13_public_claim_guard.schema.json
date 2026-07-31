@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/v13-public-claim-guard.schema.json",
+  "title": "Decision-OS V13 Evidence-Bound Public Claim Guard v0.1",
+  "description": "Strict runtime evaluation packet for a native PUBLIC_CLAIM_MANIFEST. The Manifest record itself is owned by v13_intelligence_transplant.schema.json.",
+  "$ref": "#/$defs/evaluationPacket",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitCommit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "safeId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,200}$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "claim_id",
+        "evidence_type",
+        "verification_mode",
+        "observed_behavior",
+        "boundary_id",
+        "payload_base64",
+        "payload_sha256",
+        "repository_head",
+        "event_chain_head"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/safeId"},
+        "claim_id": {"$ref": "#/$defs/safeId"},
+        "evidence_type": {
+          "enum": [
+            "DOCUMENTATION_BLOB",
+            "SOURCE_BLOB",
+            "BEHAVIORAL_TRACE",
+            "STAGE5_OBJECT_BUNDLE"
+          ]
+        },
+        "verification_mode": {
+          "enum": [
+            "DOCUMENTARY_BLOB_MATCH",
+            "SOURCE_BLOB_MATCH",
+            "ADVERSARIAL_BEHAVIOR_TEST",
+            "RUNTIME_INTERCEPTION_TRACE",
+            "NATIVE_GRAPH_PREDICATE"
+          ]
+        },
+        "observed_behavior": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "boundary_id": {"$ref": "#/$defs/safeId"},
+        "payload_base64": {
+          "type": "string",
+          "minLength": 1,
+          "contentEncoding": "base64"
+        },
+        "payload_sha256": {"$ref": "#/$defs/sha256"},
+        "repository_head": {"$ref": "#/$defs/gitCommit"},
+        "event_chain_head": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evaluationPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "evaluation_id",
+        "manifest_id",
+        "content_hash",
+        "manifest_hash",
+        "surface_base64",
+        "evidence",
+        "repository_head",
+        "event_chain_head",
+        "owner_execution_authorization"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "decision-os.public-claim-evaluation.v0.1"
+        },
+        "evaluation_id": {"$ref": "#/$defs/safeId"},
+        "manifest_id": {"$ref": "#/$defs/safeId"},
+        "content_hash": {"$ref": "#/$defs/sha256"},
+        "manifest_hash": {"$ref": "#/$defs/sha256"},
+        "surface_base64": {
+          "type": "string",
+          "minLength": 1,
+          "contentEncoding": "base64"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/evidence"}
+        },
+        "repository_head": {"$ref": "#/$defs/gitCommit"},
+        "event_chain_head": {"$ref": "#/$defs/sha256"},
+        "owner_execution_authorization": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

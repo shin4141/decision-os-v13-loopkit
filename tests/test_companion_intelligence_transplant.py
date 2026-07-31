@@ -14,14 +14,24 @@ import threading
 import unittest
 from unittest.mock import patch
 
+from decision_os import (
+    intelligence_transplant as native_intelligence_transplant,
+)
+from decision_os.companion import (
+    intelligence_transplant as companion_intelligence_transplant,
+)
 from decision_os.intelligence_transplant import (
+    AUDIT_INPUT_MANIFEST,
     E4_IMPLEMENTATION_BINDING,
     LOWER_RUN_TRIAL_MANIFEST,
+    PUBLIC_CLAIM_MANIFEST,
     RUN_CHARTER,
     SEAT_ASSIGNMENT_RECEIPT,
     canonical_json,
     exact_ref,
     object_with_content_hash,
+    target_e3_allowed_input,
+    validate_graph,
 )
 from decision_os.companion.guided_intake import (
     GuidedIntakeConflictError,
@@ -33,6 +43,7 @@ from decision_os.companion.intelligence_transplant import (
     IntelligenceTransplantController,
     IntelligenceTransplantIntegrityError,
     IntelligenceTransplantValidationError,
+    _MANIFEST_TYPES,
 )
 from decision_os.companion.manual_bridge import (
     BridgeSessionController,
@@ -234,6 +245,47 @@ class CompanionIntelligenceTransplantTest(unittest.TestCase):
             charter,
             charter_source=source,
             repository_head=str(source["repository_head"]),
+        )
+
+    def test_native_manifest_allowlist_preserves_existing_types(self) -> None:
+        self.assertEqual(
+            {
+                "AUDIT_INPUT_MANIFEST",
+                LOWER_RUN_TRIAL_MANIFEST,
+                PUBLIC_CLAIM_MANIFEST,
+            },
+            set(_MANIFEST_TYPES),
+        )
+
+    def test_shared_target_e3_helper_preserves_existing_manifest_graphs(
+        self,
+    ) -> None:
+        self.assertIs(
+            companion_intelligence_transplant.target_e3_allowed_input,
+            native_intelligence_transplant.target_e3_allowed_input,
+        )
+        reference = {
+            "object_id": "V13-S5-FR-001-E3-001",
+            "content_hash": (
+                "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af"
+            ),
+        }
+        self.assertEqual(
+            (
+                "TARGET_E3:V13-S5-FR-001-E3-001@"
+                "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af"
+            ),
+            target_e3_allowed_input(reference),
+        )
+        graph = valid_graph()
+        self.assertTrue(validate_graph(graph).valid)
+        self.assertIn(
+            AUDIT_INPUT_MANIFEST,
+            {record["object_type"] for record in graph},
+        )
+        self.assertIn(
+            LOWER_RUN_TRIAL_MANIFEST,
+            {record["object_type"] for record in graph},
         )
 
     def test_store_is_lazy_private_git_common_dir_and_charter_is_not_active(

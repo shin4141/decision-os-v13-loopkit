@@ -33,12 +33,14 @@ from decision_os.intelligence_transplant import (
     E5_REUSE,
     LOWER_RUN_TRIAL_MANIFEST,
     MANUAL_CONTROL_RECEIPT,
+    PUBLIC_CLAIM_MANIFEST,
     RUN_CHARTER,
     canonical_json,
     compute_content_hash,
     exact_ref,
     reduce_evidence_graph,
     strict_json_object,
+    target_e3_allowed_input,
     validate_graph,
     validate_object,
 )
@@ -61,7 +63,11 @@ _BLOB_DIRECTORIES = {
     "manifest": "manifests",
 }
 _MANIFEST_TYPES = frozenset(
-    {AUDIT_INPUT_MANIFEST, LOWER_RUN_TRIAL_MANIFEST}
+    {
+        AUDIT_INPUT_MANIFEST,
+        LOWER_RUN_TRIAL_MANIFEST,
+        PUBLIC_CLAIM_MANIFEST,
+    }
 )
 _EVIDENCE_TYPES = frozenset(
     {
@@ -716,6 +722,11 @@ def _verify_repository_record_binding(
         if record.get("repository_head") != current_head:
             raise IntelligenceTransplantConflictError(
                 "HOLD — LOWER-RUN MANIFEST REPOSITORY AS-OF STALE"
+            )
+    elif object_type == PUBLIC_CLAIM_MANIFEST:
+        if record.get("repository_head") != current_head:
+            raise IntelligenceTransplantConflictError(
+                "HOLD — PUBLIC-CLAIM MANIFEST REPOSITORY AS-OF STALE"
             )
     elif (
         object_type == MANUAL_CONTROL_RECEIPT
@@ -1712,6 +1723,7 @@ class IntelligenceTransplantStore:
                     RUN_CHARTER,
                     E4_IMPLEMENTATION_BINDING,
                     LOWER_RUN_TRIAL_MANIFEST,
+                    PUBLIC_CLAIM_MANIFEST,
                 }:
                     record_repository_head = record.get("repository_head")
                 elif (
@@ -1752,6 +1764,19 @@ class IntelligenceTransplantStore:
                         stored_receipt != receipt
                         or verified_receipt != receipt
                         or transported_record != record
+                        or (
+                            record.get("object_type")
+                            == PUBLIC_CLAIM_MANIFEST
+                            and (
+                                verified_payload != canonical_json(record)
+                                or receipt.get("context_evidence_ref")
+                                != record.get(
+                                    "implementation_assignment_ref"
+                                )
+                                or receipt.get("as_of")
+                                != record.get("as_of")
+                            )
+                        )
                     ):
                         raise IntelligenceTransplantIntegrityError(
                             "HOLD — STAGE 5 STORE CORRUPT"
@@ -2165,6 +2190,13 @@ class IntelligenceTransplantController:
             raise IntelligenceTransplantValidationError(
                 "Stage 5 transport as_of is outside the record/event window."
             )
+        if (
+            record.get("object_type") == PUBLIC_CLAIM_MANIFEST
+            and record_as_of != receipt_as_of
+        ):
+            raise IntelligenceTransplantValidationError(
+                "Public-claim Manifest transport time is not exact."
+            )
         reference = receipt.get("context_evidence_ref")
         if reference is None:
             if record.get("object_type") != "SEAT_ASSIGNMENT_RECEIPT":
@@ -2206,6 +2238,26 @@ class IntelligenceTransplantController:
             raise IntelligenceTransplantValidationError(
                 "Stage 5 context evidence reference is not current."
             )
+        if record.get("object_type") == PUBLIC_CLAIM_MANIFEST:
+            e3_ref = record.get("e3_ref")
+            expected_allowed_input = (
+                target_e3_allowed_input(e3_ref)
+                if isinstance(e3_ref, Mapping)
+                else None
+            )
+            if (
+                reference != record.get("implementation_assignment_ref")
+                or referenced.get("object_type")
+                != "SEAT_ASSIGNMENT_RECEIPT"
+                or referenced.get("seat") != "IMPLEMENTATION"
+                or referenced.get("run_id") != record.get("run_id")
+                or referenced.get("charter_ref") != record.get("charter_ref")
+                or expected_allowed_input
+                not in referenced.get("allowed_inputs", ())
+            ):
+                raise IntelligenceTransplantValidationError(
+                    "Public-claim Manifest transport authority is invalid."
+                )
 
     def _attach(
         self,
@@ -2248,6 +2300,13 @@ class IntelligenceTransplantController:
                 if transported != value:
                     raise IntelligenceTransplantValidationError(
                         "Stage 5 transport bytes do not match the submitted object."
+                    )
+                if (
+                    value.get("object_type") == PUBLIC_CLAIM_MANIFEST
+                    and payload_bytes != canonical_json(value)
+                ):
+                    raise IntelligenceTransplantValidationError(
+                        "Public-claim Manifest transport is not canonical."
                     )
                 self._validate_context_ref(
                     value,

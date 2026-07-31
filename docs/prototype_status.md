@@ -17,6 +17,11 @@ It now includes reusable manual governance surfaces for AI-agent
 restartability, handoff, mistake memory, launch boundaries, and current-state
 transfer, plus the local read-only V13 Runner v0.2.
 
+The repository also contains executable Decision-OS CLIs, an optional manually
+invoked loopback Companion, and the bounded V13 Stage 5 public-claim evidence
+Guard. The Guard establishes one case-bounded `REUSED` result only;
+generalized transplant remains `NOT ESTABLISHED`.
+
 The exact-ref `uvx` distribution surface lets a user launch that unchanged
 Runner against a local Git repository. Tool transport may contact GitHub and
 package infrastructure; after launch, the Runner scan remains local and
@@ -52,14 +57,15 @@ Current reusable surfaces include:
 
 ## Boundary
 
-Still not a runtime.
+This is not a remote service or an automatic execution engine.
 
-Still not an execution engine.
+The repository's CLIs execute bounded local workflows. One optional Companion
+server can be invoked manually and binds to loopback for local use. The scan
+workflow remains local and read-only; separately invoked workflows can be
+stateful only within their documented local boundary.
 
-Still no hooks / MCP / pluginization.
-
-Still no runtime service, server, telemetry, remote scan, or automatic
-execution.
+There is no telemetry, remote scan, remote hosted service, or automatic
+execution. There is still no hooks / MCP / pluginization.
 
 Human keeps the Seat.
 
@@ -77,8 +83,8 @@ a new Runner version or another CLI or package change.
 
 Do not add without a separate explicit gate:
 
-- server
-- runtime service
+- another server or expansion of the existing loopback Companion
+- remote runtime service
 - runtime automation
 - hooks
 - MCP
@@ -94,6 +100,11 @@ Unapproved feature growth remains on HOLD.
 ## Public Exposure Status
 
 Public exposure remains on HOLD / CAP.
+
+V13-S5-FR-001 remains `ACTIVE / REUSED / HOLD`, with
+`GENERALIZED_TRANSPLANT_NOT_ESTABLISHED`. The bounded Guard and one similar
+Lower Run do not establish generalized, universal, cryptographic, merge,
+release, or publication authority.
 
 Do not treat weak public reaction as invalidation.
 

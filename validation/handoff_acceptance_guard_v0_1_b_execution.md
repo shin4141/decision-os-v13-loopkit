@@ -23,7 +23,7 @@
 - Repository: `shin4141/decision-os-v13-loopkit`
 - Origin: `https://github.com/shin4141/decision-os-v13-loopkit.git`
 - Exact execution worktree:
-  `/Users/sn/Documents/v13/decision-os-v13-loopkit-b-execution`
+  `<workspace>/decision-os-v13-loopkit-b-execution`
 - Worktree and index before implementation: clean
 - Checked-out branch before implementation:
   `codex/v13-sdfp-001-b-execution`

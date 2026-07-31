@@ -18,8 +18,8 @@ Good contributions include:
 
 Please do not add:
 
-- automation
-- CLI/server/package setup
+- another automation, CLI, server, or package surface, or expansion of an
+  existing one, without a separate explicit gate
 - Telegram or notification bots
 - schema expansion without an exposed gap
 - broad productization

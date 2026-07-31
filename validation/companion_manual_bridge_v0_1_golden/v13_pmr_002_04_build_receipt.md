@@ -144,10 +144,10 @@ App build command:
 App build result: `PASS`
 
 Built app:
-`/Users/sn/Applications/Decision OS Companion.app`
+`<user-home>/Applications/Decision OS Companion.app`
 
 Installed runtime:
-`/Users/sn/Library/Application Support/Decision OS Companion/runtime`
+`<user-home>/Library/Application Support/Decision OS Companion/runtime`
 
 Installed module verification:
 
@@ -156,8 +156,8 @@ Installed module verification:
 
 The unchanged builder retained recoverable prior-version backups:
 
-- `/Users/sn/Library/Application Support/Decision OS Companion/runtime.backup.20260729002709`
-- `/Users/sn/Applications/Decision OS Companion.app.backup.20260729002709`
+- `<user-home>/Library/Application Support/Decision OS Companion/runtime.backup.20260729002709`
+- `<user-home>/Applications/Decision OS Companion.app.backup.20260729002709`
 
 Installed-runtime bounded HTTP/panel smoke: `PASS`
 

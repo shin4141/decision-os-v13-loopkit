@@ -59,6 +59,7 @@ LOWER_RUN_TRIAL_MANIFEST = "LOWER_RUN_TRIAL_MANIFEST"
 LOWER_RUN_COMPLETION_RECEIPT = "LOWER_RUN_COMPLETION_RECEIPT"
 E5_REUSE = "E5_REUSE"
 MANUAL_CONTROL_RECEIPT = "MANUAL_CONTROL_RECEIPT"
+PUBLIC_CLAIM_MANIFEST = "PUBLIC_CLAIM_MANIFEST"
 
 OBJECT_TYPES = (
     RUN_CHARTER,
@@ -73,6 +74,7 @@ OBJECT_TYPES = (
     LOWER_RUN_COMPLETION_RECEIPT,
     E5_REUSE,
     MANUAL_CONTROL_RECEIPT,
+    PUBLIC_CLAIM_MANIFEST,
 )
 
 SEATS = frozenset(("DISCOVERY", "AUDIT", "IMPLEMENTATION", "LOWER_RUN"))
@@ -137,6 +139,45 @@ CONTROLLED_CONTRAST_FIXED_VARIABLES = (
 )
 CONTROLLED_CONTRAST_CHANGED_CONDITION = "ACTIVE_ASSET_ENABLED"
 GENERALIZED_BOUNDARY = "GENERALIZED_TRANSPLANT_NOT_ESTABLISHED"
+PUBLIC_CLAIM_MANIFEST_SCHEMA = "decision-os.public-claim-manifest.v0.1"
+PUBLIC_CLAIM_SPAN_TYPES = frozenset(
+    ("CLAIM", "OWNER_ATTESTED_NON_CLAIM", "STRUCTURAL_BYTES")
+)
+PUBLIC_CLAIM_CATEGORIES = frozenset(
+    (
+        "BOUNDARY_STATEMENT",
+        "COMPONENT_EXISTENCE",
+        "FORMAL_RUN_MATURITY",
+        "OPERATIONAL_CAPABILITY",
+        "PROCESS_PURPOSE",
+        "SOURCE_EXISTENCE",
+    )
+)
+PUBLIC_CLAIM_EVIDENCE_TYPES = frozenset(
+    (
+        "BEHAVIORAL_TRACE",
+        "DOCUMENTATION_BLOB",
+        "SOURCE_BLOB",
+        "STAGE5_OBJECT_BUNDLE",
+    )
+)
+PUBLIC_CLAIM_VERIFICATION_MODES = frozenset(
+    (
+        "ADVERSARIAL_BEHAVIOR_TEST",
+        "DOCUMENTARY_BLOB_MATCH",
+        "NATIVE_GRAPH_PREDICATE",
+        "RUNTIME_INTERCEPTION_TRACE",
+        "SOURCE_BLOB_MATCH",
+    )
+)
+PUBLIC_CLAIM_MATURITY = frozenset(
+    ("NONE", "CANDIDATE", "IMPLEMENTED", "REUSED")
+)
+PUBLIC_CLAIM_STRUCTURAL_BYTES = frozenset(
+    bytes.fromhex(
+        "09 0a 0d 20 21 23 28 29 2a 2b 2d 2e 3a 3d 3e 5b 5d 5f 60 7b 7d"
+    )
+)
 GENESIS_HASH = "0" * 64
 MAX_JSON_BYTES = 4 * 1024 * 1024
 
@@ -416,6 +457,29 @@ OBJECT_FIELDS: dict[str, frozenset[str]] = {
             "rollback_changed_artifacts",
         )
     ),
+    PUBLIC_CLAIM_MANIFEST: BASE_FIELDS
+    | frozenset(
+        (
+            "manifest_schema_version",
+            "manifest_id",
+            "manifest_hash",
+            "charter_ref",
+            "e3_ref",
+            "implementation_assignment_ref",
+            "repository_head",
+            "surface_id",
+            "surface_sha256",
+            "surface_utf8_bytes",
+            "surface_encoding",
+            "spans",
+            "evidence_catalog",
+            "generalized_boundary",
+            "authority_mode",
+            "decision_owner",
+            "decision_owner_attestation",
+            "cryptographic_identity",
+        )
+    ),
 }
 
 SPECIAL_ID_FIELDS = {
@@ -431,6 +495,7 @@ SPECIAL_ID_FIELDS = {
     LOWER_RUN_COMPLETION_RECEIPT: "receipt_id",
     E5_REUSE: "e5_id",
     MANUAL_CONTROL_RECEIPT: "receipt_id",
+    PUBLIC_CLAIM_MANIFEST: "manifest_id",
 }
 SPECIAL_HASH_FIELDS = {
     RUN_CHARTER: "charter_hash",
@@ -440,6 +505,7 @@ SPECIAL_HASH_FIELDS = {
     LOWER_RUN_TRIAL_MANIFEST: "manifest_hash",
     LOWER_RUN_COMPLETION_RECEIPT: "receipt_hash",
     MANUAL_CONTROL_RECEIPT: "receipt_hash",
+    PUBLIC_CLAIM_MANIFEST: "manifest_hash",
 }
 
 REF_FIELD_TYPES: dict[str, dict[str, str | None]] = {
@@ -497,6 +563,11 @@ REF_FIELD_TYPES: dict[str, dict[str, str | None]] = {
         "charter_ref": RUN_CHARTER,
         "target_ref": None,
     },
+    PUBLIC_CLAIM_MANIFEST: {
+        "charter_ref": RUN_CHARTER,
+        "e3_ref": E3_ACCEPTED_DISCOVERY,
+        "implementation_assignment_ref": SEAT_ASSIGNMENT_RECEIPT,
+    },
 }
 
 ISSUE_CODES = (
@@ -527,6 +598,7 @@ ISSUE_CODES = (
     "INVALID_LOWER_RUN_COMPLETION_RECEIPT",
     "INVALID_E5",
     "INVALID_CONTROL_RECEIPT",
+    "INVALID_PUBLIC_CLAIM_MANIFEST",
     "GRAPH_REQUIRED",
     "CHARTER_REQUIRED",
     "MULTIPLE_CHARTERS",
@@ -960,6 +1032,14 @@ def _is_ref(value: Any) -> bool:
     )
 
 
+def target_e3_allowed_input(reference: Any) -> str:
+    """Return the sole canonical Implementation Seat token for one E3 ref."""
+
+    if not _is_ref(reference):
+        raise ValueError("Target E3 reference is invalid.")
+    return f"TARGET_E3:{reference['object_id']}@{reference['content_hash']}"
+
+
 def _resolve_exact_type(
     record: Mapping[str, Any],
     field: str,
@@ -1094,9 +1174,17 @@ def _claim_binding_valid(value: Any) -> bool:
         "behavioral_verification",
         "activation_evidence",
     }
+    scope_bindings = value.get("implementation_scope_bindings") if isinstance(
+        value, Mapping
+    ) else None
+    expected_fields = (
+        required | {"implementation_scope_bindings"}
+        if scope_bindings is not None
+        else required
+    )
     return (
         isinstance(value, Mapping)
-        and set(value) == required
+        and set(value) == expected_fields
         and _is_string_list(value.get("implementation_requirements"))
         and _is_string_list(value.get("implementation_scope"))
         and all(
@@ -1111,6 +1199,457 @@ def _claim_binding_valid(value: Any) -> bool:
         and _is_sha256(value.get("asset_hash"))
         and _behavioral_verification_valid(value.get("behavioral_verification"))
         and _activation_evidence_valid(value.get("activation_evidence"))
+        and (
+            scope_bindings is None
+            or (
+                isinstance(scope_bindings, list)
+                and bool(scope_bindings)
+                and all(
+                    isinstance(binding, Mapping)
+                    and set(binding) == {"changed_paths", "scope_label"}
+                    and _is_nonempty_string(binding.get("scope_label"))
+                    and _is_string_list(binding.get("changed_paths"))
+                    for binding in scope_bindings
+                )
+            )
+        )
+    )
+
+
+def _public_predicate_valid(value: Any) -> bool:
+    if value is None:
+        return True
+    required = {
+        "current_gate_equals",
+        "delta_state_equals",
+        "execution_status_equals",
+        "generalized_boundary_equals",
+        "missing_evidence_exact",
+        "object_type_requirements",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        return False
+    requirements = value.get("object_type_requirements")
+    if (
+        not isinstance(requirements, list)
+        or not all(
+            isinstance(item, Mapping)
+            and set(item) == {"object_type", "presence"}
+            and item.get("object_type") in OBJECT_TYPES
+            and item.get("presence") in {"PRESENT", "ABSENT"}
+            for item in requirements
+        )
+        or len(
+            [
+                item.get("object_type")
+                for item in requirements
+                if isinstance(item, Mapping)
+            ]
+        )
+        != len(
+            {
+                item.get("object_type")
+                for item in requirements
+                if isinstance(item, Mapping)
+            }
+        )
+    ):
+        return False
+    missing = value.get("missing_evidence_exact")
+    return bool(
+        value.get("execution_status_equals")
+        in {None, EXECUTION_NOT_ESTABLISHED, EXECUTION_ACTIVE, EXECUTION_CLOSED}
+        and value.get("delta_state_equals") in ({None} | set(DELTA_STATES))
+        and value.get("current_gate_equals") in ({None} | set(GATES))
+        and (
+            value.get("generalized_boundary_equals") is None
+            or _is_nonempty_string(value.get("generalized_boundary_equals"))
+        )
+        and (
+            missing is None
+            or _is_string_list(missing, allow_empty=True)
+        )
+    )
+
+
+def _public_evidence_contract_valid(
+    value: Any,
+    *,
+    claim_id: Any,
+    category: Any,
+    predicate: Any,
+) -> bool:
+    required = {
+        "claim_id",
+        "permitted_evidence_types",
+        "required_boundary_id",
+        "required_observed_behavior",
+        "required_verification_mode",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        return False
+    evidence_types = value.get("permitted_evidence_types")
+    if (
+        value.get("claim_id") != claim_id
+        or not _is_string_list(evidence_types)
+        or not set(evidence_types).issubset(PUBLIC_CLAIM_EVIDENCE_TYPES)
+        or not _is_nonempty_string(value.get("required_boundary_id"))
+        or value.get("required_verification_mode")
+        not in PUBLIC_CLAIM_VERIFICATION_MODES
+    ):
+        return False
+    observed = value.get("required_observed_behavior")
+    if observed is not None and not _is_nonempty_string(observed):
+        return False
+
+    if predicate is not None:
+        expected_types = ["STAGE5_OBJECT_BUNDLE"]
+        expected_modes = {"NATIVE_GRAPH_PREDICATE"}
+        observed_valid = observed is None
+    elif category == "SOURCE_EXISTENCE":
+        expected_types = ["SOURCE_BLOB"]
+        expected_modes = {"SOURCE_BLOB_MATCH"}
+        observed_valid = observed is None
+    elif category == "OPERATIONAL_CAPABILITY":
+        expected_types = ["BEHAVIORAL_TRACE"]
+        expected_modes = {
+            "ADVERSARIAL_BEHAVIOR_TEST",
+            "RUNTIME_INTERCEPTION_TRACE",
+        }
+        observed_valid = _is_nonempty_string(observed)
+    else:
+        expected_types = ["DOCUMENTATION_BLOB"]
+        expected_modes = {"DOCUMENTARY_BLOB_MATCH"}
+        observed_valid = observed is None
+    return bool(
+        evidence_types == expected_types
+        and value.get("required_verification_mode") in expected_modes
+        and observed_valid
+    )
+
+
+def _public_claim_span_valid(value: Any) -> bool:
+    required = {
+        "claim_category",
+        "claim_id",
+        "classification_basis",
+        "decision_owner",
+        "decision_owner_attestation",
+        "end_byte",
+        "evidence_contract",
+        "evidence_refs",
+        "exact_text",
+        "exact_text_sha256",
+        "excluded_interpretations",
+        "native_graph_predicate",
+        "qualifier_requirement",
+        "required_evidence_class",
+        "required_formal_run_maturity",
+        "span_type",
+        "start_byte",
+        "surface_id",
+        "surface_sha256",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        return False
+    predicate = value.get("native_graph_predicate")
+    category = value.get("claim_category")
+    qualifier = value.get("qualifier_requirement")
+    if (
+        value.get("span_type") != "CLAIM"
+        or category not in PUBLIC_CLAIM_CATEGORIES
+        or not _is_nonempty_string(value.get("claim_id"))
+        or not _is_nonempty_string(value.get("classification_basis"))
+        or value.get("decision_owner") != DECISION_OWNER
+        or not _is_owner_attestation(value.get("decision_owner_attestation"))
+        or not _is_string_list(value.get("evidence_refs"), allow_empty=True)
+        or not _is_string_list(value.get("excluded_interpretations"), allow_empty=True)
+        or not _is_nonempty_string(value.get("required_evidence_class"))
+        or value.get("required_formal_run_maturity")
+        not in PUBLIC_CLAIM_MATURITY
+        or not _public_predicate_valid(predicate)
+        or (qualifier is not None and not _is_nonempty_string(qualifier))
+    ):
+        return False
+    if category == "FORMAL_RUN_MATURITY" and predicate is None:
+        return False
+    if category == "OPERATIONAL_CAPABILITY" and predicate is not None:
+        return False
+    expected_evidence_class = (
+        "NATIVE_STAGE5_GRAPH"
+        if predicate is not None
+        else (
+            "DIRECT_SOURCE_VERIFICATION"
+            if category == "SOURCE_EXISTENCE"
+            else (
+                "BEHAVIORAL_VERIFICATION"
+                if category == "OPERATIONAL_CAPABILITY"
+                else "DOCUMENTARY_COMPONENT_EXISTENCE"
+            )
+        )
+    )
+    if value.get("required_evidence_class") != expected_evidence_class:
+        return False
+    if not _public_evidence_contract_valid(
+        value.get("evidence_contract"),
+        claim_id=value.get("claim_id"),
+        category=category,
+        predicate=predicate,
+    ):
+        return False
+    if value.get("claim_id") == "V13-S5-FR-001-README-DRAFT-000-CLAIM-012":
+        contract = value["evidence_contract"]
+        if contract != {
+            "claim_id": "V13-S5-FR-001-README-DRAFT-000-CLAIM-012",
+            "permitted_evidence_types": ["BEHAVIORAL_TRACE"],
+            "required_boundary_id": (
+                "V13-S5-FR-001-R13-OPERATIONAL-BOUNDARY-001"
+            ),
+            "required_observed_behavior": (
+                "Stage 5 record validation, storage, linking, and reduction "
+                "execute at the bound implementation boundary."
+            ),
+            "required_verification_mode": "ADVERSARIAL_BEHAVIOR_TEST",
+        }:
+            return False
+    return True
+
+
+def _public_nonclaim_span_valid(value: Any) -> bool:
+    required = {
+        "boundary_effect",
+        "decision_owner",
+        "decision_owner_attestation",
+        "end_byte",
+        "exact_text",
+        "exact_text_sha256",
+        "non_claim_reason",
+        "span_id",
+        "span_type",
+        "start_byte",
+        "surface_id",
+        "surface_sha256",
+    }
+    return bool(
+        isinstance(value, Mapping)
+        and set(value) == required
+        and value.get("span_type") == "OWNER_ATTESTED_NON_CLAIM"
+        and value.get("decision_owner") == DECISION_OWNER
+        and _is_owner_attestation(value.get("decision_owner_attestation"))
+        and all(
+            _is_nonempty_string(value.get(field))
+            for field in ("boundary_effect", "non_claim_reason", "span_id")
+        )
+    )
+
+
+def _public_structural_span_valid(value: Any) -> bool:
+    required = {
+        "allowed_bytes_hex",
+        "end_byte",
+        "exact_text",
+        "exact_text_sha256",
+        "span_id",
+        "span_type",
+        "start_byte",
+        "structural_class",
+        "surface_id",
+        "surface_sha256",
+    }
+    if not (
+        isinstance(value, Mapping)
+        and set(value) == required
+        and value.get("span_type") == "STRUCTURAL_BYTES"
+        and all(
+            _is_nonempty_string(value.get(field))
+            for field in ("allowed_bytes_hex", "span_id", "structural_class")
+        )
+    ):
+        return False
+    try:
+        allowed = bytes.fromhex(str(value.get("allowed_bytes_hex")))
+        exact = str(value.get("exact_text")).encode("utf-8")
+    except (UnicodeError, ValueError):
+        return False
+    return bool(
+        allowed == exact
+        and value.get("allowed_bytes_hex") == allowed.hex()
+        and all(byte in PUBLIC_CLAIM_STRUCTURAL_BYTES for byte in allowed)
+    )
+
+
+def _public_descriptor_valid(
+    value: Any,
+    *,
+    record: Mapping[str, Any],
+) -> bool:
+    required = {
+        "authority_mode",
+        "charter_ref",
+        "constraints",
+        "cryptographic_identity",
+        "decision_owner",
+        "decision_owner_attestation",
+        "descriptor_hash",
+        "descriptor_id",
+        "e3_ref",
+        "event_chain_binding_rule",
+        "evidence_type",
+        "external_independence",
+        "generalized_boundary",
+        "implementation_seat_ref",
+        "real_world_identity_authentication",
+        "repository_head",
+        "required_evidence_class",
+        "run_id",
+        "schema_version",
+    }
+    if not isinstance(value, Mapping) or set(value) != required:
+        return False
+    body = deepcopy(dict(value))
+    body["descriptor_hash"] = ""
+    return bool(
+        value.get("schema_version")
+        == "decision-os.native-stage5-graph-descriptor.v0.1"
+        and _is_nonempty_string(value.get("descriptor_id"))
+        and _is_sha256(value.get("descriptor_hash"))
+        and value.get("descriptor_hash")
+        == hashlib.sha256(canonical_json(body)).hexdigest()
+        and value.get("charter_ref") == record.get("charter_ref")
+        and value.get("e3_ref") == record.get("e3_ref")
+        and value.get("implementation_seat_ref")
+        == record.get("implementation_assignment_ref")
+        and value.get("repository_head") == record.get("repository_head")
+        and value.get("run_id") == record.get("run_id")
+        and value.get("authority_mode") == AUTHORITY_MODE
+        and value.get("decision_owner") == DECISION_OWNER
+        and _is_owner_attestation(value.get("decision_owner_attestation"))
+        and value.get("cryptographic_identity") == "NOT_ESTABLISHED"
+        and value.get("external_independence") == "NOT_ESTABLISHED"
+        and value.get("real_world_identity_authentication") == "NOT_ESTABLISHED"
+        and value.get("generalized_boundary") == GENERALIZED_BOUNDARY
+        and value.get("evidence_type") == "STAGE5_OBJECT_BUNDLE"
+        and value.get("required_evidence_class") == "NATIVE_STAGE5_GRAPH"
+        and value.get("event_chain_binding_rule")
+        == "RUNTIME_EXACT_CURRENT_REQUIRED"
+        and value.get("constraints")
+        == [
+            "FORMAL_RUN_MATURITY_FROM_GRAPH_ONLY",
+            GENERALIZED_BOUNDARY,
+        ]
+    )
+
+
+def _public_manifest_valid(record: Mapping[str, Any]) -> bool:
+    spans = record.get("spans")
+    catalog = record.get("evidence_catalog")
+    if not (
+        record.get("manifest_schema_version") == PUBLIC_CLAIM_MANIFEST_SCHEMA
+        and _is_ref(record.get("charter_ref"))
+        and _is_ref(record.get("e3_ref"))
+        and _is_ref(record.get("implementation_assignment_ref"))
+        and _is_commit(record.get("repository_head"))
+        and _is_nonempty_string(record.get("surface_id"))
+        and _is_sha256(record.get("surface_sha256"))
+        and isinstance(record.get("surface_utf8_bytes"), int)
+        and not isinstance(record.get("surface_utf8_bytes"), bool)
+        and record.get("surface_utf8_bytes", 0) > 0
+        and record.get("surface_encoding") == "UTF-8"
+        and isinstance(spans, list)
+        and bool(spans)
+        and isinstance(catalog, list)
+        and bool(catalog)
+        and record.get("generalized_boundary") == GENERALIZED_BOUNDARY
+        and _authority_fields_valid(record)
+        and _cryptographic_boundary_valid(record)
+    ):
+        return False
+    descriptor_ids: set[str] = set()
+    descriptor_refs: set[str] = set()
+    for descriptor in catalog:
+        if not _public_descriptor_valid(descriptor, record=record):
+            return False
+        descriptor_id = str(descriptor.get("descriptor_id"))
+        if descriptor_id in descriptor_ids:
+            return False
+        descriptor_ids.add(descriptor_id)
+        descriptor_refs.add(
+            f"{descriptor_id}@{descriptor.get('descriptor_hash')}"
+        )
+
+    surface = bytearray()
+    expected_start = 0
+    span_ids: set[str] = set()
+    claim_ids: set[str] = set()
+    for span in spans:
+        if not isinstance(span, Mapping):
+            return False
+        span_type = span.get("span_type")
+        if span_type == "CLAIM":
+            if not _public_claim_span_valid(span):
+                return False
+            if (
+                span.get("native_graph_predicate") is not None
+                and (
+                    not span.get("evidence_refs")
+                    or not set(span.get("evidence_refs", ())).issubset(
+                        descriptor_refs
+                    )
+                )
+            ):
+                return False
+            identity = str(span.get("claim_id"))
+            if identity in claim_ids:
+                return False
+            claim_ids.add(identity)
+        elif span_type == "OWNER_ATTESTED_NON_CLAIM":
+            if not _public_nonclaim_span_valid(span):
+                return False
+            identity = str(span.get("span_id"))
+            if identity in span_ids:
+                return False
+            span_ids.add(identity)
+        elif span_type == "STRUCTURAL_BYTES":
+            if not _public_structural_span_valid(span):
+                return False
+            identity = str(span.get("span_id"))
+            if identity in span_ids:
+                return False
+            span_ids.add(identity)
+        else:
+            return False
+        start = span.get("start_byte")
+        end = span.get("end_byte")
+        exact_text = span.get("exact_text")
+        if (
+            not isinstance(start, int)
+            or isinstance(start, bool)
+            or not isinstance(end, int)
+            or isinstance(end, bool)
+            or not isinstance(exact_text, str)
+            or start != expected_start
+            or end <= start
+            or span.get("surface_id") != record.get("surface_id")
+            or span.get("surface_sha256") != record.get("surface_sha256")
+            or not _is_sha256(span.get("exact_text_sha256"))
+        ):
+            return False
+        try:
+            exact_bytes = exact_text.encode("utf-8")
+        except UnicodeError:
+            return False
+        if (
+            end - start != len(exact_bytes)
+            or hashlib.sha256(exact_bytes).hexdigest()
+            != span.get("exact_text_sha256")
+        ):
+            return False
+        surface.extend(exact_bytes)
+        expected_start = end
+    return bool(
+        len(surface) == record.get("surface_utf8_bytes")
+        and hashlib.sha256(bytes(surface)).hexdigest()
+        == record.get("surface_sha256")
     )
 
 
@@ -1716,6 +2255,16 @@ def _local_object_issues(record: Any) -> set[str]:
             and bool(record.get("rollback_changed_artifacts"))
         ):
             issues.add("ROLLBACK_TARGET_MISMATCH")
+
+    elif object_type == PUBLIC_CLAIM_MANIFEST:
+        if not _public_manifest_valid(record):
+            issues.add("INVALID_PUBLIC_CLAIM_MANIFEST")
+        if not _authority_fields_valid(record):
+            issues.add("MANUAL_AUTHORITY_REQUIRED")
+        if not _cryptographic_boundary_valid(record):
+            issues.add("CRYPTOGRAPHIC_IDENTITY_OVERCLAIM")
+        if record.get("generalized_boundary") != GENERALIZED_BOUNDARY:
+            issues.add("GENERALIZED_TRANSPLANT_OVERCLAIM")
     return issues
 
 
@@ -1901,6 +2450,11 @@ def validate_graph(
                     or target.get("object_id") == record.get("object_id")
                 ):
                     issues.add("INVALID_SUPERSESSION")
+                if (
+                    record.get("object_type") == PUBLIC_CLAIM_MANIFEST
+                    and target.get("surface_id") != record.get("surface_id")
+                ):
+                    issues.add("INVALID_SUPERSESSION")
                 target_time = _parse_timestamp(target.get("as_of"))
                 record_time = _parse_timestamp(record.get("as_of"))
                 if (
@@ -1973,6 +2527,19 @@ def validate_graph(
             ):
                 issues.add("FORWARD_REPLACEMENT_REQUIRED")
             current_by_lineage[lineage] = record
+
+    current_public_lineage: dict[tuple[str, str], Mapping[str, Any]] = {}
+    for record in objects:
+        if record.get("object_type") != PUBLIC_CLAIM_MANIFEST:
+            continue
+        lineage = (str(record.get("run_id")), str(record.get("surface_id")))
+        predecessor = current_public_lineage.get(lineage)
+        if (
+            predecessor is not None
+            and record.get("supersedes") != exact_ref(predecessor)
+        ):
+            issues.add("FORWARD_REPLACEMENT_REQUIRED")
+        current_public_lineage[lineage] = record
 
     visiting: set[str] = set()
     visited: set[str] = set()
@@ -2369,13 +2936,76 @@ def validate_graph(
                 if e3 is not None
                 else []
             )
+            scope_binding_modes = [
+                "implementation_scope_bindings" in item
+                for item in bindings
+                if isinstance(item, Mapping)
+            ]
+            labeled_scope_entries = [
+                entry
+                for item in bindings
+                if isinstance(item, Mapping)
+                for entry in item.get("implementation_scope_bindings", ())
+                if isinstance(entry, Mapping)
+            ]
+            labeled_scope = [
+                entry.get("scope_label") for entry in labeled_scope_entries
+            ]
+            labeled_paths = [
+                path
+                for entry in labeled_scope_entries
+                for path in entry.get("changed_paths", ())
+            ]
+            legacy_scope_invalid = bool(
+                scope_binding_modes
+                and not any(scope_binding_modes)
+                and any(scope_path not in artifact_paths for scope_path in bound_scope)
+            )
+            labeled_scope_invalid = bool(
+                scope_binding_modes
+                and all(scope_binding_modes)
+                and (
+                    len(labeled_scope) != len(set(labeled_scope))
+                    or set(labeled_scope) != set(implementation_scope)
+                    or len(bound_scope) != len(set(bound_scope))
+                    or set(bound_scope) != set(implementation_scope)
+                    or any(path not in artifact_paths for path in labeled_paths)
+                    or set(labeled_paths) != artifact_paths
+                    or any(
+                        set(item.get("implementation_scope", ()))
+                        != {
+                            entry.get("scope_label")
+                            for entry in item.get(
+                                "implementation_scope_bindings", ()
+                            )
+                            if isinstance(entry, Mapping)
+                        }
+                        for item in bindings
+                        if isinstance(item, Mapping)
+                    )
+                )
+            )
             if (
                 len(binding_claims) != len(set(binding_claims))
                 or set(binding_claims) != set(accepted_claims)
                 or len(bound_requirements) != len(set(bound_requirements))
                 or set(bound_requirements) != set(implementation_requirements)
-                or len(bound_scope) != len(set(bound_scope))
-                or set(bound_scope) != set(implementation_scope)
+                or len(scope_binding_modes) != len(bindings)
+                or (
+                    scope_binding_modes
+                    and any(scope_binding_modes)
+                    and not all(scope_binding_modes)
+                )
+                or legacy_scope_invalid
+                or labeled_scope_invalid
+                or (
+                    scope_binding_modes
+                    and not any(scope_binding_modes)
+                    and (
+                        len(bound_scope) != len(set(bound_scope))
+                        or set(bound_scope) != set(implementation_scope)
+                    )
+                )
                 or any(
                     (
                         item.get("asset_identity"),
@@ -2386,7 +3016,6 @@ def validate_graph(
                     for item in bindings
                     if isinstance(item, Mapping)
                 )
-                or any(scope_path not in artifact_paths for scope_path in bound_scope)
             ):
                 issues.add("CLAIM_BINDING_INCOMPLETE")
             if any(
@@ -2398,6 +3027,28 @@ def validate_graph(
                 if isinstance(item, Mapping)
             ):
                 issues.add("BEHAVIORAL_ACTIVATION_MISSING")
+
+        elif object_type == PUBLIC_CLAIM_MANIFEST:
+            e3 = dep(record, "e3_ref")
+            assignment = dep(record, "implementation_assignment_ref")
+            expected_allowed_input = (
+                target_e3_allowed_input(record.get("e3_ref"))
+                if e3 is not None
+                else None
+            )
+            if (
+                e3 is not None
+                and record.get("generalized_boundary")
+                != e3.get("claim_boundary")
+            ):
+                issues.add("GENERALIZED_TRANSPLANT_OVERCLAIM")
+            if assignment is not None and (
+                assignment.get("seat") != "IMPLEMENTATION"
+                or assignment.get("charter_ref") != record.get("charter_ref")
+                or expected_allowed_input
+                not in assignment.get("allowed_inputs", ())
+            ):
+                issues.add("IMPLEMENTATION_AUTHORITY_MISSING")
 
         elif object_type == LOWER_RUN_TRIAL_MANIFEST:
             e4 = dep(record, "e4_ref")
