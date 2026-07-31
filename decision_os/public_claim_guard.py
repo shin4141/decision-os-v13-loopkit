@@ -42,6 +42,7 @@ from decision_os.intelligence_transplant import (
     exact_ref,
     reduce_evidence_graph,
     strict_json_object,
+    target_e3_allowed_input,
     validate_graph,
     validate_object,
     _all_refs,
@@ -348,13 +349,6 @@ def _find_exact(
     return None
 
 
-def _exact_e3_allowed_input(e3: Mapping[str, Any]) -> str:
-    return (
-        "E3_ACCEPTED_DISCOVERY:"
-        f"{e3['object_id']}@{e3['content_hash']}"
-    )
-
-
 def _validate_current_authority(
     record: Mapping[str, Any],
     records: Sequence[Mapping[str, Any]],
@@ -400,7 +394,10 @@ def _validate_current_authority(
         or seat.get("seat") != "IMPLEMENTATION"
         or seat.get("run_id") != record.get("run_id")
         or seat.get("charter_ref") != record.get("charter_ref")
-        or _exact_e3_allowed_input(e3) not in seat.get("allowed_inputs", ())
+        or (
+            target_e3_allowed_input(record.get("e3_ref"))
+            not in seat.get("allowed_inputs", ())
+        )
     ):
         _fail(
             BLOCK,

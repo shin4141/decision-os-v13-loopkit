@@ -12,6 +12,13 @@ import unittest
 from unittest.mock import patch
 import zlib
 
+import decision_os.public_claim_guard as public_claim_guard
+from decision_os import (
+    intelligence_transplant as native_intelligence_transplant,
+)
+from decision_os.companion import (
+    intelligence_transplant as companion_intelligence_transplant,
+)
 from decision_os.cli import main as cli_main
 from decision_os.companion.intelligence_transplant import (
     IntelligenceTransplantController,
@@ -34,6 +41,7 @@ from decision_os.intelligence_transplant import (
     exact_ref,
     object_with_content_hash,
     reduce_evidence_graph,
+    target_e3_allowed_input,
     validate_graph,
     validate_object,
 )
@@ -231,6 +239,107 @@ DESCRIPTOR_VECTOR_B85 = (
 
 
 
+PERSISTED_AUTHORITY_GRAPH_B64 = (
+    "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"
+    "d1HswK1//j+utV2v"
+)
+
+
 def git(repository: Path, *arguments: str) -> str:
     return subprocess.run(
         ("git", "-C", str(repository), *arguments),
@@ -250,6 +359,23 @@ def create_repository(parent: Path) -> Path:
     git(repository, "add", "seed.txt")
     git(repository, "commit", "-qm", "seed")
     return repository
+
+
+def canonical_vector(encoded: str) -> tuple[bytes, dict[str, object]]:
+    raw = zlib.decompress(base64.b85decode(encoded))
+    record = json.loads(raw)
+    assert isinstance(record, dict)
+    assert raw == canonical_json(record)
+    return raw, record
+
+
+def persisted_authority_graph() -> list[dict[str, object]]:
+    raw = zlib.decompress(base64.b64decode(PERSISTED_AUTHORITY_GRAPH_B64))
+    records = json.loads(raw)
+    assert isinstance(records, list)
+    assert raw == canonical_json(records)
+    assert all(isinstance(record, dict) for record in records)
+    return records
 
 
 def _replace_refs(
@@ -295,7 +421,7 @@ def graph_through_e3(repository: Path) -> list[dict[str, object]]:
     assert isinstance(seat, dict)
     seat["allowed_inputs"] = [
         (
-            "E3_ACCEPTED_DISCOVERY:"
+            "TARGET_E3:"
             f"{e3['object_id']}@{e3['content_hash']}"
         )
     ]
@@ -582,11 +708,9 @@ class PublicClaimCanonicalVectorTest(unittest.TestCase):
             ),
         )
         for encoded, byte_count, self_hash, payload_hash, surface_bytes, spans in vectors:
-            raw = zlib.decompress(base64.b85decode(encoded))
+            raw, record = canonical_vector(encoded)
             self.assertEqual(byte_count, len(raw))
             self.assertFalse(raw.endswith(b"\n"))
-            record = json.loads(raw)
-            self.assertEqual(raw, canonical_json(record))
             self.assertEqual(self_hash, record["content_hash"])
             self.assertEqual(self_hash, record["manifest_hash"])
             self.assertEqual(self_hash, object_with_content_hash(record)["content_hash"])
@@ -615,6 +739,108 @@ class PublicClaimCanonicalVectorTest(unittest.TestCase):
             "d54864d061942c90ae59b7294c311249d862014c25a555b3b858552e2c78c806",
             hashlib.sha256(canonical_json(descriptor)).hexdigest(),
         )
+
+    def test_fixed_manifests_pass_exact_persisted_authority_graph(self) -> None:
+        graph = persisted_authority_graph()
+        assessment = validate_graph(graph)
+        self.assertEqual("PASS", assessment.structural_validation)
+        self.assertEqual((), assessment.issue_codes)
+
+        charter = next(
+            record
+            for record in graph
+            if record["object_id"] == "V13-S5-FR-001-RUN-CHARTER-000"
+        )
+        e3 = next(
+            record
+            for record in graph
+            if record["object_id"] == "V13-S5-FR-001-E3-001"
+        )
+        seat = next(
+            record
+            for record in graph
+            if record["object_id"]
+            == "V13-S5-FR-001-IMPLEMENTATION-SEAT-001"
+        )
+        self.assertEqual(
+            "fe803124f3f5876d43b197ef548b31ae644e5f971aa83a852a51af62916aad15",
+            charter["content_hash"],
+        )
+        self.assertEqual(
+            "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af",
+            e3["content_hash"],
+        )
+        self.assertEqual(
+            "163497715fedabc6ed5b8a01fe62a9eee6550b05eb7eb08ee0fbd821acced32b",
+            seat["content_hash"],
+        )
+        exact_token = (
+            "TARGET_E3:V13-S5-FR-001-E3-001@"
+            "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af"
+        )
+        self.assertEqual("IMPLEMENTATION", seat["seat"])
+        self.assertIn(exact_token, seat["allowed_inputs"])
+        self.assertEqual(exact_token, target_e3_allowed_input(exact_ref(e3)))
+
+        before = reduce_evidence_graph(graph).as_dict()
+        expected_projection = (
+            "ACTIVE",
+            "CANDIDATE",
+            "GO",
+            ["E4_IMPLEMENTATION_BINDING"],
+        )
+        self.assertEqual(
+            expected_projection,
+            (
+                before["execution_status"],
+                before["delta_state"],
+                before["current_gate"],
+                before["missing_evidence"],
+            ),
+        )
+        vectors = (
+            (
+                "README",
+                README_VECTOR_B85,
+                "9bd9eb81e670a341c9796836370d765f351d634ce5a6381b15b19743a572d57a",
+            ),
+            (
+                "Reddit",
+                REDDIT_VECTOR_B85,
+                "42a68cf64ec4096bc35d8157a5d53fa4559b03a42496b36b78246b66cd82b3fd",
+            ),
+        )
+        for label, encoded, expected_hash in vectors:
+            with self.subTest(label=label):
+                _, manifest = canonical_vector(encoded)
+                self.assertEqual(expected_hash, manifest["content_hash"])
+                self.assertEqual(expected_hash, manifest["manifest_hash"])
+                object_assessment = validate_object(manifest)
+                graph_assessment = validate_graph([*graph, manifest])
+                self.assertEqual(
+                    ("PASS", ()),
+                    (
+                        object_assessment.structural_validation,
+                        object_assessment.issue_codes,
+                    ),
+                )
+                self.assertEqual(
+                    ("PASS", ()),
+                    (
+                        graph_assessment.structural_validation,
+                        graph_assessment.issue_codes,
+                    ),
+                )
+                after = reduce_evidence_graph([*graph, manifest]).as_dict()
+                self.assertEqual(
+                    expected_projection,
+                    (
+                        after["execution_status"],
+                        after["delta_state"],
+                        after["current_gate"],
+                        after["missing_evidence"],
+                    ),
+                )
 
     def test_public_schema_is_strict_and_native_schema_owns_sidecar(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -702,6 +928,85 @@ class PublicClaimGuardTest(unittest.TestCase):
             hashlib.sha256(reconstruct_surface(manifest)).hexdigest(),
         )
 
+    def test_target_e3_token_is_the_only_exact_seat_authority(self) -> None:
+        base = graph_through_e3(self.repository)
+        e3 = base[8]
+        valid_token = target_e3_allowed_input(exact_ref(e3))
+        invalid_cases = (
+            (
+                "old-prefix",
+                (
+                    "E3_ACCEPTED_DISCOVERY:"
+                    f"{e3['object_id']}@{e3['content_hash']}"
+                ),
+                "IMPLEMENTATION",
+            ),
+            (
+                "wrong-id",
+                f"TARGET_E3:wrong-e3@{e3['content_hash']}",
+                "IMPLEMENTATION",
+            ),
+            (
+                "wrong-hash",
+                f"TARGET_E3:{e3['object_id']}@{'f' * 64}",
+                "IMPLEMENTATION",
+            ),
+            ("wrong-seat", valid_token, "AUDIT"),
+        )
+        for label, token, seat_name in invalid_cases:
+            with self.subTest(label=label):
+                graph = deepcopy(base)
+                assigned = deepcopy(graph[7])
+                assigned["allowed_inputs"] = [token]
+                assigned["seat"] = seat_name
+                graph[7] = object_with_content_hash(assigned)
+                manifest = manifest_for(
+                    graph,
+                    repository_head=self.head,
+                    object_id=f"public-claim-manifest-{label}",
+                    surface_id=f"public-surface-{label}",
+                )
+                assessment = validate_graph([*graph, manifest])
+                self.assertEqual("FAIL", assessment.structural_validation)
+                self.assertIn(
+                    "IMPLEMENTATION_AUTHORITY_MISSING",
+                    assessment.issue_codes,
+                )
+
+        graph = deepcopy(base)
+        referenced = deepcopy(graph[7])
+        referenced["allowed_inputs"] = [
+            (
+                "E3_ACCEPTED_DISCOVERY:"
+                f"{e3['object_id']}@{e3['content_hash']}"
+            )
+        ]
+        graph[7] = object_with_content_hash(referenced)
+        other = deepcopy(base[7])
+        other.update(
+            {
+                "object_id": "seat-implementation-other",
+                "receipt_id": "seat-implementation-other",
+                "receipt_hash": "",
+                "assignee_context_identity": "context-implementation-other",
+                "as_of": "2026-07-30T00:09:00Z",
+                "effective_as_of": "2026-07-30T00:09:00Z",
+            }
+        )
+        other = object_with_content_hash(other)
+        manifest = manifest_for(
+            graph,
+            repository_head=self.head,
+            object_id="public-claim-manifest-other-seat",
+            surface_id="public-surface-other-seat",
+        )
+        assessment = validate_graph([*graph, other, manifest])
+        self.assertEqual("FAIL", assessment.structural_validation)
+        self.assertIn(
+            "IMPLEMENTATION_AUTHORITY_MISSING",
+            assessment.issue_codes,
+        )
+
     def test_dual_hash_identity_and_complete_coverage_tampering_fail(self) -> None:
         manifest = manifest_for(
             self.graph,
@@ -731,7 +1036,30 @@ class PublicClaimGuardTest(unittest.TestCase):
             object_id="public-claim-manifest-freeze",
             surface_id="public-surface-freeze",
         )
-        _, readback = self.freeze(manifest)
+        self.assertIs(
+            target_e3_allowed_input,
+            native_intelligence_transplant.target_e3_allowed_input,
+        )
+        self.assertIs(
+            public_claim_guard.target_e3_allowed_input,
+            native_intelligence_transplant.target_e3_allowed_input,
+        )
+        self.assertIs(
+            companion_intelligence_transplant.target_e3_allowed_input,
+            native_intelligence_transplant.target_e3_allowed_input,
+        )
+        with patch.object(
+            public_claim_guard,
+            "target_e3_allowed_input",
+            wraps=target_e3_allowed_input,
+        ) as public_helper, patch.object(
+            companion_intelligence_transplant,
+            "target_e3_allowed_input",
+            wraps=target_e3_allowed_input,
+        ) as companion_helper:
+            _, readback = self.freeze(manifest)
+        public_helper.assert_any_call(manifest["e3_ref"])
+        companion_helper.assert_any_call(manifest["e3_ref"])
         events = self.native.store.read_events()
         matching = [
             event
@@ -740,6 +1068,17 @@ class PublicClaimGuardTest(unittest.TestCase):
         ]
         self.assertEqual(1, len(matching))
         self.assertEqual("MANIFEST_FROZEN", matching[0]["kind"])
+        receipt = matching[0]["payload"]["transport_receipt"]
+        self.assertEqual(
+            manifest["implementation_assignment_ref"],
+            receipt["context_evidence_ref"],
+        )
+        self.assertEqual(
+            receipt,
+            self.native.store.read_transport_receipt(
+                receipt["receipt_sha256"]
+            ),
+        )
         self.assertEqual(canonical_json(manifest), self.native.store.read_transport(
             matching[0]["payload"]["transport_sha256"]
         ))

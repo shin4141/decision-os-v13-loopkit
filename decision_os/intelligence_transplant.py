@@ -1032,6 +1032,14 @@ def _is_ref(value: Any) -> bool:
     )
 
 
+def target_e3_allowed_input(reference: Any) -> str:
+    """Return the sole canonical Implementation Seat token for one E3 ref."""
+
+    if not _is_ref(reference):
+        raise ValueError("Target E3 reference is invalid.")
+    return f"TARGET_E3:{reference['object_id']}@{reference['content_hash']}"
+
+
 def _resolve_exact_type(
     record: Mapping[str, Any],
     field: str,
@@ -3024,10 +3032,7 @@ def validate_graph(
             e3 = dep(record, "e3_ref")
             assignment = dep(record, "implementation_assignment_ref")
             expected_allowed_input = (
-                (
-                    "E3_ACCEPTED_DISCOVERY:"
-                    f"{e3.get('object_id')}@{e3.get('content_hash')}"
-                )
+                target_e3_allowed_input(record.get("e3_ref"))
                 if e3 is not None
                 else None
             )

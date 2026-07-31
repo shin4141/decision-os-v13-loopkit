@@ -40,6 +40,7 @@ from decision_os.intelligence_transplant import (
     exact_ref,
     reduce_evidence_graph,
     strict_json_object,
+    target_e3_allowed_input,
     validate_graph,
     validate_object,
 )
@@ -2240,8 +2241,7 @@ class IntelligenceTransplantController:
         if record.get("object_type") == PUBLIC_CLAIM_MANIFEST:
             e3_ref = record.get("e3_ref")
             expected_allowed_input = (
-                "E3_ACCEPTED_DISCOVERY:"
-                f"{e3_ref.get('object_id')}@{e3_ref.get('content_hash')}"
+                target_e3_allowed_input(e3_ref)
                 if isinstance(e3_ref, Mapping)
                 else None
             )

@@ -49,6 +49,7 @@ from decision_os.intelligence_transplant import (
     object_with_content_hash,
     reduce_evidence_graph,
     strict_json_object,
+    target_e3_allowed_input,
     validate_graph,
     validate_object,
 )
@@ -748,6 +749,37 @@ class IntelligenceTransplantPureTest(unittest.TestCase):
             with self.subTest(raw=raw):
                 with self.assertRaises(IntelligenceTransplantError):
                     strict_json_object(raw)
+
+    def test_target_e3_allowed_input_is_exact_and_fails_closed(self) -> None:
+        reference = {
+            "object_id": "V13-S5-FR-001-E3-001",
+            "content_hash": (
+                "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af"
+            ),
+        }
+        expected = (
+            "TARGET_E3:V13-S5-FR-001-E3-001@"
+            "33bf9a745f3d5ea96186f5629fab722d049279718b44ee91061e7766a5f196af"
+        )
+        self.assertEqual(expected, target_e3_allowed_input(reference))
+        self.assertFalse(
+            target_e3_allowed_input(reference).startswith(
+                "E3_ACCEPTED_DISCOVERY:"
+            )
+        )
+        malformed = (
+            None,
+            {},
+            {"object_id": reference["object_id"]},
+            {"content_hash": reference["content_hash"]},
+            {**reference, "extra": "not-allowed"},
+            {**reference, "object_id": "unsafe object id"},
+            {**reference, "content_hash": "f" * 63},
+        )
+        for value in malformed:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    target_e3_allowed_input(value)
 
     def test_valid_graph_is_deterministic_reused_and_never_overclaims(self) -> None:
         graph = valid_graph()
