@@ -1285,6 +1285,7 @@ class CompanionServerTest(unittest.TestCase):
             "contract-import-state",
             "contract-file",
             "contract-import",
+            "contract-use-guided-intake",
             "contract-file-name",
             "contract-preview-status",
             "contract-preview",
@@ -1295,6 +1296,7 @@ class CompanionServerTest(unittest.TestCase):
                 self.assertIn(f'id="{element_id}"'.encode("utf-8"), html)
         self.assertIn(b'accept=".md,.txt"', html)
         self.assertIn(b"Import Contract", html)
+        self.assertIn(b"Use in Guided Intake", html)
         normalized_html = " ".join(html.decode("utf-8").split())
         self.assertIn(
             (
@@ -1310,6 +1312,11 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn("readonly", full_content_tag)
         self.assertIn("hidden", full_content_tag)
         self.assertNotIn("maxlength", full_content_tag)
+        guided_intake_action_tag = normalized_html.split(
+            'id="contract-use-guided-intake"',
+            1,
+        )[1].split(">", 1)[0]
+        self.assertIn("disabled", guided_intake_action_tag)
 
         status, _headers, javascript = self.request(
             "GET",
@@ -1320,11 +1327,26 @@ class CompanionServerTest(unittest.TestCase):
         contract_handler = javascript.split(
             b'byId("contract-import").addEventListener',
             1,
-        )[1].split(b'byId("task").addEventListener', 1)[0]
+        )[1].split(
+            b'byId("contract-use-guided-intake").addEventListener',
+            1,
+        )[0]
         self.assertIn(b"await file.text()", contract_handler)
         self.assertIn(b"content.slice(0, CONTRACT_PREVIEW_CHARACTERS)", contract_handler)
         self.assertNotIn(b"postJSON", contract_handler)
         self.assertNotIn(b"fetch(", contract_handler)
+        guided_intake_handler = javascript.split(
+            b'byId("contract-use-guided-intake").addEventListener',
+            1,
+        )[1].split(b'byId("task").addEventListener', 1)[0]
+        self.assertIn(b"importedContract.content", guided_intake_handler)
+        self.assertIn(b"guidedTransferredOriginalRequest", guided_intake_handler)
+        self.assertIn(b'byId("guided-intake-original-request")', guided_intake_handler)
+        self.assertNotIn(b"postJSON", guided_intake_handler)
+        self.assertNotIn(b"fetch(", guided_intake_handler)
+        self.assertNotIn(b'"/api/run"', guided_intake_handler)
+        self.assertNotIn(b'"/api/guided-intake/capture"', guided_intake_handler)
+        self.assertNotIn(b'"/api/guided-intake/freeze"', guided_intake_handler)
 
         status, _headers, stylesheet = self.request(
             "GET",
@@ -1762,12 +1784,19 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               const filename = document.getElementById("contract-file-name");
               const preview = document.getElementById("contract-preview");
               const full = document.getElementById("contract-full-content");
+              const importCard = document.getElementById("contract-import-card");
+              const guidedIntakeAction = document.getElementById(
+                "contract-use-guided-intake"
+              );
               filename.textContent = longFilename;
               preview.textContent = longContent.slice(0, 4096);
               preview.classList.remove("hidden");
               full.value = longContent;
               const root = document.documentElement;
               const control = document.getElementById("bridge-as-of-commit");
+              const importCardRect = importCard.getBoundingClientRect();
+              const guidedIntakeActionRect =
+                guidedIntakeAction.getBoundingClientRect();
               document.body.dataset.viewportWidth = String(window.innerWidth);
               document.body.dataset.viewportHeight = String(window.innerHeight);
               document.body.dataset.horizontalOverflow = String(
@@ -1784,6 +1813,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               document.body.dataset.fullPreserved = String(
                 full.value === longContent
+              );
+              document.body.dataset.guidedIntakeActionContained = String(
+                getComputedStyle(guidedIntakeAction).display !== "none" &&
+                guidedIntakeActionRect.width > 0 &&
+                guidedIntakeActionRect.height > 0 &&
+                guidedIntakeActionRect.left >= importCardRect.left &&
+                guidedIntakeActionRect.right <= importCardRect.right
               );
             </script>
             """
@@ -1852,6 +1888,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         self.assertEqual("true", attributes.get("preview-bounded"))
         self.assertEqual("true", attributes.get("control-block"))
         self.assertEqual("true", attributes.get("full-preserved"))
+        self.assertEqual(
+            "true",
+            attributes.get("guided-intake-action-contained"),
+        )
 
     def test_disconnection_clears_and_disables_stale_ui_until_recovery(
         self,
@@ -1915,6 +1955,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 this.parentNode = null;
                 this.listeners = new Map();
                 this.ownText = "";
+                this.focusCalls = [];
+                this.scrollIntoViewCalls = [];
               }
 
               get value() {
@@ -1922,7 +1964,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }
 
               set value(value) {
-                this._value = value == null ? "" : String(value);
+                const stringValue = value == null ? "" : String(value);
+                this._value =
+                  this.id === "guided-intake-original-request"
+                    ? stringValue.replace(/\r\n?/g, "\n")
+                    : stringValue;
                 if (this._value === "") {
                   this.files = [];
                 }
@@ -1982,7 +2028,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 }
               }
 
-              focus() {}
+              focus(options) {
+                this.focusCalls.push(options);
+              }
+
+              scrollIntoView(options) {
+                this.scrollIntoViewCalls.push(options);
+              }
             }
 
             const bridgeButtonIds = [
@@ -2046,6 +2098,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const buttonIds = new Set([
               "choose-repository",
               "contract-import",
+              "contract-use-guided-intake",
               "new-run",
               "run",
               ...guidedIntakeButtonIds,
@@ -2067,6 +2120,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "contract-import-state",
               "contract-preview",
               "contract-preview-status",
+              "contract-use-guided-intake",
               "bridge-as-of-commit",
               "bridge-authority-boundary",
               "bridge-burden-status",
@@ -2126,6 +2180,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "guided-intake-answer",
               "guided-intake-authority-claim",
               "guided-intake-authority-explanation",
+              "guided-intake-card",
               "guided-intake-capture",
               "guided-intake-completion-checks",
               "guided-intake-completion-line",
@@ -2752,6 +2807,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("contract-file").disabled, false);
               assert.strictEqual(elements.get("contract-import").disabled, true);
               assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
+              assert.strictEqual(
                 hidden("intelligence-transplant-card"),
                 false,
               );
@@ -2949,6 +3008,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ];
               await elements.get("contract-file").dispatch("input");
               assert.strictEqual(elements.get("contract-import").disabled, false);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               await elements.get("contract-import").dispatch("click");
               await settle();
               assert.strictEqual(markdownReads, 1);
@@ -2974,6 +3037,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(hidden("contract-preview"), false);
               assert.strictEqual(hidden("contract-import-error"), true);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
               assert.strictEqual(sandbox.contractHostile, undefined);
 
               const textContent = "Plain text Contract\r\nkept exactly.\n";
@@ -2988,6 +3055,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ];
               await elements.get("contract-file").dispatch("change");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
+              assert.strictEqual(
+                vm.runInContext("importedContract", sandbox),
+                null,
+              );
               await elements.get("contract-import").dispatch("click");
               await settle();
               assert.strictEqual(textReads, 1);
@@ -3003,6 +3078,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 vm.runInContext("importedContract.content", sandbox),
                 textContent,
               );
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
 
               let rejectStaleRead;
               const staleFile = {
@@ -3015,6 +3094,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               };
               elements.get("contract-file").files = [staleFile];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               const staleImport = elements.get("contract-import").dispatch("click");
               await settle();
 
@@ -3028,6 +3111,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               await elements.get("contract-import").dispatch("click");
               await settle();
               rejectStaleRead(new Error("superseded read failed"));
@@ -3042,6 +3129,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 currentContent,
               );
               assert.strictEqual(hidden("contract-import-error"), true);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
 
               let sameFileReadCount = 0;
               let rejectFirstSameFileRead;
@@ -3060,6 +3151,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               };
               elements.get("contract-file").files = [sameFile];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               const firstSameFileImport =
                 elements.get("contract-import").dispatch("click");
               await settle();
@@ -3078,6 +3173,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 sameFileContent,
               );
               assert.strictEqual(hidden("contract-import-error"), true);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
 
               let unsupportedReads = 0;
               elements.get("contract-file").files = [
@@ -3090,6 +3189,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               await elements.get("contract-import").dispatch("click");
               await settle();
               assert.strictEqual(unsupportedReads, 0);
@@ -3104,8 +3207,21 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("contract-full-content").value, "");
               assert.strictEqual(hidden("contract-preview"), true);
               assert.strictEqual(hidden("contract-import-error"), false);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
 
-              const longContent = "A".repeat(7000) + "\r\nFULL_TAIL_契約";
+              const preservedDecodedTail =
+                "\r\nUnicode: 契約\n" +
+                "LF stays decoded\n" +
+                "CRLF stays decoded\r\nFULL_TAIL";
+              const longContent =
+                "A".repeat(11698 - preservedDecodedTail.length) +
+                preservedDecodedTail;
+              const displayedLongContent = longContent.replace(/\r\n?/g, "\n");
+              assert.strictEqual(longContent.length, 11698);
+              assert.notStrictEqual(displayedLongContent, longContent);
               const longFilename = `${"very-long-contract-name-".repeat(30)}.MD`;
               elements.get("contract-file").files = [
                 {
@@ -3116,6 +3232,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
               ];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               await elements.get("contract-import").dispatch("click");
               await settle();
               assert.strictEqual(
@@ -3142,11 +3262,109 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 elements.get("contract-preview-status").textContent,
                 `Showing first 4096 of ${longContent.length} characters. Full content is retained locally.`,
               );
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
               assert.strictEqual(fetchCalls.length, contractFetchStart);
               assert.strictEqual(elements.get("task").value, boundedTaskBeforeImport);
               assert.strictEqual(
                 fetchCalls.some((call) => call.path === "/api/run"),
                 false,
+              );
+
+              const guidedOriginal = elements.get(
+                "guided-intake-original-request"
+              );
+              const guidedCard = elements.get("guided-intake-card");
+              assert.strictEqual(guidedOriginal.value, "");
+              const guidedFocusBeforeUse = guidedOriginal.focusCalls.length;
+              const guidedOriginalScrollBeforeUse =
+                guidedOriginal.scrollIntoViewCalls.length;
+              const guidedCardScrollBeforeUse =
+                guidedCard.scrollIntoViewCalls.length;
+              const useFetchStart = fetchCalls.length;
+              await elements
+                .get("contract-use-guided-intake")
+                .dispatch("click");
+              await settle();
+              assert.strictEqual(guidedOriginal.value, displayedLongContent);
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content",
+                  sandbox,
+                ),
+                longContent,
+              );
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content.length",
+                  sandbox,
+                ),
+                11698,
+              );
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.displayedValue",
+                  sandbox,
+                ),
+                displayedLongContent,
+              );
+              assert.notStrictEqual(guidedOriginal.value, sameFileContent);
+              assert.strictEqual(
+                elements.get("guided-intake-capture").disabled,
+                false,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-freeze").disabled,
+                true,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-state").textContent,
+                "AWAITING_CONFIRMATION",
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-exact").textContent,
+                '</pre><script>globalThis.hostile = true</script>&ORIGINAL',
+              );
+              assert.strictEqual(fetchCalls.length, useFetchStart);
+              assert.strictEqual(
+                fetchCalls.some(
+                  (call) => call.path === "/api/guided-intake/capture",
+                ),
+                false,
+              );
+              assert.strictEqual(
+                fetchCalls.some(
+                  (call) => call.path === "/api/guided-intake/freeze",
+                ),
+                false,
+              );
+              assert.strictEqual(
+                fetchCalls.some(
+                  (call) => call.path === "/api/guided-intake/copy",
+                ),
+                false,
+              );
+              assert.strictEqual(
+                fetchCalls.some((call) => call.path === "/api/run"),
+                false,
+              );
+              assert.strictEqual(
+                fetchCalls.every(
+                  (call) =>
+                    typeof call.path === "string" &&
+                    call.path.startsWith("/"),
+                ),
+                true,
+              );
+              assert.strictEqual(
+                guidedOriginal.focusCalls.length > guidedFocusBeforeUse ||
+                  guidedOriginal.scrollIntoViewCalls.length >
+                    guidedOriginalScrollBeforeUse ||
+                  guidedCard.scrollIntoViewCalls.length >
+                    guidedCardScrollBeforeUse,
+                true,
               );
 
               fetchQueue.push(() =>
@@ -3172,12 +3390,18 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
 
               const guidedFetchStart = fetchCalls.length;
-              elements.get("guided-intake-original-request").value =
-                "CAPTURE <script>literal</script> & exact";
-              await elements
-                .get("guided-intake-original-request")
-                .dispatch("input");
+              assert.strictEqual(
+                elements.get("guided-intake-original-request").value,
+                displayedLongContent,
+              );
               assert.strictEqual(elements.get("guided-intake-capture").disabled, false);
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content",
+                  sandbox,
+                ),
+                longContent,
+              );
               fetchQueue.push(() => Promise.resolve(response(completedState)));
               await elements.get("guided-intake-capture").dispatch("click");
               await settle();
@@ -3189,8 +3413,46 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.deepStrictEqual(
                 JSON.parse(captureRequest.options.body),
                 {
-                  original_request:
-                    "CAPTURE <script>literal</script> & exact",
+                  original_request: longContent,
+                  supersedes_request_id: "GUIDED-REQUEST-ONE",
+                },
+              );
+              assert.strictEqual(
+                JSON.parse(captureRequest.options.body).original_request.length,
+                11698,
+              );
+              assert.strictEqual(
+                JSON.parse(captureRequest.options.body).original_request,
+                longContent,
+              );
+
+              const manualOriginalRequest =
+                "CAPTURE <script>literal</script> & exact";
+              elements.get("guided-intake-original-request").value =
+                manualOriginalRequest;
+              await elements
+                .get("guided-intake-original-request")
+                .dispatch("input");
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest",
+                  sandbox,
+                ),
+                null,
+              );
+              assert.strictEqual(elements.get("guided-intake-capture").disabled, false);
+              fetchQueue.push(() => Promise.resolve(response(completedState)));
+              await elements.get("guided-intake-capture").dispatch("click");
+              await settle();
+              const manualCaptureRequest = fetchCalls.at(-1);
+              assert.strictEqual(
+                manualCaptureRequest.path,
+                "/api/guided-intake/capture",
+              );
+              assert.deepStrictEqual(
+                JSON.parse(manualCaptureRequest.options.body),
+                {
+                  original_request: manualOriginalRequest,
                   supersedes_request_id: "GUIDED-REQUEST-ONE",
                 },
               );
@@ -3516,20 +3778,63 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 '{"stale":"delta"}';
 
               let resolveAfterDisconnect;
-              elements.get("contract-file").files = [
-                {
-                  name: "pending-at-disconnect.md",
-                  text() {
-                    return new Promise((resolve) => {
-                      resolveAfterDisconnect = resolve;
-                    });
-                  },
+              let disconnectFileReads = 0;
+              const disconnectReadyContent =
+                "Transfer-ready before disconnect\r\nUnicode: 契約\n";
+              const pendingAtDisconnectFile = {
+                name: "pending-at-disconnect.md",
+                text() {
+                  disconnectFileReads += 1;
+                  if (disconnectFileReads === 1) {
+                    return Promise.resolve(disconnectReadyContent);
+                  }
+                  return new Promise((resolve) => {
+                    resolveAfterDisconnect = resolve;
+                  });
                 },
-              ];
+              };
+              elements.get("contract-file").files = [pendingAtDisconnectFile];
               await elements.get("contract-file").dispatch("input");
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
+              await elements.get("contract-import").dispatch("click");
+              await settle();
+              assert.strictEqual(disconnectFileReads, 1);
+              assert.strictEqual(
+                vm.runInContext("importedContract.content", sandbox),
+                disconnectReadyContent,
+              );
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
+              const disconnectUseFetchStart = fetchCalls.length;
+              await elements
+                .get("contract-use-guided-intake")
+                .dispatch("click");
+              await settle();
+              assert.strictEqual(fetchCalls.length, disconnectUseFetchStart);
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest.content",
+                  sandbox,
+                ),
+                disconnectReadyContent,
+              );
+              assert.strictEqual(
+                elements.get("guided-intake-original-request").value,
+                disconnectReadyContent.replace(/\r\n?/g, "\n"),
+              );
               const importPendingAtDisconnect =
                 elements.get("contract-import").dispatch("click");
               await settle();
+              assert.strictEqual(disconnectFileReads, 2);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                false,
+              );
 
               fetchQueue.push(() =>
                 Promise.reject(new TypeError("fetch failed")),
@@ -3575,6 +3880,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("contract-file").disabled, true);
               assert.strictEqual(elements.get("contract-import").disabled, true);
               assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
+              assert.strictEqual(
                 elements.get("contract-import-state").textContent,
                 "No contract",
               );
@@ -3584,6 +3893,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               assert.strictEqual(
                 vm.runInContext("importedContract", sandbox),
+                null,
+              );
+              assert.strictEqual(
+                vm.runInContext(
+                  "guidedTransferredOriginalRequest",
+                  sandbox,
+                ),
                 null,
               );
               assert.strictEqual(hidden("contract-preview"), true);
@@ -3791,6 +4107,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               assert.strictEqual(elements.get("task").disabled, false);
               assert.strictEqual(elements.get("run").disabled, false);
               assert.strictEqual(elements.get("new-run").disabled, false);
+              assert.strictEqual(
+                elements.get("contract-use-guided-intake").disabled,
+                true,
+              );
               assert.strictEqual(
                 elements.get("guided-intake-state").textContent,
                 "EMPTY",
