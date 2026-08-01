@@ -1449,6 +1449,73 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn(b'byId("ordinary-contract-success").focus()', javascript)
         self.assertIn(b'byId("ordinary-contract-error").focus()', javascript)
 
+    def test_operation_awareness_dom_order_copy_and_boundaries(self) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+        self.assertEqual(200, status)
+        text = html.decode("utf-8")
+        rail_start = text.index('id="operation-awareness"')
+        contract_start = text.index('id="ordinary-contract-card"')
+        task_start = text.index('id="bounded-task-card"')
+        progress_start = text.index('id="progress-card"')
+        result_start = text.index('id="result-card"')
+        evidence_start = text.index('id="additional-evidence"')
+        transplant_start = text.index('id="intelligence-transplant-card"')
+        advanced_start = text.index('id="advanced-audit-mode"')
+        self.assertLess(rail_start, contract_start)
+        self.assertLess(contract_start, task_start)
+        self.assertLess(task_start, progress_start)
+        self.assertLess(progress_start, result_start)
+        self.assertLess(result_start, evidence_start)
+        self.assertLess(evidence_start, transplant_start)
+        self.assertLess(transplant_start, advanced_start)
+        main_operation = text[contract_start:evidence_start]
+        self.assertNotIn("Intelligence Transplant Run", main_operation)
+        evidence_tag = text[evidence_start : text.index(">", evidence_start)]
+        self.assertNotIn(" open", evidence_tag)
+        for stage in ("contract", "task", "run", "approval", "result"):
+            self.assertIn(f'data-operation-stage="{stage}"', text)
+            self.assertIn(f'id="operation-{stage}-status"', text)
+        for element_id in (
+            "operation-current",
+            "operation-happening",
+            "operation-action",
+            "operation-next",
+            "result-execution",
+            "result-file-change",
+            "result-verification",
+            "result-verification-reason",
+        ):
+            self.assertIn(f'id="{element_id}"', text)
+        for exact_copy in (
+            "Allow this change once",
+            "Allows only the exact action and path shown for this Run.",
+            "Save this exact permission",
+            "Allows the same exact action and path in this repository in later",
+            "Deny and stop this Run",
+            "No requested file change will be approved.",
+        ):
+            self.assertIn(exact_copy, text)
+        self.assertNotIn("Use for this repository", text)
+
+        status, _headers, javascript = self.request(
+            "GET", "/app.js", cookie=cookie
+        )
+        self.assertEqual(200, status)
+        self.assertIn(b'button?.setAttribute("aria-current", "step")', javascript)
+        self.assertIn(b'"(prefers-reduced-motion: reduce)"', javascript)
+        self.assertIn(b'"Wait \xe2\x80\x94 no action is needed."', javascript)
+        self.assertIn(b'"Nothing \xe2\x80\x94 this Run is complete."', javascript)
+        self.assertNotIn(b'includes("successfully")', javascript)
+
+        status, _headers, stylesheet = self.request(
+            "GET", "/app.css", cookie=cookie
+        )
+        self.assertEqual(200, status)
+        self.assertIn(b".operation-awareness", stylesheet)
+        self.assertIn(b"position: sticky", stylesheet)
+        self.assertIn(b'.operation-stage[aria-current="step"]', stylesheet)
+
     def test_ordinary_contract_endpoints_are_private_and_strict(self) -> None:
         for path in ORDINARY_CONTRACT_POST_ROUTES:
             status, _headers, _raw = self.request(
@@ -2072,6 +2139,924 @@ class CompanionServerTest(unittest.TestCase):
 
 
 class CompanionClientBehaviorTest(unittest.TestCase):
+    def test_operation_awareness_state_transition_harness(self) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "app.js"
+        )
+        harness = textwrap.dedent(
+            r"""
+            "use strict";
+
+            const assert = require("assert");
+            const fs = require("fs");
+            const vm = require("vm");
+            const source = fs.readFileSync(process.argv[2], "utf8");
+            const operationStart = source.indexOf("function statusLabel");
+            const operationEnd = source.indexOf("\nfunction formatNumber", operationStart);
+            const resultStart = source.indexOf("function renderResult");
+            const resultEnd = source.indexOf("\nfunction renderApproval", resultStart);
+            assert(operationStart >= 0 && operationEnd > operationStart);
+            assert(resultStart >= 0 && resultEnd > resultStart);
+
+            class ClassList {
+              constructor(initial = []) { this.values = new Set(initial); }
+              contains(value) { return this.values.has(value); }
+              toggle(value, force) {
+                if (force) this.values.add(value);
+                else this.values.delete(value);
+              }
+            }
+
+            class Element {
+              constructor(id = "") {
+                this.id = id;
+                this.value = "";
+                this.textContent = "";
+                this.disabled = false;
+                this.dataset = {};
+                this.classList = new ClassList();
+                this.attributes = new Map();
+                this.focusCalls = [];
+                this.scrollIntoViewCalls = [];
+                this.children = [];
+              }
+              setAttribute(name, value) { this.attributes.set(name, String(value)); }
+              removeAttribute(name) { this.attributes.delete(name); }
+              getAttribute(name) { return this.attributes.get(name) ?? null; }
+              focus(options) { this.focusCalls.push(options); }
+              scrollIntoView(options) { this.scrollIntoViewCalls.push(options); }
+              replaceChildren(...children) { this.children = children; }
+            }
+
+            const stages = ["contract", "task", "run", "approval", "result"];
+            const ids = [
+              "approval-heading", "approval-overlay", "bounded-task-card",
+              "new-run",
+              "ordinary-contract-card", "ordinary-contract-heading",
+              "operation-action", "operation-current", "operation-happening",
+              "operation-next", "progress", "progress-card", "progress-heading",
+              "result", "result-card", "result-execution", "result-file-change",
+              "result-heading", "result-state", "result-verification",
+              "result-verification-reason", "run", "run-state", "task", "task-heading",
+              ...stages.map((stage) => `operation-${stage}-status`),
+            ];
+            const elements = new Map(ids.map((id) => [id, new Element(id)]));
+            for (const id of ["approval-overlay", "progress-card", "result-card"]) {
+              elements.get(id).classList.toggle("hidden", true);
+            }
+            const stageButtons = stages.map((stage) => {
+              const button = new Element(`stage-${stage}`);
+              button.dataset.operationStage = stage;
+              return button;
+            });
+            let reducedMotion = false;
+            const sandbox = {
+              console,
+              document: {
+                createElement: () => new Element(),
+                querySelectorAll: (selector) =>
+                  selector === "[data-operation-stage]" ? stageButtons : [],
+              },
+              globalThis: {
+                matchMedia: () => ({ matches: reducedMotion }),
+              },
+              latestState: null,
+              operationApprovalResponsePending: false,
+              operationApprovalWasVisible: false,
+              operationApprovalSeen: false,
+              operationContinuingAfterApproval: false,
+              preparedContractTaskBinding: null,
+              operationLastApprovalKey: null,
+              operationStartPending: false,
+              operationTerminalTransitioned: false,
+              CONTRACT_TASK_MARKER: "Task to perform:",
+              byId: (id) => elements.get(id),
+              setText: (id, value) => {
+                elements.get(id).textContent = value == null ? "" : String(value);
+              },
+              setHidden: (id, hidden) => elements.get(id).classList.toggle("hidden", hidden),
+              renderActions: () => {},
+              renderRuntime: () => {},
+            };
+            vm.createContext(sandbox);
+            vm.runInContext(
+              source.slice(operationStart, operationEnd) +
+                source.slice(resultStart, resultEnd) +
+                "\nthis.operationPresentation = operationPresentation;" +
+                "\nthis.renderOperationAwareness = renderOperationAwareness;" +
+                "\nthis.coordinateOperationTransition = coordinateOperationTransition;" +
+                "\nthis.moveToOperationStage = moveToOperationStage;" +
+                "\nthis.beginOperationRun = beginOperationRun;" +
+                "\nthis.renderResult = renderResult;",
+              sandbox,
+            );
+
+            const fixed = {
+              state: "FIXED",
+              repository_identity: "commit-a",
+              review: {
+                preserves: "One bounded operation.",
+                completion: "One observable result.",
+                must_not_change: ["No broad permission."],
+                unresolved: [],
+                does_not_authorize: "No automatic Run.",
+              },
+              technical_details: {
+                request_id: "GI-REQ-ONE",
+                interpretation_sha256: "a".repeat(64),
+              },
+            };
+            const repository = { name: "repo", path: "/tmp/repo" };
+            const idle = { state: "idle", progress: [], approval: null };
+            const emptyTask = {
+              mode: "empty",
+              runnable: false,
+              contextInserted: false,
+              stalePreparedContext: false,
+            };
+            const manualTask = {
+              mode: "manual",
+              runnable: true,
+              contextInserted: false,
+              stalePreparedContext: false,
+            };
+            let view = sandbox.operationPresentation(idle, null, emptyTask, null, {});
+            assert.strictEqual(view.currentStage, null);
+            assert.strictEqual(view.statuses.run, "Not started");
+            view = sandbox.operationPresentation(idle, fixed, manualTask, repository, {});
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(view.statuses.task, "Current");
+            assert.strictEqual(view.action, "Select Run to start this bounded task.");
+            const insertedTask = {
+              mode: "contract",
+              runnable: false,
+              contextInserted: true,
+              stalePreparedContext: false,
+            };
+            view = sandbox.operationPresentation(
+              idle,
+              fixed,
+              insertedTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.current, "Add bounded task");
+            assert.strictEqual(
+              view.happening,
+              "The fixed Contract context has been inserted.",
+            );
+            assert.strictEqual(
+              view.action,
+              "Write one exact task after “Task to perform:”.",
+            );
+
+            const staleFixed = { ...fixed, review: null };
+            view = sandbox.operationPresentation(
+              idle,
+              staleFixed,
+              emptyTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.statuses.contract, "Needs attention");
+            assert.notStrictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(
+              view.action,
+              "Select and fix this Contract for the current repository.",
+            );
+
+            view = sandbox.operationPresentation(
+              idle,
+              staleFixed,
+              manualTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.current, "Task ready");
+            assert.strictEqual(view.action, "Select Run to start this bounded task.");
+            view = sandbox.operationPresentation(
+              idle,
+              fixed,
+              {
+                mode: "contract",
+                runnable: false,
+                contextInserted: true,
+                stalePreparedContext: true,
+              },
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.statuses.task, "Needs attention");
+            assert.strictEqual(
+              view.action,
+              "Select and fix this Contract for the current repository.",
+            );
+
+            elements.get("task").value = "one bounded task";
+            sandbox.latestState = { ordinary_contract: fixed, repository };
+            sandbox.beginOperationRun();
+            assert.strictEqual(elements.get("run").disabled, true);
+            assert.strictEqual(elements.get("operation-current").textContent, "Starting Run");
+            assert.strictEqual(
+              elements.get("operation-action").textContent,
+              "Wait — no action is needed.",
+            );
+            assert.strictEqual(elements.get("progress-card").classList.contains("hidden"), false);
+            assert.strictEqual(elements.get("progress-heading").focusCalls.length, 1);
+
+            sandbox.operationStartPending = false;
+            const working = {
+              state: "running",
+              progress: ["Starting the private Codex runtime."],
+              approval: null,
+            };
+            sandbox.coordinateOperationTransition(working);
+            sandbox.renderOperationAwareness(working, fixed, repository);
+            assert.strictEqual(elements.get("operation-current").textContent, "Codex is working");
+            assert.strictEqual(elements.get("operation-run-status").textContent, "Waiting for system");
+            const progressFocusAfterWorking = elements.get("progress-heading").focusCalls.length;
+            sandbox.coordinateOperationTransition(working);
+            assert.strictEqual(
+              elements.get("progress-heading").focusCalls.length,
+              progressFocusAfterWorking,
+            );
+
+            elements.get("approval-overlay").classList.toggle("hidden", false);
+            const approval = {
+              state: "running",
+              progress: ["Waiting for one exact file-change decision."],
+              approval: {
+                repository: "repo",
+                action: "Modify",
+                path: "decision_os/companion/static/app.js",
+              },
+            };
+            sandbox.coordinateOperationTransition(approval);
+            sandbox.renderOperationAwareness(approval, fixed, repository);
+            assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
+            assert.strictEqual(elements.get("operation-current").textContent, "Approval required");
+            assert.strictEqual(elements.get("operation-approval-status").textContent, "Waiting for you");
+            assert.strictEqual(
+              elements.get("operation-happening").textContent,
+              "Modify is requested for decision_os/companion/static/app.js.",
+            );
+            sandbox.coordinateOperationTransition(approval);
+            assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
+
+            elements.get("approval-overlay").classList.toggle("hidden", true);
+            sandbox.coordinateOperationTransition(working);
+            sandbox.renderOperationAwareness(working, fixed, repository);
+            assert.strictEqual(elements.get("operation-current").textContent, "The Run is continuing");
+            assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
+            sandbox.coordinateOperationTransition(working);
+            assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
+
+            elements.get("result-card").classList.toggle("hidden", false);
+            const terminal = {
+              state: "unsupported",
+              progress: ["Finalizing the local Receipt."],
+              result: "The requested file was modified.",
+              file_actions: [{ action: "Modify", path: "app.js", status: "approved", access: "one-time" }],
+              outcomes: {
+                execution: { state: "completed", label: "Codex turn completed" },
+                file_change: { state: "modified", label: "Modified successfully" },
+                verification: {
+                  state: "unsupported",
+                  label: "Unsupported — review required",
+                  reason: "unsupported_request_method:commandExecution",
+                },
+              },
+            };
+            sandbox.coordinateOperationTransition(terminal);
+            sandbox.renderOperationAwareness(terminal, fixed, repository);
+            sandbox.renderResult(terminal);
+            assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
+            assert.strictEqual(elements.get("result-state").textContent, "Review required");
+            assert.strictEqual(elements.get("result-file-change").textContent, "Modified successfully");
+            assert.strictEqual(elements.get("result-verification").textContent, "Unsupported — review required");
+            assert.strictEqual(
+              elements.get("result-verification-reason").textContent,
+              "unsupported_request_method:commandExecution",
+            );
+            assert.strictEqual(elements.get("operation-current").textContent, "Run needs attention");
+            sandbox.coordinateOperationTransition(terminal);
+            assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
+
+            reducedMotion = true;
+            sandbox.moveToOperationStage("task");
+            const reducedScroll =
+              elements.get("bounded-task-card").scrollIntoViewCalls.at(-1);
+            assert.strictEqual(reducedScroll.behavior, "auto");
+            assert.strictEqual(reducedScroll.block, "start");
+            """
+        )
+        completed = subprocess.run(
+            [node, "-", str(javascript)],
+            input=harness,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=(
+                "Node operation-awareness harness failed:\n"
+                f"{completed.stdout}{completed.stderr}"
+            ),
+        )
+
+    def test_self_hosted_task_preparation_delta_is_local_and_non_overwriting(
+        self,
+    ) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "app.js"
+        )
+        harness = textwrap.dedent(
+            r"""
+            "use strict";
+            const assert = require("assert");
+            const fs = require("fs");
+            const vm = require("vm");
+            const source = fs.readFileSync(process.argv[2], "utf8");
+            const contextStart = source.indexOf("function nonEmptyString");
+            const contextEnd = source.indexOf("\nfunction operationPresentation", contextStart);
+            const start = source.indexOf("function ordinaryTaskStarterValue");
+            const end = source.indexOf("\nfunction renderOrdinaryContract", start);
+            assert(contextStart >= 0 && contextEnd > contextStart);
+            assert(start >= 0 && end > start);
+            const snippet =
+              source.slice(contextStart, contextEnd) + source.slice(start, end);
+            assert.strictEqual(snippet.includes("postJSON"), false);
+            assert.strictEqual(snippet.includes("fetch("), false);
+            assert.strictEqual(snippet.includes("/api/run"), false);
+
+            class Element {
+              constructor(id = "") {
+                this.id = id;
+                this.value = "";
+                this.textContent = "";
+                this.type = "";
+                this.listeners = new Map();
+                this.focusCalls = 0;
+                this.scrollCalls = 0;
+                this.selection = null;
+              }
+              addEventListener(name, callback) { this.listeners.set(name, callback); }
+              dispatch(name) { this.listeners.get(name)?.(); }
+              dispatchEvent() {}
+              focus() { this.focusCalls += 1; }
+              scrollIntoView() { this.scrollCalls += 1; }
+              setSelectionRange(start, end) { this.selection = [start, end]; }
+              insertAdjacentElement(_position, element) {
+                elements.set(element.id, element);
+              }
+            }
+            const elements = new Map([
+              ["ordinary-contract-success", new Element("ordinary-contract-success")],
+              ["task", new Element("task")],
+            ]);
+            const fixed = {
+              state: "FIXED",
+              repository_identity: "commit-a",
+              technical_details: {
+                request_id: "GI-REQ-ONE",
+                interpretation_sha256: "a".repeat(64),
+              },
+              review: {
+                preserves: "The fixed decision meaning.",
+                completion: "One bounded change is verified.",
+                must_not_change: ["No Transfer", "No broad access"],
+                unresolved: [],
+                does_not_authorize: "No automatic Run.",
+              },
+            };
+            const sandbox = {
+              console,
+              Event: class Event {},
+              CONTRACT_TASK_MARKER: "Task to perform:",
+              preparedContractTaskBinding: null,
+              latestState: {
+                ordinary_contract: { state: "REVIEW_READY" },
+                repository: { name: "repo-a", path: "/tmp/repo-a" },
+              },
+              displayValue: (value, fallback = "") => {
+                if (value == null || value === "") return fallback;
+                return typeof value === "string" ? value : JSON.stringify(value);
+              },
+              byId: (id) => elements.get(id) || null,
+              document: { createElement: () => new Element() },
+            };
+            vm.createContext(sandbox);
+            vm.runInContext(
+              snippet +
+                "\nthis.ensureButton = ensureOrdinaryPrepareTaskButton;" +
+                "\nthis.taskReadiness = taskReadiness;",
+              sandbox,
+            );
+            const button = sandbox.ensureButton();
+            assert.strictEqual(
+              button.textContent,
+              "Use this Contract for a bounded task",
+            );
+            assert.strictEqual(elements.get("task").value, "");
+
+            button.dispatch("click");
+            assert.strictEqual(elements.get("task").value, "");
+            assert.strictEqual(elements.get("task").focusCalls, 0);
+
+            sandbox.latestState = {
+              ordinary_contract: fixed,
+              repository: { name: "repo-a", path: "/tmp/repo-a" },
+            };
+            button.dispatch("click");
+            assert(elements.get("task").value.includes("GI-REQ-ONE"));
+            assert(elements.get("task").value.includes("No automatic Run."));
+            assert(elements.get("task").value.endsWith("Task to perform:"));
+            assert.strictEqual(
+              sandbox.taskReadiness(
+                fixed,
+                sandbox.latestState.repository,
+              ).runnable,
+              false,
+            );
+            assert.deepStrictEqual(
+              elements.get("task").selection,
+              [elements.get("task").value.length, elements.get("task").value.length],
+            );
+            assert.strictEqual(elements.get("task").focusCalls, 1);
+            assert.strictEqual(elements.get("task").scrollCalls, 1);
+
+            elements.get("task").value += " Modify one exact file.";
+            assert.strictEqual(
+              sandbox.taskReadiness(
+                fixed,
+                sandbox.latestState.repository,
+              ).runnable,
+              true,
+            );
+            const preparedValue = elements.get("task").value;
+            button.dispatch("click");
+            assert.strictEqual(elements.get("task").value, preparedValue);
+            assert.strictEqual(elements.get("task").focusCalls, 2);
+            assert.strictEqual(elements.get("task").scrollCalls, 2);
+
+            const otherRepository = { name: "repo-b", path: "/tmp/repo-b" };
+            assert.strictEqual(
+              sandbox.taskReadiness(fixed, otherRepository).runnable,
+              false,
+            );
+            sandbox.preparedContractTaskBinding = null;
+            elements.get("task").value = "Keep my existing bounded task.";
+            const manual = sandbox.taskReadiness(null, otherRepository);
+            assert.strictEqual(manual.mode, "manual");
+            assert.strictEqual(manual.runnable, true);
+
+            const renderStart = source.indexOf("function renderOrdinaryContract");
+            const renderEnd = source.indexOf("\nconst guidedIntakeActionIds", renderStart);
+            const renderSnippet = source.slice(renderStart, renderEnd);
+            assert(renderSnippet.includes("const fixed = usableCurrentOrdinaryContext(panel)"));
+            assert(renderSnippet.includes("const prepareTaskButton = fixed"));
+            assert(renderSnippet.includes("? ensureOrdinaryPrepareTaskButton()"));
+            """
+        )
+        completed = subprocess.run(
+            [node, "-", str(javascript)],
+            input=harness,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=(
+                "Node self-hosted task-preparation harness failed:\n"
+                f"{completed.stdout}{completed.stderr}"
+            ),
+        )
+
+    def test_operation_awareness_browser_transition_sequence(self) -> None:
+        chrome_candidates = (
+            shutil.which("google-chrome"),
+            shutil.which("chromium"),
+            shutil.which("chromium-browser"),
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        )
+        chrome = next(
+            (
+                candidate
+                for candidate in chrome_candidates
+                if candidate and Path(candidate).is_file()
+            ),
+            None,
+        )
+        if chrome is None:
+            self.skipTest("Chrome or Chromium is unavailable for browser qualification.")
+
+        static_root = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+        )
+        html = (static_root / "index.html").read_text(encoding="utf-8")
+        stylesheet = (static_root / "app.css").read_text(encoding="utf-8")
+        javascript = (static_root / "app.js").read_text(encoding="utf-8")
+        html = html.replace(
+            '<link rel="stylesheet" href="/app.css">',
+            f"<style>{stylesheet}</style>",
+        )
+        browser_state = textwrap.dedent(
+            r"""
+            <script>
+              const ordinary = {
+                state: "FIXED",
+                operation_revision: 7,
+                status_label: "Contract fixed",
+                progress_text: "The Contract is fixed.",
+                review: {
+                  preserves: "One bounded operation.",
+                  completion: "One observable result.",
+                  must_not_change: ["No broad permission."],
+                  unresolved: [],
+                  does_not_authorize: "No automatic Run.",
+                },
+                clarification: null,
+                action_error: null,
+                allowed_actions: ["SELECT_CONTRACT"],
+                source_identity: { filename: "contract.md" },
+                technical_details: {
+                  request_id: "GI-REQ-BROWSER",
+                  interpretation_sha256: "b".repeat(64),
+                },
+                repository_identity: "browser-fixture",
+              };
+              const baseRun = {
+                run_type: "bounded_task",
+                state: "idle",
+                progress: [],
+                result: "",
+                file_actions: [],
+                outcomes: null,
+                runtime: null,
+                receipt_delta: null,
+                approval: null,
+                error: null,
+              };
+              const workingRun = {
+                ...baseRun,
+                state: "running",
+                progress: ["Starting the private Codex runtime."],
+              };
+              const approvalRun = {
+                ...workingRun,
+                progress: [
+                  "Starting the private Codex runtime.",
+                  "Waiting for one exact file-change decision.",
+                ],
+                approval: {
+                  repository: "repo",
+                  action: "Modify",
+                  path: "decision_os/companion/static/app.js",
+                  diff: "--- before\n+++ after",
+                  reason: "Apply the bounded update.",
+                },
+              };
+              const continuingRun = {
+                ...workingRun,
+                progress: [
+                  "Starting the private Codex runtime.",
+                  "Waiting for one exact file-change decision.",
+                ],
+              };
+              const terminalRun = {
+                ...baseRun,
+                state: "unsupported",
+                progress: ["Finalizing the local Receipt."],
+                result: "The requested file was modified.",
+                file_actions: [{
+                  action: "Modify",
+                  path: "decision_os/companion/static/app.js",
+                  access: "one-time",
+                  status: "approved",
+                }],
+                outcomes: {
+                  execution: {
+                    state: "completed",
+                    label: "Codex turn completed",
+                  },
+                  file_change: {
+                    state: "modified",
+                    label: "Modified successfully",
+                  },
+                  verification: {
+                    state: "unsupported",
+                    label: "Unsupported — review required",
+                    reason: "unsupported_request_method:commandExecution",
+                  },
+                },
+              };
+              function state(run) {
+                return {
+                  csrf: "browser-csrf",
+                  repository: { name: "repo", path: "/tmp/repo" },
+                  run,
+                  ordinary_contract: ordinary,
+                  guided_intake: null,
+                  manual_bridge: null,
+                  intelligence_transplant: null,
+                  defaults: [],
+                  receipt: null,
+                };
+              }
+              let serverPhase = "idle";
+              let reducedMotion = false;
+              window.__focusCounts = {};
+              window.__scrollRecords = [];
+              const nativeFocus = HTMLElement.prototype.focus;
+              HTMLElement.prototype.focus = function(options) {
+                window.__focusCounts[this.id] =
+                  (window.__focusCounts[this.id] || 0) + 1;
+                nativeFocus.call(this, options);
+              };
+              HTMLElement.prototype.scrollIntoView = function(options = {}) {
+                window.__scrollRecords.push({
+                  id: this.id,
+                  behavior: options.behavior || "auto",
+                });
+              };
+              window.matchMedia = () => ({ matches: reducedMotion });
+              function browserResponse(body) {
+                return {
+                  ok: true,
+                  status: 200,
+                  json: async () => structuredClone(body),
+                };
+              }
+              window.fetch = async (path, options = {}) => {
+                if (path === "/api/run") {
+                  serverPhase = "working";
+                  return new Promise((resolve) => {
+                    window.setTimeout(
+                      () => resolve(browserResponse(state(workingRun))),
+                      60,
+                    );
+                  });
+                }
+                if (path === "/api/approval") {
+                  serverPhase = "approval-answered";
+                  return browserResponse(state(approvalRun));
+                }
+                if (path === "/api/state") {
+                  if (serverPhase === "working") {
+                    serverPhase = "approval";
+                    return browserResponse(state(approvalRun));
+                  }
+                  if (serverPhase === "approval-answered") {
+                    serverPhase = "continuing";
+                    return browserResponse(state(continuingRun));
+                  }
+                  if (serverPhase === "continuing") {
+                    serverPhase = "terminal";
+                    return browserResponse(state(terminalRun));
+                  }
+                  if (serverPhase === "approval") {
+                    return browserResponse(state(approvalRun));
+                  }
+                  if (serverPhase === "terminal") {
+                    return browserResponse(state(terminalRun));
+                  }
+                  return browserResponse(state(baseRun));
+                }
+                throw new Error(`Unexpected browser harness request: ${path}`);
+              };
+            </script>
+            """
+        ).strip()
+        probe = textwrap.dedent(
+            r"""
+            <script>
+              let probePhase = "idle";
+              const probe = window.setInterval(() => {
+                const current = document.getElementById("operation-current");
+                if (probePhase === "idle" && current.textContent === "Contract fixed") {
+                  const task = document.getElementById("task");
+                  document.getElementById("ordinary-contract-prepare-task").click();
+                  document.body.dataset.contextIncomplete = String(
+                    task.value.endsWith("Task to perform:") &&
+                    document.getElementById("run").disabled &&
+                    current.textContent === "Add bounded task" &&
+                    document.getElementById("operation-happening").textContent ===
+                      "The fixed Contract context has been inserted." &&
+                    document.getElementById("operation-action").textContent ===
+                      "Write one exact task after “Task to perform:”." &&
+                    task.selectionStart === task.value.length &&
+                    task.selectionEnd === task.value.length
+                  );
+                  task.value += " Modify one file only.";
+                  task.dispatchEvent(new Event("input", { bubbles: true }));
+                  document.body.dataset.contextReady = String(
+                    !document.getElementById("run").disabled &&
+                    current.textContent === "Task ready" &&
+                    document.getElementById("operation-action").textContent ===
+                      "Select Run to start this bounded task."
+                  );
+                  const switched = state(baseRun);
+                  switched.repository = {
+                    name: "other-repo",
+                    path: "/tmp/other-repo",
+                  };
+                  render(switched);
+                  document.body.dataset.contextSwitchBlocked = String(
+                    document.getElementById("run").disabled &&
+                    document.getElementById("operation-task-status").textContent ===
+                      "Needs attention"
+                  );
+                  render(state(baseRun));
+                  document.getElementById("run").click();
+                  document.body.dataset.startImmediate = String(
+                    current.textContent === "Starting Run" &&
+                    document.getElementById("run").disabled &&
+                    document.getElementById("operation-action").textContent ===
+                      "Wait — no action is needed." &&
+                    document.activeElement.id === "progress-heading"
+                  );
+                  probePhase = "working";
+                  return;
+                }
+                if (probePhase === "working" && current.textContent === "Codex is working") {
+                  document.body.dataset.working = String(
+                    document.getElementById("operation-run-status").textContent ===
+                      "Waiting for system" &&
+                    document.getElementById("operation-action").textContent ===
+                      "Wait — no action is needed."
+                  );
+                  probePhase = "approval";
+                  return;
+                }
+                if (probePhase === "approval" && current.textContent === "Approval required") {
+                  const approvalFocusBefore = window.__focusCounts["approval-heading"] || 0;
+                  document.body.dataset.approval = String(
+                    document.getElementById("approval-path").textContent ===
+                      "decision_os/companion/static/app.js" &&
+                    document.querySelector('[data-choice="allow_once"]').textContent.trim() ===
+                      "Allow this change once" &&
+                    document.querySelector('[data-choice="repository"]').textContent.trim() ===
+                      "Save this exact permission" &&
+                    document.querySelector('[data-choice="deny"]').textContent.trim() ===
+                      "Deny and stop this Run" &&
+                    approvalFocusBefore === 1
+                  );
+                  document.querySelector('[data-choice="allow_once"]').click();
+                  document.body.dataset.approvalAnsweredImmediate = String(
+                    document.getElementById("approval-overlay").classList.contains("hidden") &&
+                    current.textContent === "The Run is continuing" &&
+                    document.getElementById("operation-action").textContent ===
+                      "Wait — no action is needed." &&
+                    document.activeElement.id === "progress-heading"
+                  );
+                  probePhase = "continuing";
+                  return;
+                }
+                if (probePhase === "continuing" && current.textContent === "The Run is continuing") {
+                  document.body.dataset.continuing = "true";
+                  probePhase = "terminal";
+                  return;
+                }
+                if (probePhase === "terminal" && current.textContent === "Run needs attention") {
+                  const focusCounts = window.__focusCounts;
+                  document.body.dataset.terminal = String(
+                    document.getElementById("result-state").textContent ===
+                      "Review required" &&
+                    document.getElementById("result-file-change").textContent ===
+                      "Modified successfully" &&
+                    document.getElementById("result-verification").textContent ===
+                      "Unsupported — review required" &&
+                    document.getElementById("result-verification-reason").textContent ===
+                      "unsupported_request_method:commandExecution" &&
+                    focusCounts["approval-heading"] === 1 &&
+                    focusCounts["result-heading"] === 1
+                  );
+                  reducedMotion = true;
+                  const taskStage = document.querySelector(
+                    '[data-operation-stage="task"]'
+                  );
+                  taskStage.click();
+                  const lastScroll = window.__scrollRecords.at(-1);
+                  const contractStage = document.querySelector(
+                    '[data-operation-stage="contract"]'
+                  );
+                  contractStage.focus();
+                  contractStage.dispatchEvent(new KeyboardEvent("keydown", {
+                    bubbles: true,
+                    key: "ArrowRight",
+                  }));
+                  document.body.dataset.manualNavigation = String(
+                    lastScroll.id === "bounded-task-card" &&
+                    lastScroll.behavior === "auto" &&
+                    document.activeElement === taskStage
+                  );
+                  document.body.dataset.sticky = String(
+                    getComputedStyle(
+                      document.getElementById("operation-awareness")
+                    ).position === "sticky"
+                  );
+                  document.body.dataset.qualified = "true";
+                  window.clearInterval(probe);
+                }
+              }, 20);
+            </script>
+            """
+        ).strip()
+        html = html.replace(
+            '<script src="/app.js" defer></script>',
+            f"{browser_state}\n<script>{javascript}</script>\n{probe}",
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            fixture = temporary_root / "operation-awareness-browser.html"
+            fixture.write_text(html, encoding="utf-8")
+            chrome_process = subprocess.Popen(
+                [
+                    chrome,
+                    "--headless=new",
+                    "--disable-background-networking",
+                    "--disable-component-update",
+                    "--disable-gpu",
+                    "--disable-sync",
+                    "--force-device-scale-factor=1",
+                    "--no-default-browser-check",
+                    "--no-first-run",
+                    f"--user-data-dir={temporary_root / 'profile'}",
+                    "--virtual-time-budget=5000",
+                    "--window-size=1280,900",
+                    "--dump-dom",
+                    fixture.as_uri(),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            chrome_finished = True
+            try:
+                chrome_stdout, chrome_stderr = chrome_process.communicate(
+                    timeout=20,
+                )
+            except subprocess.TimeoutExpired:
+                chrome_finished = False
+                chrome_process.kill()
+                chrome_stdout, chrome_stderr = chrome_process.communicate()
+        if chrome_finished:
+            self.assertEqual(
+                0,
+                chrome_process.returncode,
+                msg=f"Chrome operation-awareness probe failed:\n{chrome_stderr}",
+            )
+        self.assertTrue(
+            chrome_stdout.strip(),
+            msg=f"Chrome operation-awareness probe emitted no DOM:\n{chrome_stderr}",
+        )
+        body_match = re.search(r"<body ([^>]*)>", chrome_stdout)
+        self.assertIsNotNone(body_match, "Chrome operation probe body was not emitted.")
+        attributes = dict(
+            re.findall(r'data-([a-z-]+)="([^"]*)"', body_match.group(1))
+        )
+        for name in (
+            "start-immediate",
+            "context-incomplete",
+            "context-ready",
+            "context-switch-blocked",
+            "working",
+            "approval",
+            "approval-answered-immediate",
+            "continuing",
+            "terminal",
+            "manual-navigation",
+            "sticky",
+            "qualified",
+        ):
+            self.assertEqual("true", attributes.get(name), name)
+
     def test_failed_ordinary_panel_clears_stale_review_and_disables_fix(
         self,
     ) -> None:
@@ -2092,8 +3077,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const fs = require("fs");
             const vm = require("vm");
             const source = fs.readFileSync(process.argv[2], "utf8");
+            const contextStart = source.indexOf("function nonEmptyString");
+            const contextEnd = source.indexOf("\nfunction operationPresentation", contextStart);
             const start = source.indexOf("function renderOrdinaryList");
             const end = source.indexOf("\nconst guidedIntakeActionIds", start);
+            assert(contextStart >= 0 && contextEnd > contextStart);
             assert(start >= 0 && end > start);
 
             class Element {
@@ -2128,6 +3116,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error",
               "ordinary-contract-error-action",
               "ordinary-contract-error-dismiss",
+              "ordinary-contract-prepare-task",
               "ordinary-contract-error-fixed",
               "ordinary-contract-error-retry",
               "ordinary-contract-error-state",
@@ -2155,6 +3144,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ordinaryLastErrorId: null,
               ordinarySelectedFilename: null,
               ordinarySelectedFilenameRevision: null,
+              CONTRACT_TASK_MARKER: "Task to perform:",
+              preparedContractTaskBinding: null,
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);
@@ -2165,7 +3156,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             };
             vm.createContext(sandbox);
             vm.runInContext(
-              source.slice(start, end) +
+              source.slice(contextStart, contextEnd) +
+                source.slice(start, end) +
                 "\nthis.renderOrdinaryContract = renderOrdinaryContract;" +
                 "\nthis.recordOrdinarySelectedFilename = recordOrdinarySelectedFilename;",
               sandbox,
@@ -2282,6 +3274,66 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(
               elements.get("ordinary-contract-selected-file").textContent,
               "Selected file: unsupported-server.md",
+            );
+
+            const staleFixed = {
+              ...prior,
+              state: "FIXED",
+              operation_revision: 12,
+              status_label: "Contract fixed",
+              progress_text: "Historical fixation remains recorded.",
+              review: null,
+              allowed_actions: ["SELECT_CONTRACT"],
+              repository_identity: "commit-b",
+              technical_details: {
+                request_id: "GI-REQ-AT-A",
+                interpretation_sha256: "a".repeat(64),
+                preparation_repository_identity: "commit-a",
+              },
+            };
+            sandbox.renderOrdinaryContract(
+              staleFixed,
+              { name: "repo", path: "/tmp/repo" },
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-status").textContent,
+              "Needs attention",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-progress").textContent,
+              "Select and fix this Contract for the current repository.",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-success").classList.contains("hidden"),
+              true,
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
+              true,
+            );
+
+            const currentFixed = {
+              ...staleFixed,
+              operation_revision: 13,
+              review: prior.review,
+              repository_identity: "commit-b",
+              technical_details: {
+                request_id: "GI-REQ-AT-B",
+                interpretation_sha256: "b".repeat(64),
+                preparation_repository_identity: "commit-b",
+              },
+            };
+            sandbox.renderOrdinaryContract(
+              currentFixed,
+              { name: "repo", path: "/tmp/repo" },
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-success").classList.contains("hidden"),
+              false,
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
+              false,
             );
             """
         )
@@ -2661,6 +3713,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-fix",
               "ordinary-contract-error-retry",
               "ordinary-contract-error-dismiss",
+              "ordinary-contract-prepare-task",
               "new-run",
               "run",
               ...guidedIntakeButtonIds,
@@ -2674,6 +3727,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "approval-reason",
               "approval-reason-label",
               "approval-repository",
+              "approval-heading",
               "contract-file",
               "contract-file-name",
               "contract-full-content",
@@ -2733,6 +3787,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "bridge-state",
               "bridge-task-id",
               "bounded-task-card",
+              "task-heading",
               "bounded-run-receipt-column",
               "choose-repository",
               "claim-boundary",
@@ -2799,11 +3854,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error-retry",
               "ordinary-contract-error-state",
               "ordinary-contract-error-what",
+              "ordinary-contract-heading",
               "ordinary-contract-file",
               "ordinary-contract-selected-file",
               "ordinary-contract-fix",
               "ordinary-contract-preserves",
               "ordinary-contract-progress",
+              "ordinary-contract-prepare-task",
               "ordinary-contract-question",
               "ordinary-contract-review",
               "ordinary-contract-status",
@@ -2821,15 +3878,30 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "intelligence-transplant-run-id",
               "intelligence-transplant-structural-validation",
               "new-run",
+              "operation-action",
+              "operation-approval-status",
+              "operation-contract-status",
+              "operation-current",
+              "operation-happening",
+              "operation-next",
+              "operation-result-status",
+              "operation-run-status",
+              "operation-task-status",
               "progress",
               "progress-card",
+              "progress-heading",
               "receipt-status",
               "repository-name",
               "repository-path",
               "repository-receipt",
               "result",
               "result-card",
+              "result-execution",
+              "result-file-change",
+              "result-heading",
               "result-state",
+              "result-verification",
+              "result-verification-reason",
               "run",
               "run-error",
               "run-receipt",

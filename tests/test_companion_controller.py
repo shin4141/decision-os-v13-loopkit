@@ -238,6 +238,51 @@ class ScriptedAdapter:
                     ),
                 ),
             )
+        if self.mode == "modified_unsupported":
+            return CodexRunResult(
+                run_id=run_id,
+                normal_terminal=False,
+                status="UNSUPPORTED_MUTATION",
+                error_type=None,
+                turn_status="completed",
+                runtime_identity=runtime_identity(),
+                checkpoint_outcomes=(),
+                final_message=(
+                    "The requested file was modified.\n\n"
+                    "Decision OS verification: not verified "
+                    "(unsupported_request_method:commandExecution)."
+                ),
+                file_actions=(
+                    CodexFileAction(
+                        "Modify",
+                        "target.txt",
+                        "one-time",
+                        "approved",
+                    ),
+                ),
+                unsupported_reason=(
+                    "unsupported_request_method:commandExecution"
+                ),
+            )
+        if self.mode == "inconclusive_unsupported":
+            return CodexRunResult(
+                run_id=run_id,
+                normal_terminal=False,
+                status="UNSUPPORTED_MUTATION",
+                error_type=None,
+                turn_status="completed",
+                runtime_identity=runtime_identity(),
+                checkpoint_outcomes=(),
+                final_message=(
+                    "The requested file was modified.\n\n"
+                    "Decision OS verification: not verified "
+                    "(unsupported_request_method:commandExecution)."
+                ),
+                file_actions=(),
+                unsupported_reason=(
+                    "unsupported_request_method:commandExecution"
+                ),
+            )
         checkpoint = self.engine.finish_checkpoint(
             outcome,
             normal_terminal=True,
@@ -491,6 +536,13 @@ class CompanionControllerTest(unittest.TestCase):
                 snapshot["run"]["receipt_delta"],
             )
             self.assertEqual(0, snapshot["receipt"]["verified_saves"])
+            self.assertEqual(
+                {
+                    "state": "none",
+                    "label": "No file was modified",
+                },
+                snapshot["run"]["outcomes"]["file_change"],
+            )
 
     def test_allow_once_deny_and_repository_default_choices(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -507,6 +559,10 @@ class CompanionControllerTest(unittest.TestCase):
                 lambda state: state["run"]["state"] == "completed",
             )
             self.assertEqual("one-time", allowed["run"]["file_actions"][0]["access"])
+            self.assertEqual(
+                "Modified successfully",
+                allowed["run"]["outcomes"]["file_change"]["label"],
+            )
             self.assertEqual([], allowed["defaults"])
 
             deny = self.make_controller(root / "deny", ScriptedFactory("mutation"))
@@ -519,6 +575,13 @@ class CompanionControllerTest(unittest.TestCase):
                 lambda state: state["run"]["state"] == "denied",
             )
             self.assertEqual("denied", denied["run"]["file_actions"][0]["access"])
+            self.assertEqual(
+                {
+                    "state": "denied",
+                    "label": "No file was modified — change denied",
+                },
+                denied["run"]["outcomes"]["file_change"],
+            )
 
             saved = self.make_controller(root / "saved", ScriptedFactory("mutation"))
             saved.select_repository(repository)
@@ -551,6 +614,104 @@ class CompanionControllerTest(unittest.TestCase):
                 persisted["run"]["file_actions"][0]["access"],
             )
             self.assertEqual(1, len(persisted["defaults"]))
+
+    def test_modified_file_and_unsupported_verification_are_separate(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("modified_unsupported"),
+            )
+            controller.select_repository(repository)
+            controller.start_run("Modify one file, then request shell validation.")
+            wait_for(
+                controller,
+                lambda state: state["run"]["approval"] is not None,
+            )
+            controller.submit_approval("allow_once")
+
+            completed = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "unsupported",
+            )
+
+            self.assertEqual(
+                {
+                    "execution": {
+                        "state": "completed",
+                        "label": "Codex turn completed",
+                    },
+                    "file_change": {
+                        "state": "modified",
+                        "label": "Modified successfully",
+                    },
+                    "verification": {
+                        "state": "unsupported",
+                        "label": "Unsupported — review required",
+                        "reason": (
+                            "unsupported_request_method:commandExecution"
+                        ),
+                    },
+                },
+                completed["run"]["outcomes"],
+            )
+            self.assertEqual(
+                "approved",
+                completed["run"]["file_actions"][0]["status"],
+            )
+            self.assertEqual([], completed["defaults"])
+
+    def test_unsupported_saved_permission_without_public_action_is_unknown(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("mutation", "inconclusive_unsupported"),
+            )
+            controller.select_repository(repository)
+            controller.start_run("Save exact access.")
+            wait_for(
+                controller,
+                lambda state: state["run"]["approval"] is not None,
+            )
+            controller.submit_approval("repository")
+            first = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "completed",
+            )
+            self.assertEqual(1, len(first["defaults"]))
+
+            controller.new_run()
+            controller.start_run(
+                "Reuse the saved exact permission, then request shell validation."
+            )
+            terminal = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "unsupported",
+            )
+
+            self.assertIsNone(terminal["run"]["approval"])
+            self.assertEqual([], terminal["run"]["file_actions"])
+            self.assertEqual(
+                {
+                    "state": "unknown",
+                    "label": (
+                        "Not established — file-change outcome requires review"
+                    ),
+                },
+                terminal["run"]["outcomes"]["file_change"],
+            )
+            self.assertEqual(
+                "unsupported",
+                terminal["run"]["outcomes"]["verification"]["state"],
+            )
+            self.assertEqual(1, len(terminal["defaults"]))
 
     def test_default_reuse_receipt_delta_enumeration_and_revoke(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1562,6 +1723,15 @@ class CompanionControllerTest(unittest.TestCase):
             self.assertEqual(
                 "The bounded Codex Run failed closed.",
                 failed["run"]["error"],
+            )
+            self.assertEqual(
+                {
+                    "state": "unknown",
+                    "label": (
+                        "Not established — file-change outcome requires review"
+                    ),
+                },
+                failed["run"]["outcomes"]["file_change"],
             )
             self.assertNotIn("sensitive", json.dumps(failed))
 

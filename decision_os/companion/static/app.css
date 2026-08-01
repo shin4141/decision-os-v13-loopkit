@@ -125,6 +125,111 @@ h3 {
   padding: 1.35rem;
 }
 
+.operation-awareness {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #cbd8ff;
+  border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(30, 34, 45, 0.14);
+  margin-top: 1rem;
+  padding: 0.9rem;
+  position: sticky;
+  top: 0.6rem;
+  z-index: 10;
+}
+
+.operation-awareness-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.8rem;
+  justify-content: space-between;
+}
+
+.operation-awareness-heading .eyebrow {
+  margin-bottom: 0.15rem;
+}
+
+.operation-awareness-heading h2 {
+  font-size: 1rem;
+}
+
+.operation-current {
+  color: var(--accent-dark);
+  font-size: 0.86rem;
+  font-weight: 750;
+  margin: 0;
+  text-align: right;
+}
+
+.operation-rail {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  margin: 0.7rem 0;
+  padding: 0;
+}
+
+.operation-stage {
+  background: #f7f8fb;
+  border-color: var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  display: grid;
+  gap: 0.12rem;
+  min-height: 3rem;
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  width: 100%;
+}
+
+.operation-stage > span:first-child {
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.operation-stage > span:last-child {
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.operation-stage[aria-current="step"] {
+  background: var(--soft-blue);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.operation-stage[aria-current="step"] > span:last-child {
+  color: var(--accent-dark);
+}
+
+.operation-summary {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.4rem 0.9rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding-top: 0.65rem;
+}
+
+.operation-summary div {
+  min-width: 0;
+}
+
+.operation-summary dt {
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.15rem;
+  text-transform: uppercase;
+}
+
+.operation-summary dd {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .section-heading {
   align-items: flex-start;
   display: flex;
@@ -376,6 +481,36 @@ summary:focus-visible {
   padding: 1rem;
 }
 
+.result-outcomes {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 1rem;
+}
+
+.result-outcomes > div {
+  background: #f7f8fb;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-width: 0;
+  padding: 0.8rem;
+}
+
+.result-outcomes dt {
+  font-size: 0.72rem;
+  font-weight: 750;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.result-outcomes dd:not(.path-value) {
+  font-weight: 700;
+}
+
+.result-outcomes .path-value {
+  margin-top: 0.35rem;
+}
+
 .technical-details {
   border-top: 1px solid var(--line);
   margin-top: 1rem;
@@ -398,6 +533,23 @@ summary:focus-visible {
   border-radius: 18px;
   margin-top: 1rem;
   padding: 1rem 1.35rem;
+}
+
+.additional-evidence {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  margin-top: 1rem;
+  padding: 1rem 1.35rem;
+}
+
+.additional-evidence > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.additional-evidence-content > .card {
+  box-shadow: none;
 }
 
 .advanced-audit-content > .card {
@@ -487,9 +639,34 @@ dd {
 }
 
 .approval-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.65rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.approval-instruction {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.approval-option {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+}
+
+.approval-option button {
+  width: 100%;
+}
+
+.approval-option p {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+  margin: 0;
 }
 
 .hidden {
@@ -512,6 +689,26 @@ dd {
   }
 
   .receipt-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-awareness {
+    top: 0.35rem;
+  }
+
+  .operation-awareness-heading {
+    align-items: flex-start;
+  }
+
+  .operation-rail {
+    grid-template-columns: repeat(5, minmax(6rem, 1fr));
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+
+  .operation-summary,
+  .result-outcomes,
+  .approval-actions {
     grid-template-columns: 1fr;
   }
 

@@ -392,6 +392,84 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
                 stale[field] = replacement
                 self.assertFalse(binding(stale, guided_state, self.head))
 
+    def test_fixed_history_is_not_current_after_advance_until_refixed(
+        self,
+    ) -> None:
+        prepared_at_a = self.prepare()
+        fixed_at_a = self.coordinator.fix(**self.fix_request(prepared_at_a))
+        self.assertEqual("FIXED", fixed_at_a["state"])
+        self.assertIsInstance(fixed_at_a["review"], dict)
+        request_at_a = fixed_at_a["technical_details"]["request_id"]
+
+        (self.repository / "tracked.txt").write_text(
+            "test\nrepository advanced after fixation\n",
+            encoding="utf-8",
+        )
+        subprocess.run(
+            ("git", "-C", str(self.repository), "add", "tracked.txt"),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "-C", str(self.repository), "commit", "-qm", "advance"),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        head_b = subprocess.run(
+            ("git", "-C", str(self.repository), "rev-parse", "HEAD"),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+        restarted_guided = GuidedIntakeController(self.repository)
+        restarted = OrdinaryUserPathCoordinator(
+            self.repository,
+            restarted_guided,
+        )
+        restarted.recover_incomplete()
+        stale = restarted.snapshot()
+        self.assertEqual("FIXED", stale["state"])
+        self.assertEqual(head_b, stale["repository_identity"])
+        self.assertEqual(
+            self.head,
+            stale["technical_details"]["preparation_repository_identity"],
+        )
+        self.assertIsNone(stale["review"])
+        self.assertIsNone(stale["clarification"])
+        self.assertIn("SELECT_CONTRACT", stale["allowed_actions"])
+        self.assertNotIn("FIX_CONTRACT", stale["allowed_actions"])
+
+        prepared_at_b = restarted.prepare(
+            filename=SOURCE_PATH.name,
+            source_bytes=self.source,
+            source_byte_size=len(self.source),
+            source_sha256=sha256_bytes(self.source),
+            expected_repository_identity=head_b,
+            expected_active_request_id=request_at_a,
+            idempotency_key=str(uuid.uuid4()),
+        )
+        fixed_at_b = restarted.fix(**self.fix_request(prepared_at_b))
+        self.assertEqual("FIXED", fixed_at_b["state"])
+        self.assertIsInstance(fixed_at_b["review"], dict)
+        self.assertEqual(head_b, fixed_at_b["repository_identity"])
+        self.assertEqual(
+            head_b,
+            fixed_at_b["technical_details"][
+                "preparation_repository_identity"
+            ],
+        )
+        self.assertNotEqual(
+            request_at_a,
+            fixed_at_b["technical_details"]["request_id"],
+        )
+        self.assertEqual(
+            "7503f4b01c7c05c9ec3aed8855c9fd538c66b9b3b38840f423ec41c2101f4dd7",
+            fixed_at_b["technical_details"]["interpretation_sha256"],
+        )
+
     def test_restart_after_repository_advance_projects_current_identity(self) -> None:
         with self.assertRaises(OrdinaryUserPathError) as raised:
             self.prepare(filename="Contract.pdf")

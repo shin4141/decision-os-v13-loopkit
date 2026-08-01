@@ -21,6 +21,14 @@ let ordinaryLastErrorId = null;
 let ordinaryLastRevision = -1;
 let ordinarySelectedFilename = null;
 let ordinarySelectedFilenameRevision = null;
+let operationStartPending = false;
+let operationApprovalResponsePending = false;
+let operationApprovalWasVisible = false;
+let operationApprovalSeen = false;
+let operationContinuingAfterApproval = false;
+let operationTerminalTransitioned = false;
+let operationLastApprovalKey = null;
+let preparedContractTaskBinding = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -106,6 +114,412 @@ function statusLabel(state) {
     unsupported: "Unsupported",
     needs_attention: "Needs attention",
   }[state] || "Needs attention";
+}
+
+const OPERATION_STAGES = ["contract", "task", "run", "approval", "result"];
+const OPERATION_TARGETS = {
+  contract: ["ordinary-contract-card", "ordinary-contract-heading"],
+  task: ["bounded-task-card", "task-heading"],
+  run: ["progress-card", "progress-heading"],
+  approval: ["approval-overlay", "approval-heading"],
+  result: ["result-card", "result-heading"],
+};
+const TERMINAL_RUN_STATES = [
+  "completed",
+  "denied",
+  "unsupported",
+  "needs_attention",
+];
+const CONTRACT_TASK_MARKER = "Task to perform:";
+
+function reducedMotionRequested() {
+  return Boolean(
+    globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+  );
+}
+
+function moveToOperationStage(stage) {
+  const targetIds = OPERATION_TARGETS[stage];
+  if (!targetIds) {
+    return false;
+  }
+  const target = byId(targetIds[0]);
+  const focusTarget = byId(targetIds[1]);
+  if (!target || target.classList.contains("hidden")) {
+    return false;
+  }
+  target.scrollIntoView?.({
+    behavior: reducedMotionRequested() ? "auto" : "smooth",
+    block: "start",
+  });
+  focusTarget?.focus?.({ preventScroll: true });
+  return true;
+}
+
+function approvalIdentity(approval) {
+  if (!approval) {
+    return null;
+  }
+  return [approval.repository, approval.action, approval.path].join("|");
+}
+
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function validOrdinaryReview(review) {
+  return Boolean(
+    review &&
+      typeof review === "object" &&
+      !Array.isArray(review) &&
+      nonEmptyString(review.preserves) &&
+      nonEmptyString(review.completion) &&
+      Array.isArray(review.must_not_change) &&
+      review.must_not_change.every(nonEmptyString) &&
+      Array.isArray(review.unresolved) &&
+      review.unresolved.every(nonEmptyString) &&
+      nonEmptyString(review.does_not_authorize),
+  );
+}
+
+function usableCurrentOrdinaryContext(panel) {
+  const details = panel?.technical_details;
+  // The server withholds review unless the full preparation, native state,
+  // and current-repository binding is valid.  Do not reconstruct that
+  // security decision from client-supplied identities.
+  return Boolean(
+    panel?.state === "FIXED" &&
+      validOrdinaryReview(panel.review) &&
+      details &&
+      typeof details === "object" &&
+      nonEmptyString(details.request_id) &&
+      /^[0-9a-f]{64}$/i.test(details.interpretation_sha256 || "") &&
+      nonEmptyString(panel.repository_identity),
+  );
+}
+
+function ordinaryContextBinding(panel, repository) {
+  if (!usableCurrentOrdinaryContext(panel) || !nonEmptyString(repository?.path)) {
+    return null;
+  }
+  return JSON.stringify([
+    repository.path,
+    panel.repository_identity,
+    panel.technical_details.request_id,
+    panel.technical_details.interpretation_sha256,
+  ]);
+}
+
+function contractTaskUserText(value) {
+  const marker = `\n${CONTRACT_TASK_MARKER}`;
+  const markerIndex = value.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return null;
+  }
+  return value.slice(markerIndex + marker.length);
+}
+
+function taskReadiness(ordinary, repository) {
+  const value = byId("task").value;
+  if (value.trim().length === 0) {
+    return {
+      mode: "empty",
+      runnable: false,
+      contextInserted: false,
+      stalePreparedContext: false,
+    };
+  }
+  if (preparedContractTaskBinding === null) {
+    return {
+      mode: "manual",
+      runnable: true,
+      contextInserted: false,
+      stalePreparedContext: false,
+    };
+  }
+  const currentBinding = ordinaryContextBinding(ordinary, repository);
+  const userText = contractTaskUserText(value);
+  const bindingCurrent = currentBinding === preparedContractTaskBinding;
+  return {
+    mode: "contract",
+    runnable: bindingCurrent && userText !== null && userText.trim().length > 0,
+    contextInserted: userText !== null,
+    stalePreparedContext: !bindingCurrent,
+  };
+}
+
+function operationPresentation(
+  run,
+  ordinary,
+  task,
+  repository,
+  context = {},
+) {
+  const state = run?.state || "idle";
+  const approval = context.approvalResponsePending
+    ? null
+    : run?.approval || null;
+  const startPending = Boolean(context.startPending);
+  const approvalSeen = Boolean(context.approvalSeen);
+  const continuing = Boolean(context.continuingAfterApproval);
+  const historicalFixed = ordinary?.state === "FIXED";
+  const fixed = usableCurrentOrdinaryContext(ordinary);
+  const staleFixed = historicalFixed && !fixed;
+  const statuses = {
+    contract: fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : repository
+          ? "Current"
+          : "Not started",
+    task: "Not started",
+    run: "Not started",
+    approval: approvalSeen ? "Complete" : "Not started",
+    result: "Not started",
+  };
+
+  if (startPending) {
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
+    statuses.task = "Complete";
+    statuses.run = "Waiting for system";
+    return {
+      currentStage: "run",
+      statuses,
+      current: "Starting Run",
+      happening: "The bounded Run is being started.",
+      action: "Wait — no action is needed.",
+      next: "Codex will begin working on the bounded task.",
+    };
+  }
+
+  if (state === "running") {
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
+    statuses.task = "Complete";
+    statuses.run = approval ? "Waiting for you" : "Waiting for system";
+    if (approval) {
+      statuses.approval = "Waiting for you";
+      return {
+        currentStage: "approval",
+        statuses,
+        current: "Approval required",
+        happening: `${approval.action} is requested for ${approval.path}.`,
+        action: "Choose one response for this exact file change.",
+        next: "Your decision will either continue or stop this Run.",
+      };
+    }
+    return {
+      currentStage: "run",
+      statuses,
+      current: continuing ? "The Run is continuing" : "Codex is working",
+      happening: continuing
+        ? "The Run is continuing after your approval decision."
+        : (run.progress || []).at(-1) || "Codex is working on the bounded task.",
+      action: "Wait — no action is needed.",
+      next: "Approval will appear if an exact file change needs your decision.",
+    };
+  }
+
+  if (TERMINAL_RUN_STATES.includes(state)) {
+    const needsAttention = ["unsupported", "needs_attention"].includes(state);
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
+    statuses.task = "Complete";
+    statuses.run = needsAttention ? "Needs attention" : "Complete";
+    statuses.result = needsAttention ? "Needs attention" : "Current";
+    return {
+      currentStage: "result",
+      statuses,
+      current: needsAttention ? "Run needs attention" : "Run finished",
+      happening: needsAttention
+        ? "The Run finished with a verification outcome that needs review."
+        : "The bounded Run reached its terminal result.",
+      action: needsAttention
+        ? "Review the Run verification outcome."
+        : "Nothing — this Run is complete.",
+      next: "A new Run will not start automatically.",
+    };
+  }
+
+  if (!repository) {
+    return {
+      currentStage: null,
+      statuses,
+      current: "Choose repository",
+      happening: "Choose one local Git repository.",
+      action: "Choose one repository.",
+      next: "The Contract stage will become available.",
+    };
+  }
+  if (task.mode === "manual" && task.runnable) {
+    statuses.task = "Current";
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Task ready",
+      happening: "One manually written bounded task is ready to start.",
+      action: "Select Run to start this bounded task.",
+      next: "The view will move to Run progress.",
+    };
+  }
+  if (task.stalePreparedContext || staleFixed) {
+    statuses.task = task.stalePreparedContext
+      ? "Needs attention"
+      : "Not started";
+    return {
+      currentStage: "contract",
+      statuses,
+      current: "Contract needs attention",
+      happening: "The prior fixed Contract context is not current for this repository.",
+      action: "Select and fix this Contract for the current repository.",
+      next: "A current server-verified Contract context will then become available.",
+    };
+  }
+  if (!fixed) {
+    return {
+      currentStage: "contract",
+      statuses,
+      current: "Contract",
+      happening: "The Contract stage is ready for one supported local Contract.",
+      action: "Select one Contract.",
+      next: "You will review its interpretation before fixing it.",
+    };
+  }
+  statuses.task = "Current";
+  if (task.contextInserted && !task.runnable) {
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Add bounded task",
+      happening: "The fixed Contract context has been inserted.",
+      action: "Write one exact task after “Task to perform:”.",
+      next: "Run becomes available after the exact task is added.",
+    };
+  }
+  return {
+    currentStage: "task",
+    statuses,
+    current: task.runnable ? "Task ready" : "Contract fixed",
+    happening: task.runnable
+      ? "One bounded task is ready to start."
+      : "The fixed Contract context is ready for a bounded task.",
+    action: task.runnable
+      ? "Select Run to start this bounded task."
+      : "Use this Contract for a bounded task.",
+    next: task.runnable
+      ? "The view will move to Run progress."
+      : "The Contract context will be inserted without starting a Run.",
+  };
+}
+
+function renderOperationAwareness(run, ordinary, repository) {
+  const presentation = operationPresentation(
+    run,
+    ordinary,
+    taskReadiness(ordinary, repository),
+    repository,
+    {
+      approvalResponsePending: operationApprovalResponsePending,
+      approvalSeen: operationApprovalSeen,
+      continuingAfterApproval: operationContinuingAfterApproval,
+      startPending: operationStartPending,
+    },
+  );
+  setText("operation-current", presentation.current);
+  setText("operation-happening", presentation.happening);
+  setText("operation-action", presentation.action);
+  setText("operation-next", presentation.next);
+  const stageButtons = Array.from(
+    document.querySelectorAll("[data-operation-stage]"),
+  );
+  for (const stage of OPERATION_STAGES) {
+    const button = stageButtons.find(
+      (candidate) => candidate.dataset.operationStage === stage,
+    );
+    const status = presentation.statuses[stage];
+    setText(`operation-${stage}-status`, status);
+    button?.setAttribute("aria-label", `${stage}: ${status}`);
+    if (stage === presentation.currentStage) {
+      button?.setAttribute("aria-current", "step");
+    } else {
+      button?.removeAttribute("aria-current");
+    }
+  }
+}
+
+function resetOperationTransitionMemory() {
+  operationApprovalResponsePending = false;
+  operationApprovalWasVisible = false;
+  operationApprovalSeen = false;
+  operationContinuingAfterApproval = false;
+  operationTerminalTransitioned = false;
+  operationLastApprovalKey = null;
+}
+
+function coordinateOperationTransition(run) {
+  const state = run?.state || "idle";
+  const rawApproval = run?.approval || null;
+  if (operationApprovalResponsePending && !rawApproval) {
+    operationApprovalResponsePending = false;
+  }
+  const approval = operationApprovalResponsePending ? null : rawApproval;
+  const approvalKey = approvalIdentity(approval);
+
+  if (state === "idle") {
+    resetOperationTransitionMemory();
+    return;
+  }
+  if (approval && approvalKey !== operationLastApprovalKey) {
+    operationApprovalSeen = true;
+    operationContinuingAfterApproval = false;
+    moveToOperationStage("approval");
+  } else if (
+    operationApprovalWasVisible &&
+    !approval &&
+    state === "running"
+  ) {
+    operationContinuingAfterApproval = true;
+    moveToOperationStage("run");
+  }
+  if (
+    TERMINAL_RUN_STATES.includes(state) &&
+    !operationTerminalTransitioned
+  ) {
+    operationTerminalTransitioned = true;
+    operationApprovalResponsePending = false;
+    moveToOperationStage("result");
+  }
+  operationApprovalWasVisible = Boolean(approval);
+  operationLastApprovalKey = approvalKey;
+}
+
+function beginOperationRun() {
+  resetOperationTransitionMemory();
+  operationStartPending = true;
+  byId("run").disabled = true;
+  setHidden("progress-card", false);
+  setText("run-state", "Starting Run");
+  const progress = byId("progress");
+  const item = document.createElement("li");
+  item.textContent = "Starting Run";
+  progress.replaceChildren(item);
+  renderOperationAwareness(
+    { state: "running", progress: ["Starting Run"], approval: null },
+    latestState?.ordinary_contract,
+    latestState?.repository,
+  );
+  moveToOperationStage("run");
 }
 
 function formatNumber(value, digits = 0) {
@@ -202,12 +616,29 @@ function renderRuntime(runtime) {
 }
 
 function renderResult(run) {
-  const terminal = ["completed", "denied", "unsupported", "needs_attention"].includes(
-    run.state,
-  );
+  const terminal = TERMINAL_RUN_STATES.includes(run.state);
   setHidden("result-card", !terminal);
   byId("new-run").disabled = !terminal;
-  setText("result-state", statusLabel(run.state));
+  setText(
+    "result-state",
+    ["unsupported", "needs_attention"].includes(run.state)
+      ? "Review required"
+      : "Result available",
+  );
+  const outcomes = run.outcomes || {};
+  setText("result-execution", outcomes.execution?.label || "Not established");
+  setText(
+    "result-file-change",
+    outcomes.file_change?.label ||
+      "Not established — file-change outcome requires review",
+  );
+  setText(
+    "result-verification",
+    outcomes.verification?.label || "Not established",
+  );
+  const verificationReason = outcomes.verification?.reason || "";
+  setText("result-verification-reason", verificationReason);
+  setHidden("result-verification-reason", !verificationReason);
   setText(
     "result",
     run.result ||
@@ -480,6 +911,71 @@ function syncOrdinarySelectedFilename(panel) {
   showOrdinarySelectedFilename(ordinarySelectedFilename);
 }
 
+function ordinaryTaskStarterValue(value, fallback = "") {
+  const concise = displayValue(value, fallback).replace(/\s+/g, " ").trim();
+  return concise || fallback;
+}
+
+function ordinaryTaskStarterList(values, emptyText) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return emptyText;
+  }
+  return values
+    .map((value) => ordinaryTaskStarterValue(value))
+    .join("; ");
+}
+
+function ordinaryFixedTaskStarter(panel) {
+  const details =
+    panel?.technical_details && typeof panel.technical_details === "object"
+      ? panel.technical_details
+      : {};
+  const review =
+    panel?.review && typeof panel.review === "object" ? panel.review : {};
+  return [
+    "Perform only the bounded task defined by this fixed ordinary Contract context.",
+    `Current repository identity: ${ordinaryTaskStarterValue(panel?.repository_identity)}`,
+    `Fixed Contract Request identity: ${ordinaryTaskStarterValue(details.request_id)}`,
+    `Interpretation SHA-256: ${ordinaryTaskStarterValue(details.interpretation_sha256)}`,
+    `What the Contract preserves: ${ordinaryTaskStarterValue(review.preserves)}`,
+    `What counts as completion: ${ordinaryTaskStarterValue(review.completion)}`,
+    `What must not be changed: ${ordinaryTaskStarterList(review.must_not_change, "No additional protected wording is listed.")}`,
+    `What remains unresolved: ${ordinaryTaskStarterList(review.unresolved, "Nothing remains unresolved.")}`,
+    `What the operation does not authorize: ${ordinaryTaskStarterValue(review.does_not_authorize)}`,
+    CONTRACT_TASK_MARKER,
+  ].join("\n");
+}
+
+function ensureOrdinaryPrepareTaskButton() {
+  let button = byId("ordinary-contract-prepare-task");
+  if (button) {
+    return button;
+  }
+  button = document.createElement("button");
+  button.id = "ordinary-contract-prepare-task";
+  button.type = "button";
+  button.textContent = "Use this Contract for a bounded task";
+  button.addEventListener("click", () => {
+    const panel = latestState?.ordinary_contract;
+    const repository = latestState?.repository;
+    const binding = ordinaryContextBinding(panel, repository);
+    if (binding === null) {
+      return;
+    }
+    const task = byId("task");
+    if (task.value.trim().length === 0) {
+      preparedContractTaskBinding = binding;
+      task.value = ordinaryFixedTaskStarter(panel);
+      task.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    task.scrollIntoView?.({ block: "center" });
+    task.focus();
+    task.setSelectionRange?.(task.value.length, task.value.length);
+  });
+  byId("ordinary-contract-success").insertAdjacentElement("afterend", button);
+  return button;
+}
+
 function renderOrdinaryContract(ordinary, repository) {
   const panel = ordinary && typeof ordinary === "object" ? ordinary : null;
   const revision = Number.isInteger(panel?.operation_revision)
@@ -550,7 +1046,15 @@ function renderOrdinaryContract(ordinary, repository) {
     !connected || requestActive || !repository || !actions.has("SELECT_CONTRACT");
   byId("ordinary-contract-fix").disabled =
     !connected || requestActive || !actions.has("FIX_CONTRACT");
-  const fixed = state === "FIXED";
+  const fixed = usableCurrentOrdinaryContext(panel);
+  const staleFixed = state === "FIXED" && !fixed;
+  if (staleFixed) {
+    setText("ordinary-contract-status", "Needs attention");
+    setText(
+      "ordinary-contract-progress",
+      "Select and fix this Contract for the current repository.",
+    );
+  }
   setText(
     "ordinary-contract-success",
     fixed
@@ -558,6 +1062,10 @@ function renderOrdinaryContract(ordinary, repository) {
       : "",
   );
   setHidden("ordinary-contract-success", !fixed);
+  const prepareTaskButton = fixed
+    ? ensureOrdinaryPrepareTaskButton()
+    : byId("ordinary-contract-prepare-task");
+  prepareTaskButton?.classList.toggle("hidden", !fixed);
 
   setHidden("ordinary-contract-error", !error);
   setText("ordinary-contract-error-what", error?.what_failed || "");
@@ -1134,25 +1642,35 @@ function render(state) {
         progress: [],
         result: "",
         file_actions: [],
+        outcomes: null,
         runtime: null,
         receipt_delta: null,
         approval: null,
         error: null,
       };
   const running = boundedRun && run.state === "running";
+  const currentTask = taskReadiness(state.ordinary_contract, repository);
   setHidden("bounded-task-card", !boundedRun);
   setHidden("bounded-run-receipt-column", !boundedRun);
   byId("run").disabled =
     !boundedRun ||
     running ||
     !repository ||
-    byId("task").value.trim().length === 0;
+    !currentTask.runnable;
   byId("choose-repository").disabled = running;
   byId("task").disabled = !boundedRun || running;
 
   renderProgress(boundedRunView);
   renderResult(boundedRunView);
-  renderApproval(boundedRunView.approval);
+  renderApproval(
+    operationApprovalResponsePending ? null : boundedRunView.approval,
+  );
+  coordinateOperationTransition(boundedRunView);
+  renderOperationAwareness(
+    boundedRunView,
+    state.ordinary_contract,
+    repository,
+  );
   renderDefaults(state.defaults);
 
   setText(
@@ -1243,6 +1761,7 @@ function enterDisconnected() {
     progress: [],
     result: "",
     file_actions: [],
+    outcomes: null,
     runtime: null,
     receipt_delta: null,
     approval: null,
@@ -1254,6 +1773,9 @@ function enterDisconnected() {
   setText("result-state", "");
   setText("result", "");
   renderApproval(null);
+  operationStartPending = false;
+  resetOperationTransitionMemory();
+  renderOperationAwareness(emptyRun, null, null);
 
   byId("defaults").replaceChildren();
   setText("receipt-status", "Session ended");
@@ -1644,7 +2166,36 @@ byId("contract-use-guided-intake").addEventListener("click", () => {
   originalRequestInput.focus();
 });
 
+const operationStageButtons = Array.from(
+  document.querySelectorAll("[data-operation-stage]"),
+);
+for (const [index, button] of operationStageButtons.entries()) {
+  button.addEventListener("click", () => {
+    moveToOperationStage(button.dataset.operationStage);
+  });
+  button.addEventListener("keydown", (event) => {
+    const lastIndex = operationStageButtons.length - 1;
+    let targetIndex = null;
+    if (["ArrowRight", "ArrowDown"].includes(event.key)) {
+      targetIndex = Math.min(index + 1, lastIndex);
+    } else if (["ArrowLeft", "ArrowUp"].includes(event.key)) {
+      targetIndex = Math.max(index - 1, 0);
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = lastIndex;
+    }
+    if (targetIndex !== null) {
+      event.preventDefault();
+      operationStageButtons[targetIndex].focus();
+    }
+  });
+}
+
 byId("task").addEventListener("input", () => {
+  if (byId("task").value.trim().length === 0) {
+    preparedContractTaskBinding = null;
+  }
   if (connected && latestState) {
     render(latestState);
   }
@@ -1655,13 +2206,30 @@ byId("choose-repository").addEventListener("click", async () => {
 });
 
 byId("run").addEventListener("click", async () => {
-  await postJSON("/api/run", { task: byId("task").value });
+  const currentTask = taskReadiness(
+    latestState?.ordinary_contract,
+    latestState?.repository,
+  );
+  if (byId("run").disabled || requestActive || !currentTask.runnable) {
+    return;
+  }
+  beginOperationRun();
+  const state = await postJSON("/api/run", { task: byId("task").value });
+  operationStartPending = false;
+  if (state) {
+    render(state);
+  } else if (latestState) {
+    render(latestState);
+  }
 });
 
 byId("new-run").addEventListener("click", async () => {
   const state = await postJSON("/api/new-run", {});
   if (state) {
+    operationStartPending = false;
+    resetOperationTransitionMemory();
     byId("task").value = "";
+    preparedContractTaskBinding = null;
     render(state);
     byId("task").focus();
   }
@@ -1669,7 +2237,30 @@ byId("new-run").addEventListener("click", async () => {
 
 for (const button of document.querySelectorAll("[data-choice]")) {
   button.addEventListener("click", async () => {
-    await postJSON("/api/approval", { choice: button.dataset.choice });
+    if (button.disabled || requestActive) {
+      return;
+    }
+    operationApprovalResponsePending = true;
+    operationApprovalSeen = true;
+    operationApprovalWasVisible = false;
+    operationContinuingAfterApproval = true;
+    renderApproval(null);
+    renderOperationAwareness(
+      { ...latestState.run, approval: null },
+      latestState.ordinary_contract,
+      latestState.repository,
+    );
+    moveToOperationStage("run");
+    const state = await postJSON("/api/approval", {
+      choice: button.dataset.choice,
+    });
+    if (!state) {
+      operationApprovalResponsePending = false;
+      operationContinuingAfterApproval = false;
+      if (latestState) {
+        render(latestState);
+      }
+    }
   });
 }
 
