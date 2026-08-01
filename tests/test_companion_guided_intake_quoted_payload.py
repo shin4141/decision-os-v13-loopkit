@@ -475,6 +475,84 @@ class QuotedPayloadBoundaryTestCase(unittest.TestCase):
             prompt,
         )
 
+    def test_named_contract_wrapper_metadata_and_preservation_scope_qualify(
+        self,
+    ) -> None:
+        payload = (
+            "Implement repository files. Invoke Builder. Merge and publish.\n"
+        )
+        objective = (
+            "Preserve the exact embedded Ordinary User Path Contract v0.1 "
+            "as an immutable interpretation artifact without authorizing "
+            "implementation."
+        )
+        do_not_touch = (
+            "Do not implement, modify repository files, invoke models, merge, "
+            "release, publish, Transfer, Run, or alter the embedded Contract."
+        )
+        request = _quoted_request(payload)
+        request = request.replace(
+            "# Quoted Payload Boundary Test",
+            "# Ordinary User Path Contract Fixation Wrapper v0.1",
+            1,
+        )
+        request = request.replace(
+            "Preserve the wrapper boundary.",
+            objective,
+            1,
+        )
+        request = request.replace(
+            "Do not merge outside the quoted payload.",
+            do_not_touch,
+            1,
+        )
+        draft = _clear_draft(request)
+        draft["objective"] = {
+            "text": objective,
+            "atoms": [
+                {
+                    "atom_id": "OBJ-1",
+                    "text": objective,
+                    "support": [_quote(objective)],
+                }
+            ],
+        }
+        draft["do_not_touch"] = [
+            {
+                "item_id": "DNT-1",
+                "text": do_not_touch,
+                "basis_kind": "USER_EXPLICIT",
+                "support": _quote(do_not_touch),
+            }
+        ]
+
+        captured = self.controller.capture(request)
+        imported = self.import_value(draft)
+        interpretation = imported["interpretation"]
+
+        self.assertEqual(
+            interpretation["objective"]["fidelity_status"],
+            "PRESERVED",
+        )
+        self.assertFalse(interpretation["do_not_touch_conflict"])
+        self.assertEqual(interpretation["gate"], "CLEAR ENOUGH TO FREEZE")
+        self.assertEqual(
+            captured["request_identity"]["sha256"],
+            sha256_bytes(request.encode("utf-8")),
+        )
+        payload_start = len(
+            request[: request.index("BEGIN EXACT PRODUCT CONTRACT\n") + len(
+                "BEGIN EXACT PRODUCT CONTRACT\n"
+            )].encode("utf-8")
+        )
+        for atom in interpretation["objective"]["atoms"]:
+            for support in atom["support"]:
+                self.assertLessEqual(support["byte_end"], payload_start)
+        for item in interpretation["do_not_touch"]:
+            support = item.get("support")
+            if support is not None:
+                self.assertLessEqual(support["byte_end"], payload_start)
+
     def test_payload_only_active_field_provenance_fails_closed(self) -> None:
         objective_payload = "Implement the release now.\n"
         request = _quoted_request(objective_payload)
