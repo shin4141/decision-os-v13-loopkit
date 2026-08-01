@@ -1319,8 +1319,34 @@ class OrdinaryUserPathCoordinator:
             "does_not_authorize": _DOES_NOT_AUTHORIZE,
         }
 
+    @staticmethod
+    def _preparation_binds_current_native_state(
+        preparation: Mapping[str, Any],
+        guided_state: Mapping[str, Any],
+        current_repository_identity: str | None,
+    ) -> bool:
+        interpretation = guided_state.get("current_interpretation")
+        profile = preparation.get("profile")
+        return (
+            profile in (ORDINARY_PROFILE, PRODUCT_PROFILE)
+            and preparation.get("request_id")
+            == guided_state.get("active_request_id")
+            and preparation.get("draft_id")
+            == guided_state.get("active_draft_id")
+            and isinstance(interpretation, dict)
+            and preparation.get("interpretation_sha256")
+            == structured_sha256(interpretation)
+            and preparation.get("repository_identity")
+            == current_repository_identity
+        )
+
     def _projection(self, state: Mapping[str, Any]) -> dict[str, Any]:
-        guided = self.guided_intake.snapshot()
+        with self.guided_intake.store.transaction(
+            write=False,
+            timeout_seconds=0.05,
+        ):
+            guided_state = self.guided_intake.store.load_state()
+            guided = self.guided_intake._snapshot_from_state(guided_state)
         preparation = state.get("preparation")
         local_state = str(state.get("state", "NO_CONTRACT"))
         status = {
@@ -1369,12 +1395,13 @@ class OrdinaryUserPathCoordinator:
         clarification = None
         preparation_id = None
         try:
-            repository_identity = _repository_head(self.repository)
+            current_repository_identity = _repository_head(self.repository)
         except GuidedIntakeIntegrityError:
-            repository_identity = None
+            current_repository_identity = None
             allowed = [action for action in allowed if action != "SELECT_CONTRACT"]
             if local_state == "NO_CONTRACT":
                 progress = "The selected repository needs a committed identity first."
+        repository_identity = current_repository_identity
         if isinstance(preparation, dict):
             preparation_id = preparation.get("preparation_id")
             repository_identity = preparation.get("repository_identity")
@@ -1398,7 +1425,20 @@ class OrdinaryUserPathCoordinator:
                     else None,
                 }
             )
-            if local_state in {
+            preparation_is_current = (
+                self._preparation_binds_current_native_state(
+                    preparation,
+                    guided_state,
+                    current_repository_identity,
+                )
+            )
+            if not preparation_is_current:
+                allowed = [
+                    action
+                    for action in allowed
+                    if action not in {"FIX_CONTRACT", "CONFIRM_ANSWER"}
+                ]
+            if preparation_is_current and local_state in {
                 "REVIEW_READY",
                 "NEEDS_CONFIRMATION",
                 "CANNOT_FIX_SAFELY",
@@ -1407,7 +1447,7 @@ class OrdinaryUserPathCoordinator:
                 "FIX_FAILED",
             }:
                 review = self._review(guided, preparation.get("profile"))
-            if local_state == "NEEDS_CONFIRMATION":
+            if preparation_is_current and local_state == "NEEDS_CONFIRMATION":
                 plan = preparation.get("clarification")
                 if isinstance(plan, dict):
                     clarification = {

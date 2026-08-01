@@ -328,6 +328,70 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
         self.assertIsNone(dismissed["action_error"])
         self.assertEqual([], self.guided.store.read_events())
 
+    def test_failed_successor_never_projects_prior_native_review(self) -> None:
+        prepared = self.prepare()
+        fixed = self.coordinator.fix(**self.fix_request(prepared))
+        self.assertEqual("FIXED", fixed["state"])
+        before_native_state = self.guided.store.load_state()
+        before_events = self.guided.store.read_events()
+        unsupported = b"# Ordinary User Path Contract Fixation Closure v0.1\n"
+
+        with self.assertRaises(OrdinaryUserPathError) as raised:
+            self.coordinator.prepare(
+                filename=(
+                    "Decision_OS_Ordinary_User_Path_Contract_"
+                    "Fixation_Closure_v0.1.md"
+                ),
+                source_bytes=unsupported,
+                source_byte_size=len(unsupported),
+                source_sha256=sha256_bytes(unsupported),
+                expected_repository_identity=self.head,
+                expected_active_request_id=prepared["technical_details"][
+                    "request_id"
+                ],
+                idempotency_key=str(uuid.uuid4()),
+            )
+
+        self.assertEqual(
+            "PREP_UNSUPPORTED_CONTRACT_ROLE",
+            raised.exception.code,
+        )
+        failed = self.coordinator.snapshot()
+        polled = self.coordinator.snapshot()
+        for panel in (failed, polled):
+            self.assertEqual("CANNOT_FIX_SAFELY", panel["state"])
+            self.assertIsNone(panel["source_identity"]["profile"])
+            self.assertIsNone(panel["review"])
+            self.assertIsNone(panel["clarification"])
+            self.assertNotIn("FIX_CONTRACT", panel["allowed_actions"])
+            self.assertEqual(
+                "PREP_UNSUPPORTED_CONTRACT_ROLE",
+                panel["action_error"]["code"],
+            )
+            self.assertEqual("NO", panel["action_error"]["anything_fixed"])
+        self.assertEqual(failed["action_error"], polled["action_error"])
+        self.assertEqual(before_native_state, self.guided.store.load_state())
+        self.assertEqual(before_events, self.guided.store.read_events())
+
+    def test_review_projection_requires_every_current_binding(self) -> None:
+        self.prepare()
+        preparation = self.coordinator.store.load_state()["preparation"]
+        guided_state = self.guided.store.load_state()
+        binding = self.coordinator._preparation_binds_current_native_state
+        self.assertTrue(binding(preparation, guided_state, self.head))
+
+        for field, replacement in (
+            ("profile", None),
+            ("request_id", "GI-REQ-stale"),
+            ("draft_id", "GI-DRAFT-stale"),
+            ("interpretation_sha256", "0" * 64),
+            ("repository_identity", "0" * 40),
+        ):
+            with self.subTest(field=field):
+                stale = dict(preparation)
+                stale[field] = replacement
+                self.assertFalse(binding(stale, guided_state, self.head))
+
     def test_corrupt_sidecar_state_fails_closed(self) -> None:
         self.prepare()
         before = self.guided.store.read_events()

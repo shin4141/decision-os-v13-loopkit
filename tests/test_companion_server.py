@@ -1582,6 +1582,113 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIsInstance(factory, ScriptedFactory)
         self.assertEqual(1, len(factory.modes))
 
+    def test_failed_ordinary_prepare_hides_prior_review_across_poll(self) -> None:
+        subprocess.run(
+            ("git", "config", "user.email", "ordinary@example.test"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "config", "user.name", "Ordinary Contract Smoke"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(("git", "add", "target.txt"), cwd=self.repository, check=True)
+        subprocess.run(
+            ("git", "commit", "-qm", "ordinary baseline"),
+            cwd=self.repository,
+            check=True,
+        )
+        cookie, csrf = self.bootstrap()
+        status, _headers, raw = self.request("GET", "/api/state", cookie=cookie)
+        self.assertEqual(200, status)
+        initial = json.loads(raw)["ordinary_contract"]
+        source = (
+            Path(__file__).parent
+            / "fixtures"
+            / "ordinary_user_path_v0_1"
+            / "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md"
+        ).read_bytes()
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/prepare",
+            body={
+                "filename": "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md",
+                "source_base64": base64.b64encode(source).decode("ascii"),
+                "source_byte_size": len(source),
+                "source_sha256": hashlib.sha256(source).hexdigest(),
+                "expected_repository_identity": initial["repository_identity"],
+                "expected_active_request_id": None,
+                "idempotency_key": str(uuid.uuid4()),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        prepared = json.loads(raw)["ordinary_contract"]
+        details = prepared["technical_details"]
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/fix",
+            body={
+                "preparation_id": prepared["preparation_id"],
+                "expected_repository_identity": prepared["repository_identity"],
+                "expected_source_sha256": prepared["source_identity"]["sha256"],
+                "expected_request_id": details["request_id"],
+                "expected_draft_id": details["draft_id"],
+                "expected_interpretation_sha256": details[
+                    "interpretation_sha256"
+                ],
+                "idempotency_key": str(uuid.uuid4()),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        guided = self.controller._require_guided_intake()
+        before_native_state = guided.store.load_state()
+        before_events = guided.store.read_events()
+        unsupported = b"# Ordinary User Path Contract Fixation Closure v0.1\n"
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/prepare",
+            body={
+                "filename": (
+                    "Decision_OS_Ordinary_User_Path_Contract_"
+                    "Fixation_Closure_v0.1.md"
+                ),
+                "source_base64": base64.b64encode(unsupported).decode("ascii"),
+                "source_byte_size": len(unsupported),
+                "source_sha256": hashlib.sha256(unsupported).hexdigest(),
+                "expected_repository_identity": prepared["repository_identity"],
+                "expected_active_request_id": details["request_id"],
+                "idempotency_key": str(uuid.uuid4()),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(422, status, raw.decode("utf-8", errors="replace"))
+        failed = json.loads(raw)["ordinary_contract"]
+        status, _headers, raw = self.request("GET", "/api/state", cookie=cookie)
+        self.assertEqual(200, status)
+        polled = json.loads(raw)["ordinary_contract"]
+        for panel in (failed, polled):
+            self.assertEqual("CANNOT_FIX_SAFELY", panel["state"])
+            self.assertIsNone(panel["review"])
+            self.assertIsNone(panel["clarification"])
+            self.assertNotIn("FIX_CONTRACT", panel["allowed_actions"])
+            self.assertEqual(
+                "PREP_UNSUPPORTED_CONTRACT_ROLE",
+                panel["action_error"]["code"],
+            )
+        self.assertEqual(failed["action_error"], polled["action_error"])
+        self.assertEqual(before_native_state, guided.store.load_state())
+        self.assertEqual(before_events, guided.store.read_events())
+
     def test_guided_intake_dom_and_authority_boundary_are_present(self) -> None:
         cookie, _csrf = self.bootstrap()
         status, _headers, html = self.request("GET", "/", cookie=cookie)
@@ -1959,6 +2066,182 @@ class CompanionServerTest(unittest.TestCase):
 
 
 class CompanionClientBehaviorTest(unittest.TestCase):
+    def test_failed_ordinary_panel_clears_stale_review_and_disables_fix(
+        self,
+    ) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "app.js"
+        )
+        harness = textwrap.dedent(
+            r"""
+            "use strict";
+
+            const assert = require("assert");
+            const fs = require("fs");
+            const vm = require("vm");
+            const source = fs.readFileSync(process.argv[2], "utf8");
+            const start = source.indexOf("function renderOrdinaryList");
+            const end = source.indexOf("\nconst guidedIntakeActionIds", start);
+            assert(start >= 0 && end > start);
+
+            class Element {
+              constructor() {
+                this.checked = false;
+                this.children = [];
+                this.classList = {
+                  values: new Set(),
+                  toggle: (value, force) => {
+                    if (force) this.classList.values.add(value);
+                    else this.classList.values.delete(value);
+                  },
+                  contains: (value) => this.classList.values.has(value),
+                };
+                this.disabled = false;
+                this.textContent = "";
+              }
+              append(child) { this.children.push(child); }
+              replaceChildren(...children) { this.children = children; }
+              focus() {}
+              setAttribute() {}
+            }
+
+            const ids = [
+              "ordinary-contract-answer-confirm",
+              "ordinary-contract-answer-reject",
+              "ordinary-contract-authority",
+              "ordinary-contract-clarification",
+              "ordinary-contract-completion",
+              "ordinary-contract-confirm",
+              "ordinary-contract-dnt",
+              "ordinary-contract-error",
+              "ordinary-contract-error-action",
+              "ordinary-contract-error-dismiss",
+              "ordinary-contract-error-fixed",
+              "ordinary-contract-error-retry",
+              "ordinary-contract-error-state",
+              "ordinary-contract-error-what",
+              "ordinary-contract-file",
+              "ordinary-contract-fix",
+              "ordinary-contract-preserves",
+              "ordinary-contract-progress",
+              "ordinary-contract-question",
+              "ordinary-contract-review",
+              "ordinary-contract-status",
+              "ordinary-contract-success",
+              "ordinary-contract-technical-body",
+              "ordinary-contract-unresolved",
+            ];
+            const elements = new Map(ids.map((id) => [id, new Element()]));
+            const sandbox = {
+              console,
+              document: { createElement: () => new Element() },
+              connected: true,
+              requestActive: false,
+              ordinaryLastRevision: 0,
+              ordinaryFocusIntent: null,
+              ordinaryLastErrorId: null,
+              byId: (id) => elements.get(id),
+              setText: (id, value) => {
+                elements.get(id).textContent = value == null ? "" : String(value);
+              },
+              setHidden: (id, hidden) => {
+                elements.get(id).classList.toggle("hidden", hidden);
+              },
+            };
+            vm.createContext(sandbox);
+            vm.runInContext(
+              source.slice(start, end) +
+                "\nthis.renderOrdinaryContract = renderOrdinaryContract;",
+              sandbox,
+            );
+            const prior = {
+              state: "REVIEW_READY",
+              operation_revision: 8,
+              status_label: "Ready to fix",
+              progress_text: "Review the interpretation before fixing this Contract.",
+              review: {
+                preserves: "Prior native interpretation",
+                completion: "Prior completion",
+                must_not_change: [],
+                unresolved: [],
+                does_not_authorize: "No execution authority.",
+              },
+              clarification: null,
+              allowed_actions: ["SELECT_CONTRACT", "FIX_CONTRACT"],
+              action_error: null,
+              technical_details: {},
+            };
+            const failed = {
+              state: "CANNOT_FIX_SAFELY",
+              operation_revision: 9,
+              status_label: "Cannot be fixed safely",
+              progress_text: "Choose another supported Contract.",
+              review: null,
+              clarification: null,
+              allowed_actions: ["SELECT_CONTRACT", "DISMISS_ERROR"],
+              action_error: {
+                error_id: "OUP-ERR-ONE",
+                code: "PREP_UNSUPPORTED_CONTRACT_ROLE",
+                what_failed: "This Contract family is not supported.",
+                anything_fixed: "NO",
+                user_action_required: "Select another supported Contract.",
+                retryable: false,
+              },
+              technical_details: {},
+            };
+
+            sandbox.renderOrdinaryContract(prior, { name: "repo" });
+            assert.strictEqual(
+              elements.get("ordinary-contract-review").classList.contains("hidden"),
+              false,
+            );
+            assert.strictEqual(elements.get("ordinary-contract-fix").disabled, false);
+            for (let poll = 0; poll < 2; poll += 1) {
+              sandbox.renderOrdinaryContract(failed, { name: "repo" });
+              assert.strictEqual(
+                elements.get("ordinary-contract-review").classList.contains("hidden"),
+                true,
+              );
+              assert.strictEqual(
+                elements.get("ordinary-contract-preserves").textContent,
+                "",
+              );
+              assert.strictEqual(
+                elements.get("ordinary-contract-completion").textContent,
+                "",
+              );
+              assert.strictEqual(elements.get("ordinary-contract-fix").disabled, true);
+              assert.strictEqual(
+                elements.get("ordinary-contract-error").classList.contains("hidden"),
+                false,
+              );
+              assert.strictEqual(
+                elements.get("ordinary-contract-error-what").textContent,
+                "This Contract family is not supported.",
+              );
+            }
+            """
+        )
+        completed = subprocess.run(
+            [node, "-", str(javascript)],
+            input=harness,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=f"Node ordinary panel harness failed:\n{completed.stdout}{completed.stderr}",
+        )
+
     def test_desktop_layout_contains_long_contract_without_overflow(
         self,
     ) -> None:
