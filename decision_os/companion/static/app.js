@@ -19,6 +19,8 @@ let contractImportGeneration = 0;
 let ordinaryFocusIntent = null;
 let ordinaryLastErrorId = null;
 let ordinaryLastRevision = -1;
+let ordinarySelectedFilename = null;
+let ordinarySelectedFilenameRevision = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -434,6 +436,50 @@ function friendlyFixedState(value) {
   }[value] || "Unknown";
 }
 
+function showOrdinarySelectedFilename(filename) {
+  ordinarySelectedFilename =
+    typeof filename === "string" && filename.length ? filename : null;
+  setText(
+    "ordinary-contract-selected-file",
+    ordinarySelectedFilename
+      ? `Selected file: ${ordinarySelectedFilename}`
+      : "Selected file: None selected.",
+  );
+}
+
+function recordOrdinarySelectedFilename(filename, operationRevision) {
+  ordinarySelectedFilenameRevision = Number.isInteger(operationRevision)
+    ? operationRevision
+    : ordinaryLastRevision;
+  showOrdinarySelectedFilename(filename);
+}
+
+function syncOrdinarySelectedFilename(panel) {
+  const serverFilename = panel?.source_identity?.filename;
+  const serverRevision = Number.isInteger(panel?.operation_revision)
+    ? panel.operation_revision
+    : 0;
+  const preparationSucceeded = [
+    "REVIEW_READY",
+    "NEEDS_CONFIRMATION",
+    "FIXING",
+    "FIXED",
+  ].includes(panel?.state);
+  if (
+    typeof serverFilename === "string" &&
+    serverFilename.length &&
+    (ordinarySelectedFilename === null ||
+      ordinarySelectedFilenameRevision === null ||
+      (preparationSucceeded &&
+        serverRevision > ordinarySelectedFilenameRevision))
+  ) {
+    ordinarySelectedFilenameRevision = null;
+    showOrdinarySelectedFilename(serverFilename);
+    return;
+  }
+  showOrdinarySelectedFilename(ordinarySelectedFilename);
+}
+
 function renderOrdinaryContract(ordinary, repository) {
   const panel = ordinary && typeof ordinary === "object" ? ordinary : null;
   const revision = Number.isInteger(panel?.operation_revision)
@@ -458,6 +504,7 @@ function renderOrdinaryContract(ordinary, repository) {
   const actions = new Set(
     Array.isArray(panel?.allowed_actions) ? panel.allowed_actions : [],
   );
+  syncOrdinarySelectedFilename(panel);
 
   setText(
     "ordinary-contract-status",
@@ -1380,6 +1427,9 @@ function ordinaryFixRequest() {
 byId("ordinary-contract-file").addEventListener("change", async () => {
   const file = byId("ordinary-contract-file").files?.[0] || null;
   const panel = latestState?.ordinary_contract;
+  if (file) {
+    recordOrdinarySelectedFilename(file.name, panel?.operation_revision);
+  }
   if (!file || !panel || !latestState?.repository) {
     return;
   }

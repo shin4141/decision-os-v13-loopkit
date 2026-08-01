@@ -1404,7 +1404,6 @@ class OrdinaryUserPathCoordinator:
         repository_identity = current_repository_identity
         if isinstance(preparation, dict):
             preparation_id = preparation.get("preparation_id")
-            repository_identity = preparation.get("repository_identity")
             source_identity = deepcopy(preparation.get("source_identity"))
             if isinstance(source_identity, dict):
                 source_identity["title"] = preparation.get("title")
@@ -1415,6 +1414,9 @@ class OrdinaryUserPathCoordinator:
                     "request_id": preparation.get("request_id"),
                     "draft_id": preparation.get("draft_id"),
                     "interpretation_sha256": preparation.get("interpretation_sha256"),
+                    "preparation_repository_identity": preparation.get(
+                        "repository_identity"
+                    ),
                     "gate": preparation.get("gate"),
                     "producer_identity": PRODUCER_IDENTITY,
                     "preparation_receipt_sha256": preparation.get(

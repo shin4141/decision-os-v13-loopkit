@@ -1389,6 +1389,7 @@ class CompanionServerTest(unittest.TestCase):
         for element_id in (
             "ordinary-contract-status",
             "ordinary-contract-file",
+            "ordinary-contract-selected-file",
             "ordinary-contract-review",
             "ordinary-contract-preserves",
             "ordinary-contract-completion",
@@ -1431,7 +1432,12 @@ class CompanionServerTest(unittest.TestCase):
         )[1].split(b"function contractFileSelectionChanged", 1)[0]
         self.assertIn(b"await file.arrayBuffer()", ordinary_handler)
         self.assertIn(b'crypto.subtle.digest("SHA-256"', javascript)
+        self.assertIn(
+            b"recordOrdinarySelectedFilename(file.name, panel?.operation_revision)",
+            ordinary_handler,
+        )
         self.assertIn(b"bytes?.fill(0)", ordinary_handler)
+        self.assertIn(b'byId("ordinary-contract-file").value = ""', ordinary_handler)
         self.assertNotIn(b"file.text()", ordinary_handler)
         self.assertNotIn(b"guided-intake-original-request", ordinary_handler)
         self.assertNotIn(b'"/api/run"', ordinary_handler)
@@ -2127,6 +2133,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error-state",
               "ordinary-contract-error-what",
               "ordinary-contract-file",
+              "ordinary-contract-selected-file",
               "ordinary-contract-fix",
               "ordinary-contract-preserves",
               "ordinary-contract-progress",
@@ -2146,6 +2153,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ordinaryLastRevision: 0,
               ordinaryFocusIntent: null,
               ordinaryLastErrorId: null,
+              ordinarySelectedFilename: null,
+              ordinarySelectedFilenameRevision: null,
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);
@@ -2157,7 +2166,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             vm.createContext(sandbox);
             vm.runInContext(
               source.slice(start, end) +
-                "\nthis.renderOrdinaryContract = renderOrdinaryContract;",
+                "\nthis.renderOrdinaryContract = renderOrdinaryContract;" +
+                "\nthis.recordOrdinarySelectedFilename = recordOrdinarySelectedFilename;",
               sandbox,
             );
             const prior = {
@@ -2176,6 +2186,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               allowed_actions: ["SELECT_CONTRACT", "FIX_CONTRACT"],
               action_error: null,
               technical_details: {},
+              source_identity: { filename: "verified-prior.md" },
             };
             const failed = {
               state: "CANNOT_FIX_SAFELY",
@@ -2194,16 +2205,37 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 retryable: false,
               },
               technical_details: {},
+              source_identity: { filename: "unsupported-server.md" },
             };
 
             sandbox.renderOrdinaryContract(prior, { name: "repo" });
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: verified-prior.md",
+            );
             assert.strictEqual(
               elements.get("ordinary-contract-review").classList.contains("hidden"),
               false,
             );
             assert.strictEqual(elements.get("ordinary-contract-fix").disabled, false);
+            sandbox.recordOrdinarySelectedFilename("attempted-unsupported.md");
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: attempted-unsupported.md",
+            );
+            sandbox.renderOrdinaryContract(prior, { name: "repo" });
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: attempted-unsupported.md",
+            );
+            elements.get("ordinary-contract-file").value = "";
             for (let poll = 0; poll < 2; poll += 1) {
               sandbox.renderOrdinaryContract(failed, { name: "repo" });
+              assert.strictEqual(elements.get("ordinary-contract-file").value, "");
+              assert.strictEqual(
+                elements.get("ordinary-contract-selected-file").textContent,
+                "Selected file: attempted-unsupported.md",
+              );
               assert.strictEqual(
                 elements.get("ordinary-contract-review").classList.contains("hidden"),
                 true,
@@ -2226,6 +2258,31 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 "This Contract family is not supported.",
               );
             }
+            sandbox.recordOrdinarySelectedFilename("replacement.md");
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: replacement.md",
+            );
+            sandbox.renderOrdinaryContract({
+              ...prior,
+              operation_revision: 10,
+              source_identity: { filename: "server-verified-replacement.md" },
+            }, { name: "repo" });
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: server-verified-replacement.md",
+            );
+
+            sandbox.ordinarySelectedFilename = null;
+            sandbox.ordinarySelectedFilenameRevision = null;
+            sandbox.renderOrdinaryContract({
+              ...failed,
+              operation_revision: 11,
+            }, { name: "repo" });
+            assert.strictEqual(
+              elements.get("ordinary-contract-selected-file").textContent,
+              "Selected file: unsupported-server.md",
+            );
             """
         )
         completed = subprocess.run(
@@ -2743,6 +2800,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error-state",
               "ordinary-contract-error-what",
               "ordinary-contract-file",
+              "ordinary-contract-selected-file",
               "ordinary-contract-fix",
               "ordinary-contract-preserves",
               "ordinary-contract-progress",
