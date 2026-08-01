@@ -48,6 +48,17 @@ MAX_SOURCE_BYTES = 61_440
 
 PRODUCT_PROFILE = "PRODUCT_CONTRACT_APPROVED_CANDIDATE_V0_1"
 ORDINARY_PROFILE = "ORDINARY_USER_PATH_CONTRACT_APPROVED_CANDIDATE_V0_1"
+EXECUTION_AUTHORITY_INTERPRETATION_ONLY = "INTERPRETATION_ONLY"
+EXECUTION_AUTHORITY_BOUNDED = "BOUNDED_EXECUTION_AUTHORIZED"
+EXECUTION_AUTHORITY_UNKNOWN = "UNKNOWN"
+INTERPRETATION_ONLY_REASON = (
+    "This Contract preserves interpretation and explicitly grants no "
+    "implementation or Run authority."
+)
+UNKNOWN_EXECUTION_AUTHORITY_REASON = (
+    "Execution authority is not explicitly and deterministically established "
+    "for this Contract family."
+)
 PRODUCT_TITLE = "Initial Product Contract v0.1 — APPROVED CANDIDATE"
 ORDINARY_TITLE = "Ordinary User Path Contract v0.1 — APPROVED CANDIDATE"
 _DOES_NOT_AUTHORIZE = (
@@ -1340,6 +1351,34 @@ class OrdinaryUserPathCoordinator:
             == current_repository_identity
         )
 
+    @staticmethod
+    def _execution_authority(profile: Any) -> tuple[str, str]:
+        """Project only deterministic server-owned execution authority."""
+
+        if profile == ORDINARY_PROFILE:
+            return (
+                EXECUTION_AUTHORITY_INTERPRETATION_ONLY,
+                INTERPRETATION_ONLY_REASON,
+            )
+        return (
+            EXECUTION_AUTHORITY_UNKNOWN,
+            UNKNOWN_EXECUTION_AUTHORITY_REASON,
+        )
+
+    @staticmethod
+    def _contract_summary(profile: Any) -> str:
+        if profile == ORDINARY_PROFILE:
+            return (
+                "Preserves the fixed Ordinary User Path decision meaning and "
+                "its no-implementation boundary."
+            )
+        if profile == PRODUCT_PROFILE:
+            return (
+                "Preserves the fixed Product Contract meaning and its "
+                "downstream HOLD boundary."
+            )
+        return ""
+
     def _projection(self, state: Mapping[str, Any]) -> dict[str, Any]:
         with self.guided_intake.store.transaction(
             write=False,
@@ -1394,6 +1433,11 @@ class OrdinaryUserPathCoordinator:
         review = None
         clarification = None
         preparation_id = None
+        profile = preparation.get("profile") if isinstance(preparation, dict) else None
+        execution_authority, execution_authority_reason = (
+            self._execution_authority(profile)
+        )
+        contract_summary = self._contract_summary(profile)
         try:
             current_repository_identity = _repository_head(self.repository)
         except GuidedIntakeIntegrityError:
@@ -1467,6 +1511,9 @@ class OrdinaryUserPathCoordinator:
             "source_identity": source_identity,
             "review": review,
             "clarification": clarification,
+            "contract_summary": contract_summary,
+            "execution_authority": execution_authority,
+            "execution_authority_reason": execution_authority_reason,
             "allowed_actions": allowed,
             "technical_details": technical,
             "action_error": deepcopy(error) if isinstance(error, dict) else None,

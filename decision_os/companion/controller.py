@@ -56,8 +56,10 @@ from decision_os.companion.manual_bridge import (
     build_intelligence_transplant_transport,
 )
 from decision_os.companion.ordinary_user_path import (
+    EXECUTION_AUTHORITY_UNKNOWN,
     OrdinaryUserPathCoordinator,
     OrdinaryUserPathError,
+    UNKNOWN_EXECUTION_AUTHORITY_REASON,
 )
 
 
@@ -1551,6 +1553,9 @@ class CompanionController:
                 "source_identity": None,
                 "review": None,
                 "clarification": None,
+                "contract_summary": "",
+                "execution_authority": EXECUTION_AUTHORITY_UNKNOWN,
+                "execution_authority_reason": UNKNOWN_EXECUTION_AUTHORITY_REASON,
                 "allowed_actions": [],
                 "technical_details": {"active_request_id": None},
                 "action_error": None,
@@ -1649,6 +1654,9 @@ class CompanionController:
                     "source_identity": None,
                     "review": None,
                     "clarification": None,
+                    "contract_summary": "",
+                    "execution_authority": EXECUTION_AUTHORITY_UNKNOWN,
+                    "execution_authority_reason": UNKNOWN_EXECUTION_AUTHORITY_REASON,
                     "allowed_actions": [],
                     "technical_details": {"active_request_id": None},
                     "action_error": {

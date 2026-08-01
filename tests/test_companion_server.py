@@ -1380,9 +1380,13 @@ class CompanionServerTest(unittest.TestCase):
         bounded_start = text.index('id="bounded-task-card"')
         advanced_start = text.index('id="advanced-audit-mode"')
         guided_start = text.index('id="guided-intake-card"')
+        bridge_start = text.index('id="bridge-heading"')
+        global_error_start = text.index('id="global-error"')
         self.assertLess(ordinary_start, bounded_start)
         self.assertLess(ordinary_start, advanced_start)
         self.assertLess(advanced_start, guided_start)
+        self.assertLess(guided_start, bridge_start)
+        self.assertLess(bridge_start, global_error_start)
         advanced_tag = text[advanced_start : text.index(">", advanced_start)]
         self.assertNotIn(" open", advanced_tag)
         ordinary_card = text[ordinary_start:bounded_start]
@@ -1390,6 +1394,11 @@ class CompanionServerTest(unittest.TestCase):
             "ordinary-contract-status",
             "ordinary-contract-file",
             "ordinary-contract-selected-file",
+            "ordinary-contract-meaning",
+            "ordinary-contract-summary",
+            "ordinary-contract-usage-mode",
+            "ordinary-contract-can-run",
+            "ordinary-contract-authority-message",
             "ordinary-contract-review",
             "ordinary-contract-preserves",
             "ordinary-contract-completion",
@@ -1407,6 +1416,14 @@ class CompanionServerTest(unittest.TestCase):
         self.assertNotIn("Capture Original Request", ordinary_card)
         self.assertNotIn("Producer label", ordinary_card)
         self.assertNotIn("Draft JSON", ordinary_card)
+        self.assertIn("View fixed Contract meaning", ordinary_card)
+        self.assertIn("Current usage mode", ordinary_card)
+        self.assertIn("Can authorize a bounded Run", ordinary_card)
+        review_id = ordinary_card.index('id="ordinary-contract-review"')
+        review_start = ordinary_card.rfind("<", 0, review_id)
+        review_tag = ordinary_card[review_start : ordinary_card.index(">", review_id)]
+        self.assertTrue(review_tag.startswith("<details "))
+        self.assertNotIn(" open", review_tag)
         for internal_term in (
             "PRESERVED",
             "TESTABLE",
@@ -1462,6 +1479,7 @@ class CompanionServerTest(unittest.TestCase):
         evidence_start = text.index('id="additional-evidence"')
         transplant_start = text.index('id="intelligence-transplant-card"')
         advanced_start = text.index('id="advanced-audit-mode"')
+        bridge_start = text.index('id="bridge-heading"')
         self.assertLess(rail_start, contract_start)
         self.assertLess(contract_start, task_start)
         self.assertLess(task_start, progress_start)
@@ -1469,10 +1487,13 @@ class CompanionServerTest(unittest.TestCase):
         self.assertLess(result_start, evidence_start)
         self.assertLess(evidence_start, transplant_start)
         self.assertLess(transplant_start, advanced_start)
+        self.assertLess(advanced_start, bridge_start)
         main_operation = text[contract_start:evidence_start]
         self.assertNotIn("Intelligence Transplant Run", main_operation)
         evidence_tag = text[evidence_start : text.index(">", evidence_start)]
         self.assertNotIn(" open", evidence_tag)
+        advanced_tag = text[advanced_start : text.index(">", advanced_start)]
+        self.assertNotIn(" open", advanced_tag)
         for stage in ("contract", "task", "run", "approval", "result"):
             self.assertIn(f'data-operation-stage="{stage}"', text)
             self.assertIn(f'id="operation-{stage}-status"', text)
@@ -2184,6 +2205,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 this.attributes = new Map();
                 this.focusCalls = [];
                 this.scrollIntoViewCalls = [];
+                this.open = false;
+                this.inert = false;
                 this.children = [];
               }
               setAttribute(name, value) { this.attributes.set(name, String(value)); }
@@ -2236,6 +2259,15 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               operationStartPending: false,
               operationTerminalTransitioned: false,
               CONTRACT_TASK_MARKER: "Task to perform:",
+              CONTRACT_TASK_PREFIX:
+                "Perform only the bounded task defined by this fixed ordinary Contract context.",
+              EXECUTION_AUTHORITY_INTERPRETATION_ONLY: "INTERPRETATION_ONLY",
+              EXECUTION_AUTHORITY_BOUNDED: "BOUNDED_EXECUTION_AUTHORIZED",
+              EXECUTION_AUTHORITY_UNKNOWN: "UNKNOWN",
+              INTERPRETATION_ONLY_MESSAGE:
+                "This Contract is fixed for interpretation only. It cannot authorize a Run.",
+              UNKNOWN_EXECUTION_AUTHORITY_MESSAGE:
+                "Execution authority is not established for this Contract.",
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);
@@ -2259,6 +2291,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
 
             const fixed = {
               state: "FIXED",
+              execution_authority: "BOUNDED_EXECUTION_AUTHORIZED",
               repository_identity: "commit-a",
               review: {
                 preserves: "One bounded operation.",
@@ -2331,6 +2364,41 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(
               view.action,
               "Select and fix this Contract for the current repository.",
+            );
+
+            const interpretationOnly = {
+              ...fixed,
+              execution_authority: "INTERPRETATION_ONLY",
+            };
+            view = sandbox.operationPresentation(
+              idle,
+              interpretationOnly,
+              emptyTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(view.current, "Interpretation only");
+            assert.strictEqual(
+              view.happening,
+              "This Contract is fixed for interpretation only. It cannot authorize a Run.",
+            );
+
+            const unknownAuthority = {
+              ...fixed,
+              execution_authority: "UNKNOWN",
+            };
+            view = sandbox.operationPresentation(
+              idle,
+              unknownAuthority,
+              emptyTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(
+              view.happening,
+              "Execution authority is not established for this Contract.",
             );
 
             view = sandbox.operationPresentation(
@@ -2528,6 +2596,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               insertAdjacentElement(_position, element) {
                 elements.set(element.id, element);
               }
+              remove() { elements.delete(this.id); }
             }
             const elements = new Map([
               ["ordinary-contract-success", new Element("ordinary-contract-success")],
@@ -2535,6 +2604,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             ]);
             const fixed = {
               state: "FIXED",
+              execution_authority: "BOUNDED_EXECUTION_AUTHORIZED",
               repository_identity: "commit-a",
               technical_details: {
                 request_id: "GI-REQ-ONE",
@@ -2552,6 +2622,15 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               console,
               Event: class Event {},
               CONTRACT_TASK_MARKER: "Task to perform:",
+              CONTRACT_TASK_PREFIX:
+                "Perform only the bounded task defined by this fixed ordinary Contract context.",
+              EXECUTION_AUTHORITY_INTERPRETATION_ONLY: "INTERPRETATION_ONLY",
+              EXECUTION_AUTHORITY_BOUNDED: "BOUNDED_EXECUTION_AUTHORIZED",
+              EXECUTION_AUTHORITY_UNKNOWN: "UNKNOWN",
+              INTERPRETATION_ONLY_MESSAGE:
+                "This Contract is fixed for interpretation only. It cannot authorize a Run.",
+              UNKNOWN_EXECUTION_AUTHORITY_MESSAGE:
+                "Execution authority is not established for this Contract.",
               preparedContractTaskBinding: null,
               latestState: {
                 ordinary_contract: { state: "REVIEW_READY" },
@@ -2624,8 +2703,29 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               false,
             );
             sandbox.preparedContractTaskBinding = null;
+            const legacyPrepared = sandbox.taskReadiness(fixed, otherRepository);
+            assert.strictEqual(legacyPrepared.mode, "contract");
+            assert.strictEqual(legacyPrepared.runnable, false);
+            assert.strictEqual(legacyPrepared.stalePreparedContext, true);
+
+            const interpretationOnly = {
+              ...fixed,
+              execution_authority: "INTERPRETATION_ONLY",
+            };
+            const authorityBlocked = sandbox.taskReadiness(
+              interpretationOnly,
+              sandbox.latestState.repository,
+            );
+            assert.strictEqual(authorityBlocked.runnable, false);
+            assert.strictEqual(authorityBlocked.authorityBlocked, true);
+
+            elements.get("task").value = "";
+            assert.strictEqual(
+              sandbox.taskReadiness(interpretationOnly, otherRepository).runnable,
+              false,
+            );
             elements.get("task").value = "Keep my existing bounded task.";
-            const manual = sandbox.taskReadiness(null, otherRepository);
+            const manual = sandbox.taskReadiness(interpretationOnly, otherRepository);
             assert.strictEqual(manual.mode, "manual");
             assert.strictEqual(manual.runnable, true);
 
@@ -2633,7 +2733,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const renderEnd = source.indexOf("\nconst guidedIntakeActionIds", renderStart);
             const renderSnippet = source.slice(renderStart, renderEnd);
             assert(renderSnippet.includes("const fixed = usableCurrentOrdinaryContext(panel)"));
-            assert(renderSnippet.includes("const prepareTaskButton = fixed"));
+            assert(renderSnippet.includes("const canPrepareTask = fixed && contractExecutionAuthorized(panel)"));
             assert(renderSnippet.includes("? ensureOrdinaryPrepareTaskButton()"));
             """
         )
@@ -2690,6 +2790,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             <script>
               const ordinary = {
                 state: "FIXED",
+                execution_authority: "BOUNDED_EXECUTION_AUTHORIZED",
+                execution_authority_reason: "Synthetic future authorized-family browser fixture.",
+                contract_summary: "Preserves one bounded Contract meaning.",
                 operation_revision: 7,
                 status_label: "Contract fixed",
                 progress_text: "The Contract is fixed.",
@@ -2782,7 +2885,19 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   run,
                   ordinary_contract: ordinary,
                   guided_intake: null,
-                  manual_bridge: null,
+                  manual_bridge: {
+                    state: "BOUNDARY_INCOMPLETE",
+                    session: null,
+                    imports: [],
+                    outputs: {},
+                    results: {
+                      protocol: "IN PROGRESS / NOT FINAL",
+                      product: "BUILDER EVIDENCE ONLY / INDEPENDENT AUDIT REQUIRED",
+                      replay: "NOT YET PERFORMED",
+                    },
+                    burden: {},
+                    error: null,
+                  },
                   intelligence_transplant: null,
                   defaults: [],
                   receipt: null,
@@ -2860,6 +2975,101 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 const current = document.getElementById("operation-current");
                 if (probePhase === "idle" && current.textContent === "Contract fixed") {
                   const task = document.getElementById("task");
+                  const advanced = document.getElementById("advanced-audit-mode");
+                  const bridge = document.getElementById("bridge-heading").closest("section");
+                  const bridgeAction = document.getElementById("bridge-start");
+                  const additionalEvidence = document.getElementById("additional-evidence");
+                  bridgeAction.focus();
+                  document.body.dataset.advancedClosed = String(!advanced.open);
+                  document.body.dataset.evidenceClosed = String(!additionalEvidence.open);
+                  document.body.dataset.bridgeContained = String(advanced.contains(bridge));
+                  document.body.dataset.bridgeHidden = String(
+                    typeof bridge.checkVisibility === "function"
+                      ? !bridge.checkVisibility()
+                      : bridge.getClientRects().length === 0
+                  );
+                  document.body.dataset.bridgeNotFocused = String(
+                    document.activeElement !== bridgeAction
+                  );
+                  document.body.dataset.disclosureContainment = String(
+                    !advanced.open &&
+                    !additionalEvidence.open &&
+                    advanced.contains(bridge) &&
+                    (typeof bridge.checkVisibility === "function"
+                      ? !bridge.checkVisibility()
+                      : bridge.getClientRects().length === 0) &&
+                    document.activeElement !== bridgeAction
+                  );
+                  advanced.open = true;
+                  syncAdvancedAuditContainment();
+                  bridgeAction.focus();
+                  document.body.dataset.operationalOpen = String(advanced.open);
+                  document.body.dataset.operationalNotInert = String(
+                    !document.getElementById("advanced-audit-content").inert
+                  );
+                  document.body.dataset.operationalFocused = String(
+                    document.activeElement === bridgeAction
+                  );
+                  document.body.dataset.disclosureOperational = String(
+                    !document.getElementById("advanced-audit-content").inert &&
+                    advanced.open &&
+                    document.activeElement === bridgeAction
+                  );
+                  advanced.open = false;
+                  syncAdvancedAuditContainment();
+                  document.body.dataset.contractDensity = String(
+                    !document.getElementById("ordinary-contract-review").open &&
+                    document.getElementById("ordinary-contract-summary").textContent ===
+                      "Preserves one bounded Contract meaning." &&
+                    document.getElementById("ordinary-contract-usage-mode").textContent ===
+                      "Bounded execution authorized" &&
+                    document.getElementById("ordinary-contract-can-run").textContent === "Yes"
+                  );
+
+                  const interpretationState = state(baseRun);
+                  interpretationState.ordinary_contract = {
+                    ...ordinary,
+                    execution_authority: "INTERPRETATION_ONLY",
+                  };
+                  render(interpretationState);
+                  task.value = "One manually written bounded task.";
+                  task.dispatchEvent(new Event("input", { bubbles: true }));
+                  const manualRunnable = !document.getElementById("run").disabled;
+                  task.value = "";
+                  task.dispatchEvent(new Event("input", { bubbles: true }));
+                  document.body.dataset.interpretationOnly = String(
+                    document.getElementById("ordinary-contract-prepare-task") === null &&
+                    document.getElementById("ordinary-contract-authority-message").textContent ===
+                      "This Contract is fixed for interpretation only. It cannot authorize a Run." &&
+                    document.getElementById("ordinary-contract-can-run").textContent === "No" &&
+                    manualRunnable
+                  );
+
+                  const unknownState = state(baseRun);
+                  unknownState.ordinary_contract = {
+                    ...ordinary,
+                    execution_authority: "UNKNOWN",
+                  };
+                  render(unknownState);
+                  document.body.dataset.unknownAuthority = String(
+                    document.getElementById("ordinary-contract-prepare-task") === null &&
+                    document.getElementById("ordinary-contract-authority-message").textContent ===
+                      "Execution authority is not established for this Contract."
+                  );
+
+                  render(state(baseRun));
+                  document.getElementById("ordinary-contract-prepare-task").click();
+                  preparedContractTaskBinding = null;
+                  render(interpretationState);
+                  document.body.dataset.preparedContextInvalidated = String(
+                    document.getElementById("run").disabled &&
+                    current.textContent === "Prepared context cannot authorize a Run" &&
+                    document.getElementById("operation-happening").textContent ===
+                      "This Contract is fixed for interpretation only. It cannot authorize a Run."
+                  );
+                  task.value = "";
+                  task.dispatchEvent(new Event("input", { bubbles: true }));
+                  render(state(baseRun));
                   document.getElementById("ordinary-contract-prepare-task").click();
                   document.body.dataset.contextIncomplete = String(
                     task.value.endsWith("Task to perform:") &&
@@ -3043,6 +3253,20 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         )
         for name in (
             "start-immediate",
+            "contract-density",
+            "advanced-closed",
+            "evidence-closed",
+            "bridge-contained",
+            "bridge-hidden",
+            "bridge-not-focused",
+            "disclosure-containment",
+            "operational-open",
+            "operational-not-inert",
+            "operational-focused",
+            "disclosure-operational",
+            "interpretation-only",
+            "unknown-authority",
+            "prepared-context-invalidated",
             "context-incomplete",
             "context-ready",
             "context-switch-blocked",
@@ -3085,9 +3309,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert(start >= 0 && end > start);
 
             class Element {
-              constructor() {
+              constructor(id = "") {
+                this.id = id;
                 this.checked = false;
                 this.children = [];
+                this.open = false;
                 this.classList = {
                   values: new Set(),
                   toggle: (value, force) => {
@@ -3103,12 +3329,15 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               replaceChildren(...children) { this.children = children; }
               focus() {}
               setAttribute() {}
+              remove() { elements.delete(this.id); }
             }
 
             const ids = [
               "ordinary-contract-answer-confirm",
               "ordinary-contract-answer-reject",
               "ordinary-contract-authority",
+              "ordinary-contract-authority-message",
+              "ordinary-contract-can-run",
               "ordinary-contract-clarification",
               "ordinary-contract-completion",
               "ordinary-contract-confirm",
@@ -3128,12 +3357,15 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-progress",
               "ordinary-contract-question",
               "ordinary-contract-review",
+              "ordinary-contract-meaning",
+              "ordinary-contract-summary",
               "ordinary-contract-status",
               "ordinary-contract-success",
               "ordinary-contract-technical-body",
               "ordinary-contract-unresolved",
+              "ordinary-contract-usage-mode",
             ];
-            const elements = new Map(ids.map((id) => [id, new Element()]));
+            const elements = new Map(ids.map((id) => [id, new Element(id)]));
             const sandbox = {
               console,
               document: { createElement: () => new Element() },
@@ -3144,7 +3376,17 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ordinaryLastErrorId: null,
               ordinarySelectedFilename: null,
               ordinarySelectedFilenameRevision: null,
+              ordinaryReviewDisclosureIdentity: null,
               CONTRACT_TASK_MARKER: "Task to perform:",
+              CONTRACT_TASK_PREFIX:
+                "Perform only the bounded task defined by this fixed ordinary Contract context.",
+              EXECUTION_AUTHORITY_INTERPRETATION_ONLY: "INTERPRETATION_ONLY",
+              EXECUTION_AUTHORITY_BOUNDED: "BOUNDED_EXECUTION_AUTHORIZED",
+              EXECUTION_AUTHORITY_UNKNOWN: "UNKNOWN",
+              INTERPRETATION_ONLY_MESSAGE:
+                "This Contract is fixed for interpretation only. It cannot authorize a Run.",
+              UNKNOWN_EXECUTION_AUTHORITY_MESSAGE:
+                "Execution authority is not established for this Contract.",
               preparedContractTaskBinding: null,
               byId: (id) => elements.get(id),
               setText: (id, value) => {
@@ -3179,6 +3421,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               action_error: null,
               technical_details: {},
               source_identity: { filename: "verified-prior.md" },
+              contract_summary: "Preserves the fixed Contract meaning.",
+              execution_authority: "INTERPRETATION_ONLY",
             };
             const failed = {
               state: "CANNOT_FIX_SAFELY",
@@ -3308,8 +3552,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               true,
             );
             assert.strictEqual(
-              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
-              true,
+              elements.has("ordinary-contract-prepare-task"),
+              false,
             );
 
             const currentFixed = {
@@ -3332,8 +3576,20 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               false,
             );
             assert.strictEqual(
-              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
+              elements.has("ordinary-contract-prepare-task"),
               false,
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-usage-mode").textContent,
+              "Interpretation only",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-can-run").textContent,
+              "No",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-authority-message").textContent,
+              "This Contract is fixed for interpretation only. It cannot authorize a Run.",
             );
             """
         )
@@ -3394,6 +3650,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               const filename = document.getElementById("contract-file-name");
               const preview = document.getElementById("contract-preview");
               const full = document.getElementById("contract-full-content");
+              document.getElementById("advanced-audit-mode").open = true;
+              document.getElementById("advanced-audit-content").inert = false;
               const importCard = document.getElementById("contract-import-card");
               const guidedIntakeAction = document.getElementById(
                 "contract-use-guided-intake"
@@ -3419,7 +3677,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               );
               document.body.dataset.controlBlock = String(
                 getComputedStyle(control).display === "block" &&
-                control.getBoundingClientRect().width >= 800
+                control.getBoundingClientRect().width >= 760
+              );
+              document.body.dataset.controlDisplay =
+                getComputedStyle(control).display;
+              document.body.dataset.controlWidth = String(
+                control.getBoundingClientRect().width
               );
               document.body.dataset.fullPreserved = String(
                 full.value === longContent
@@ -3496,7 +3759,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         self.assertLessEqual(viewport_height, 945)
         self.assertEqual("false", attributes.get("horizontal-overflow"))
         self.assertEqual("true", attributes.get("preview-bounded"))
-        self.assertEqual("true", attributes.get("control-block"))
+        self.assertEqual(
+            "true",
+            attributes.get("control-block"),
+            f"display={attributes.get('control-display')} width={attributes.get('control-width')}",
+        )
         self.assertEqual("true", attributes.get("full-preserved"))
         self.assertEqual(
             "true",
@@ -3720,6 +3987,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ...bridgeButtonIds,
             ]);
             const ids = [
+              "advanced-audit-content",
+              "advanced-audit-mode",
               "approval-action",
               "approval-diff",
               "approval-overlay",
@@ -3844,6 +4113,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-answer-confirm",
               "ordinary-contract-answer-reject",
               "ordinary-contract-authority",
+              "ordinary-contract-authority-message",
+              "ordinary-contract-can-run",
               "ordinary-contract-completion",
               "ordinary-contract-confirm",
               "ordinary-contract-dnt",
@@ -3855,6 +4126,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error-state",
               "ordinary-contract-error-what",
               "ordinary-contract-heading",
+              "ordinary-contract-meaning",
               "ordinary-contract-file",
               "ordinary-contract-selected-file",
               "ordinary-contract-fix",
@@ -3863,10 +4135,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-prepare-task",
               "ordinary-contract-question",
               "ordinary-contract-review",
+              "ordinary-contract-summary",
               "ordinary-contract-status",
               "ordinary-contract-success",
               "ordinary-contract-technical-body",
               "ordinary-contract-unresolved",
+              "ordinary-contract-usage-mode",
               "intelligence-transplant-evidence-objects",
               "intelligence-transplant-execution-status",
               "intelligence-transplant-gate",
@@ -3935,6 +4209,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "intelligence-transplant-error",
               "ordinary-contract-clarification",
               "ordinary-contract-error",
+              "ordinary-contract-meaning",
               "ordinary-contract-review",
               "ordinary-contract-success",
               "progress-card",

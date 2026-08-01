@@ -15,6 +15,9 @@ from decision_os.companion.guided_intake import (
     sha256_bytes,
 )
 from decision_os.companion.ordinary_user_path import (
+    EXECUTION_AUTHORITY_INTERPRETATION_ONLY,
+    EXECUTION_AUTHORITY_UNKNOWN,
+    INTERPRETATION_ONLY_REASON,
     OrdinaryUserPathCoordinator,
     OrdinaryUserPathError,
 )
@@ -116,6 +119,14 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
         self.assertEqual("REVIEW_READY", panel["state"])
         self.assertEqual("Ready to fix", panel["status_label"])
         self.assertEqual(
+            EXECUTION_AUTHORITY_INTERPRETATION_ONLY,
+            panel["execution_authority"],
+        )
+        self.assertEqual(
+            INTERPRETATION_ONLY_REASON,
+            panel["execution_authority_reason"],
+        )
+        self.assertEqual(
             {
                 "preserves",
                 "completion",
@@ -167,6 +178,7 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
             "PRODUCT_CONTRACT_APPROVED_CANDIDATE_V0_1",
             panel["source_identity"]["profile"],
         )
+        self.assertEqual(EXECUTION_AUTHORITY_UNKNOWN, panel["execution_authority"])
         fixed = self.coordinator.fix(**self.fix_request(panel))
         self.assertEqual("FIXED", fixed["state"])
         self.assertEqual(3, json.loads(

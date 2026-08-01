@@ -29,6 +29,7 @@ let operationContinuingAfterApproval = false;
 let operationTerminalTransitioned = false;
 let operationLastApprovalKey = null;
 let preparedContractTaskBinding = null;
+let ordinaryReviewDisclosureIdentity = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -131,6 +132,15 @@ const TERMINAL_RUN_STATES = [
   "needs_attention",
 ];
 const CONTRACT_TASK_MARKER = "Task to perform:";
+const CONTRACT_TASK_PREFIX =
+  "Perform only the bounded task defined by this fixed ordinary Contract context.";
+const EXECUTION_AUTHORITY_INTERPRETATION_ONLY = "INTERPRETATION_ONLY";
+const EXECUTION_AUTHORITY_BOUNDED = "BOUNDED_EXECUTION_AUTHORIZED";
+const EXECUTION_AUTHORITY_UNKNOWN = "UNKNOWN";
+const INTERPRETATION_ONLY_MESSAGE =
+  "This Contract is fixed for interpretation only. It cannot authorize a Run.";
+const UNKNOWN_EXECUTION_AUTHORITY_MESSAGE =
+  "Execution authority is not established for this Contract.";
 
 function reducedMotionRequested() {
   return Boolean(
@@ -198,8 +208,34 @@ function usableCurrentOrdinaryContext(panel) {
   );
 }
 
+function contractExecutionAuthorized(panel) {
+  return panel?.execution_authority === EXECUTION_AUTHORITY_BOUNDED;
+}
+
+function contractAuthorityMessage(panel) {
+  if (panel?.execution_authority === EXECUTION_AUTHORITY_INTERPRETATION_ONLY) {
+    return INTERPRETATION_ONLY_MESSAGE;
+  }
+  if (panel?.execution_authority === EXECUTION_AUTHORITY_BOUNDED) {
+    return "This Contract explicitly authorizes bounded execution.";
+  }
+  return UNKNOWN_EXECUTION_AUTHORITY_MESSAGE;
+}
+
+function contractAuthorityModeLabel(panel) {
+  return {
+    [EXECUTION_AUTHORITY_INTERPRETATION_ONLY]: "Interpretation only",
+    [EXECUTION_AUTHORITY_BOUNDED]: "Bounded execution authorized",
+    [EXECUTION_AUTHORITY_UNKNOWN]: "Unknown",
+  }[panel?.execution_authority] || "Unknown";
+}
+
 function ordinaryContextBinding(panel, repository) {
-  if (!usableCurrentOrdinaryContext(panel) || !nonEmptyString(repository?.path)) {
+  if (
+    !usableCurrentOrdinaryContext(panel) ||
+    !contractExecutionAuthorized(panel) ||
+    !nonEmptyString(repository?.path)
+  ) {
     return null;
   }
   return JSON.stringify([
@@ -219,6 +255,15 @@ function contractTaskUserText(value) {
   return value.slice(markerIndex + marker.length);
 }
 
+function looksLikePreparedContractTask(value) {
+  return Boolean(
+    value.startsWith(`${CONTRACT_TASK_PREFIX}\nCurrent repository identity: `) &&
+      value.includes("\nFixed Contract Request identity: ") &&
+      value.includes("\nInterpretation SHA-256: ") &&
+      value.includes(`\n${CONTRACT_TASK_MARKER}`),
+  );
+}
+
 function taskReadiness(ordinary, repository) {
   const value = byId("task").value;
   if (value.trim().length === 0) {
@@ -230,11 +275,21 @@ function taskReadiness(ordinary, repository) {
     };
   }
   if (preparedContractTaskBinding === null) {
+    if (looksLikePreparedContractTask(value)) {
+      return {
+        mode: "contract",
+        runnable: false,
+        contextInserted: contractTaskUserText(value) !== null,
+        stalePreparedContext: true,
+        authorityBlocked: !contractExecutionAuthorized(ordinary),
+      };
+    }
     return {
       mode: "manual",
       runnable: true,
       contextInserted: false,
       stalePreparedContext: false,
+      authorityBlocked: false,
     };
   }
   const currentBinding = ordinaryContextBinding(ordinary, repository);
@@ -245,6 +300,7 @@ function taskReadiness(ordinary, repository) {
     runnable: bindingCurrent && userText !== null && userText.trim().length > 0,
     contextInserted: userText !== null,
     stalePreparedContext: !bindingCurrent,
+    authorityBlocked: !contractExecutionAuthorized(ordinary),
   };
 }
 
@@ -373,6 +429,17 @@ function operationPresentation(
       next: "The view will move to Run progress.",
     };
   }
+  if (task.stalePreparedContext && task.authorityBlocked && fixed) {
+    statuses.task = "Needs attention";
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Prepared context cannot authorize a Run",
+      happening: contractAuthorityMessage(ordinary),
+      action: "Clear the bounded task field before writing a manual task.",
+      next: "A manually written bounded task remains available after the field is cleared.",
+    };
+  }
   if (task.stalePreparedContext || staleFixed) {
     statuses.task = task.stalePreparedContext
       ? "Needs attention"
@@ -394,6 +461,20 @@ function operationPresentation(
       happening: "The Contract stage is ready for one supported local Contract.",
       action: "Select one Contract.",
       next: "You will review its interpretation before fixing it.",
+    };
+  }
+  if (!contractExecutionAuthorized(ordinary)) {
+    return {
+      currentStage: "contract",
+      statuses,
+      current:
+        ordinary?.execution_authority ===
+        EXECUTION_AUTHORITY_INTERPRETATION_ONLY
+          ? "Interpretation only"
+          : "Execution authority unknown",
+      happening: contractAuthorityMessage(ordinary),
+      action: "Write a manual bounded task if one is needed.",
+      next: "A manual task remains independent of the fixed Contract artifact.",
     };
   }
   statuses.task = "Current";
@@ -933,7 +1014,7 @@ function ordinaryFixedTaskStarter(panel) {
   const review =
     panel?.review && typeof panel.review === "object" ? panel.review : {};
   return [
-    "Perform only the bounded task defined by this fixed ordinary Contract context.",
+    CONTRACT_TASK_PREFIX,
     `Current repository identity: ${ordinaryTaskStarterValue(panel?.repository_identity)}`,
     `Fixed Contract Request identity: ${ordinaryTaskStarterValue(details.request_id)}`,
     `Interpretation SHA-256: ${ordinaryTaskStarterValue(details.interpretation_sha256)}`,
@@ -1010,7 +1091,32 @@ function renderOrdinaryContract(ordinary, repository) {
     "ordinary-contract-progress",
     panel?.progress_text || "Choose one local Markdown or text Contract.",
   );
+  const reviewDisclosure = byId("ordinary-contract-review");
+  const reviewIdentity = review
+    ? [
+        panel?.technical_details?.request_id || "",
+        panel?.technical_details?.interpretation_sha256 || "",
+      ].join("|")
+    : null;
+  if (reviewIdentity !== ordinaryReviewDisclosureIdentity) {
+    reviewDisclosure.open = false;
+    ordinaryReviewDisclosureIdentity = reviewIdentity;
+  }
+  setHidden("ordinary-contract-meaning", !review);
   setHidden("ordinary-contract-review", !review);
+  setText("ordinary-contract-summary", review ? panel?.contract_summary || "" : "");
+  setText(
+    "ordinary-contract-usage-mode",
+    review ? contractAuthorityModeLabel(panel) : "",
+  );
+  setText(
+    "ordinary-contract-can-run",
+    review ? (contractExecutionAuthorized(panel) ? "Yes" : "No") : "",
+  );
+  setText(
+    "ordinary-contract-authority-message",
+    review ? contractAuthorityMessage(panel) : "",
+  );
   setText("ordinary-contract-preserves", review?.preserves || "");
   setText("ordinary-contract-completion", review?.completion || "");
   renderOrdinaryList(
@@ -1062,10 +1168,15 @@ function renderOrdinaryContract(ordinary, repository) {
       : "",
   );
   setHidden("ordinary-contract-success", !fixed);
-  const prepareTaskButton = fixed
+  const canPrepareTask = fixed && contractExecutionAuthorized(panel);
+  const prepareTaskButton = canPrepareTask
     ? ensureOrdinaryPrepareTaskButton()
     : byId("ordinary-contract-prepare-task");
-  prepareTaskButton?.classList.toggle("hidden", !fixed);
+  if (canPrepareTask) {
+    prepareTaskButton?.classList.toggle("hidden", false);
+  } else {
+    prepareTaskButton?.remove?.();
+  }
 
   setHidden("ordinary-contract-error", !error);
   setText("ordinary-contract-error-what", error?.what_failed || "");
@@ -2666,6 +2777,16 @@ for (const id of [
     }
   });
 }
+
+function syncAdvancedAuditContainment() {
+  byId("advanced-audit-content").inert = !byId("advanced-audit-mode").open;
+}
+
+byId("advanced-audit-mode").addEventListener(
+  "toggle",
+  syncAdvancedAuditContainment,
+);
+syncAdvancedAuditContainment();
 
 async function refresh() {
   if (!requestActive) {
