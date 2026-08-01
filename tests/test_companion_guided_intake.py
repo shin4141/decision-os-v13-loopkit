@@ -1813,6 +1813,33 @@ class GuidedIntakeTestCase(unittest.TestCase):
             "HOLD — DO NOT TOUCH UNKNOWN",
         )
 
+    def test_preservation_of_protected_object_is_not_a_conflict(self) -> None:
+        objective = "Preserve the exact audit ledger identity."
+        do_not_touch = "Do not modify the exact audit ledger."
+        request = f"{objective} {do_not_touch}"
+        self.controller.capture(request)
+        value = exact_clear_draft(request, [objective])
+        value["do_not_touch"] = [
+            {
+                "item_id": "DNT-AUDIT",
+                "text": do_not_touch,
+                "basis_kind": "USER_EXPLICIT",
+                "support": _quote(do_not_touch),
+            }
+        ]
+
+        snapshot = self.import_value(value)
+
+        self.assertEqual(
+            snapshot["interpretation"]["objective"]["fidelity_status"],
+            "PRESERVED",
+        )
+        self.assertFalse(snapshot["interpretation"]["do_not_touch_conflict"])
+        self.assertEqual(
+            snapshot["interpretation"]["gate"],
+            "CLEAR ENOUGH TO FREEZE",
+        )
+
     def test_do_not_touch_requires_exact_provenance_and_any_scoped_action_conflicts(
         self,
     ) -> None:

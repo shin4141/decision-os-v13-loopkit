@@ -379,6 +379,7 @@ _BOUNDARY_ACTION_TOKENS = frozenset(
         "change",
         "delete",
         "deploy",
+        "erase",
         "execute",
         "invoke",
         "merge",
@@ -2157,12 +2158,12 @@ def _quoted_objective_source(intent_surface: str) -> str:
     )
     source = re.sub(
         (
-            r"^[ \t]*# Product Contract Fixation Wrapper v0\.1"
+            r"\A[ \t]*# [^\r\n]+ Contract Fixation Wrapper "
+            r"v[0-9]+(?:\.[0-9]+)*"
             r"[ \t]*(?:\r\n|\n|$)"
         ),
         "",
         source,
-        flags=re.MULTILINE,
     )
     return re.sub(
         r"^(?:Objective|Do Not Touch):[ \t]*(?:\r\n|\n|$)",
@@ -2816,6 +2817,58 @@ def _missing_explicit_prohibition(
         clause not in preserved
         for clause in clauses
     )
+
+
+def _semantic_do_not_touch_conflict(
+    objective_text: str,
+    do_not_touch: list[Mapping[str, Any]],
+) -> bool:
+    objective_tokens = _tokens(objective_text)
+    objective_actions = _objective_action_roots(objective_tokens)
+    if not objective_actions:
+        return False
+
+    weak_scope_tokens = {
+        "action",
+        "all",
+        "any",
+        "behavior",
+        "current",
+        "do",
+        "exact",
+        "immutable",
+        "never",
+        "not",
+        "one",
+        "preserve",
+        "protected",
+        "same",
+        "surface",
+    }
+
+    def scope_tokens(tokens: set[str]) -> set[str]:
+        return {
+            token
+            for token in tokens - weak_scope_tokens - {"must"}
+            if not _objective_action_roots({token})
+        }
+
+    objective_scope = scope_tokens(objective_tokens)
+    for item in do_not_touch:
+        if item["basis_kind"] not in {
+            "USER_EXPLICIT",
+            "USER_CONFIRMED_CANDIDATE",
+        }:
+            continue
+        protected_tokens = _tokens(item["text"])
+        protected_actions = _objective_action_roots(protected_tokens)
+        protected_scope = scope_tokens(protected_tokens)
+        if protected_scope:
+            if objective_scope.intersection(protected_scope):
+                return True
+        elif objective_actions.intersection(protected_actions):
+            return True
+    return False
 
 
 def _has_untyped_request_uncertainty(
@@ -4636,38 +4689,15 @@ class GuidedIntakeController:
                 )
                 if not _NEGATION_WINDOW.search(clause)
             )
-        objective_tokens = _tokens(objective_conflict_text)
         conflict = _missing_explicit_prohibition(
             original,
             do_not_touch,
         )
-        weak_surface_tokens = {
-            "action",
-            "behavior",
-            "current",
-            "do",
-            "never",
-            "not",
-            "preserve",
-            "protected",
-            "surface",
-        }
-        for item in do_not_touch:
-            if item["basis_kind"] not in {
-                "USER_EXPLICIT",
-                "USER_CONFIRMED_CANDIDATE",
-            }:
-                continue
-            protected_tokens = _tokens(item["text"])
-            objective_surface = objective_tokens - weak_surface_tokens
-            protected_surface = (
-                protected_tokens - weak_surface_tokens - {"must"}
-            )
-            if (
-                objective_surface.intersection(protected_surface)
-            ):
-                conflict = True
-                break
+        conflict = conflict or _semantic_do_not_touch_conflict(
+            objective_conflict_text,
+            do_not_touch,
+        )
+        objective_tokens = _tokens(objective_conflict_text)
         objective_lowered = objective_conflict_text.casefold()
         if re.search(r"\bstage\s+(?:1|2)\b", objective_lowered):
             conflict = True
