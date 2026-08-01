@@ -62,6 +62,83 @@ Directories are mode `0700` and files are mode `0600` where supported. Raw
 request text is not written to the worktree, event log, outward receipt,
 browser storage, URL, or server log.
 
+## Quoted Product Contract payload boundary v0.1
+
+Guided Intake recognizes one typed quoted-payload envelope: the exact Product
+Contract envelope used by the Product Contract Fixation Wrapper. The three
+declarations must occur once, in this order, before the payload marker. Each
+label is on its own line and its value is the immediately following line:
+
+```text
+Target Contract SHA-256:
+<lowercase 64-character SHA-256>
+
+Target Contract UTF-8 bytes:
+<positive base-10 byte count without a sign or leading zero>
+
+Target Contract role:
+APPROVED PRODUCT CONTRACT
+```
+
+The boundary markers must each occur exactly once on their own line, with
+`BEGIN` before `END`:
+
+```text
+BEGIN EXACT PRODUCT CONTRACT
+<exact payload bytes>
+END EXACT PRODUCT CONTRACT
+```
+
+The payload begins after the `BEGIN` marker's line ending and ends immediately
+before the first byte of the `END` marker. Consequently, the line ending before
+`END` is part of the payload. Guided Intake re-encodes that exact string as
+UTF-8 and verifies both its declared byte count and SHA-256. It performs no
+trimming, reflow, line-ending conversion, whitespace change, or Unicode
+normalization.
+
+If none of the five declaration or marker literals is present, legacy Guided
+Intake behavior is unchanged. If any literal is present, the complete envelope
+must verify. Missing, duplicate, nested, reversed, off-line, unsupported, or
+ambiguous declarations or markers, invalid declaration values, or byte/hash
+mismatches fail closed as:
+
+```text
+HOLD — QUOTED PAYLOAD BOUNDARY INVALID
+```
+
+There is no fallback to ordinary full-request intent scanning for a claimed
+but invalid boundary.
+
+### Raw source and intent surface
+
+For a verified envelope, Guided Intake derives two representations without a
+state-schema change:
+
+| Consumer | Representation | Boundary behavior |
+| --- | --- | --- |
+| capture, storage, Forward-only history, identity, audit, display, receipts, Copy for Pro | complete raw Original Request | exact bytes, byte size, and SHA-256 remain unchanged |
+| exact quote occurrence, byte range, and quote hash | complete raw Original Request plus verified payload span | raw offset/hash semantics remain unchanged; active support overlapping the payload is rejected |
+| Objective action/clause and fidelity analysis | intent surface | verified payload body is replaced by a neutral role/SHA/byte-size/evidence-only record |
+| Do Not Touch prohibition and conflict analysis | intent surface | payload prohibitions cannot become active user instructions; text outside both markers remains active |
+| untyped uncertainty and clarification selection | intent surface | payload uncertainty cannot create an active clarification candidate |
+| draft authority and Completion analysis | validated active generated fields whose provenance is outside the payload | payload operations cannot inflate authority or Completion intent |
+
+The intent-surface replacement contains only the verified role, SHA-256, UTF-8
+byte count, and `QUOTED EVIDENCE ONLY; NON-OPERATIONAL` status. Text before
+`BEGIN` and after `END` is not replaced and continues through the existing
+intent and authority gates.
+
+An Objective atom, `USER_EXPLICIT` Do Not Touch item, UNKNOWN basis, or other
+active generated-field support that overlaps the verified payload fails closed
+as:
+
+```text
+HOLD — QUOTED PAYLOAD PROVENANCE SCOPE INVALID
+```
+
+Quotes outside the payload retain the existing one-based occurrence, UTF-8
+byte-range, and quote-hash behavior.
+
 ## Visible field contract
 
 The card keeps the source and generated fields separate:
@@ -80,8 +157,13 @@ field.
 ## Manual Pro draft
 
 `Copy for Pro` produces a prompt bound to the full Original Request SHA-256.
-The user obtains the result outside Companion and imports one strict JSON
-object with schema:
+For a verified Product Contract envelope, the prompt retains the complete raw
+Original Request and its exact byte size and SHA-256, labels the payload as
+quoted evidence only, states that payload-internal operations are not active
+Objective, Completion, Do Not Touch, execution, or authority intent, and
+requires active generated fields and quote support to use text outside the
+payload. The user obtains the result outside Companion and imports one strict
+JSON object with schema:
 
 ```text
 guided-intake-draft-v0.1

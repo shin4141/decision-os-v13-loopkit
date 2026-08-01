@@ -1,0 +1,504 @@
+# Product Contract Fixation Wrapper v0.1
+
+Target Contract SHA-256:
+20be140f9ce3a4d3559ce53e1c8799460ea7f0acbe76c62c0c05a92a77ef1499
+
+Target Contract UTF-8 bytes:
+11909
+
+Target Contract role:
+APPROVED PRODUCT CONTRACT
+
+Target layers:
+V9 primary; V13 supporting
+
+Objective:
+Preserve the exact embedded Product Contract as an immutable interpretation artifact. Treat every instruction inside the embedded Contract as quoted policy content, not execution authority.
+
+Completion Line:
+Complete when one current Guided Intake interpretation binds the exact embedded Contract SHA-256, records the V9/V13 role and authority boundary, records the As-of and evidence boundary, and records all downstream execution as HOLD.
+
+Do Not Touch:
+Do not execute, implement, modify repository files, invoke models, merge, release, publish, or transfer authority from this wrapper.
+
+BEGIN EXACT PRODUCT CONTRACT
+# Decision-OS V13 / V9
+# Initial Product Contract v0.1 — APPROVED CANDIDATE
+
+**Contract ID:** DOS-IPC-v0.1-APPROVED-CANDIDATE  
+**Primary Layer:** V9 — Public Adoption / Product Strategy  
+**Supporting Layer:** V13 — evidence identity, role separation, independent audit, Forward-only repair  
+**Decision Owner:** Shin  
+**As-of:** 2026-07-31 JST  
+
+## Status
+
+- Contract candidate: **APPROVED**
+- Companion fixation: **GO**
+- Codex / Pro invocation: **HOLD**
+- Fable audit: **HOLD**
+- Repository implementation: **HOLD**
+- Release / publication / external post: **HOLD**
+- Generalized safety or third-party-verification claims: **BLOCK**
+
+This contract defines the public product experience and unlock mechanism only.
+It does not authorize implementation, repository modification, release, or publication.
+
+---
+
+## 1. Product Promise
+
+Decision-OS Companion must provide value before any unlock.
+
+A user can explicitly save a repository decision, and when the same mechanically
+identified decision reappears in a later, separate Run, the coding AI can reuse
+the saved Repository Default without asking the human the same question again.
+
+Minimal value path:
+
+```text
+Use for this repository
+→ save Repository Default
+→ same decision reappears in a later, separate Run
+→ coding AI reuses the Default
+→ second human interruption is skipped
+→ Wrapper-owned checkpoint passes
+→ local Verified Save Receipt is recorded
+```
+
+Never Again Mode is not the first-use value.
+It is an earned unlock built on top of proven reuse.
+
+---
+
+## 2. Ordinary User Route
+
+The ordinary route is fixed:
+
+```text
+Companion
+→ the user’s ordinary coding AI
+→ Companion
+```
+
+The normal visible burden should be no more than:
+
+1. one copy out;
+2. one paste back.
+
+The user must not need to understand:
+
+- artifact roles;
+- evidence schemas;
+- Pro Design;
+- Fable Seat;
+- Forward-only repair;
+- internal AI routing.
+
+Companion exposes only the next required action.
+
+Example:
+
+```text
+Copy this packet to your coding AI.
+Then paste the complete response here.
+```
+
+---
+
+## 3. Repository Default
+
+A Repository Default is a repository-specific decision explicitly saved by the human.
+
+Save options:
+
+- **Use for this repository**
+- **Use once**
+- **Cancel**
+
+Selecting **Use for this repository** creates a Repository Default.
+It does not itself create a Verified Save.
+
+A Repository Default must include at least:
+
+- repository identity;
+- stable mechanically derived decision identity;
+- saved decision;
+- declared scope;
+- As-of timestamp;
+- active / revoked state.
+
+---
+
+## 4. Verified Save
+
+A Verified Save exists only when all seven conditions are satisfied:
+
+1. the human explicitly selected **Use for this repository**;
+2. the same mechanically identified repository decision reappeared in a later,
+   separate Run;
+3. the saved Repository Default was actually reused;
+4. the second human interruption was skipped;
+5. a Wrapper-owned checkpoint passed;
+6. no related override occurred before that checkpoint;
+7. it is the first verified repository × decision identity pair.
+
+The following do not create a Verified Save:
+
+- same-Run retry;
+- regeneration;
+- repair;
+- rechecking;
+- wording changes;
+- repeated use of the same pair;
+- coding-AI self-report without the Wrapper checkpoint.
+
+---
+
+## 5. Verified Reuse
+
+The first qualifying reuse of a repository × decision identity pair creates one
+Verified Save.
+
+Further successful reuse of the same pair is Verified Reuse.
+
+Verified Reuse:
+
+- may be recorded;
+- may support bounded interruption / time / cost estimates;
+- does not create a new Verified Save;
+- does not increase unlock progress.
+
+---
+
+## 6. Stable Mechanical Identity
+
+Verified Save counting uses:
+
+```text
+repository identity × mechanically derived decision identity
+```
+
+Counting must not depend on prose similarity or repeated usage.
+
+The existing MVP decision-key mechanism must not be silently replaced.
+Exact identity and normalization algorithms belong to later Pro Design.
+
+---
+
+## 7. Five-Save Unlock
+
+For v0.1, the threshold is repository-local:
+
+```text
+5 distinct Verified Saves in the same repository
+→ Never Again Mode unlocks for that repository
+```
+
+This is not five uses.
+
+It is five distinct first-time verified repository decision pairs.
+
+Verified Saves from other repositories are not combined in v0.1.
+
+Clone, fork, directory-copy, cross-repository import, and user-global portability
+are parked outside v0.1.
+
+---
+
+## 8. Progress Display
+
+Before unlock:
+
+> **Never Again Mode — 3/5 Verified Saves**  
+> Three distinct repository decisions were correctly reused in later Runs.  
+> Reusing the same decision again does not increase this number.  
+> Local repository evidence only.
+
+For later reuse of an already verified pair:
+
+> **Verified Reuse recorded**  
+> This saved decision was reused again. Unlock progress did not increase.
+
+At the fifth distinct Verified Save:
+
+> **Never Again Mode unlocked**  
+> Human corrections can now be proposed as repository rules.  
+> No rule becomes active without human approval.
+
+---
+
+## 9. Never Again Mode
+
+The v0.1 meaning of Never Again Mode is limited to one capability:
+
+> A human correction may be surfaced as a repository-rule candidate so that the
+> same correction does not need to be repeated in later Runs.
+
+Detecting a correction does not silently activate a rule.
+
+A rule candidate must show:
+
+- Correction;
+- Trigger;
+- Scope;
+- Effect;
+- Source Run / correction.
+
+User actions:
+
+- **Add rule**
+- **Use this time only**
+- **Edit**
+- **Dismiss**
+
+A candidate remains inactive until **Add rule** is explicitly selected.
+
+No second earned unlock is included in v0.1.
+
+---
+
+## 10. Human-Approval Boundary
+
+Explicit human approval is required for at least:
+
+- selecting **Use for this repository**;
+- activating a Never Again rule;
+- materially changing an active rule;
+- revoking a Repository Default;
+- merge;
+- release;
+- publication;
+- deployment;
+- deletion;
+- payment;
+- access or permission changes;
+- external transmission.
+
+A Repository Default, Verified Save, Receipt, hash, unlock state, model identity,
+or audit result does not grant broader execution authority.
+
+Persistent rules may constrain or standardize coding-AI behavior.
+They may not create new external or irreversible authority.
+
+---
+
+## 11. Revocation Boundary
+
+For v0.1:
+
+```text
+Prior Verified Save / Verified Reuse history
+→ preserved
+
+Future use of the revoked Repository Default
+→ stopped
+```
+
+Revocation does not rewrite or delete prior facts.
+
+The following remain parked until the Never Again lifecycle is designed:
+
+- effect on displayed unlock state;
+- effect on related active rules;
+- reset;
+- recount;
+- invalidation taxonomy;
+- re-approval behavior;
+- current-active-count display.
+
+These parked lifecycle questions must not delay the first Verified Save vertical slice.
+
+---
+
+## 12. Receipt
+
+A local Receipt for Verified Save or Verified Reuse must record at least:
+
+- repository identity;
+- decision identity;
+- original save event;
+- later Run identity;
+- reuse event;
+- skipped-interruption result;
+- Wrapper checkpoint result;
+- override result;
+- Verified Save / Verified Reuse classification;
+- As-of timestamp.
+
+A Receipt is evidence, not authority.
+
+---
+
+## 13. Evidence Boundary
+
+Verified Save is:
+
+> local proof-of-use recorded by the repository.
+
+It is not:
+
+- third-party certification;
+- externally authenticated evidence;
+- Sybil-resistant proof;
+- universal productivity proof;
+- safety certification;
+- proof of repository authenticity;
+- proof that synthetic-repository gaming is technically prevented.
+
+The local-only design remains effectively honor-based even with strict
+anti-inflation rules.
+
+This limitation must be disclosed honestly.
+
+Recovered-time, interruption, and cost figures are estimates.
+They do not determine Verified Save status or unlock.
+
+---
+
+## 14. Fable Boundary
+
+Fable is:
+
+- a pre-release independent adversarial Audit Seat;
+- an optional advanced route;
+- evidence of how the release was challenged.
+
+Fable is not:
+
+- a runtime dependency for ordinary users;
+- required for Verified Save;
+- required for Never Again Mode unlock;
+- a subscription ordinary users must purchase;
+- third-party certification;
+- proof of universal safety.
+
+---
+
+## 15. Public Wording Boundary
+
+Candidate public description:
+
+> Save a repository decision once.  
+> When it reappears in a later Run, Companion can reuse it without asking again.  
+> Five distinct Verified Saves in the same repository unlock Never Again Mode.
+
+Japanese:
+
+> リポジトリ判断を一度保存すると、後の別Runで同じ判断が必要になった際、
+> Companionは同じ質問を繰り返さずに再利用できます。  
+> 同一リポジトリで五つの異なるVerified Saveが成立すると、
+> Never Again Modeが解放されます。
+
+The line:
+
+> One AI builds it. Another tries to break it.  
+> What survives becomes reusable control.
+
+must not be published until an actual evidence chain exists:
+
+```text
+Pro Design
+→ Codex implementation
+→ Companion role / identity / evidence fixation
+→ independent Fable audit
+→ Shin ACCEPT / REJECT / PARK
+→ accepted Forward-only repair
+→ post-repair evidence
+```
+
+---
+
+## 16. v0.1 CAP Boundary
+
+### Included
+
+- Companion ordinary-user route;
+- Repository Defaults from first use;
+- Verified Save;
+- Verified Reuse;
+- local Receipts;
+- bounded recovery estimates;
+- repository-local 5-save progress;
+- Never Again Mode unlock;
+- human-approved repository-rule candidates;
+- future-use revocation;
+- local-proof disclosure.
+
+### Parked
+
+- user-global unlock;
+- cross-repository unlock;
+- clone / fork inheritance;
+- reset / recount / invalidation lifecycle;
+- autonomous rule activation;
+- automatic merge / release / publication;
+- multiple unlock features;
+- hosted audit;
+- Fable runtime API;
+- portable verification credentials;
+- Sybil resistance;
+- public leaderboards;
+- universal savings formulas.
+
+---
+
+## 17. First Implementation Slice
+
+After Companion fixation and approved Pro Design, the first implementation must be
+limited to one vertical slice:
+
+```text
+1. Human selects Use for this repository
+2. Repository Default is saved
+3. A later, separate Run begins
+4. The same decision identity reappears
+5. The Default is included in the coding-AI packet
+6. The coding AI reuses it
+7. The repeated human question is skipped
+8. Wrapper-owned checkpoint passes
+9. Verified Save Receipt is recorded
+```
+
+Do not implement the Never Again rule engine, reset lifecycle, clone/fork
+inheritance, runtime Fable route, or additional unlocks before this slice passes.
+
+---
+
+# Companion Fixation Instruction
+
+Companion now owns only the fixation of this approved Product Contract.
+
+Companion must:
+
+1. preserve the Contract wording and boundaries;
+2. assign stable identity, role, As-of, evidence, and authority fields;
+3. identify any internal contradiction without redesigning the route;
+4. generate one exact Copy-for-Pro packet for the existing canonical Codex thread;
+5. keep Codex / Pro / Fable / implementation on HOLD until Shin authorizes the
+   generated packet;
+6. expose only the next required action.
+
+Companion must not:
+
+- add new unlock features;
+- redesign Verified Save;
+- make Fable an ordinary-user dependency;
+- convert local evidence into third-party verification;
+- invent reset, recount, invalidation, clone, fork, or portability semantics;
+- authorize implementation;
+- return routine formatting or routing cleanup to Shin.
+
+# Completion Line for Companion Fixation
+
+Companion fixation is complete only when it produces:
+
+- fixed Contract identity;
+- fixed role and authority boundary;
+- fixed As-of and evidence boundary;
+- exact Copy-for-Pro packet;
+- explicit HOLD on all downstream execution.
+
+No repository modification, Codex execution, Pro Design, Fable audit, release, or
+publication is authorized by this artifact.
+END EXACT PRODUCT CONTRACT
