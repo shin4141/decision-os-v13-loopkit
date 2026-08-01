@@ -37,62 +37,116 @@
     </section>
 
     <section
-      id="contract-import-card"
-      class="card"
-      aria-labelledby="contract-import-heading"
+      id="ordinary-contract-card"
+      class="card ordinary-contract-card"
+      aria-labelledby="ordinary-contract-heading"
     >
       <div class="section-heading">
         <div>
           <p class="step">C</p>
-          <h2 id="contract-import-heading">Import Contract</h2>
+          <h2 id="ordinary-contract-heading">Fix a Contract</h2>
         </div>
         <span
-          id="contract-import-state"
-          class="status"
+          id="ordinary-contract-status"
+          class="status ordinary-status"
           role="status"
           aria-live="polite"
-        >No contract</span>
+        >Select a Contract</span>
       </div>
       <p class="boundary">
-        Load one approved Product Contract from this device as Markdown or
-        plain text. The file stays in this local tab. Import does not start a
-        Run, implement anything, or send the Contract anywhere.
+        Select one supported local Contract, review its meaning, and fix it in
+        this repository. Nothing is run, transferred, released, or sent.
       </p>
-      <label for="contract-file">Product Contract (.md or .txt)</label>
-      <input id="contract-file" type="file" accept=".md,.txt">
-      <button id="contract-import" class="secondary" type="button" disabled>
-        Import Contract
-      </button>
-      <p id="contract-file-name" class="primary-value">
-        No Contract imported
-      </p>
-      <p id="contract-preview-status" class="path-value">
-        Select a supported local file to preview it.
-      </p>
-      <pre
-        id="contract-preview"
-        class="contract-preview hidden"
-      ></pre>
-      <textarea
-        id="contract-full-content"
-        class="contract-full-content"
-        readonly
-        hidden
-        aria-hidden="true"
-      ></textarea>
-      <button
-        id="contract-use-guided-intake"
-        class="primary contract-next-action"
-        type="button"
-        disabled
-      >
-        Use in Guided Intake
+      <label id="ordinary-contract-file-label" for="ordinary-contract-file">
+        Select Contract (.md or .txt)
+      </label>
+      <input id="ordinary-contract-file" type="file" accept=".md,.txt">
+      <p
+        id="ordinary-contract-progress"
+        class="ordinary-progress"
+        aria-live="polite"
+      >Choose one local Markdown or text Contract.</p>
+
+      <div id="ordinary-contract-review" class="ordinary-review hidden">
+        <section class="ordinary-review-field">
+          <h3 id="ordinary-contract-preserves-heading">What this Contract preserves</h3>
+          <p id="ordinary-contract-preserves"></p>
+        </section>
+        <section class="ordinary-review-field">
+          <h3 id="ordinary-contract-completion-heading">What counts as completion</h3>
+          <p id="ordinary-contract-completion"></p>
+        </section>
+        <section class="ordinary-review-field">
+          <h3 id="ordinary-contract-dnt-heading">What must not be changed</h3>
+          <ul id="ordinary-contract-dnt"></ul>
+        </section>
+        <section class="ordinary-review-field">
+          <h3 id="ordinary-contract-unresolved-heading">What remains unresolved</h3>
+          <ul id="ordinary-contract-unresolved"></ul>
+        </section>
+        <section class="ordinary-review-field">
+          <h3 id="ordinary-contract-authority-heading">What this operation does not authorize</h3>
+          <p id="ordinary-contract-authority"></p>
+        </section>
+      </div>
+
+      <fieldset id="ordinary-contract-clarification" class="hidden">
+        <legend id="ordinary-contract-question" tabindex="-1"></legend>
+        <label>
+          <input
+            id="ordinary-contract-answer-confirm"
+            name="ordinary-contract-answer"
+            type="radio"
+            value="CONFIRM"
+          >
+          Yes, use this
+        </label>
+        <label>
+          <input
+            id="ordinary-contract-answer-reject"
+            name="ordinary-contract-answer"
+            type="radio"
+            value="REJECT"
+          >
+          No, do not use this
+        </label>
+        <button id="ordinary-contract-confirm" class="primary" type="button">
+          Confirm answer
+        </button>
+      </fieldset>
+
+      <button id="ordinary-contract-fix" class="primary" type="button" disabled>
+        Fix this Contract
       </button>
       <p
-        id="contract-import-error"
-        class="error hidden"
-        role="alert"
+        id="ordinary-contract-success"
+        class="ordinary-success hidden"
+        tabindex="-1"
       ></p>
+      <div
+        id="ordinary-contract-error"
+        class="ordinary-action-error hidden"
+        role="alert"
+        tabindex="-1"
+      >
+        <p><strong>What failed</strong><br><span id="ordinary-contract-error-what"></span></p>
+        <p><strong>Current state</strong><br><span id="ordinary-contract-error-state"></span></p>
+        <p><strong>Was anything fixed?</strong><br><span id="ordinary-contract-error-fixed"></span></p>
+        <p><strong>What you need to do</strong><br><span id="ordinary-contract-error-action"></span></p>
+        <button id="ordinary-contract-error-retry" class="secondary" type="button">
+          Retry safely
+        </button>
+        <button id="ordinary-contract-error-dismiss" class="secondary" type="button">
+          Dismiss
+        </button>
+      </div>
+      <details id="ordinary-contract-technical" class="technical-details">
+        <summary>Technical details</summary>
+        <pre id="ordinary-contract-technical-body" class="result-text"></pre>
+      </details>
+      <p
+        class="boundary"
+      >Reading the review does not change the preserved Contract.</p>
     </section>
 
     <section id="bounded-task-card" class="card" aria-labelledby="task-heading">
@@ -251,6 +305,68 @@
       <div id="defaults" class="defaults-list"></div>
     </section>
 
+    <details id="advanced-audit-mode" class="advanced-audit-mode">
+      <summary>Advanced / Audit Mode</summary>
+      <div class="advanced-audit-content">
+    <section
+      id="contract-import-card"
+      class="card"
+      aria-labelledby="contract-import-heading"
+    >
+      <div class="section-heading">
+        <div>
+          <p class="step">C</p>
+          <h2 id="contract-import-heading">Import Contract</h2>
+        </div>
+        <span
+          id="contract-import-state"
+          class="status"
+          role="status"
+          aria-live="polite"
+        >No contract</span>
+      </div>
+      <p class="boundary">
+        Load one approved Product Contract from this device as Markdown or
+        plain text. The file stays in this local tab. Import does not start a
+        Run, implement anything, or send the Contract anywhere.
+      </p>
+      <label for="contract-file">Product Contract (.md or .txt)</label>
+      <input id="contract-file" type="file" accept=".md,.txt">
+      <button id="contract-import" class="secondary" type="button" disabled>
+        Import Contract
+      </button>
+      <p id="contract-file-name" class="primary-value">
+        No Contract imported
+      </p>
+      <p id="contract-preview-status" class="path-value">
+        Select a supported local file to preview it.
+      </p>
+      <pre
+        id="contract-preview"
+        class="contract-preview hidden"
+      ></pre>
+      <textarea
+        id="contract-full-content"
+        class="contract-full-content"
+        readonly
+        hidden
+        aria-hidden="true"
+      ></textarea>
+      <button
+        id="contract-use-guided-intake"
+        class="primary contract-next-action"
+        type="button"
+        disabled
+      >
+        Use in Guided Intake
+      </button>
+      <p
+        id="contract-import-error"
+        class="error hidden"
+        role="alert"
+      ></p>
+    </section>
+
     <section id="guided-intake-card" class="card" aria-labelledby="guided-intake-heading">
       <div class="section-heading">
         <div>
@@ -399,6 +515,8 @@
       <pre id="guided-intake-transfer-receipt" class="result-text"></pre>
       <p id="guided-intake-error" class="error hidden" role="alert"></p>
     </section>
+      </div>
+    </details>
 
     <section class="card" aria-labelledby="bridge-heading">
       <div class="section-heading">

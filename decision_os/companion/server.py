@@ -43,6 +43,7 @@ from .manual_bridge import (
     ManualBridgeIntegrityError,
     ManualBridgeValidationError,
 )
+from .ordinary_user_path import MAX_SOURCE_BYTES, OrdinaryUserPathError
 from decision_os.acceleration.store import StateIntegrityError
 
 
@@ -50,6 +51,7 @@ _MAX_REQUEST_BYTES = 64 * 1024
 _MAX_BRIDGE_REQUEST_BYTES = 2 * 1024 * 1024
 _MAX_GUIDED_INTAKE_REQUEST_BYTES = 2 * 1024 * 1024
 _MAX_INTELLIGENCE_TRANSPLANT_REQUEST_BYTES = 2 * 1024 * 1024
+_MAX_ORDINARY_CONTRACT_REQUEST_BYTES = 131_072
 _GUIDED_INTAKE_POST_ROUTES = frozenset(
     {
         "/api/guided-intake/capture",
@@ -68,6 +70,14 @@ _INTELLIGENCE_TRANSPLANT_POST_ROUTES = frozenset(
         "/api/intelligence-transplant/evidence/attach",
         "/api/intelligence-transplant/receipt/attach",
         "/api/intelligence-transplant/control/record",
+    }
+)
+_ORDINARY_CONTRACT_POST_ROUTES = frozenset(
+    {
+        "/api/ordinary-contract/prepare",
+        "/api/ordinary-contract/confirm",
+        "/api/ordinary-contract/fix",
+        "/api/ordinary-contract/error/dismiss",
     }
 )
 _STATIC_FILES = {
@@ -181,6 +191,48 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
 
     def _error(self, status: HTTPStatus, message: str) -> None:
         self._json(status, {"error": message})
+
+    def _ordinary_error(
+        self,
+        status: HTTPStatus,
+        code: str,
+        message: str,
+        *,
+        error_id: str | None = None,
+    ) -> None:
+        try:
+            ordinary = self.server.controller.snapshot().get(
+                "ordinary_contract"
+            )
+        except Exception:
+            ordinary = None
+        self._json(
+            status,
+            {
+                "error": {
+                    "code": code,
+                    "error_id": error_id,
+                    "message": message,
+                },
+                "ordinary_contract": ordinary,
+            },
+        )
+
+    def _persist_ordinary_error(
+        self,
+        code: str,
+        message: str,
+        error_id: str | None = None,
+    ) -> str | None:
+        if error_id is not None:
+            return error_id
+        try:
+            return self.server.controller.ordinary_contract_record_error(
+                code,
+                message,
+            )
+        except Exception:
+            return None
 
     def _host_valid(self) -> bool:
         expected = f"127.0.0.1:{self.server.server_address[1]}"
@@ -306,10 +358,23 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         *,
         maximum_bytes: int = _MAX_REQUEST_BYTES,
         strict: bool = False,
+        ordinary: bool = False,
     ) -> dict[str, Any] | None:
+        def reject(status: HTTPStatus, code: str, message: str) -> None:
+            if ordinary:
+                self._ordinary_error(
+                    status,
+                    code,
+                    message,
+                    error_id=self._persist_ordinary_error(code, message),
+                )
+            else:
+                self._error(status, message)
+
         if self.headers.get_content_type() != "application/json":
-            self._error(
+            reject(
                 HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                "PREP_SOURCE_TRANSPORT_MISMATCH",
                 "JSON request required.",
             )
             return None
@@ -317,10 +382,18 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
         try:
             length = int(raw_length or "")
         except ValueError:
-            self._error(HTTPStatus.BAD_REQUEST, "Content length is invalid.")
+            reject(
+                HTTPStatus.BAD_REQUEST,
+                "PREP_SOURCE_TRANSPORT_MISMATCH",
+                "Content length is invalid.",
+            )
             return None
         if length < 0 or length > maximum_bytes:
-            self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Request is too large.")
+            reject(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                "PREP_SOURCE_TOO_LARGE",
+                "Request is too large.",
+            )
             return None
         try:
             raw = self.rfile.read(length)
@@ -333,10 +406,18 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             else:
                 value = json.loads(raw)
         except (UnicodeError, ValueError):
-            self._error(HTTPStatus.BAD_REQUEST, "Request JSON is invalid.")
+            reject(
+                HTTPStatus.BAD_REQUEST,
+                "PREP_SOURCE_TRANSPORT_MISMATCH",
+                "Request JSON is invalid.",
+            )
             return None
         if not isinstance(value, dict):
-            self._error(HTTPStatus.BAD_REQUEST, "Request object required.")
+            reject(
+                HTTPStatus.BAD_REQUEST,
+                "PREP_SOURCE_TRANSPORT_MISMATCH",
+                "Request object required.",
+            )
             return None
         return value
 
@@ -418,11 +499,17 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             maximum_bytes = _MAX_INTELLIGENCE_TRANSPLANT_REQUEST_BYTES
         elif path in _GUIDED_INTAKE_POST_ROUTES:
             maximum_bytes = _MAX_GUIDED_INTAKE_REQUEST_BYTES
+        elif path in _ORDINARY_CONTRACT_POST_ROUTES:
+            maximum_bytes = _MAX_ORDINARY_CONTRACT_REQUEST_BYTES
         else:
             maximum_bytes = _MAX_REQUEST_BYTES
         value = self._read_json(
             maximum_bytes=maximum_bytes,
-            strict=path in _INTELLIGENCE_TRANSPLANT_POST_ROUTES,
+            strict=(
+                path in _INTELLIGENCE_TRANSPLANT_POST_ROUTES
+                or path in _ORDINARY_CONTRACT_POST_ROUTES
+            ),
+            ordinary=path in _ORDINARY_CONTRACT_POST_ROUTES,
         )
         if value is None:
             return
@@ -493,6 +580,147 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                     .intelligence_transplant_record_control(
                         payload=payload,
                         **metadata,
+                    )
+                )
+            elif path == "/api/ordinary-contract/prepare":
+                if (
+                    set(value)
+                    != {
+                        "filename",
+                        "source_base64",
+                        "source_byte_size",
+                        "source_sha256",
+                        "expected_repository_identity",
+                        "expected_active_request_id",
+                        "idempotency_key",
+                    }
+                    or not isinstance(value["filename"], str)
+                    or not isinstance(value["source_base64"], str)
+                    or not isinstance(value["source_byte_size"], int)
+                    or isinstance(value["source_byte_size"], bool)
+                    or not isinstance(value["source_sha256"], str)
+                    or not isinstance(value["expected_repository_identity"], str)
+                    or (
+                        value["expected_active_request_id"] is not None
+                        and not isinstance(value["expected_active_request_id"], str)
+                    )
+                    or not isinstance(value["idempotency_key"], str)
+                ):
+                    raise OrdinaryUserPathError(
+                        "PREP_SOURCE_TRANSPORT_MISMATCH",
+                        "Contract preparation fields are invalid.",
+                        http_status=400,
+                    )
+                if value["source_byte_size"] > MAX_SOURCE_BYTES:
+                    raise OrdinaryUserPathError(
+                        "PREP_SOURCE_TOO_LARGE",
+                        "The Contract is too large for this bounded path.",
+                        http_status=413,
+                    )
+                try:
+                    source = base64.b64decode(
+                        value["source_base64"].encode("ascii"),
+                        validate=True,
+                    )
+                except (UnicodeError, ValueError, binascii.Error) as exc:
+                    raise OrdinaryUserPathError(
+                        "PREP_SOURCE_TRANSPORT_MISMATCH",
+                        "The selected Contract bytes are invalid.",
+                        http_status=400,
+                    ) from exc
+                snapshot = self.server.controller.ordinary_contract_prepare(
+                    filename=value["filename"],
+                    source_bytes=source,
+                    source_byte_size=value["source_byte_size"],
+                    source_sha256=value["source_sha256"],
+                    expected_repository_identity=value[
+                        "expected_repository_identity"
+                    ],
+                    expected_active_request_id=value[
+                        "expected_active_request_id"
+                    ],
+                    idempotency_key=value["idempotency_key"],
+                )
+            elif path == "/api/ordinary-contract/confirm":
+                if (
+                    set(value)
+                    != {
+                        "preparation_id",
+                        "clarification_id",
+                        "answer",
+                        "expected_interpretation_sha256",
+                        "idempotency_key",
+                    }
+                    or not all(
+                        isinstance(value[field], str)
+                        for field in value
+                    )
+                    or value["answer"] not in {"CONFIRM", "REJECT"}
+                ):
+                    raise OrdinaryUserPathError(
+                        "CONFIRM_ANSWER_INVALID",
+                        "Contract confirmation fields are invalid.",
+                        http_status=400,
+                    )
+                snapshot = self.server.controller.ordinary_contract_confirm(
+                    preparation_id=value["preparation_id"],
+                    clarification_id=value["clarification_id"],
+                    answer=value["answer"],
+                    expected_interpretation_sha256=value[
+                        "expected_interpretation_sha256"
+                    ],
+                    idempotency_key=value["idempotency_key"],
+                )
+            elif path == "/api/ordinary-contract/fix":
+                if (
+                    set(value)
+                    != {
+                        "preparation_id",
+                        "expected_repository_identity",
+                        "expected_source_sha256",
+                        "expected_request_id",
+                        "expected_draft_id",
+                        "expected_interpretation_sha256",
+                        "idempotency_key",
+                    }
+                    or not all(
+                        isinstance(value[field], str)
+                        for field in value
+                    )
+                ):
+                    raise OrdinaryUserPathError(
+                        "FIX_NOT_READY",
+                        "Contract fixation fields are invalid.",
+                        http_status=400,
+                    )
+                snapshot = self.server.controller.ordinary_contract_fix(
+                    preparation_id=value["preparation_id"],
+                    expected_repository_identity=value[
+                        "expected_repository_identity"
+                    ],
+                    expected_source_sha256=value["expected_source_sha256"],
+                    expected_request_id=value["expected_request_id"],
+                    expected_draft_id=value["expected_draft_id"],
+                    expected_interpretation_sha256=value[
+                        "expected_interpretation_sha256"
+                    ],
+                    idempotency_key=value["idempotency_key"],
+                )
+            elif path == "/api/ordinary-contract/error/dismiss":
+                if (
+                    set(value) != {"error_id", "idempotency_key"}
+                    or not isinstance(value["error_id"], str)
+                    or not isinstance(value["idempotency_key"], str)
+                ):
+                    raise OrdinaryUserPathError(
+                        "ORDINARY_IDEMPOTENCY_CONFLICT",
+                        "Error dismissal fields are invalid.",
+                        http_status=400,
+                    )
+                snapshot = (
+                    self.server.controller.ordinary_contract_dismiss_error(
+                        error_id=value["error_id"],
+                        idempotency_key=value["idempotency_key"],
                     )
                 )
             elif path == "/api/guided-intake/capture":
@@ -717,6 +945,19 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._error(HTTPStatus.NOT_FOUND, "Endpoint not found.")
                 return
+        except OrdinaryUserPathError as exc:
+            error_id = self._persist_ordinary_error(
+                exc.code,
+                exc.message,
+                exc.error_id,
+            )
+            self._ordinary_error(
+                HTTPStatus(exc.http_status),
+                exc.code,
+                exc.message,
+                error_id=error_id,
+            )
+            return
         except (RepositorySelectionError, CompanionStateError) as exc:
             self._error(HTTPStatus.BAD_REQUEST, str(exc))
             return

@@ -16,6 +16,10 @@ from decision_os.companion.guided_intake import (
     GuidedIntakeValidationError,
     sha256_bytes,
 )
+from decision_os.companion.ordinary_user_path import (
+    ContractFixationCompiler,
+    ContractFixationInput,
+)
 
 
 FIXTURE_ROOT = (
@@ -217,6 +221,31 @@ class QuotedPayloadBoundaryTestCase(unittest.TestCase):
             "Quoted Payload Boundary: VERIFIED",
             copied["copy_for_pro_prompt"],
         )
+
+    def test_compiler_generated_product_wrapper_is_fixture_exact(self) -> None:
+        wrapper = WRAPPER_FIXTURE.read_bytes()
+        begin = b"BEGIN EXACT PRODUCT CONTRACT\n"
+        end = b"END EXACT PRODUCT CONTRACT\n"
+        source = wrapper[wrapper.index(begin) + len(begin) : wrapper.index(end)]
+        repository_identity = subprocess.run(
+            ("git", "rev-parse", "HEAD"),
+            cwd=self.repository,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        compiled = ContractFixationCompiler().compile(
+            ContractFixationInput(
+                source_bytes=source,
+                filename="Decision_OS_Product_Contract.md",
+                repository_path=str(self.repository),
+                repository_identity=repository_identity,
+                active_prior_request_id=None,
+            )
+        )
+        self.assertEqual(wrapper, compiled.wrapper_bytes)
+        self.assertEqual(CONTRACT_SHA256, compiled.source_identity["sha256"])
+        self.assertEqual(WRAPPER_SHA256, compiled.wrapper_identity["sha256"])
 
     def test_verified_payload_operations_are_inert_but_outer_operations_are_active(
         self,

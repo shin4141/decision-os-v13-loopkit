@@ -55,6 +55,10 @@ from decision_os.companion.manual_bridge import (
     ManualBridgeIntegrityError,
     build_intelligence_transplant_transport,
 )
+from decision_os.companion.ordinary_user_path import (
+    OrdinaryUserPathCoordinator,
+    OrdinaryUserPathError,
+)
 
 
 class CompanionError(RuntimeError):
@@ -200,6 +204,7 @@ class CompanionController:
         self._worker: threading.Thread | None = None
         self._bridge: BridgeSessionController | None = None
         self._guided_intake: GuidedIntakeController | None = None
+        self._ordinary_user_path: OrdinaryUserPathCoordinator | None = None
         self._intelligence_transplant: (
             IntelligenceTransplantController | None
         ) = None
@@ -211,6 +216,14 @@ class CompanionController:
         if self._repository is not None:
             self._bridge = BridgeSessionController(self._repository)
             self._guided_intake = GuidedIntakeController(self._repository)
+            self._ordinary_user_path = OrdinaryUserPathCoordinator(
+                self._repository,
+                self._guided_intake,
+            )
+            try:
+                self._ordinary_user_path.recover_incomplete()
+            except OrdinaryUserPathError:
+                pass
             self._intelligence_transplant = IntelligenceTransplantController(
                 self._repository
             )
@@ -339,6 +352,14 @@ class CompanionController:
                 self._repository = repository
                 self._bridge = BridgeSessionController(repository)
                 self._guided_intake = GuidedIntakeController(repository)
+                self._ordinary_user_path = OrdinaryUserPathCoordinator(
+                    repository,
+                    self._guided_intake,
+                )
+                try:
+                    self._ordinary_user_path.recover_incomplete()
+                except OrdinaryUserPathError:
+                    pass
                 self._intelligence_transplant = (
                     IntelligenceTransplantController(repository)
                 )
@@ -376,6 +397,12 @@ class CompanionController:
         if self._guided_intake is None:
             raise RepositorySelectionError("Choose a local Git repository first.")
         return self._guided_intake
+
+    def _require_ordinary_user_path(self) -> OrdinaryUserPathCoordinator:
+        self._require_repository()
+        if self._ordinary_user_path is None:
+            raise RepositorySelectionError("Choose a local Git repository first.")
+        return self._ordinary_user_path
 
     def _require_intelligence_transplant(
         self,
@@ -424,9 +451,34 @@ class CompanionController:
                     "An Intelligence Transplant action is already active."
                 )
             guided_intake = self._require_guided_intake()
+            ordinary = self._require_ordinary_user_path()
+            if ordinary.mutation_active:
+                raise GuidedIntakeBusyError(
+                    "An ordinary Contract action is still active."
+                )
             self._active_guided_intake_operations += 1
         try:
             yield guided_intake
+        finally:
+            with self._condition:
+                self._active_guided_intake_operations -= 1
+                self._condition.notify_all()
+
+    @contextmanager
+    def _ordinary_user_path_operation(self) -> Any:
+        with self._condition:
+            if self._repository_selection_active:
+                raise RepositorySelectionError(
+                    "Repository selection is already active."
+                )
+            if self._active_guided_intake_operations:
+                raise GuidedIntakeBusyError(
+                    "A Guided Intake action is already active."
+                )
+            ordinary = self._require_ordinary_user_path()
+            self._active_guided_intake_operations += 1
+        try:
+            yield ordinary
         finally:
             with self._condition:
                 self._active_guided_intake_operations -= 1
@@ -751,6 +803,108 @@ class CompanionController:
                 guided_intake,
                 bridge,
             )
+
+    def ordinary_contract_prepare(
+        self,
+        *,
+        filename: str,
+        source_bytes: bytes,
+        source_byte_size: int,
+        source_sha256: str,
+        expected_repository_identity: str,
+        expected_active_request_id: str | None,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        with self._ordinary_user_path_operation() as ordinary:
+            ordinary.prepare(
+                filename=filename,
+                source_bytes=source_bytes,
+                source_byte_size=source_byte_size,
+                source_sha256=source_sha256,
+                expected_repository_identity=expected_repository_identity,
+                expected_active_request_id=expected_active_request_id,
+                idempotency_key=idempotency_key,
+            )
+            with self._condition:
+                if ordinary is not self._ordinary_user_path:
+                    raise RepositorySelectionError(
+                        "The selected repository changed during Contract preparation."
+                    )
+                return self._snapshot_locked()
+
+    def ordinary_contract_confirm(
+        self,
+        *,
+        preparation_id: str,
+        clarification_id: str,
+        answer: str,
+        expected_interpretation_sha256: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        with self._ordinary_user_path_operation() as ordinary:
+            ordinary.confirm(
+                preparation_id=preparation_id,
+                clarification_id=clarification_id,
+                answer=answer,
+                expected_interpretation_sha256=expected_interpretation_sha256,
+                idempotency_key=idempotency_key,
+            )
+            with self._condition:
+                if ordinary is not self._ordinary_user_path:
+                    raise RepositorySelectionError(
+                        "The selected repository changed during Contract confirmation."
+                    )
+                return self._snapshot_locked()
+
+    def ordinary_contract_fix(
+        self,
+        *,
+        preparation_id: str,
+        expected_repository_identity: str,
+        expected_source_sha256: str,
+        expected_request_id: str,
+        expected_draft_id: str,
+        expected_interpretation_sha256: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        with self._ordinary_user_path_operation() as ordinary:
+            ordinary.fix(
+                preparation_id=preparation_id,
+                expected_repository_identity=expected_repository_identity,
+                expected_source_sha256=expected_source_sha256,
+                expected_request_id=expected_request_id,
+                expected_draft_id=expected_draft_id,
+                expected_interpretation_sha256=expected_interpretation_sha256,
+                idempotency_key=idempotency_key,
+            )
+            with self._condition:
+                if ordinary is not self._ordinary_user_path:
+                    raise RepositorySelectionError(
+                        "The selected repository changed during Contract fixation."
+                    )
+                return self._snapshot_locked()
+
+    def ordinary_contract_dismiss_error(
+        self,
+        *,
+        error_id: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        with self._ordinary_user_path_operation() as ordinary:
+            ordinary.dismiss_error(
+                error_id=error_id,
+                idempotency_key=idempotency_key,
+            )
+            with self._condition:
+                if ordinary is not self._ordinary_user_path:
+                    raise RepositorySelectionError(
+                        "The selected repository changed during error dismissal."
+                    )
+                return self._snapshot_locked()
+
+    def ordinary_contract_record_error(self, code: str, message: str) -> str:
+        with self._ordinary_user_path_operation() as ordinary:
+            return ordinary.record_external_error(code=code, message=message)
 
     def intelligence_transplant_freeze_charter(
         self,
@@ -1266,6 +1420,21 @@ class CompanionController:
             defaults: list[dict[str, str]] = []
             bridge = None
             guided_intake = None
+            ordinary_contract = {
+                "schema": "decision-os-ordinary-user-path-view-v0.1",
+                "state": "NO_CONTRACT",
+                "status_label": "Select a Contract",
+                "progress_text": "Choose a local Git repository first.",
+                "operation_revision": 0,
+                "preparation_id": None,
+                "repository_identity": None,
+                "source_identity": None,
+                "review": None,
+                "clarification": None,
+                "allowed_actions": [],
+                "technical_details": {"active_request_id": None},
+                "action_error": None,
+            }
             intelligence_transplant = None
         else:
             store = AccelerationStore(self._repository)
@@ -1347,6 +1516,37 @@ class CompanionController:
                     "transfer_receipt": None,
                 }
             try:
+                ordinary_contract = self._require_ordinary_user_path().snapshot()
+            except OrdinaryUserPathError as exc:
+                ordinary_contract = {
+                    "schema": "decision-os-ordinary-user-path-view-v0.1",
+                    "state": "CANNOT_FIX_SAFELY",
+                    "status_label": "Cannot be fixed safely",
+                    "progress_text": "The ordinary Contract path is unavailable.",
+                    "operation_revision": 0,
+                    "preparation_id": None,
+                    "repository_identity": None,
+                    "source_identity": None,
+                    "review": None,
+                    "clarification": None,
+                    "allowed_actions": [],
+                    "technical_details": {"active_request_id": None},
+                    "action_error": {
+                        "schema": "decision-os-ordinary-action-error-v0.1",
+                        "error_id": exc.error_id,
+                        "scope": "SELECTION_PREPARATION",
+                        "code": exc.code,
+                        "what_failed": exc.message,
+                        "current_state": "CANNOT_FIX_SAFELY",
+                        "anything_fixed": "UNKNOWN_READ_BACK_REQUIRED",
+                        "user_action_required": "Use Advanced / Audit Mode only after integrity review.",
+                        "retryable": False,
+                        "operation_id": None,
+                        "recorded_at": None,
+                        "dismissed_at": None,
+                    },
+                }
+            try:
                 intelligence_transplant = (
                     self._require_intelligence_transplant().snapshot()
                 )
@@ -1422,6 +1622,7 @@ class CompanionController:
             "defaults": defaults,
             "manual_bridge": bridge,
             "guided_intake": guided_intake,
+            "ordinary_contract": ordinary_contract,
             "intelligence_transplant": intelligence_transplant,
             "supported": (
                 "Read-only work or one exact typed single-file create or modify."

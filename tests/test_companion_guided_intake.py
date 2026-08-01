@@ -29,6 +29,10 @@ from decision_os.companion.guided_intake import (
     structured_sha256,
 )
 from decision_os.companion.manual_bridge import BridgeSessionController
+from decision_os.companion.ordinary_user_path import (
+    ContractFixationCompiler,
+    ContractFixationInput,
+)
 
 
 AMBIGUOUS_REQUEST = (
@@ -3178,6 +3182,65 @@ class GuidedIntakeTestCase(unittest.TestCase):
         self.assertEqual(
             snapshot["request_identity"]["sha256"],
             sha256_bytes(hostile.encode("utf-8")),
+        )
+
+    def test_compiled_prepare_and_verified_freeze_read_back_use_native_history(
+        self,
+    ) -> None:
+        source_path = (
+            Path("tests/fixtures/ordinary_user_path_v0_1")
+            / "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md"
+        )
+        repository_identity = subprocess.run(
+            ("git", "rev-parse", "HEAD"),
+            cwd=self.repository,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        compiled = ContractFixationCompiler().compile(
+            ContractFixationInput(
+                source_bytes=source_path.read_bytes(),
+                filename=source_path.name,
+                repository_path=str(self.repository),
+                repository_identity=repository_identity,
+                active_prior_request_id=None,
+            )
+        )
+        prepared = self.controller.prepare_compiled_contract(
+            wrapper_bytes=compiled.wrapper_bytes,
+            draft_bytes=compiled.draft_bytes,
+            producer_label=compiled.producer_identity,
+            expected_prior_request_id=None,
+            request_id="GI-REQ-compiled",
+            draft_id="GI-DRAFT-compiled",
+            capture_event_id="GI-EVT-compiled-capture",
+            import_event_id="GI-EVT-compiled-import",
+            captured_at="2026-07-29T00:00:00Z",
+            imported_at="2026-07-29T00:00:01Z",
+        )
+        replay = self.controller.prepare_compiled_contract(
+            wrapper_bytes=compiled.wrapper_bytes,
+            draft_bytes=compiled.draft_bytes,
+            producer_label=compiled.producer_identity,
+            expected_prior_request_id=None,
+            request_id="GI-REQ-compiled",
+            draft_id="GI-DRAFT-compiled",
+            capture_event_id="GI-EVT-compiled-capture",
+            import_event_id="GI-EVT-compiled-import",
+            captured_at="2026-07-29T00:00:00Z",
+            imported_at="2026-07-29T00:00:01Z",
+        )
+        self.assertEqual(prepared["request_identity"], replay["request_identity"])
+        self.assertEqual("FREEZABLE", prepared["state"])
+        self.controller.freeze()
+        verified = self.controller.verified_current_freeze()
+        self.assertTrue(verified["current"])
+        self.assertEqual("GI-REQ-compiled", verified["request_id"])
+        self.assertEqual("GI-DRAFT-compiled", verified["draft_id"])
+        self.assertEqual(
+            self.controller.snapshot()["freeze"]["receipt"]["receipt_sha256"],
+            verified["receipt_sha256"],
         )
 
     def test_module_has_no_runner_codex_or_acceleration_import(self) -> None:

@@ -1,0 +1,13 @@
+{
+  "schema": "decision-os-ordinary-user-path-semantic-oracle-v0.1",
+  "source_sha256": "519bd39305af1a3a7cc35e61e1b9cfc742c5723d0cc64d0d970b070d0e65068e",
+  "interpretation_sha256": "7503f4b01c7c05c9ec3aed8855c9fd538c66b9b3b38840f423ec41c2101f4dd7",
+  "objective": "Preserve the exact embedded Ordinary User Path Contract v0.1 as an immutable interpretation artifact without authorizing implementation.",
+  "completion": "Complete when one current Guided Intake interpretation record exists for the active Wrapper Request, binds the exact embedded Contract SHA-256, records V9 as primary and V13 as supporting, records implementation authority as NONE, and records implementation as HOLD.",
+  "do_not_touch": [
+    "Do not implement, modify repository files, invoke models, merge, release, publish, Transfer, Run, or alter the embedded Contract."
+  ],
+  "authority_claim": "NONE",
+  "gate": "CLEAR ENOUGH TO FREEZE",
+  "open_material_unknown_count": 0
+}

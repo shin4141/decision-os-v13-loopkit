@@ -16,6 +16,9 @@ let guidedPurgedInputClearedIdentity = null;
 let guidedTransferredOriginalRequest = null;
 let importedContract = null;
 let contractImportGeneration = 0;
+let ordinaryFocusIntent = null;
+let ordinaryLastErrorId = null;
+let ordinaryLastRevision = -1;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -24,6 +27,9 @@ const GUIDED_INTAKE_AUTHORITY_CLAIM =
   "INTERPRETATION ONLY — NO EXECUTION AUTHORITY";
 const MANUAL_OWNER_AUTHORITY = "MANUAL OWNER ATTESTED";
 const CRYPTOGRAPHIC_PROVENANCE_NOT_ESTABLISHED = "NOT ESTABLISHED";
+const MAX_ORDINARY_CONTRACT_BYTES = 61_440;
+const EMPTY_SHA256 =
+  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 const byId = (id) => document.getElementById(id);
 
@@ -407,6 +413,159 @@ function renderIntelligenceTransplant(value, repository) {
   const error = panel ? panel.error || "" : "";
   setText("intelligence-transplant-error", error);
   setHidden("intelligence-transplant-error", !error);
+}
+
+function renderOrdinaryList(id, values, emptyText) {
+  const target = byId(id);
+  target.replaceChildren();
+  const items = Array.isArray(values) && values.length ? values : [emptyText];
+  for (const value of items) {
+    const item = document.createElement("li");
+    item.textContent = value == null ? "" : String(value);
+    target.append(item);
+  }
+}
+
+function friendlyFixedState(value) {
+  return {
+    NO: "No",
+    YES: "Yes",
+    UNKNOWN_READ_BACK_REQUIRED: "Unknown — receipt read-back is required",
+  }[value] || "Unknown";
+}
+
+function renderOrdinaryContract(ordinary, repository) {
+  const panel = ordinary && typeof ordinary === "object" ? ordinary : null;
+  const revision = Number.isInteger(panel?.operation_revision)
+    ? panel.operation_revision
+    : 0;
+  if (revision < ordinaryLastRevision && requestActive) {
+    return;
+  }
+  ordinaryLastRevision = Math.max(ordinaryLastRevision, revision);
+  const state = panel?.state || "NO_CONTRACT";
+  const review = panel?.review && typeof panel.review === "object"
+    ? panel.review
+    : null;
+  const clarification =
+    panel?.clarification && typeof panel.clarification === "object"
+      ? panel.clarification
+      : null;
+  const error =
+    panel?.action_error && typeof panel.action_error === "object"
+      ? panel.action_error
+      : null;
+  const actions = new Set(
+    Array.isArray(panel?.allowed_actions) ? panel.allowed_actions : [],
+  );
+
+  setText(
+    "ordinary-contract-status",
+    panel?.status_label || "Select a Contract",
+  );
+  setText(
+    "ordinary-contract-progress",
+    panel?.progress_text || "Choose one local Markdown or text Contract.",
+  );
+  setHidden("ordinary-contract-review", !review);
+  setText("ordinary-contract-preserves", review?.preserves || "");
+  setText("ordinary-contract-completion", review?.completion || "");
+  renderOrdinaryList(
+    "ordinary-contract-dnt",
+    review?.must_not_change,
+    "No additional protected wording is listed.",
+  );
+  renderOrdinaryList(
+    "ordinary-contract-unresolved",
+    review?.unresolved,
+    "Nothing remains unresolved.",
+  );
+  setText("ordinary-contract-authority", review?.does_not_authorize || "");
+
+  setHidden("ordinary-contract-clarification", !clarification);
+  setText("ordinary-contract-question", clarification?.question || "");
+  if (!clarification) {
+    byId("ordinary-contract-answer-confirm").checked = false;
+    byId("ordinary-contract-answer-reject").checked = false;
+  }
+  const answerSelected = Boolean(
+    byId("ordinary-contract-answer-confirm").checked ||
+      byId("ordinary-contract-answer-reject").checked,
+  );
+  byId("ordinary-contract-confirm").disabled =
+    !connected || requestActive || !actions.has("CONFIRM_ANSWER") || !answerSelected;
+  byId("ordinary-contract-answer-confirm").disabled =
+    !connected || requestActive || !actions.has("CONFIRM_ANSWER");
+  byId("ordinary-contract-answer-reject").disabled =
+    !connected || requestActive || !actions.has("CONFIRM_ANSWER");
+
+  byId("ordinary-contract-file").disabled =
+    !connected || requestActive || !repository || !actions.has("SELECT_CONTRACT");
+  byId("ordinary-contract-fix").disabled =
+    !connected || requestActive || !actions.has("FIX_CONTRACT");
+  const fixed = state === "FIXED";
+  setText(
+    "ordinary-contract-success",
+    fixed
+      ? "Contract fixed. This Contract can now be used to resume the same decision in this repository without reconstructing its meaning from scratch."
+      : "",
+  );
+  setHidden("ordinary-contract-success", !fixed);
+
+  setHidden("ordinary-contract-error", !error);
+  setText("ordinary-contract-error-what", error?.what_failed || "");
+  setText(
+    "ordinary-contract-error-state",
+    error ? panel?.status_label || "Action needs attention" : "",
+  );
+  setText(
+    "ordinary-contract-error-fixed",
+    error ? friendlyFixedState(error.anything_fixed) : "",
+  );
+  setText(
+    "ordinary-contract-error-action",
+    error?.user_action_required || "",
+  );
+  const retryableFix = Boolean(
+    error?.retryable &&
+      state === "FIX_FAILED" &&
+      panel?.preparation_id &&
+      panel?.technical_details,
+  );
+  byId("ordinary-contract-error-retry").disabled =
+    !connected || requestActive || !retryableFix;
+  setHidden("ordinary-contract-error-retry", !retryableFix);
+  byId("ordinary-contract-error-dismiss").disabled =
+    !connected || requestActive || !actions.has("DISMISS_ERROR");
+  setText(
+    "ordinary-contract-technical-body",
+    panel ? JSON.stringify(panel.technical_details || {}, null, 2) : "",
+  );
+
+  if (ordinaryFocusIntent === "prepare" && state === "NEEDS_CONFIRMATION") {
+    byId("ordinary-contract-question").focus();
+    ordinaryFocusIntent = null;
+  } else if (
+    ordinaryFocusIntent === "prepare" &&
+    ["REVIEW_READY", "CANNOT_FIX_SAFELY"].includes(state)
+  ) {
+    const status = byId("ordinary-contract-status");
+    status.setAttribute("tabindex", "-1");
+    status.focus();
+    ordinaryFocusIntent = null;
+  } else if (ordinaryFocusIntent === "fix" && fixed) {
+    byId("ordinary-contract-success").focus();
+    ordinaryFocusIntent = null;
+  } else if (
+    error &&
+    error.error_id &&
+    error.error_id !== ordinaryLastErrorId &&
+    ordinaryFocusIntent
+  ) {
+    ordinaryLastErrorId = error.error_id;
+    byId("ordinary-contract-error").focus();
+    ordinaryFocusIntent = null;
+  }
 }
 
 const guidedIntakeActionIds = [
@@ -973,12 +1132,28 @@ function render(state) {
         ? run
         : persistentTransplant;
   renderIntelligenceTransplant(transplantView, repository);
+  renderOrdinaryContract(state.ordinary_contract, repository);
   renderGuidedIntake(state.guided_intake, repository);
   renderBridge(state.manual_bridge, repository);
+  if (["PREPARING", "FIXING"].includes(state.ordinary_contract?.state)) {
+    byId("contract-file").disabled = true;
+    byId("contract-import").disabled = true;
+    byId("contract-use-guided-intake").disabled = true;
+    for (const id of [...guidedIntakeActionIds, ...guidedIntakeInputIds]) {
+      byId(id).disabled = true;
+    }
+  }
 }
 
 function disableStateChangingControls() {
   byId("choose-repository").disabled = true;
+  byId("ordinary-contract-file").disabled = true;
+  byId("ordinary-contract-confirm").disabled = true;
+  byId("ordinary-contract-answer-confirm").disabled = true;
+  byId("ordinary-contract-answer-reject").disabled = true;
+  byId("ordinary-contract-fix").disabled = true;
+  byId("ordinary-contract-error-retry").disabled = true;
+  byId("ordinary-contract-error-dismiss").disabled = true;
   byId("contract-file").disabled = true;
   byId("contract-import").disabled = true;
   byId("contract-use-guided-intake").disabled = true;
@@ -1040,6 +1215,9 @@ function enterDisconnected() {
   byId("repository-receipt").replaceChildren();
   setText("claim-boundary", "");
   renderIntelligenceTransplant(null, null);
+  ordinaryLastRevision = -1;
+  ordinaryLastErrorId = null;
+  renderOrdinaryContract(null, null);
   renderGuidedIntake(null, null);
   renderBridge(null, null);
 
@@ -1117,6 +1295,213 @@ async function postJSON(path, value) {
     requestActive = false;
   }
 }
+
+async function postOrdinaryJSON(path, value) {
+  if (!connected || requestActive) {
+    return null;
+  }
+  connectionGeneration += 1;
+  requestActive = true;
+  disableStateChangingControls();
+  try {
+    const response = await fetch(path, {
+      method: "POST",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Decision-OS-CSRF": csrfToken,
+      },
+      body: JSON.stringify(value),
+    });
+    let body;
+    try {
+      body = await response.json();
+    } catch (_error) {
+      throw new CompanionUnavailableError();
+    }
+    if (!response.ok) {
+      if (body?.ordinary_contract && latestState) {
+        latestState = { ...latestState, ordinary_contract: body.ordinary_contract };
+        renderOrdinaryContract(body.ordinary_contract, latestState.repository);
+      }
+      if (!body?.error || typeof body.error !== "object") {
+        throw new CompanionUnavailableError();
+      }
+      return null;
+    }
+    render(body);
+    return body;
+  } catch (_error) {
+    enterDisconnected();
+    return null;
+  } finally {
+    requestActive = false;
+    if (latestState) {
+      render(latestState);
+    }
+  }
+}
+
+function ordinaryBytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function ordinarySha256(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (value) =>
+    value.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+function ordinaryFixRequest() {
+  const panel = latestState?.ordinary_contract;
+  const source = panel?.source_identity;
+  const details = panel?.technical_details;
+  if (!panel?.preparation_id || !source || !details) {
+    return null;
+  }
+  return {
+    preparation_id: panel.preparation_id,
+    expected_repository_identity: panel.repository_identity,
+    expected_source_sha256: source.sha256,
+    expected_request_id: details.request_id,
+    expected_draft_id: details.draft_id,
+    expected_interpretation_sha256: details.interpretation_sha256,
+    idempotency_key: crypto.randomUUID(),
+  };
+}
+
+byId("ordinary-contract-file").addEventListener("change", async () => {
+  const file = byId("ordinary-contract-file").files?.[0] || null;
+  const panel = latestState?.ordinary_contract;
+  if (!file || !panel || !latestState?.repository) {
+    return;
+  }
+  if (typeof file.arrayBuffer !== "function") {
+    setText("ordinary-contract-status", "Cannot be fixed safely");
+    setText("ordinary-contract-progress", "The Contract could not be read locally.");
+    return;
+  }
+  ordinaryFocusIntent = "prepare";
+  setText("ordinary-contract-status", "Preparing…");
+  setText(
+    "ordinary-contract-progress",
+    "Reading exact bytes and checking the Contract safely.",
+  );
+  byId("ordinary-contract-file").disabled = true;
+  let bytes;
+  let sourceBase64 = "";
+  try {
+    if (Number(file.size) > MAX_ORDINARY_CONTRACT_BYTES) {
+      await postOrdinaryJSON("/api/ordinary-contract/prepare", {
+        filename: file.name,
+        source_base64: "",
+        source_byte_size: Number(file.size),
+        source_sha256: EMPTY_SHA256,
+        expected_repository_identity: panel.repository_identity,
+        expected_active_request_id:
+          panel.technical_details?.active_request_id ?? null,
+        idempotency_key: crypto.randomUUID(),
+      });
+      return;
+    }
+    bytes = new Uint8Array(await file.arrayBuffer());
+    const sourceSha256 = await ordinarySha256(bytes);
+    sourceBase64 = ordinaryBytesToBase64(bytes);
+    await postOrdinaryJSON("/api/ordinary-contract/prepare", {
+      filename: file.name,
+      source_base64: sourceBase64,
+      source_byte_size: bytes.byteLength,
+      source_sha256: sourceSha256,
+      expected_repository_identity: panel.repository_identity,
+      expected_active_request_id:
+        panel.technical_details?.active_request_id ?? null,
+      idempotency_key: crypto.randomUUID(),
+    });
+  } catch (_error) {
+    enterDisconnected();
+  } finally {
+    bytes?.fill(0);
+    sourceBase64 = "";
+    byId("ordinary-contract-file").value = "";
+  }
+});
+
+for (const id of [
+  "ordinary-contract-answer-confirm",
+  "ordinary-contract-answer-reject",
+]) {
+  byId(id).addEventListener("input", () => {
+    if (latestState) {
+      renderOrdinaryContract(
+        latestState.ordinary_contract,
+        latestState.repository,
+      );
+    }
+  });
+}
+
+byId("ordinary-contract-confirm").addEventListener("click", async () => {
+  const panel = latestState?.ordinary_contract;
+  const answer = byId("ordinary-contract-answer-confirm").checked
+    ? "CONFIRM"
+    : byId("ordinary-contract-answer-reject").checked
+      ? "REJECT"
+      : null;
+  if (!panel?.clarification || !answer) {
+    return;
+  }
+  ordinaryFocusIntent = "prepare";
+  await postOrdinaryJSON("/api/ordinary-contract/confirm", {
+    preparation_id: panel.preparation_id,
+    clarification_id: panel.clarification.clarification_id,
+    answer,
+    expected_interpretation_sha256:
+      panel.technical_details.interpretation_sha256,
+    idempotency_key: crypto.randomUUID(),
+  });
+});
+
+byId("ordinary-contract-fix").addEventListener("click", async () => {
+  const request = ordinaryFixRequest();
+  if (!request) {
+    return;
+  }
+  ordinaryFocusIntent = "fix";
+  setText("ordinary-contract-status", "Fixing…");
+  setText(
+    "ordinary-contract-progress",
+    "Rechecking the reviewed Contract and preserving its receipt.",
+  );
+  byId("ordinary-contract-fix").disabled = true;
+  await postOrdinaryJSON("/api/ordinary-contract/fix", request);
+});
+
+byId("ordinary-contract-error-retry").addEventListener("click", async () => {
+  const request = ordinaryFixRequest();
+  if (!request) {
+    return;
+  }
+  ordinaryFocusIntent = "fix";
+  await postOrdinaryJSON("/api/ordinary-contract/fix", request);
+});
+
+byId("ordinary-contract-error-dismiss").addEventListener("click", async () => {
+  const error = latestState?.ordinary_contract?.action_error;
+  if (!error?.error_id) {
+    return;
+  }
+  await postOrdinaryJSON("/api/ordinary-contract/error/dismiss", {
+    error_id: error.error_id,
+    idempotency_key: crypto.randomUUID(),
+  });
+});
 
 function contractFileSelectionChanged() {
   contractImportGeneration += 1;
