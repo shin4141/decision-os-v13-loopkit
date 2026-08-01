@@ -39,11 +39,19 @@ _DEVELOPER_INSTRUCTIONS = (
     "The read tool is read-only and cannot authorize a mutation. "
     "Do not mutate files through shell commands, other dynamic tools, or MCP "
     "tools. "
-    "Do not touch another path, and stop normally after the requested operation."
+    "Do not touch another path, and stop normally after the requested operation. "
+    "Do not reproduce the complete repository source file in the final response. "
+    "Report only what was changed, the path, and the bounded completion result."
 )
 _READ_TOOL_NAME = "read_repository_text_file"
 _READ_MAX_BYTES = 131_072
 _WINDOWS_ABSOLUTE_PATH = re.compile(r"^[A-Za-z]:[/\\]")
+_SOURCE_ECHO_MARKER = "[Repository source content withheld.]"
+_FENCE_OPENING = re.compile(
+    r"(?m)^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})[^\r\n]*(?P<eol>\r?\n)"
+)
+_BLANK_LINE_BEFORE = re.compile(r"(?:\r?\n)[ \t]*(?:\r?\n)\Z")
+_BLANK_LINE_AFTER = re.compile(r"\A(?:\r?\n)[ \t]*(?:\r?\n)")
 _READ_TOOL_SPEC = {
     "type": "function",
     "name": _READ_TOOL_NAME,
@@ -63,6 +71,115 @@ _READ_TOOL_SPEC = {
         },
     },
 }
+
+
+def _trailing_line_ending(value: str) -> str:
+    if value.endswith("\r\n"):
+        return "\r\n"
+    if value.endswith("\n"):
+        return "\n"
+    return ""
+
+
+def _replace_exact_spans(
+    value: str,
+    spans: list[tuple[int, int, str]],
+) -> str:
+    for start, end, replacement in reversed(spans):
+        value = f"{value[:start]}{replacement}{value[end:]}"
+    return value
+
+
+def _redact_fenced_source_echo(message: str, source_content: str) -> str:
+    spans: list[tuple[int, int, str]] = []
+    search_at = 0
+    while opening := _FENCE_OPENING.search(message, search_at):
+        fence = opening.group("fence")
+        closing_pattern = re.compile(
+            rf"(?m)^ {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}"
+            r"[ \t]*(?:\r?\n|\Z)"
+        )
+        closing = closing_pattern.search(message, opening.end())
+        if closing is None:
+            search_at = opening.end()
+            continue
+        body = message[opening.end() : closing.start()]
+        matched = body == source_content
+        if not matched:
+            matched = any(
+                body == f"{source_content}{line_ending}"
+                for line_ending in ("\r\n", "\n")
+            )
+        if matched:
+            boundary = _trailing_line_ending(body)
+            spans.append(
+                (
+                    opening.end(),
+                    closing.start(),
+                    f"{_SOURCE_ECHO_MARKER}{boundary}",
+                )
+            )
+        search_at = closing.end()
+    return _replace_exact_spans(message, spans)
+
+
+def _has_explicit_block_end(source_content: str, suffix: str) -> bool:
+    if not suffix:
+        return True
+    if _BLANK_LINE_AFTER.match(suffix) is not None:
+        return True
+    return bool(_trailing_line_ending(source_content)) and suffix.startswith(
+        ("\r\n", "\n")
+    )
+
+
+def _redact_separate_source_blocks(
+    message: str,
+    source_content: str,
+) -> str:
+    if not source_content.strip():
+        return message
+    spans: list[tuple[int, int, str]] = []
+    search_at = 0
+    while True:
+        start = message.find(source_content, search_at)
+        if start < 0:
+            break
+        end = start + len(source_content)
+        prefix = message[:start]
+        suffix = message[end:]
+        has_start = not prefix or _BLANK_LINE_BEFORE.search(prefix) is not None
+        if has_start and _has_explicit_block_end(source_content, suffix):
+            spans.append(
+                (
+                    start,
+                    end,
+                    f"{_SOURCE_ECHO_MARKER}"
+                    f"{_trailing_line_ending(source_content)}",
+                )
+            )
+        search_at = end
+    return _replace_exact_spans(message, spans)
+
+
+def _redact_complete_source_echo(message: str, source_content: str) -> str:
+    """Suppress only exact complete-source echoes with explicit structure."""
+
+    if not source_content:
+        return message
+    search_at = 0
+    while True:
+        start = message.find(source_content, search_at)
+        if start < 0:
+            break
+        end = start + len(source_content)
+        if not message[:start].strip() and not message[end:].strip():
+            return _SOURCE_ECHO_MARKER
+        search_at = end
+    guarded = _redact_fenced_source_echo(message, source_content)
+    return _redact_separate_source_blocks(guarded, source_content)
+
+
 _UNSUPPORTED_ITEM_TYPES = frozenset(
     {
         "collabAgentToolCall",
@@ -955,14 +1072,10 @@ class CodexAdapter:
     def _final_message_with_diagnostic(self, status: str) -> str:
         message = self._final_message
         read_binding = self._read_binding
-        if (
-            read_binding is not None
-            and read_binding.content
-            and read_binding.content in message
-        ):
-            message = message.replace(
+        if read_binding is not None:
+            message = _redact_complete_source_echo(
+                message,
                 read_binding.content,
-                "[Repository source content withheld.]",
             )
         if (
             status != "UNSUPPORTED_MUTATION"

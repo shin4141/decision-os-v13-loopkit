@@ -23,6 +23,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexLifecycleEvent,
     CodexRunResult,
     _SubprocessTransport,
+    _redact_complete_source_echo,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 
@@ -645,6 +646,63 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    def test_complete_source_echo_guard_preserves_short_and_partial_text(
+        self,
+    ) -> None:
+        cases = (
+            ("Changed target safely.", "a"),
+            ("Line one\n\nLine two\nLine three", "\n"),
+            ("Concatenate safely; do not recatalog anything.", "cat"),
+            (
+                "Prefix alpha\nbeta only; gamma was not reproduced.",
+                "alpha\nbeta\ngamma\n",
+            ),
+        )
+        for message, source_content in cases:
+            with self.subTest(source_content=source_content):
+                self.assertEqual(
+                    message,
+                    _redact_complete_source_echo(message, source_content),
+                )
+
+        self.assertEqual(
+            "unchanged",
+            _redact_complete_source_echo("unchanged", ""),
+        )
+
+    def test_complete_source_echo_guard_redacts_only_exact_structures(
+        self,
+    ) -> None:
+        marker = "[Repository source content withheld.]"
+        source_content = "alpha\nbeta\ngamma\n"
+        self.assertEqual(
+            marker,
+            _redact_complete_source_echo(
+                f" \t\n{source_content} \n",
+                source_content,
+            ),
+        )
+        self.assertEqual(
+            f"Prefix exact.\n\n```text\n{marker}\n```\n\nSuffix exact.",
+            _redact_complete_source_echo(
+                f"Prefix exact.\n\n```text\n{source_content}```\n\n"
+                "Suffix exact.",
+                source_content,
+            ),
+        )
+        long_source = (
+            "first bounded line\n"
+            "second bounded line\n"
+            "third bounded line\n"
+        )
+        self.assertEqual(
+            f"Prefix exact.\n\n{marker}\n\nSuffix exact.",
+            _redact_complete_source_echo(
+                f"Prefix exact.\n\n{long_source}\nSuffix exact.",
+                long_source,
+            ),
+        )
+
     def test_run_result_rejects_unbounded_unsupported_reason(self) -> None:
         common = {
             "run_id": "run-1",
@@ -713,7 +771,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("NORMAL_TERMINAL", result.status)
             self.assertTrue(result.normal_terminal)
             self.assertEqual(
-                "Before\n[Repository source content withheld.]After",
+                "Before\none\nAfter",
                 result.final_message,
             )
             self.assertEqual("", output.getvalue())
@@ -736,6 +794,12 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             sent = factory.transports[0].sent
             thread_start = next(
                 value for value in sent if value.get("method") == "thread/start"
+            )
+            self.assertIn(
+                "Do not reproduce the complete repository source file in the "
+                "final response. Report only what was changed, the path, and "
+                "the bounded completion result.",
+                thread_start["params"]["developerInstructions"],
             )
             self.assertEqual(
                 [
@@ -1231,6 +1295,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 approvals[0],
             )
             self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("Modify", result.file_actions[0].action)
+            self.assertEqual(
+                "target.txt",
+                result.file_actions[0].normalized_scope,
+            )
             self.assertEqual("one-time", result.file_actions[0].access)
             self.assertEqual("approved", result.file_actions[0].status)
             self.assertIsNone(result.unsupported_reason)

@@ -2858,7 +2858,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 ...baseRun,
                 state: "unsupported",
                 progress: ["Finalizing the local Receipt."],
-                result: "Line one\n日本語 🌐\nLine three",
+                result: "Guarded prefix\n[Repository source content withheld.]\n日本語 🌐\nGuarded suffix",
                 file_actions: [{
                   action: "Modify",
                   path: "decision_os/companion/static/app.js",
@@ -3253,7 +3253,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                       "Codex response copied." &&
                     window.__clipboardWrites.length === 1 &&
                     window.__clipboardWrites[0] ===
-                      "Line one\n日本語 🌐\nLine three" &&
+                      "Guarded prefix\n[Repository source content withheld.]\n日本語 🌐\nGuarded suffix" &&
                     latestState.run.state === "unsupported"
                   );
                   copy.click();
