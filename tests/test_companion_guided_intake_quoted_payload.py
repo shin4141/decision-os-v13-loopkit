@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import hashlib
 import json
 import os
@@ -250,6 +251,125 @@ class QuotedPayloadBoundaryTestCase(unittest.TestCase):
             active["interpretation"]["gate"],
             "HOLD — OBJECTIVE FIDELITY FAILURE",
         )
+
+    def test_output_constraint_before_begin_matches_legacy_fidelity(
+        self,
+    ) -> None:
+        legacy_request = (
+            "Preserve the wrapper boundary. Output format: JSON only. "
+            "Do not merge outside the quoted payload."
+        )
+        legacy = self.controller.capture(legacy_request)
+        legacy_imported = self.import_value(_clear_draft(legacy_request))
+
+        request = _quoted_request(
+            "Quoted policy evidence only.\n",
+            before_boundary="Output format: JSON only.\n",
+        )
+        self.controller.capture(
+            request,
+            legacy["request_identity"]["request_id"],
+        )
+        imported = self.import_value(_clear_draft(request))
+
+        self.assertEqual(
+            legacy_imported["interpretation"]["objective"][
+                "fidelity_status"
+            ],
+            "SUBSTITUTED",
+        )
+        self.assertEqual(
+            imported["interpretation"]["objective"]["fidelity_status"],
+            legacy_imported["interpretation"]["objective"][
+                "fidelity_status"
+            ],
+        )
+
+    def test_output_constraint_after_end_matches_legacy_fidelity(
+        self,
+    ) -> None:
+        legacy_request = (
+            "Preserve the wrapper boundary. Output format: JSON only. "
+            "Do not merge outside the quoted payload."
+        )
+        legacy = self.controller.capture(legacy_request)
+        legacy_imported = self.import_value(_clear_draft(legacy_request))
+
+        request = _quoted_request(
+            "Quoted policy evidence only.\n",
+            after_boundary="Output format: JSON only.\n",
+        )
+        self.controller.capture(
+            request,
+            legacy["request_identity"]["request_id"],
+        )
+        imported = self.import_value(_clear_draft(request))
+
+        self.assertEqual(
+            legacy_imported["interpretation"]["objective"][
+                "fidelity_status"
+            ],
+            "SUBSTITUTED",
+        )
+        self.assertEqual(
+            imported["interpretation"]["objective"]["fidelity_status"],
+            legacy_imported["interpretation"]["objective"][
+                "fidelity_status"
+            ],
+        )
+
+    def test_outer_no_network_prohibition_cannot_be_omitted(self) -> None:
+        request = _quoted_request(
+            "Quoted policy evidence only.\n",
+            before_boundary="No network access.\n",
+        )
+        self.controller.capture(request)
+        omitted_draft = _clear_draft(request)
+        omitted_draft["objective"]["atoms"][0]["support"].append(
+            _quote("No network access.")
+        )
+        omitted = self.import_value(omitted_draft)
+        self.assertTrue(omitted["interpretation"]["do_not_touch_conflict"])
+        self.assertEqual(
+            omitted["interpretation"]["gate"],
+            "HOLD — DO NOT TOUCH UNKNOWN",
+        )
+
+        supported_draft = deepcopy(_clear_draft(request))
+        supported_draft["do_not_touch"].append(
+            {
+                "item_id": "DNT-NETWORK",
+                "text": "No network access.",
+                "basis_kind": "USER_EXPLICIT",
+                "support": _quote("No network access."),
+            }
+        )
+        supported = self.import_value(supported_draft)
+        self.assertFalse(
+            supported["interpretation"]["do_not_touch_conflict"]
+        )
+        self.assertEqual(
+            supported["interpretation"]["gate"],
+            "CLEAR ENOUGH TO FREEZE",
+        )
+
+    def test_nonoperational_constraints_inside_payload_remain_inert(
+        self,
+    ) -> None:
+        request = _quoted_request(
+            "Output format: JSON only.\n"
+            "One repository only.\n"
+            "No network access.\n"
+        )
+        self.controller.capture(request)
+        imported = self.import_value(_clear_draft(request))
+        interpretation = imported["interpretation"]
+        self.assertEqual(
+            interpretation["objective"]["fidelity_status"],
+            "PRESERVED",
+        )
+        self.assertFalse(interpretation["do_not_touch_conflict"])
+        self.assertEqual(interpretation["gate"], "CLEAR ENOUGH TO FREEZE")
 
     def test_text_before_begin_and_after_end_cannot_be_hidden(self) -> None:
         payload = "Quoted policy evidence only.\n"

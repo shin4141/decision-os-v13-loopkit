@@ -118,15 +118,17 @@ state-schema change:
 | --- | --- | --- |
 | capture, storage, Forward-only history, identity, audit, display, receipts, Copy for Pro | complete raw Original Request | exact bytes, byte size, and SHA-256 remain unchanged |
 | exact quote occurrence, byte range, and quote hash | complete raw Original Request plus verified payload span | raw offset/hash semantics remain unchanged; active support overlapping the payload is rejected |
-| Objective action/clause and fidelity analysis | intent surface | verified payload body is replaced by a neutral role/SHA/byte-size/evidence-only record |
+| Objective action/clause and fidelity analysis | intent surface | only typed boundary material is excluded; every other outer clause retains legacy detection |
 | Do Not Touch prohibition and conflict analysis | intent surface | payload prohibitions cannot become active user instructions; text outside both markers remains active |
 | untyped uncertainty and clarification selection | intent surface | payload uncertainty cannot create an active clarification candidate |
 | draft authority and Completion analysis | validated active generated fields whose provenance is outside the payload | payload operations cannot inflate authority or Completion intent |
 
-The intent-surface replacement contains only the verified role, SHA-256, UTF-8
-byte count, and `QUOTED EVIDENCE ONLY; NON-OPERATIONAL` status. Text before
-`BEGIN` and after `END` is not replaced and continues through the existing
-intent and authority gates.
+The intent surface excludes only the verified payload body, both boundary
+marker lines, the three typed declaration label/value records, and any neutral
+boundary sentinel. No sentinel is currently inserted. Every other text byte
+before `BEGIN` or after `END` remains available to the existing intent and
+authority analyses. In particular, non-operational constraints do not need an
+action-root token to remain active.
 
 An Objective atom, `USER_EXPLICIT` Do Not Touch item, UNKNOWN basis, or other
 active generated-field support that overlaps the verified payload fails closed

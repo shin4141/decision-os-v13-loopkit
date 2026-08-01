@@ -594,20 +594,16 @@ class _QuotedPayloadBoundary:
     payload_char_end: int
     payload_byte_start: int
     payload_byte_end: int
+    excluded_char_spans: tuple[tuple[int, int], ...]
 
     def intent_surface(self, original: str) -> str:
-        neutral_record = (
-            "QUOTED PAYLOAD RECORD:\n"
-            f"Role: {self.role}\n"
-            f"SHA-256: {self.sha256}\n"
-            f"UTF-8 bytes: {self.byte_size}\n"
-            "Status: QUOTED EVIDENCE ONLY; NON-OPERATIONAL\n"
-        )
-        return (
-            original[: self.payload_char_start]
-            + neutral_record
-            + original[self.payload_char_end :]
-        )
+        parts: list[str] = []
+        cursor = 0
+        for start, end in self.excluded_char_spans:
+            parts.append(original[cursor:start])
+            cursor = end
+        parts.append(original[cursor:])
+        return "".join(parts)
 
     def overlaps(self, start: int, end: int) -> bool:
         return start < self.payload_char_end and end > self.payload_char_start
@@ -648,7 +644,7 @@ def _quoted_payload_boundary(
     if not begin.group("eol") or begin.start() >= end.start():
         invalid()
 
-    declaration_values: dict[str, tuple[int, str]] = {}
+    declaration_values: dict[str, tuple[re.Match[str], str]] = {}
     for label in _QUOTED_PAYLOAD_DECLARATIONS:
         if original.count(label) != 1:
             invalid()
@@ -664,12 +660,12 @@ def _quoted_payload_boundary(
         if len(matches) != 1 or matches[0].start() >= begin.start():
             invalid()
         declaration_values[label] = (
-            matches[0].start(),
+            matches[0],
             matches[0].group("value"),
         )
 
     declaration_positions = [
-        declaration_values[label][0]
+        declaration_values[label][0].start()
         for label in _QUOTED_PAYLOAD_DECLARATIONS
     ]
     if declaration_positions != sorted(declaration_positions):
@@ -704,6 +700,20 @@ def _quoted_payload_boundary(
     payload_byte_start = len(
         original[:payload_char_start].encode("utf-8")
     )
+    excluded_char_spans = tuple(
+        sorted(
+            (
+                *(
+                    (
+                        declaration_values[label][0].start(),
+                        declaration_values[label][0].end(),
+                    )
+                    for label in _QUOTED_PAYLOAD_DECLARATIONS
+                ),
+                (begin.start(), end.end()),
+            )
+        )
+    )
     return _QuotedPayloadBoundary(
         role=declared_role,
         sha256=declared_sha,
@@ -712,6 +722,7 @@ def _quoted_payload_boundary(
         payload_char_end=payload_char_end,
         payload_byte_start=payload_byte_start,
         payload_byte_end=payload_byte_start + len(payload),
+        excluded_char_spans=excluded_char_spans,
     )
 
 
@@ -2126,6 +2137,41 @@ def _objective_clause_core(value: str) -> str:
     return core.strip(" \t\r\n,;:.!?")
 
 
+def _quoted_objective_source(intent_surface: str) -> str:
+    """Keep active outer clauses while separating labeled non-Objective fields."""
+
+    source = re.sub(
+        (
+            r"^Completion Line:[ \t]*(?:\r\n|\n)"
+            r".*?(?=^Do Not Touch:[ \t]*(?:\r?$))"
+        ),
+        "",
+        intent_surface,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    source = re.sub(
+        r"^Target layers:[ \t]*(?:\r\n|\n)[^\r\n]*(?:\r\n|\n|$)",
+        "",
+        source,
+        flags=re.MULTILINE,
+    )
+    source = re.sub(
+        (
+            r"^[ \t]*# Product Contract Fixation Wrapper v0\.1"
+            r"[ \t]*(?:\r\n|\n|$)"
+        ),
+        "",
+        source,
+        flags=re.MULTILINE,
+    )
+    return re.sub(
+        r"^(?:Objective|Do Not Touch):[ \t]*(?:\r\n|\n|$)",
+        "",
+        source,
+        flags=re.MULTILINE,
+    )
+
+
 def _confirmation_contradicts_delta(
     answer: str,
     delta: Mapping[str, Any],
@@ -2351,6 +2397,9 @@ def _validate_objective(
     if not confirmation_supported:
         source_for_scan = intent_surface
         if quoted_payload is not None:
+            source_for_scan = _quoted_objective_source(
+                source_for_scan
+            )
             for support_quote in original_support_quotes:
                 source_for_scan = source_for_scan.replace(
                     support_quote,
@@ -2366,10 +2415,6 @@ def _validate_objective(
             lowered_clause = source_clause.casefold()
             if (
                 clause_tokens
-                and (
-                    quoted_payload is None
-                    or _objective_action_roots(clause_tokens)
-                )
                 and not _NEGATION_WINDOW.search(source_clause)
                 and not re.search(
                     r"\b(?:complete|completion|done|acceptance|success)\b",
@@ -2722,6 +2767,21 @@ def _explicit_prohibition_clauses(original: str) -> list[str]:
     return clauses
 
 
+def _quoted_explicit_prohibition_clauses(intent_surface: str) -> list[str]:
+    clauses: list[str] = []
+    for sentence in re.findall(r"[^.!?\n]+[.!?]?", intent_surface):
+        match = _NEGATION_WINDOW.search(sentence)
+        if match is None:
+            continue
+        prefix = sentence[: match.start()].rstrip()
+        if match.group(0).casefold() == "not" and prefix.endswith(","):
+            continue
+        prohibition = sentence[match.start() :].strip()
+        if prohibition:
+            clauses.append(prohibition)
+    return clauses
+
+
 def _missing_explicit_prohibition(
     original: str,
     do_not_touch: list[Mapping[str, Any]],
@@ -2740,14 +2800,17 @@ def _missing_explicit_prohibition(
     if quoted_payload is not None:
         for text in preserved:
             source_for_scan = source_for_scan.replace(text, "", 1)
-    clauses = _explicit_prohibition_clauses(source_for_scan)
+    clauses = (
+        _quoted_explicit_prohibition_clauses(source_for_scan)
+        if quoted_payload is not None
+        else _explicit_prohibition_clauses(source_for_scan)
+    )
     if quoted_payload is not None:
         clauses = [
             clause
             for clause in clauses
             if clause.casefold().strip(" \t\r\n,;:!?.")
             not in {"do not touch", "not touch"}
-            and _boundary_action_roots(_tokens(clause))
         ]
     return any(
         clause not in preserved
