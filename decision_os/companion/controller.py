@@ -1285,10 +1285,21 @@ class CompanionController:
                 "state": "denied",
                 "label": "No file was modified — change denied",
             }
-        else:
+        elif result.status in {
+            "NORMAL_TERMINAL",
+            "VERIFIED_SAVE",
+            "VERIFIED_REUSE",
+        }:
             file_change = {
                 "state": "none",
                 "label": "No file was modified",
+            }
+        else:
+            file_change = {
+                "state": "unknown",
+                "label": (
+                    "Not established — file-change outcome requires review"
+                ),
             }
 
         if result.status in {
@@ -1383,8 +1394,10 @@ class CompanionController:
                     "label": "Codex turn did not complete",
                 },
                 "file_change": {
-                    "state": "none",
-                    "label": "No file was modified",
+                    "state": "unknown",
+                    "label": (
+                        "Not established — file-change outcome requires review"
+                    ),
                 },
                 "verification": {
                     "state": "needs_attention",

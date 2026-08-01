@@ -2231,10 +2231,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               operationApprovalWasVisible: false,
               operationApprovalSeen: false,
               operationContinuingAfterApproval: false,
+              preparedContractTaskBinding: null,
               operationLastApprovalKey: null,
-              operationLastRunState: "idle",
               operationStartPending: false,
               operationTerminalTransitioned: false,
+              CONTRACT_TASK_MARKER: "Task to perform:",
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);
@@ -2256,17 +2257,110 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               sandbox,
             );
 
-            const fixed = { state: "FIXED" };
-            const repository = { name: "repo" };
+            const fixed = {
+              state: "FIXED",
+              repository_identity: "commit-a",
+              review: {
+                preserves: "One bounded operation.",
+                completion: "One observable result.",
+                must_not_change: ["No broad permission."],
+                unresolved: [],
+                does_not_authorize: "No automatic Run.",
+              },
+              technical_details: {
+                request_id: "GI-REQ-ONE",
+                interpretation_sha256: "a".repeat(64),
+              },
+            };
+            const repository = { name: "repo", path: "/tmp/repo" };
             const idle = { state: "idle", progress: [], approval: null };
-            let view = sandbox.operationPresentation(idle, null, false, null, {});
+            const emptyTask = {
+              mode: "empty",
+              runnable: false,
+              contextInserted: false,
+              stalePreparedContext: false,
+            };
+            const manualTask = {
+              mode: "manual",
+              runnable: true,
+              contextInserted: false,
+              stalePreparedContext: false,
+            };
+            let view = sandbox.operationPresentation(idle, null, emptyTask, null, {});
             assert.strictEqual(view.currentStage, null);
             assert.strictEqual(view.statuses.run, "Not started");
-            view = sandbox.operationPresentation(idle, fixed, true, repository, {});
+            view = sandbox.operationPresentation(idle, fixed, manualTask, repository, {});
             assert.strictEqual(view.currentStage, "task");
             assert.strictEqual(view.statuses.contract, "Complete");
             assert.strictEqual(view.statuses.task, "Current");
             assert.strictEqual(view.action, "Select Run to start this bounded task.");
+            const insertedTask = {
+              mode: "contract",
+              runnable: false,
+              contextInserted: true,
+              stalePreparedContext: false,
+            };
+            view = sandbox.operationPresentation(
+              idle,
+              fixed,
+              insertedTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.current, "Add bounded task");
+            assert.strictEqual(
+              view.happening,
+              "The fixed Contract context has been inserted.",
+            );
+            assert.strictEqual(
+              view.action,
+              "Write one exact task after “Task to perform:”.",
+            );
+
+            const staleFixed = { ...fixed, review: null };
+            view = sandbox.operationPresentation(
+              idle,
+              staleFixed,
+              emptyTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.statuses.contract, "Needs attention");
+            assert.notStrictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(
+              view.action,
+              "Select and fix this Contract for the current repository.",
+            );
+
+            view = sandbox.operationPresentation(
+              idle,
+              staleFixed,
+              manualTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.current, "Task ready");
+            assert.strictEqual(view.action, "Select Run to start this bounded task.");
+            view = sandbox.operationPresentation(
+              idle,
+              fixed,
+              {
+                mode: "contract",
+                runnable: false,
+                contextInserted: true,
+                stalePreparedContext: true,
+              },
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.statuses.task, "Needs attention");
+            assert.strictEqual(
+              view.action,
+              "Select and fix this Contract for the current repository.",
+            );
 
             elements.get("task").value = "one bounded task";
             sandbox.latestState = { ordinary_contract: fixed, repository };
@@ -2402,10 +2496,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const fs = require("fs");
             const vm = require("vm");
             const source = fs.readFileSync(process.argv[2], "utf8");
+            const contextStart = source.indexOf("function nonEmptyString");
+            const contextEnd = source.indexOf("\nfunction operationPresentation", contextStart);
             const start = source.indexOf("function ordinaryTaskStarterValue");
             const end = source.indexOf("\nfunction renderOrdinaryContract", start);
+            assert(contextStart >= 0 && contextEnd > contextStart);
             assert(start >= 0 && end > start);
-            const snippet = source.slice(start, end);
+            const snippet =
+              source.slice(contextStart, contextEnd) + source.slice(start, end);
             assert.strictEqual(snippet.includes("postJSON"), false);
             assert.strictEqual(snippet.includes("fetch("), false);
             assert.strictEqual(snippet.includes("/api/run"), false);
@@ -2419,12 +2517,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 this.listeners = new Map();
                 this.focusCalls = 0;
                 this.scrollCalls = 0;
+                this.selection = null;
               }
               addEventListener(name, callback) { this.listeners.set(name, callback); }
               dispatch(name) { this.listeners.get(name)?.(); }
               dispatchEvent() {}
               focus() { this.focusCalls += 1; }
               scrollIntoView() { this.scrollCalls += 1; }
+              setSelectionRange(start, end) { this.selection = [start, end]; }
               insertAdjacentElement(_position, element) {
                 elements.set(element.id, element);
               }
@@ -2435,10 +2535,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             ]);
             const fixed = {
               state: "FIXED",
-              repository_identity: { commit: "bea663" },
+              repository_identity: "commit-a",
               technical_details: {
                 request_id: "GI-REQ-ONE",
-                interpretation_sha256: "interpretation-sha",
+                interpretation_sha256: "a".repeat(64),
               },
               review: {
                 preserves: "The fixed decision meaning.",
@@ -2451,7 +2551,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const sandbox = {
               console,
               Event: class Event {},
-              latestState: { ordinary_contract: { state: "REVIEW_READY" } },
+              CONTRACT_TASK_MARKER: "Task to perform:",
+              preparedContractTaskBinding: null,
+              latestState: {
+                ordinary_contract: { state: "REVIEW_READY" },
+                repository: { name: "repo-a", path: "/tmp/repo-a" },
+              },
               displayValue: (value, fallback = "") => {
                 if (value == null || value === "") return fallback;
                 return typeof value === "string" ? value : JSON.stringify(value);
@@ -2461,36 +2566,73 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             };
             vm.createContext(sandbox);
             vm.runInContext(
-              snippet + "\nthis.ensureButton = ensureOrdinaryPrepareTaskButton;",
+              snippet +
+                "\nthis.ensureButton = ensureOrdinaryPrepareTaskButton;" +
+                "\nthis.taskReadiness = taskReadiness;",
               sandbox,
             );
             const button = sandbox.ensureButton();
-            assert.strictEqual(button.textContent, "Prepare bounded task");
+            assert.strictEqual(
+              button.textContent,
+              "Use this Contract for a bounded task",
+            );
             assert.strictEqual(elements.get("task").value, "");
 
             button.dispatch("click");
             assert.strictEqual(elements.get("task").value, "");
             assert.strictEqual(elements.get("task").focusCalls, 0);
 
-            sandbox.latestState = { ordinary_contract: fixed };
+            sandbox.latestState = {
+              ordinary_contract: fixed,
+              repository: { name: "repo-a", path: "/tmp/repo-a" },
+            };
             button.dispatch("click");
             assert(elements.get("task").value.includes("GI-REQ-ONE"));
             assert(elements.get("task").value.includes("No automatic Run."));
+            assert(elements.get("task").value.endsWith("Task to perform:"));
+            assert.strictEqual(
+              sandbox.taskReadiness(
+                fixed,
+                sandbox.latestState.repository,
+              ).runnable,
+              false,
+            );
+            assert.deepStrictEqual(
+              elements.get("task").selection,
+              [elements.get("task").value.length, elements.get("task").value.length],
+            );
             assert.strictEqual(elements.get("task").focusCalls, 1);
             assert.strictEqual(elements.get("task").scrollCalls, 1);
 
-            elements.get("task").value = "Keep my existing bounded task.";
-            button.dispatch("click");
+            elements.get("task").value += " Modify one exact file.";
             assert.strictEqual(
-              elements.get("task").value,
-              "Keep my existing bounded task.",
+              sandbox.taskReadiness(
+                fixed,
+                sandbox.latestState.repository,
+              ).runnable,
+              true,
             );
+            const preparedValue = elements.get("task").value;
+            button.dispatch("click");
+            assert.strictEqual(elements.get("task").value, preparedValue);
             assert.strictEqual(elements.get("task").focusCalls, 2);
             assert.strictEqual(elements.get("task").scrollCalls, 2);
+
+            const otherRepository = { name: "repo-b", path: "/tmp/repo-b" };
+            assert.strictEqual(
+              sandbox.taskReadiness(fixed, otherRepository).runnable,
+              false,
+            );
+            sandbox.preparedContractTaskBinding = null;
+            elements.get("task").value = "Keep my existing bounded task.";
+            const manual = sandbox.taskReadiness(null, otherRepository);
+            assert.strictEqual(manual.mode, "manual");
+            assert.strictEqual(manual.runnable, true);
 
             const renderStart = source.indexOf("function renderOrdinaryContract");
             const renderEnd = source.indexOf("\nconst guidedIntakeActionIds", renderStart);
             const renderSnippet = source.slice(renderStart, renderEnd);
+            assert(renderSnippet.includes("const fixed = usableCurrentOrdinaryContext(panel)"));
             assert(renderSnippet.includes("const prepareTaskButton = fixed"));
             assert(renderSnippet.includes("? ensureOrdinaryPrepareTaskButton()"));
             """
@@ -2562,8 +2704,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 action_error: null,
                 allowed_actions: ["SELECT_CONTRACT"],
                 source_identity: { filename: "contract.md" },
-                technical_details: {},
-                repository_identity: { commit: "browser-fixture" },
+                technical_details: {
+                  request_id: "GI-REQ-BROWSER",
+                  interpretation_sha256: "b".repeat(64),
+                },
+                repository_identity: "browser-fixture",
               };
               const baseRun = {
                 run_type: "bounded_task",
@@ -2715,8 +2860,38 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 const current = document.getElementById("operation-current");
                 if (probePhase === "idle" && current.textContent === "Contract fixed") {
                   const task = document.getElementById("task");
-                  task.value = "Modify one file only.";
+                  document.getElementById("ordinary-contract-prepare-task").click();
+                  document.body.dataset.contextIncomplete = String(
+                    task.value.endsWith("Task to perform:") &&
+                    document.getElementById("run").disabled &&
+                    current.textContent === "Add bounded task" &&
+                    document.getElementById("operation-happening").textContent ===
+                      "The fixed Contract context has been inserted." &&
+                    document.getElementById("operation-action").textContent ===
+                      "Write one exact task after “Task to perform:”." &&
+                    task.selectionStart === task.value.length &&
+                    task.selectionEnd === task.value.length
+                  );
+                  task.value += " Modify one file only.";
                   task.dispatchEvent(new Event("input", { bubbles: true }));
+                  document.body.dataset.contextReady = String(
+                    !document.getElementById("run").disabled &&
+                    current.textContent === "Task ready" &&
+                    document.getElementById("operation-action").textContent ===
+                      "Select Run to start this bounded task."
+                  );
+                  const switched = state(baseRun);
+                  switched.repository = {
+                    name: "other-repo",
+                    path: "/tmp/other-repo",
+                  };
+                  render(switched);
+                  document.body.dataset.contextSwitchBlocked = String(
+                    document.getElementById("run").disabled &&
+                    document.getElementById("operation-task-status").textContent ===
+                      "Needs attention"
+                  );
+                  render(state(baseRun));
                   document.getElementById("run").click();
                   document.body.dataset.startImmediate = String(
                     current.textContent === "Starting Run" &&
@@ -2868,6 +3043,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         )
         for name in (
             "start-immediate",
+            "context-incomplete",
+            "context-ready",
+            "context-switch-blocked",
             "working",
             "approval",
             "approval-answered-immediate",
@@ -2899,8 +3077,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const fs = require("fs");
             const vm = require("vm");
             const source = fs.readFileSync(process.argv[2], "utf8");
+            const contextStart = source.indexOf("function nonEmptyString");
+            const contextEnd = source.indexOf("\nfunction operationPresentation", contextStart);
             const start = source.indexOf("function renderOrdinaryList");
             const end = source.indexOf("\nconst guidedIntakeActionIds", start);
+            assert(contextStart >= 0 && contextEnd > contextStart);
             assert(start >= 0 && end > start);
 
             class Element {
@@ -2963,6 +3144,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               ordinaryLastErrorId: null,
               ordinarySelectedFilename: null,
               ordinarySelectedFilenameRevision: null,
+              CONTRACT_TASK_MARKER: "Task to perform:",
+              preparedContractTaskBinding: null,
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);
@@ -2973,7 +3156,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             };
             vm.createContext(sandbox);
             vm.runInContext(
-              source.slice(start, end) +
+              source.slice(contextStart, contextEnd) +
+                source.slice(start, end) +
                 "\nthis.renderOrdinaryContract = renderOrdinaryContract;" +
                 "\nthis.recordOrdinarySelectedFilename = recordOrdinarySelectedFilename;",
               sandbox,
@@ -3090,6 +3274,66 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(
               elements.get("ordinary-contract-selected-file").textContent,
               "Selected file: unsupported-server.md",
+            );
+
+            const staleFixed = {
+              ...prior,
+              state: "FIXED",
+              operation_revision: 12,
+              status_label: "Contract fixed",
+              progress_text: "Historical fixation remains recorded.",
+              review: null,
+              allowed_actions: ["SELECT_CONTRACT"],
+              repository_identity: "commit-b",
+              technical_details: {
+                request_id: "GI-REQ-AT-A",
+                interpretation_sha256: "a".repeat(64),
+                preparation_repository_identity: "commit-a",
+              },
+            };
+            sandbox.renderOrdinaryContract(
+              staleFixed,
+              { name: "repo", path: "/tmp/repo" },
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-status").textContent,
+              "Needs attention",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-progress").textContent,
+              "Select and fix this Contract for the current repository.",
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-success").classList.contains("hidden"),
+              true,
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
+              true,
+            );
+
+            const currentFixed = {
+              ...staleFixed,
+              operation_revision: 13,
+              review: prior.review,
+              repository_identity: "commit-b",
+              technical_details: {
+                request_id: "GI-REQ-AT-B",
+                interpretation_sha256: "b".repeat(64),
+                preparation_repository_identity: "commit-b",
+              },
+            };
+            sandbox.renderOrdinaryContract(
+              currentFixed,
+              { name: "repo", path: "/tmp/repo" },
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-success").classList.contains("hidden"),
+              false,
+            );
+            assert.strictEqual(
+              elements.get("ordinary-contract-prepare-task").classList.contains("hidden"),
+              false,
             );
             """
         )

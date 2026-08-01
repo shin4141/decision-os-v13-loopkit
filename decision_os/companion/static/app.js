@@ -28,6 +28,7 @@ let operationApprovalSeen = false;
 let operationContinuingAfterApproval = false;
 let operationTerminalTransitioned = false;
 let operationLastApprovalKey = null;
+let preparedContractTaskBinding = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -129,6 +130,7 @@ const TERMINAL_RUN_STATES = [
   "unsupported",
   "needs_attention",
 ];
+const CONTRACT_TASK_MARKER = "Task to perform:";
 
 function reducedMotionRequested() {
   return Boolean(
@@ -161,10 +163,95 @@ function approvalIdentity(approval) {
   return [approval.repository, approval.action, approval.path].join("|");
 }
 
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function validOrdinaryReview(review) {
+  return Boolean(
+    review &&
+      typeof review === "object" &&
+      !Array.isArray(review) &&
+      nonEmptyString(review.preserves) &&
+      nonEmptyString(review.completion) &&
+      Array.isArray(review.must_not_change) &&
+      review.must_not_change.every(nonEmptyString) &&
+      Array.isArray(review.unresolved) &&
+      review.unresolved.every(nonEmptyString) &&
+      nonEmptyString(review.does_not_authorize),
+  );
+}
+
+function usableCurrentOrdinaryContext(panel) {
+  const details = panel?.technical_details;
+  // The server withholds review unless the full preparation, native state,
+  // and current-repository binding is valid.  Do not reconstruct that
+  // security decision from client-supplied identities.
+  return Boolean(
+    panel?.state === "FIXED" &&
+      validOrdinaryReview(panel.review) &&
+      details &&
+      typeof details === "object" &&
+      nonEmptyString(details.request_id) &&
+      /^[0-9a-f]{64}$/i.test(details.interpretation_sha256 || "") &&
+      nonEmptyString(panel.repository_identity),
+  );
+}
+
+function ordinaryContextBinding(panel, repository) {
+  if (!usableCurrentOrdinaryContext(panel) || !nonEmptyString(repository?.path)) {
+    return null;
+  }
+  return JSON.stringify([
+    repository.path,
+    panel.repository_identity,
+    panel.technical_details.request_id,
+    panel.technical_details.interpretation_sha256,
+  ]);
+}
+
+function contractTaskUserText(value) {
+  const marker = `\n${CONTRACT_TASK_MARKER}`;
+  const markerIndex = value.lastIndexOf(marker);
+  if (markerIndex < 0) {
+    return null;
+  }
+  return value.slice(markerIndex + marker.length);
+}
+
+function taskReadiness(ordinary, repository) {
+  const value = byId("task").value;
+  if (value.trim().length === 0) {
+    return {
+      mode: "empty",
+      runnable: false,
+      contextInserted: false,
+      stalePreparedContext: false,
+    };
+  }
+  if (preparedContractTaskBinding === null) {
+    return {
+      mode: "manual",
+      runnable: true,
+      contextInserted: false,
+      stalePreparedContext: false,
+    };
+  }
+  const currentBinding = ordinaryContextBinding(ordinary, repository);
+  const userText = contractTaskUserText(value);
+  const bindingCurrent = currentBinding === preparedContractTaskBinding;
+  return {
+    mode: "contract",
+    runnable: bindingCurrent && userText !== null && userText.trim().length > 0,
+    contextInserted: userText !== null,
+    stalePreparedContext: !bindingCurrent,
+  };
+}
+
 function operationPresentation(
   run,
   ordinary,
-  hasTask,
+  task,
   repository,
   context = {},
 ) {
@@ -175,9 +262,17 @@ function operationPresentation(
   const startPending = Boolean(context.startPending);
   const approvalSeen = Boolean(context.approvalSeen);
   const continuing = Boolean(context.continuingAfterApproval);
-  const fixed = ordinary?.state === "FIXED";
+  const historicalFixed = ordinary?.state === "FIXED";
+  const fixed = usableCurrentOrdinaryContext(ordinary);
+  const staleFixed = historicalFixed && !fixed;
   const statuses = {
-    contract: fixed ? "Complete" : repository ? "Current" : "Not started",
+    contract: fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : repository
+          ? "Current"
+          : "Not started",
     task: "Not started",
     run: "Not started",
     approval: approvalSeen ? "Complete" : "Not started",
@@ -185,7 +280,11 @@ function operationPresentation(
   };
 
   if (startPending) {
-    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
     statuses.task = "Complete";
     statuses.run = "Waiting for system";
     return {
@@ -199,7 +298,11 @@ function operationPresentation(
   }
 
   if (state === "running") {
-    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
     statuses.task = "Complete";
     statuses.run = approval ? "Waiting for you" : "Waiting for system";
     if (approval) {
@@ -227,7 +330,11 @@ function operationPresentation(
 
   if (TERMINAL_RUN_STATES.includes(state)) {
     const needsAttention = ["unsupported", "needs_attention"].includes(state);
-    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.contract = fixed
+      ? "Complete"
+      : staleFixed
+        ? "Needs attention"
+        : "Not started";
     statuses.task = "Complete";
     statuses.run = needsAttention ? "Needs attention" : "Complete";
     statuses.result = needsAttention ? "Needs attention" : "Current";
@@ -245,7 +352,6 @@ function operationPresentation(
     };
   }
 
-  statuses.task = fixed ? "Current" : "Not started";
   if (!repository) {
     return {
       currentStage: null,
@@ -254,6 +360,30 @@ function operationPresentation(
       happening: "Choose one local Git repository.",
       action: "Choose one repository.",
       next: "The Contract stage will become available.",
+    };
+  }
+  if (task.mode === "manual" && task.runnable) {
+    statuses.task = "Current";
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Task ready",
+      happening: "One manually written bounded task is ready to start.",
+      action: "Select Run to start this bounded task.",
+      next: "The view will move to Run progress.",
+    };
+  }
+  if (task.stalePreparedContext || staleFixed) {
+    statuses.task = task.stalePreparedContext
+      ? "Needs attention"
+      : "Not started";
+    return {
+      currentStage: "contract",
+      statuses,
+      current: "Contract needs attention",
+      happening: "The prior fixed Contract context is not current for this repository.",
+      action: "Select and fix this Contract for the current repository.",
+      next: "A current server-verified Contract context will then become available.",
     };
   }
   if (!fixed) {
@@ -266,19 +396,30 @@ function operationPresentation(
       next: "You will review its interpretation before fixing it.",
     };
   }
+  statuses.task = "Current";
+  if (task.contextInserted && !task.runnable) {
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Add bounded task",
+      happening: "The fixed Contract context has been inserted.",
+      action: "Write one exact task after “Task to perform:”.",
+      next: "Run becomes available after the exact task is added.",
+    };
+  }
   return {
     currentStage: "task",
     statuses,
-    current: hasTask ? "Task ready" : "Contract fixed",
-    happening: hasTask
+    current: task.runnable ? "Task ready" : "Contract fixed",
+    happening: task.runnable
       ? "One bounded task is ready to start."
       : "The fixed Contract context is ready for a bounded task.",
-    action: hasTask
+    action: task.runnable
       ? "Select Run to start this bounded task."
-      : "Enter or prepare one bounded task.",
-    next: hasTask
+      : "Use this Contract for a bounded task.",
+    next: task.runnable
       ? "The view will move to Run progress."
-      : "Run becomes available after a task is present.",
+      : "The Contract context will be inserted without starting a Run.",
   };
 }
 
@@ -286,7 +427,7 @@ function renderOperationAwareness(run, ordinary, repository) {
   const presentation = operationPresentation(
     run,
     ordinary,
-    byId("task").value.trim().length > 0,
+    taskReadiness(ordinary, repository),
     repository,
     {
       approvalResponsePending: operationApprovalResponsePending,
@@ -488,7 +629,8 @@ function renderResult(run) {
   setText("result-execution", outcomes.execution?.label || "Not established");
   setText(
     "result-file-change",
-    outcomes.file_change?.label || "No file was modified",
+    outcomes.file_change?.label ||
+      "Not established — file-change outcome requires review",
   );
   setText(
     "result-verification",
@@ -769,7 +911,7 @@ function syncOrdinarySelectedFilename(panel) {
   showOrdinarySelectedFilename(ordinarySelectedFilename);
 }
 
-function ordinaryTaskStarterValue(value, fallback = "UNKNOWN") {
+function ordinaryTaskStarterValue(value, fallback = "") {
   const concise = displayValue(value, fallback).replace(/\s+/g, " ").trim();
   return concise || fallback;
 }
@@ -800,6 +942,7 @@ function ordinaryFixedTaskStarter(panel) {
     `What must not be changed: ${ordinaryTaskStarterList(review.must_not_change, "No additional protected wording is listed.")}`,
     `What remains unresolved: ${ordinaryTaskStarterList(review.unresolved, "Nothing remains unresolved.")}`,
     `What the operation does not authorize: ${ordinaryTaskStarterValue(review.does_not_authorize)}`,
+    CONTRACT_TASK_MARKER,
   ].join("\n");
 }
 
@@ -811,19 +954,23 @@ function ensureOrdinaryPrepareTaskButton() {
   button = document.createElement("button");
   button.id = "ordinary-contract-prepare-task";
   button.type = "button";
-  button.textContent = "Prepare bounded task";
+  button.textContent = "Use this Contract for a bounded task";
   button.addEventListener("click", () => {
     const panel = latestState?.ordinary_contract;
-    if (panel?.state !== "FIXED") {
+    const repository = latestState?.repository;
+    const binding = ordinaryContextBinding(panel, repository);
+    if (binding === null) {
       return;
     }
     const task = byId("task");
     if (task.value.trim().length === 0) {
+      preparedContractTaskBinding = binding;
       task.value = ordinaryFixedTaskStarter(panel);
       task.dispatchEvent(new Event("input", { bubbles: true }));
     }
     task.scrollIntoView?.({ block: "center" });
     task.focus();
+    task.setSelectionRange?.(task.value.length, task.value.length);
   });
   byId("ordinary-contract-success").insertAdjacentElement("afterend", button);
   return button;
@@ -899,7 +1046,15 @@ function renderOrdinaryContract(ordinary, repository) {
     !connected || requestActive || !repository || !actions.has("SELECT_CONTRACT");
   byId("ordinary-contract-fix").disabled =
     !connected || requestActive || !actions.has("FIX_CONTRACT");
-  const fixed = state === "FIXED";
+  const fixed = usableCurrentOrdinaryContext(panel);
+  const staleFixed = state === "FIXED" && !fixed;
+  if (staleFixed) {
+    setText("ordinary-contract-status", "Needs attention");
+    setText(
+      "ordinary-contract-progress",
+      "Select and fix this Contract for the current repository.",
+    );
+  }
   setText(
     "ordinary-contract-success",
     fixed
@@ -1494,13 +1649,14 @@ function render(state) {
         error: null,
       };
   const running = boundedRun && run.state === "running";
+  const currentTask = taskReadiness(state.ordinary_contract, repository);
   setHidden("bounded-task-card", !boundedRun);
   setHidden("bounded-run-receipt-column", !boundedRun);
   byId("run").disabled =
     !boundedRun ||
     running ||
     !repository ||
-    byId("task").value.trim().length === 0;
+    !currentTask.runnable;
   byId("choose-repository").disabled = running;
   byId("task").disabled = !boundedRun || running;
 
@@ -2037,6 +2193,9 @@ for (const [index, button] of operationStageButtons.entries()) {
 }
 
 byId("task").addEventListener("input", () => {
+  if (byId("task").value.trim().length === 0) {
+    preparedContractTaskBinding = null;
+  }
   if (connected && latestState) {
     render(latestState);
   }
@@ -2047,7 +2206,11 @@ byId("choose-repository").addEventListener("click", async () => {
 });
 
 byId("run").addEventListener("click", async () => {
-  if (byId("run").disabled || requestActive) {
+  const currentTask = taskReadiness(
+    latestState?.ordinary_contract,
+    latestState?.repository,
+  );
+  if (byId("run").disabled || requestActive || !currentTask.runnable) {
     return;
   }
   beginOperationRun();
@@ -2066,6 +2229,7 @@ byId("new-run").addEventListener("click", async () => {
     operationStartPending = false;
     resetOperationTransitionMemory();
     byId("task").value = "";
+    preparedContractTaskBinding = null;
     render(state);
     byId("task").focus();
   }
