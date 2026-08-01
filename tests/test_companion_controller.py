@@ -433,6 +433,10 @@ class CompanionControllerTest(unittest.TestCase):
                 idempotency_key=str(uuid.uuid4()),
             )["ordinary_contract"]
             self.assertEqual("REVIEW_READY", prepared["state"])
+            self.assertEqual(
+                "INTERPRETATION_ONLY",
+                prepared["execution_authority"],
+            )
             technical = prepared["technical_details"]
             fixed = controller.ordinary_contract_fix(
                 preparation_id=prepared["preparation_id"],
@@ -446,6 +450,10 @@ class CompanionControllerTest(unittest.TestCase):
                 idempotency_key=str(uuid.uuid4()),
             )["ordinary_contract"]
             self.assertEqual("FIXED", fixed["state"])
+            self.assertEqual(
+                "INTERPRETATION_ONLY",
+                fixed["execution_authority"],
+            )
             self.assertEqual(0, len(factory.modes))
 
     def test_ordinary_contract_corruption_is_panel_local(self) -> None:

@@ -408,7 +408,9 @@ summary:focus-visible {
 }
 
 .ordinary-contract-card,
+.ordinary-contract-meaning,
 .ordinary-review,
+.ordinary-review-content,
 .ordinary-review-field,
 .ordinary-progress,
 .ordinary-action-error,
@@ -427,10 +429,55 @@ summary:focus-visible {
   margin: 0.8rem 0 1rem;
 }
 
+.ordinary-contract-meaning {
+  background: #f7f8fb;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 1rem 0;
+  padding: 1rem;
+}
+
+.ordinary-contract-meaning > p {
+  line-height: 1.55;
+  margin-bottom: 0.75rem;
+}
+
+.ordinary-contract-usage {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 0.75rem;
+}
+
+.ordinary-contract-usage > div {
+  min-width: 0;
+}
+
+.ordinary-contract-usage dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.ordinary-contract-usage dd {
+  font-weight: 700;
+}
+
 .ordinary-review {
+  margin: 1rem 0;
+}
+
+.ordinary-review > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ordinary-review-content {
   display: grid;
   gap: 0.85rem;
-  margin: 1rem 0;
+  margin-top: 0.85rem;
 }
 
 .ordinary-review-field {
