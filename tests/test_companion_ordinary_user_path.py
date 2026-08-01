@@ -392,6 +392,80 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
                 stale[field] = replacement
                 self.assertFalse(binding(stale, guided_state, self.head))
 
+    def test_restart_after_repository_advance_projects_current_identity(self) -> None:
+        with self.assertRaises(OrdinaryUserPathError) as raised:
+            self.prepare(filename="Contract.pdf")
+        self.assertEqual("PREP_UNSUPPORTED_EXTENSION", raised.exception.code)
+        failed_at_a = self.coordinator.snapshot()
+        preparation_id = failed_at_a["preparation_id"]
+        error = failed_at_a["action_error"]
+        self.assertEqual(self.head, failed_at_a["repository_identity"])
+        self.assertEqual(
+            self.head,
+            failed_at_a["technical_details"]["preparation_repository_identity"],
+        )
+        before_native_state = self.guided.store.load_state()
+        before_events = self.guided.store.read_events()
+
+        (self.repository / "tracked.txt").write_text(
+            "test\nrepository advanced\n",
+            encoding="utf-8",
+        )
+        subprocess.run(
+            ("git", "-C", str(self.repository), "add", "tracked.txt"),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "-C", str(self.repository), "commit", "-qm", "advance"),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        head_b = subprocess.run(
+            ("git", "-C", str(self.repository), "rev-parse", "HEAD"),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        self.assertNotEqual(self.head, head_b)
+
+        restarted_guided = GuidedIntakeController(self.repository)
+        restarted = OrdinaryUserPathCoordinator(self.repository, restarted_guided)
+        restarted.recover_incomplete()
+        restarted_panel = restarted.snapshot()
+        self.assertEqual("CANNOT_FIX_SAFELY", restarted_panel["state"])
+        self.assertEqual(head_b, restarted_panel["repository_identity"])
+        self.assertEqual(
+            self.head,
+            restarted_panel["technical_details"][
+                "preparation_repository_identity"
+            ],
+        )
+        self.assertEqual(preparation_id, restarted_panel["preparation_id"])
+        self.assertEqual(error, restarted_panel["action_error"])
+        self.assertIsNone(restarted_panel["review"])
+        self.assertIsNone(restarted_panel["clarification"])
+        self.assertNotIn("FIX_CONTRACT", restarted_panel["allowed_actions"])
+        self.assertIn("SELECT_CONTRACT", restarted_panel["allowed_actions"])
+        self.assertEqual(before_native_state, restarted_guided.store.load_state())
+        self.assertEqual(before_events, restarted_guided.store.read_events())
+
+        prepared_at_b = restarted.prepare(
+            filename=SOURCE_PATH.name,
+            source_bytes=self.source,
+            source_byte_size=len(self.source),
+            source_sha256=sha256_bytes(self.source),
+            expected_repository_identity=head_b,
+            expected_active_request_id=None,
+            idempotency_key=str(uuid.uuid4()),
+        )
+        self.assertEqual("REVIEW_READY", prepared_at_b["state"])
+        self.assertEqual(head_b, prepared_at_b["repository_identity"])
+        fixed = restarted.fix(**self.fix_request(prepared_at_b))
+        self.assertEqual("FIXED", fixed["state"])
+
     def test_corrupt_sidecar_state_fails_closed(self) -> None:
         self.prepare()
         before = self.guided.store.read_events()
