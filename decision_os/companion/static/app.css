@@ -558,6 +558,48 @@ summary:focus-visible {
   margin-top: 0.35rem;
 }
 
+.response-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.response-heading h3 {
+  margin-bottom: 0.45rem;
+}
+
+.compact-action {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.75rem;
+}
+
+.read-evidence-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.read-evidence-item {
+  background: #f7f8fb;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.3rem 0.8rem;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0;
+  padding: 0.8rem;
+}
+
+.read-evidence-item dt {
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.read-evidence-item dd {
+  overflow-wrap: anywhere;
+}
+
 .technical-details {
   border-top: 1px solid var(--line);
   margin-top: 1rem;
@@ -760,6 +802,7 @@ dd {
   }
 
   .section-heading,
+  .response-heading,
   .file-action,
   .default-row {
     align-items: stretch;

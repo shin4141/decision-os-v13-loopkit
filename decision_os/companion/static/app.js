@@ -30,6 +30,8 @@ let operationTerminalTransitioned = false;
 let operationLastApprovalKey = null;
 let preparedContractTaskBinding = null;
 let ordinaryReviewDisclosureIdentity = null;
+let currentCodexResponse = "";
+let copyResponseResetTimer = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -696,6 +698,81 @@ function renderRuntime(runtime) {
   }
 }
 
+function renderReadEvidence(evidence) {
+  const values = Array.isArray(evidence) ? evidence : [];
+  const target = byId("read-evidence-list");
+  target.replaceChildren();
+  setHidden("read-evidence-card", values.length === 0);
+  for (const value of values) {
+    const item = document.createElement("dl");
+    item.className = "read-evidence-item";
+    const rows = [
+      ["Status", value.status],
+      ["Path", value.path],
+      ["Bytes", value.bytes],
+      ["SHA-256", value.sha256],
+      ["Repository", value.repository_identity],
+      ["Reason", value.reason],
+    ];
+    for (const [label, field] of rows) {
+      if (field == null || field === "") {
+        continue;
+      }
+      const term = document.createElement("dt");
+      const detail = document.createElement("dd");
+      term.textContent = label;
+      detail.textContent = String(field);
+      item.append(term, detail);
+    }
+    target.append(item);
+  }
+}
+
+function resetCopyResponseFeedback() {
+  if (copyResponseResetTimer !== null) {
+    window.clearTimeout?.(copyResponseResetTimer);
+    copyResponseResetTimer = null;
+  }
+  setText("copy-response", "Copy response");
+  setText("copy-response-status", "");
+}
+
+function renderCopyResponse(response, terminal) {
+  const exactResponse = typeof response === "string" ? response : "";
+  if (exactResponse !== currentCodexResponse) {
+    currentCodexResponse = exactResponse;
+    resetCopyResponseFeedback();
+  }
+  const available = terminal && currentCodexResponse.length > 0;
+  setHidden("copy-response", !available);
+  byId("copy-response").disabled = !available;
+}
+
+async function writeClipboardText(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const activeElement = document.activeElement;
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const localCopy = document.createElement("textarea");
+  localCopy.value = value;
+  localCopy.readOnly = true;
+  localCopy.setAttribute("aria-hidden", "true");
+  localCopy.style.position = "fixed";
+  localCopy.style.inset = "0 auto auto -10000px";
+  document.body.append(localCopy);
+  localCopy.select();
+  const copied = document.execCommand?.("copy") === true;
+  localCopy.remove();
+  activeElement?.focus?.({ preventScroll: true });
+  window.scrollTo?.(scrollX, scrollY);
+  if (!copied) {
+    throw new Error("Clipboard copy failed.");
+  }
+}
+
 function renderResult(run) {
   const terminal = TERMINAL_RUN_STATES.includes(run.state);
   setHidden("result-card", !terminal);
@@ -727,8 +804,10 @@ function renderResult(run) {
         ? "The bounded Run completed without a final text response."
         : run.error || "No final result was available."),
   );
+  renderCopyResponse(run.result, terminal);
   renderActions(run.file_actions);
   renderRuntime(run.runtime);
+  renderReadEvidence(run.read_evidence);
 }
 
 function renderApproval(approval) {
@@ -1753,6 +1832,7 @@ function render(state) {
         progress: [],
         result: "",
         file_actions: [],
+        read_evidence: [],
         outcomes: null,
         runtime: null,
         receipt_delta: null,
@@ -1872,6 +1952,7 @@ function enterDisconnected() {
     progress: [],
     result: "",
     file_actions: [],
+    read_evidence: [],
     outcomes: null,
     runtime: null,
     receipt_delta: null,
@@ -2343,6 +2424,35 @@ byId("new-run").addEventListener("click", async () => {
     preparedContractTaskBinding = null;
     render(state);
     byId("task").focus();
+  }
+});
+
+byId("copy-response").addEventListener("click", async () => {
+  const response = currentCodexResponse;
+  if (byId("copy-response").disabled || response.length === 0) {
+    return;
+  }
+  try {
+    await writeClipboardText(response);
+    setText("copy-response", "Copied");
+    setText("copy-response-status", "Codex response copied.");
+    if (copyResponseResetTimer !== null) {
+      window.clearTimeout?.(copyResponseResetTimer);
+    }
+    copyResponseResetTimer = window.setTimeout(() => {
+      if (currentCodexResponse === response) {
+        setText("copy-response", "Copy response");
+        setText("copy-response-status", "");
+      }
+      copyResponseResetTimer = null;
+    }, 1600);
+  } catch (_error) {
+    if (copyResponseResetTimer !== null) {
+      window.clearTimeout?.(copyResponseResetTimer);
+      copyResponseResetTimer = null;
+    }
+    setText("copy-response", "Copy failed");
+    setText("copy-response-status", "Codex response could not be copied.");
   }
 });
 

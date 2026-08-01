@@ -7,13 +7,16 @@ import copy
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
+import re
+import stat
 import subprocess
 import threading
 from typing import Any, Protocol, TextIO
 
 from .engine import AccelerationEngine, CheckpointOutcome, DecisionOutcome
-from .model import DecisionType, ScopeError, normalize_scope
+from .model import DecisionType, ScopeError, git_output, normalize_scope
 
 
 BUNDLED_CODEX_PATH = Path(
@@ -30,15 +33,157 @@ _CLIENT_VERSION = "0.1.0"
 _DEVELOPER_INSTRUCTIONS = (
     "Perform only the requested bounded file operation. "
     "Do not use shell commands. "
+    "Before modifying an existing file, use read_repository_text_file once "
+    "for that exact repository-relative path. "
     "Use the typed file-change tool for exactly one file mutation. "
-    "Do not mutate files through shell commands, dynamic tools, or MCP tools. "
-    "Do not touch another path, and stop normally after the requested operation."
+    "The read tool is read-only and cannot authorize a mutation. "
+    "Do not mutate files through shell commands, other dynamic tools, or MCP "
+    "tools. "
+    "Do not touch another path, and stop normally after the requested operation. "
+    "Do not reproduce the complete repository source file in the final response. "
+    "Report only what was changed, the path, and the bounded completion result."
 )
+_READ_TOOL_NAME = "read_repository_text_file"
+_READ_MAX_BYTES = 131_072
+_WINDOWS_ABSOLUTE_PATH = re.compile(r"^[A-Za-z]:[/\\]")
+_SOURCE_ECHO_MARKER = "[Repository source content withheld.]"
+_FENCE_OPENING = re.compile(
+    r"(?m)^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})[^\r\n]*(?P<eol>\r?\n)"
+)
+_BLANK_LINE_BEFORE = re.compile(r"(?:\r?\n)[ \t]*(?:\r?\n)\Z")
+_BLANK_LINE_AFTER = re.compile(r"\A(?:\r?\n)[ \t]*(?:\r?\n)")
+_READ_TOOL_SPEC = {
+    "type": "function",
+    "name": _READ_TOOL_NAME,
+    "description": (
+        "Read one existing strict UTF-8 text file inside the selected "
+        "repository before proposing a modification to that same file."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["path"],
+        "properties": {
+            "path": {
+                "type": "string",
+                "minLength": 1,
+            }
+        },
+    },
+}
+
+
+def _trailing_line_ending(value: str) -> str:
+    if value.endswith("\r\n"):
+        return "\r\n"
+    if value.endswith("\n"):
+        return "\n"
+    return ""
+
+
+def _replace_exact_spans(
+    value: str,
+    spans: list[tuple[int, int, str]],
+) -> str:
+    for start, end, replacement in reversed(spans):
+        value = f"{value[:start]}{replacement}{value[end:]}"
+    return value
+
+
+def _redact_fenced_source_echo(message: str, source_content: str) -> str:
+    spans: list[tuple[int, int, str]] = []
+    search_at = 0
+    while opening := _FENCE_OPENING.search(message, search_at):
+        fence = opening.group("fence")
+        closing_pattern = re.compile(
+            rf"(?m)^ {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}"
+            r"[ \t]*(?:\r?\n|\Z)"
+        )
+        closing = closing_pattern.search(message, opening.end())
+        if closing is None:
+            search_at = opening.end()
+            continue
+        body = message[opening.end() : closing.start()]
+        matched = body == source_content
+        if not matched:
+            matched = any(
+                body == f"{source_content}{line_ending}"
+                for line_ending in ("\r\n", "\n")
+            )
+        if matched:
+            boundary = _trailing_line_ending(body)
+            spans.append(
+                (
+                    opening.end(),
+                    closing.start(),
+                    f"{_SOURCE_ECHO_MARKER}{boundary}",
+                )
+            )
+        search_at = closing.end()
+    return _replace_exact_spans(message, spans)
+
+
+def _has_explicit_block_end(source_content: str, suffix: str) -> bool:
+    if not suffix:
+        return True
+    if _BLANK_LINE_AFTER.match(suffix) is not None:
+        return True
+    return bool(_trailing_line_ending(source_content)) and suffix.startswith(
+        ("\r\n", "\n")
+    )
+
+
+def _redact_separate_source_blocks(
+    message: str,
+    source_content: str,
+) -> str:
+    if not source_content.strip():
+        return message
+    spans: list[tuple[int, int, str]] = []
+    search_at = 0
+    while True:
+        start = message.find(source_content, search_at)
+        if start < 0:
+            break
+        end = start + len(source_content)
+        prefix = message[:start]
+        suffix = message[end:]
+        has_start = not prefix or _BLANK_LINE_BEFORE.search(prefix) is not None
+        if has_start and _has_explicit_block_end(source_content, suffix):
+            spans.append(
+                (
+                    start,
+                    end,
+                    f"{_SOURCE_ECHO_MARKER}"
+                    f"{_trailing_line_ending(source_content)}",
+                )
+            )
+        search_at = end
+    return _replace_exact_spans(message, spans)
+
+
+def _redact_complete_source_echo(message: str, source_content: str) -> str:
+    """Suppress only exact complete-source echoes with explicit structure."""
+
+    if not source_content:
+        return message
+    search_at = 0
+    while True:
+        start = message.find(source_content, search_at)
+        if start < 0:
+            break
+        end = start + len(source_content)
+        if not message[:start].strip() and not message[end:].strip():
+            return _SOURCE_ECHO_MARKER
+        search_at = end
+    guarded = _redact_fenced_source_echo(message, source_content)
+    return _redact_separate_source_blocks(guarded, source_content)
+
+
 _UNSUPPORTED_ITEM_TYPES = frozenset(
     {
         "collabAgentToolCall",
         "commandExecution",
-        "dynamicToolCall",
         "hookPrompt",
         "imageGeneration",
         "mcpToolCall",
@@ -57,6 +202,19 @@ _UNSUPPORTED_REASON_CODES = frozenset(
         "additional_file_action_item",
         "duplicate_file_action_item_after_completion",
         "duplicate_approval_request",
+        "modify_requires_repository_read",
+        "read_file_not_utf8",
+        "read_file_too_large",
+        "read_identity_changed",
+        "read_path_not_found",
+        "read_path_not_regular_file",
+        "read_path_outside_repository",
+        "read_preimage_changed_before_approval",
+        "read_request_identity_mismatch",
+        "read_write_path_mismatch",
+        "additional_read_target",
+        "unsupported_dynamic_tool",
+        "unsupported_read_request_shape",
         "unapproved_file_completion",
         "unsupported_file_change_shape",
         "unsupported_request_method:other",
@@ -75,6 +233,22 @@ class CodexAdapterUnavailable(RuntimeError):
 
 class CodexAdapterFailure(RuntimeError):
     """The app-server contract or bounded run failed before a safe result."""
+
+
+class _ReadValidationError(RuntimeError):
+    """One typed repository read was rejected before content disclosure."""
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        path: str | None,
+        repository_identity: str | None,
+    ) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.path = path
+        self.repository_identity = repository_identity
 
 
 @dataclass(frozen=True)
@@ -101,6 +275,7 @@ class CodexRunResult:
     checkpoint_outcomes: tuple[CheckpointOutcome, ...]
     final_message: str = ""
     file_actions: tuple[CodexFileAction, ...] = ()
+    read_evidence: tuple[CodexReadEvidence, ...] = ()
     unsupported_reason: str | None = None
 
     def __post_init__(self) -> None:
@@ -146,6 +321,52 @@ class CodexFileAction:
     normalized_scope: str
     access: str
     status: str
+
+
+@dataclass(frozen=True)
+class CodexReadEvidence:
+    """Content-free evidence for one bounded repository read attempt."""
+
+    path: str | None
+    byte_count: int | None
+    sha256: str | None
+    repository_identity: str | None
+    status: str
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in {"succeeded", "failed"}:
+            raise ValueError("Codex read evidence status is unsupported.")
+        if (self.status == "succeeded") != (self.reason is None):
+            raise ValueError(
+                "Codex read evidence status and reason must agree."
+            )
+        if self.reason is not None and self.reason not in _UNSUPPORTED_REASON_CODES:
+            raise ValueError("Codex read evidence reason must be bounded.")
+
+
+@dataclass(frozen=True)
+class _CodexReadBinding:
+    """Exact one-Run binding for one successful dynamic read item."""
+
+    run_id: str
+    call_id: str
+    normalized_scope: str
+    byte_count: int
+    sha256: str
+    repository_identity: str
+    content: str
+    arguments_identity: str
+
+
+@dataclass(frozen=True)
+class _CodexReadResponse:
+    """One exact app-server response retained for replay verification."""
+
+    call_id: str
+    arguments_identity: str
+    success: bool
+    content_items: tuple[dict[str, str], ...]
 
 
 @dataclass(frozen=True)
@@ -392,6 +613,13 @@ class CodexAdapter:
         self._approved_changes: dict[str, list[dict[str, Any]]] = {}
         self._approval_requests: dict[str | int, str | None] = {}
         self._resolved_approval_requests: set[str | int] = set()
+        self._read_requests: dict[str | int, str | None] = {}
+        self._resolved_read_requests: set[str | int] = set()
+        self._read_responses: dict[str, _CodexReadResponse] = {}
+        self._read_replay_failures: dict[str, _CodexReadResponse] = {}
+        self._read_evidence: list[CodexReadEvidence] = []
+        self._read_binding: _CodexReadBinding | None = None
+        self._completed_read_items: set[str] = set()
         self._accepted_items: set[str] = set()
         self._declined_items: set[str] = set()
         self._resolved_items: set[str] = set()
@@ -421,6 +649,13 @@ class CodexAdapter:
         self._approved_changes = {}
         self._approval_requests = {}
         self._resolved_approval_requests = set()
+        self._read_requests = {}
+        self._resolved_read_requests = set()
+        self._read_responses = {}
+        self._read_replay_failures = {}
+        self._read_evidence = []
+        self._read_binding = None
+        self._completed_read_items = set()
         self._accepted_items = set()
         self._declined_items = set()
         self._resolved_items = set()
@@ -602,6 +837,7 @@ class CodexAdapter:
                     },
                     "cwd": str(repository),
                     "developerInstructions": _DEVELOPER_INSTRUCTIONS,
+                    "dynamicTools": [copy.deepcopy(_READ_TOOL_SPEC)],
                     "ephemeral": True,
                     "model": self.expected_model,
                     "modelProvider": "openai",
@@ -834,17 +1070,24 @@ class CodexAdapter:
         return tuple(actions)
 
     def _final_message_with_diagnostic(self, status: str) -> str:
+        message = self._final_message
+        read_binding = self._read_binding
+        if read_binding is not None:
+            message = _redact_complete_source_echo(
+                message,
+                read_binding.content,
+            )
         if (
             status != "UNSUPPORTED_MUTATION"
             or self._unsupported_reason is None
         ):
-            return self._final_message
+            return message
         diagnostic = (
             "Decision OS verification: not verified "
             f"({self._unsupported_reason})."
         )
-        separator = "\n\n" if self._final_message else ""
-        return f"{self._final_message}{separator}{diagnostic}"
+        separator = "\n\n" if message else ""
+        return f"{message}{separator}{diagnostic}"
 
     def _map_file_change(
         self,
@@ -918,6 +1161,439 @@ class CodexAdapter:
             item_id if isinstance(item_id, str) else None
         )
         return True
+
+    @staticmethod
+    def _arguments_identity(arguments: dict[str, Any]) -> str:
+        return hashlib.sha256(
+            json.dumps(
+                arguments,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+
+    @staticmethod
+    def _read_content_item(payload: dict[str, Any]) -> tuple[dict[str, str], ...]:
+        return (
+            {
+                "type": "inputText",
+                "text": json.dumps(
+                    payload,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            },
+        )
+
+    def _record_read_evidence(self, evidence: CodexReadEvidence) -> None:
+        if evidence not in self._read_evidence:
+            self._read_evidence.append(evidence)
+
+    def _read_failure_response(
+        self,
+        *,
+        call_id: str,
+        arguments_identity: str,
+        reason: str,
+        path: str | None,
+        repository_identity: str | None,
+    ) -> _CodexReadResponse:
+        self._mark_unsupported(reason)
+        evidence = CodexReadEvidence(
+            path=path,
+            byte_count=None,
+            sha256=None,
+            repository_identity=repository_identity,
+            status="failed",
+            reason=reason,
+        )
+        self._record_read_evidence(evidence)
+        return _CodexReadResponse(
+            call_id=call_id,
+            arguments_identity=arguments_identity,
+            success=False,
+            content_items=self._read_content_item(
+                {
+                    "bytes": None,
+                    "path": path,
+                    "reason": reason,
+                    "repository_identity": repository_identity,
+                    "sha256": None,
+                    "status": "failed",
+                }
+            ),
+        )
+
+    def _normalized_read_path(self, raw_path: str) -> str:
+        candidate = raw_path.strip()
+        if (
+            not candidate
+            or "\x00" in candidate
+            or "\\" in candidate
+            or Path(candidate).is_absolute()
+            or _WINDOWS_ABSOLUTE_PATH.match(candidate) is not None
+        ):
+            raise _ReadValidationError(
+                "read_path_outside_repository",
+                path=None,
+                repository_identity=None,
+            )
+        parts: list[str] = []
+        for part in candidate.split("/"):
+            if part in {"", "."}:
+                continue
+            if part == ".." or part.casefold() == ".git":
+                raise _ReadValidationError(
+                    "read_path_outside_repository",
+                    path=None,
+                    repository_identity=None,
+                )
+            parts.append(part)
+        if not parts:
+            raise _ReadValidationError(
+                "read_path_outside_repository",
+                path=None,
+                repository_identity=None,
+            )
+        return "/".join(parts)
+
+    def _read_repository_file(
+        self,
+        raw_path: str,
+    ) -> tuple[str, bytes, str, str]:
+        normalized = self._normalized_read_path(raw_path)
+        repository = self.engine.store.repository.resolve(strict=True)
+        try:
+            repository_identity = git_output(
+                repository,
+                "rev-parse",
+                "HEAD^{commit}",
+            )
+        except Exception as exc:
+            raise CodexAdapterFailure(
+                "Selected repository identity is unavailable."
+            ) from exc
+        target = repository.joinpath(*normalized.split("/"))
+        try:
+            resolved = target.resolve(strict=True)
+        except FileNotFoundError as exc:
+            raise _ReadValidationError(
+                "read_path_not_found",
+                path=normalized,
+                repository_identity=repository_identity,
+            ) from exc
+        except (OSError, RuntimeError) as exc:
+            raise _ReadValidationError(
+                "read_path_not_regular_file",
+                path=normalized,
+                repository_identity=repository_identity,
+            ) from exc
+        try:
+            relative_resolved = resolved.relative_to(repository)
+        except ValueError as exc:
+            raise _ReadValidationError(
+                "read_path_outside_repository",
+                path=None,
+                repository_identity=repository_identity,
+            ) from exc
+        if any(part.casefold() == ".git" for part in relative_resolved.parts):
+            raise _ReadValidationError(
+                "read_path_outside_repository",
+                path=None,
+                repository_identity=repository_identity,
+            )
+        try:
+            with resolved.open("rb") as handle:
+                before = os.fstat(handle.fileno())
+                if not stat.S_ISREG(before.st_mode):
+                    raise _ReadValidationError(
+                        "read_path_not_regular_file",
+                        path=normalized,
+                        repository_identity=repository_identity,
+                    )
+                if before.st_size > _READ_MAX_BYTES:
+                    raise _ReadValidationError(
+                        "read_file_too_large",
+                        path=normalized,
+                        repository_identity=repository_identity,
+                    )
+                data = handle.read(_READ_MAX_BYTES + 1)
+                after = os.fstat(handle.fileno())
+        except _ReadValidationError:
+            raise
+        except (OSError, ValueError) as exc:
+            raise _ReadValidationError(
+                "read_path_not_regular_file",
+                path=normalized,
+                repository_identity=repository_identity,
+            ) from exc
+        if len(data) > _READ_MAX_BYTES:
+            raise _ReadValidationError(
+                "read_file_too_large",
+                path=normalized,
+                repository_identity=repository_identity,
+            )
+        before_identity = (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+        )
+        after_identity = (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        )
+        if before_identity != after_identity:
+            raise _ReadValidationError(
+                "read_identity_changed",
+                path=normalized,
+                repository_identity=repository_identity,
+            )
+        try:
+            content = data.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise _ReadValidationError(
+                "read_file_not_utf8",
+                path=normalized,
+                repository_identity=repository_identity,
+            ) from exc
+        if (
+            git_output(repository, "rev-parse", "HEAD^{commit}")
+            != repository_identity
+        ):
+            raise _ReadValidationError(
+                "read_identity_changed",
+                path=normalized,
+                repository_identity=repository_identity,
+            )
+        return normalized, data, content, repository_identity
+
+    def _send_read_response(
+        self,
+        request_id: str | int,
+        response: _CodexReadResponse,
+    ) -> None:
+        self._send(
+            {
+                "id": request_id,
+                "result": {
+                    "contentItems": [dict(item) for item in response.content_items],
+                    "success": response.success,
+                },
+            }
+        )
+
+    def _respond_read_tool_call(self, message: dict[str, Any]) -> None:
+        request_id = message.get("id")
+        params = self._require_object(
+            message.get("params"),
+            "dynamic read parameters",
+        )
+        call_id = params.get("callId")
+        arguments = params.get("arguments")
+        valid_request_id = (
+            isinstance(request_id, (str, int))
+            and not isinstance(request_id, bool)
+        )
+        safe_call_id = call_id if isinstance(call_id, str) else "invalid-read"
+        safe_arguments = arguments if isinstance(arguments, dict) else {}
+        arguments_identity = self._arguments_identity(safe_arguments)
+        if valid_request_id and request_id in self._read_requests:
+            if self._read_requests[request_id] != call_id:
+                response = self._read_failure_response(
+                    call_id=safe_call_id,
+                    arguments_identity=arguments_identity,
+                    reason="read_request_identity_mismatch",
+                    path=None,
+                    repository_identity=None,
+                )
+                self._send_read_response(request_id, response)
+                return
+        elif valid_request_id:
+            self._read_requests[request_id] = (
+                call_id if isinstance(call_id, str) else None
+            )
+        else:
+            response = self._read_failure_response(
+                call_id=safe_call_id,
+                arguments_identity=arguments_identity,
+                reason="read_request_identity_mismatch",
+                path=None,
+                repository_identity=None,
+            )
+            self._send_read_response(request_id, response)
+            return
+
+        item = self._items.get(safe_call_id)
+        valid_shape = bool(
+            set(params).issubset(
+                {"arguments", "callId", "namespace", "threadId", "tool", "turnId"}
+            )
+            and set(params) >= {"arguments", "callId", "threadId", "tool", "turnId"}
+            and isinstance(call_id, str)
+            and bool(call_id)
+            and isinstance(arguments, dict)
+            and set(arguments) == {"path"}
+            and isinstance(arguments.get("path"), str)
+            and params.get("tool") == _READ_TOOL_NAME
+            and params.get("namespace") is None
+            and self._ids_match(params)
+            and self._settings_verified
+            and item is not None
+            and item.get("type") == "dynamicToolCall"
+            and item.get("tool") == _READ_TOOL_NAME
+            and item.get("namespace") is None
+            and item.get("arguments") == arguments
+        )
+        if not valid_shape:
+            reason = (
+                "unsupported_dynamic_tool"
+                if params.get("tool") != _READ_TOOL_NAME
+                else "unsupported_read_request_shape"
+            )
+            response = self._read_failure_response(
+                call_id=safe_call_id,
+                arguments_identity=arguments_identity,
+                reason=reason,
+                path=None,
+                repository_identity=None,
+            )
+            if safe_call_id in self._read_responses:
+                self._read_replay_failures[safe_call_id] = response
+            else:
+                self._read_responses[safe_call_id] = response
+            self._send_read_response(request_id, response)
+            return
+
+        assert isinstance(call_id, str)
+        assert isinstance(arguments, dict)
+        existing = self._read_responses.get(call_id)
+        if existing is not None:
+            if existing.arguments_identity != arguments_identity:
+                response = self._read_failure_response(
+                    call_id=call_id,
+                    arguments_identity=arguments_identity,
+                    reason="read_request_identity_mismatch",
+                    path=None,
+                    repository_identity=None,
+                )
+                self._send_read_response(request_id, response)
+                return
+            replay_failure = self._read_replay_failures.get(call_id)
+            if replay_failure is not None:
+                self._send_read_response(request_id, replay_failure)
+                return
+            if existing.success:
+                binding = self._read_binding
+                try:
+                    current = self._read_repository_file(arguments["path"])
+                except (CodexAdapterFailure, _ReadValidationError):
+                    current = None
+                if (
+                    binding is None
+                    or binding.call_id != call_id
+                    or current is None
+                    or current[0] != binding.normalized_scope
+                    or current[1] != binding.content.encode("utf-8")
+                    or hashlib.sha256(current[1]).hexdigest() != binding.sha256
+                    or current[3] != binding.repository_identity
+                ):
+                    response = self._read_failure_response(
+                        call_id=call_id,
+                        arguments_identity=arguments_identity,
+                        reason="read_identity_changed",
+                        path=(binding.normalized_scope if binding else None),
+                        repository_identity=(
+                            binding.repository_identity if binding else None
+                        ),
+                    )
+                    self._read_replay_failures[call_id] = response
+                    self._send_read_response(request_id, response)
+                    return
+            self._send_read_response(request_id, existing)
+            return
+
+        if self._read_binding is not None:
+            response = self._read_failure_response(
+                call_id=call_id,
+                arguments_identity=arguments_identity,
+                reason="additional_read_target",
+                path=None,
+                repository_identity=self._read_binding.repository_identity,
+            )
+            self._read_responses[call_id] = response
+            self._send_read_response(request_id, response)
+            return
+
+        try:
+            normalized, data, content, repository_identity = (
+                self._read_repository_file(arguments["path"])
+            )
+        except _ReadValidationError as exc:
+            response = self._read_failure_response(
+                call_id=call_id,
+                arguments_identity=arguments_identity,
+                reason=exc.reason,
+                path=exc.path,
+                repository_identity=exc.repository_identity,
+            )
+            self._read_responses[call_id] = response
+            self._send_read_response(request_id, response)
+            return
+        except CodexAdapterFailure:
+            response = self._read_failure_response(
+                call_id=call_id,
+                arguments_identity=arguments_identity,
+                reason="read_request_identity_mismatch",
+                path=None,
+                repository_identity=None,
+            )
+            self._read_responses[call_id] = response
+            self._send_read_response(request_id, response)
+            return
+        digest = hashlib.sha256(data).hexdigest()
+        binding = _CodexReadBinding(
+            run_id=self._run_id,
+            call_id=call_id,
+            normalized_scope=normalized,
+            byte_count=len(data),
+            sha256=digest,
+            repository_identity=repository_identity,
+            content=content,
+            arguments_identity=arguments_identity,
+        )
+        response = _CodexReadResponse(
+            call_id=call_id,
+            arguments_identity=arguments_identity,
+            success=True,
+            content_items=self._read_content_item(
+                {
+                    "bytes": len(data),
+                    "content": content,
+                    "path": normalized,
+                    "repository_identity": repository_identity,
+                    "sha256": digest,
+                }
+            ),
+        )
+        self._read_binding = binding
+        self._read_responses[call_id] = response
+        self._record_read_evidence(
+            CodexReadEvidence(
+                path=normalized,
+                byte_count=len(data),
+                sha256=digest,
+                repository_identity=repository_identity,
+                status="succeeded",
+            )
+        )
+        self._send_read_response(request_id, response)
 
     def _respond_file_approval(self, message: dict[str, Any]) -> None:
         request_id = message.get("id")
@@ -1021,6 +1697,57 @@ class CodexAdapter:
             )
             return
 
+        if decision_type is DecisionType.MODIFY_FILE:
+            read_binding = self._read_binding
+            if (
+                read_binding is None
+                or read_binding.run_id != self._run_id
+                or read_binding.call_id not in self._completed_read_items
+            ):
+                reason = "modify_requires_repository_read"
+            elif read_binding.normalized_scope != normalized:
+                reason = "read_write_path_mismatch"
+            else:
+                try:
+                    current = self._read_repository_file(normalized)
+                except (CodexAdapterFailure, _ReadValidationError):
+                    current = None
+                if (
+                    current is None
+                    or current[0] != read_binding.normalized_scope
+                    or hashlib.sha256(current[1]).hexdigest()
+                    != read_binding.sha256
+                    or current[3] != read_binding.repository_identity
+                ):
+                    reason = "read_preimage_changed_before_approval"
+                else:
+                    reason = None
+            if reason is not None:
+                self._mark_unsupported(reason)
+                self._declined_items.add(item_id)
+                self._record_read_evidence(
+                    CodexReadEvidence(
+                        path=(
+                            read_binding.normalized_scope
+                            if read_binding is not None
+                            else normalized
+                        ),
+                        byte_count=None,
+                        sha256=None,
+                        repository_identity=(
+                            read_binding.repository_identity
+                            if read_binding is not None
+                            else None
+                        ),
+                        status="failed",
+                        reason=reason,
+                    )
+                )
+                self._send(
+                    {"id": request_id, "result": {"decision": "decline"}}
+                )
+                return
+
         self._iteration += 1
         outcome = self.engine.evaluate(
             run_id=self._run_id,
@@ -1094,10 +1821,15 @@ class CodexAdapter:
         ):
             self._identity_failure = True
             return
-        if (
-            request_id not in self._approval_requests
-        ):
+        is_approval = request_id in self._approval_requests
+        is_read = request_id in self._read_requests
+        if is_approval == is_read:
             self._identity_failure = True
+            return
+        if is_read:
+            if request_id in self._resolved_read_requests:
+                return
+            self._resolved_read_requests.add(request_id)
             return
         if request_id in self._resolved_approval_requests:
             return
@@ -1146,12 +1878,24 @@ class CodexAdapter:
                 f"unsupported_item_type:{item_type}"
             )
             return
-        if item_type != "fileChange":
+        if item_type not in {"dynamicToolCall", "fileChange"}:
             return
         item_id = item.get("id")
         if not isinstance(item_id, str) or not item_id:
             self._identity_failure = True
             return
+        if item_type == "dynamicToolCall":
+            arguments = item.get("arguments")
+            if (
+                item.get("tool") != _READ_TOOL_NAME
+                or item.get("namespace") is not None
+                or item.get("status") != "inProgress"
+                or not isinstance(arguments, dict)
+                or set(arguments) != {"path"}
+                or not isinstance(arguments.get("path"), str)
+            ):
+                self._mark_unsupported("unsupported_dynamic_tool")
+                return
         if item_id in self._items:
             if self._items[item_id] != item:
                 self._identity_failure = True
@@ -1188,6 +1932,51 @@ class CodexAdapter:
             self._mark_unsupported(
                 f"unsupported_item_type:{item_type}"
             )
+            return
+        if item_type == "dynamicToolCall":
+            item_id = item.get("id")
+            response = None
+            if isinstance(item_id, str):
+                response = (
+                    self._read_replay_failures.get(item_id)
+                    or self._read_responses.get(item_id)
+                )
+            started = (
+                self._items.get(item_id)
+                if isinstance(item_id, str)
+                else None
+            )
+            resolved = any(
+                request_id in self._resolved_read_requests
+                and request_item_id == item_id
+                for request_id, request_item_id in self._read_requests.items()
+            )
+            expected_status = (
+                "completed" if response is not None and response.success else "failed"
+            )
+            if (
+                response is None
+                or started is None
+                or item.get("tool") != _READ_TOOL_NAME
+                or item.get("namespace") is not None
+                or item.get("arguments") != started.get("arguments")
+                or self._arguments_identity(item.get("arguments", {}))
+                != response.arguments_identity
+                or item.get("status") != expected_status
+                or (
+                    "success" in item
+                    and item.get("success") is not response.success
+                )
+                or (
+                    "contentItems" in item
+                    and item.get("contentItems")
+                    != [dict(value) for value in response.content_items]
+                )
+                or not resolved
+            ):
+                self._identity_failure = True
+                return
+            self._completed_read_items.add(item_id)
             return
         if item_type == "agentMessage":
             text = item.get("text")
@@ -1302,6 +2091,8 @@ class CodexAdapter:
         if "id" in message:
             if method == "item/fileChange/requestApproval":
                 self._respond_file_approval(message)
+            elif method == "item/tool/call":
+                self._respond_read_tool_call(message)
             else:
                 self._respond_unsupported_request(message)
             return
@@ -1386,10 +2177,19 @@ class CodexAdapter:
         all_accepted_completed = self._accepted_items.issubset(
             self._completed_items
         )
+        successful_read_items = {
+            call_id
+            for call_id, response in self._read_responses.items()
+            if response.success
+        }
+        all_reads_completed = successful_read_items.issubset(
+            self._completed_read_items
+        )
         normal_terminal = bool(
             self._turn_status == "completed"
             and self._settings_verified
             and all_accepted_completed
+            and all_reads_completed
             and not self._permission_denied
             and not self._unsupported_mutation
             and not self._identity_failure
@@ -1437,5 +2237,6 @@ class CodexAdapter:
             checkpoint_outcomes=checkpoints,
             final_message=self._final_message_with_diagnostic(status),
             file_actions=file_actions,
+            read_evidence=tuple(self._read_evidence),
             unsupported_reason=self._unsupported_reason,
         )
