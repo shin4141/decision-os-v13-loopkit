@@ -480,6 +480,66 @@ function syncOrdinarySelectedFilename(panel) {
   showOrdinarySelectedFilename(ordinarySelectedFilename);
 }
 
+function ordinaryTaskStarterValue(value, fallback = "UNKNOWN") {
+  const concise = displayValue(value, fallback).replace(/\s+/g, " ").trim();
+  return concise || fallback;
+}
+
+function ordinaryTaskStarterList(values, emptyText) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return emptyText;
+  }
+  return values
+    .map((value) => ordinaryTaskStarterValue(value))
+    .join("; ");
+}
+
+function ordinaryFixedTaskStarter(panel) {
+  const details =
+    panel?.technical_details && typeof panel.technical_details === "object"
+      ? panel.technical_details
+      : {};
+  const review =
+    panel?.review && typeof panel.review === "object" ? panel.review : {};
+  return [
+    "Perform only the bounded task defined by this fixed ordinary Contract context.",
+    `Current repository identity: ${ordinaryTaskStarterValue(panel?.repository_identity)}`,
+    `Fixed Contract Request identity: ${ordinaryTaskStarterValue(details.request_id)}`,
+    `Interpretation SHA-256: ${ordinaryTaskStarterValue(details.interpretation_sha256)}`,
+    `What the Contract preserves: ${ordinaryTaskStarterValue(review.preserves)}`,
+    `What counts as completion: ${ordinaryTaskStarterValue(review.completion)}`,
+    `What must not be changed: ${ordinaryTaskStarterList(review.must_not_change, "No additional protected wording is listed.")}`,
+    `What remains unresolved: ${ordinaryTaskStarterList(review.unresolved, "Nothing remains unresolved.")}`,
+    `What the operation does not authorize: ${ordinaryTaskStarterValue(review.does_not_authorize)}`,
+  ].join("\n");
+}
+
+function ensureOrdinaryPrepareTaskButton() {
+  let button = byId("ordinary-contract-prepare-task");
+  if (button) {
+    return button;
+  }
+  button = document.createElement("button");
+  button.id = "ordinary-contract-prepare-task";
+  button.type = "button";
+  button.textContent = "Prepare bounded task";
+  button.addEventListener("click", () => {
+    const panel = latestState?.ordinary_contract;
+    if (panel?.state !== "FIXED") {
+      return;
+    }
+    const task = byId("task");
+    if (task.value.trim().length === 0) {
+      task.value = ordinaryFixedTaskStarter(panel);
+      task.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    task.scrollIntoView?.({ block: "center" });
+    task.focus();
+  });
+  byId("ordinary-contract-success").insertAdjacentElement("afterend", button);
+  return button;
+}
+
 function renderOrdinaryContract(ordinary, repository) {
   const panel = ordinary && typeof ordinary === "object" ? ordinary : null;
   const revision = Number.isInteger(panel?.operation_revision)
@@ -558,6 +618,10 @@ function renderOrdinaryContract(ordinary, repository) {
       : "",
   );
   setHidden("ordinary-contract-success", !fixed);
+  const prepareTaskButton = fixed
+    ? ensureOrdinaryPrepareTaskButton()
+    : byId("ordinary-contract-prepare-task");
+  prepareTaskButton?.classList.toggle("hidden", !fixed);
 
   setHidden("ordinary-contract-error", !error);
   setText("ordinary-contract-error-what", error?.what_failed || "");
