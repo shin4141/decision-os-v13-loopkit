@@ -158,7 +158,11 @@ class ContractFixationCompilerTest(unittest.TestCase):
 
     def test_fail_closed_profile_and_metadata_boundaries(self) -> None:
         source = ORDINARY_SOURCE.read_bytes()
-        ambiguous = source + b"# Initial Product Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE\n"
+        ambiguous = source.replace(
+            b"\n---\n",
+            b"\n# Initial Product Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE\n\n---\n",
+            1,
+        )
         self.assert_code("PREP_TITLE_INVALID", ambiguous)
         malformed = source.replace(b"Primary Layer:\nV9", b"Primary Layer:\nV8", 1)
         self.assert_code("PREP_METADATA_MALFORMED", malformed)
@@ -174,6 +178,49 @@ class ContractFixationCompilerTest(unittest.TestCase):
             1,
         )
         self.assert_code("PREP_UNSUPPORTED_CONTRACT_ROLE", unsupported)
+
+    def test_unsupported_top_level_contract_cannot_borrow_later_evidence(self) -> None:
+        source = ORDINARY_SOURCE.read_bytes().replace(
+            b"# Ordinary User Path Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE",
+            b"# Unsupported Contract v9.9 \xe2\x80\x94 APPROVED CANDIDATE",
+            1,
+        )
+        embedded = source + (
+            b"\n## Appendix: supported example\n\n"
+            b"# Ordinary User Path Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE\n\n"
+            b"Primary Layer:\nV9 \xe2\x80\x94 Product Adoption\n\n"
+            b"Supporting Layer:\nV13 \xe2\x80\x94 Internal Governance\n\n"
+            b"Implementation Authority:\nNONE\n\n"
+            b"This Contract does not authorize repository changes, implementation, merge,\n"
+            b"release, publication, model invocation, or rollout.\n"
+        )
+
+        self.assert_code("PREP_UNSUPPORTED_CONTRACT_ROLE", embedded)
+
+    def test_supported_title_inside_fenced_code_is_not_profile_evidence(self) -> None:
+        source = (
+            b"# Decision-OS V9\n\n```markdown\n"
+            b"# Ordinary User Path Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE\n\n"
+            b"Primary Layer:\nV9 \xe2\x80\x94 Product Adoption\n\n"
+            b"Supporting Layer:\nV13 \xe2\x80\x94 Internal Governance\n\n"
+            b"Implementation Authority:\nNONE\n"
+            b"```\n\n---\n"
+        )
+
+        self.assert_code("PREP_TITLE_INVALID", source)
+
+    def test_quoted_appendix_is_not_profile_or_metadata_evidence(self) -> None:
+        source = (
+            b"# Decision-OS V9\n\n## Appendix\n\n"
+            b"> # Ordinary User Path Contract v0.1 \xe2\x80\x94 APPROVED CANDIDATE\n>\n"
+            b"> Primary Layer:\n> V9 \xe2\x80\x94 Product Adoption\n>\n"
+            b"> Supporting Layer:\n> V13 \xe2\x80\x94 Internal Governance\n>\n"
+            b"> Implementation Authority:\n> NONE\n>\n"
+            b"> This Contract does not authorize repository changes, implementation, merge,\n"
+            b"> release, publication, model invocation, or rollout.\n"
+        )
+
+        self.assert_code("PREP_TITLE_INVALID", source)
 
     def test_wrapper_and_draft_self_checks_have_exact_fail_closed_codes(self) -> None:
         source = ORDINARY_SOURCE.read_bytes()

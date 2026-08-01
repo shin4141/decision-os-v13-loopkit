@@ -32,6 +32,13 @@ PRODUCT_WRAPPER_PATH = (
 )
 
 
+def product_source() -> bytes:
+    wrapper = PRODUCT_WRAPPER_PATH.read_bytes()
+    begin = b"BEGIN EXACT PRODUCT CONTRACT\n"
+    end = b"END EXACT PRODUCT CONTRACT\n"
+    return wrapper[wrapper.index(begin) + len(begin) : wrapper.index(end)]
+
+
 def committed_repository(parent: Path) -> tuple[Path, str]:
     repository = parent / "repo"
     repository.mkdir()
@@ -145,10 +152,7 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
         self.assertIsNone(native["transfer_receipt"])
 
     def test_product_contract_family_reaches_ready_and_fixed(self) -> None:
-        wrapper = PRODUCT_WRAPPER_PATH.read_bytes()
-        begin = b"BEGIN EXACT PRODUCT CONTRACT\n"
-        end = b"END EXACT PRODUCT CONTRACT\n"
-        source = wrapper[wrapper.index(begin) + len(begin) : wrapper.index(end)]
+        source = product_source()
         panel = self.coordinator.prepare(
             filename="Decision_OS_Product_Contract.md",
             source_bytes=source,
@@ -253,6 +257,58 @@ class OrdinaryUserPathCoordinatorTest(unittest.TestCase):
             panel["review"]["preserves"],
         ):
             self.assertNotIn(secret, rendered)
+
+    def test_two_successful_runs_preserve_first_friction_receipt_exactly(self) -> None:
+        first_panel = self.prepare()
+        first_fixed = self.coordinator.fix(**self.fix_request(first_panel))
+        self.assertEqual("FIXED", first_fixed["state"])
+        receipt_path = (
+            self.repository
+            / ".git"
+            / "decision-os"
+            / "ordinary-user-path-v0.1"
+            / "friction"
+            / "first-implementation-run.json"
+        )
+        first_bytes = receipt_path.read_bytes()
+        first_sha256 = sha256_bytes(first_bytes)
+        first_request_id = self.guided.snapshot()["request_identity"]["request_id"]
+
+        second_source = product_source()
+        second_panel = self.coordinator.prepare(
+            filename="Decision_OS_Product_Contract.md",
+            source_bytes=second_source,
+            source_byte_size=len(second_source),
+            source_sha256=sha256_bytes(second_source),
+            expected_repository_identity=self.head,
+            expected_active_request_id=first_request_id,
+            idempotency_key=str(uuid.uuid4()),
+        )
+        second_fixed = self.coordinator.fix(**self.fix_request(second_panel))
+
+        second_bytes = receipt_path.read_bytes()
+        self.assertEqual("FIXED", second_fixed["state"])
+        self.assertEqual(first_bytes, second_bytes)
+        self.assertEqual(first_sha256, sha256_bytes(second_bytes))
+        self.assertEqual(1, json.loads(second_bytes)["run_ordinal"])
+        self.assertEqual(0o600, stat.S_IMODE(receipt_path.stat().st_mode))
+        for contract_evidence in (
+            SOURCE_PATH.name.encode("utf-8"),
+            b"Decision_OS_Product_Contract.md",
+            sha256_bytes(self.source).encode("ascii"),
+            sha256_bytes(second_source).encode("ascii"),
+            b"Ordinary User Path Contract v0.1",
+            b"Initial Product Contract v0.1",
+        ):
+            self.assertNotIn(contract_evidence, second_bytes)
+        self.assertEqual(
+            2,
+            sum(
+                event["kind"] == "INTAKE_FROZEN"
+                for event in self.guided.store.read_events()
+            ),
+        )
+        self.assertIsNone(self.guided.snapshot()["transfer_receipt"])
 
     def test_compiler_failure_is_persistent_and_dismissal_is_non_mutating(self) -> None:
         key = str(uuid.uuid4())

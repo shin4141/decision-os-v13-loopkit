@@ -244,40 +244,94 @@ class ContractFixationCompiler:
         return filename
 
     @staticmethod
-    def _profile(source: str) -> tuple[str, str]:
+    def _canonical_header_region(source: str) -> str:
+        """Return only structural, unquoted evidence from the fixed header."""
+
+        visible: list[str] = []
+        fence: tuple[str, int] | None = None
+        for raw_line in source.splitlines(keepends=True):
+            line = raw_line.rstrip("\r\n")
+            placeholder = "\n" if raw_line.endswith(("\r", "\n")) else ""
+            content = line.lstrip(" ")
+            indent = len(line) - len(content)
+            fence_match = (
+                re.match(r"(`{3,}|~{3,})(.*)$", content)
+                if indent <= 3
+                else None
+            )
+            if fence is not None:
+                if fence_match is not None:
+                    marker = fence_match.group(1)
+                    remainder = fence_match.group(2)
+                    if (
+                        marker[0] == fence[0]
+                        and len(marker) >= fence[1]
+                        and not remainder.strip()
+                    ):
+                        fence = None
+                visible.append(placeholder)
+                continue
+            if fence_match is not None:
+                marker = fence_match.group(1)
+                fence = (marker[0], len(marker))
+                visible.append(placeholder)
+                continue
+            if re.match(r"^ {0,3}>", line) or line.startswith(("    ", "\t")):
+                visible.append(placeholder)
+                continue
+            if re.match(
+                r"^ {0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$",
+                line,
+            ):
+                break
+            section = re.match(r"^ {0,3}(#{2,6})[ \t]+(.+?)\s*$", line)
+            if section is not None and (
+                len(section.group(1)) != 2
+                or section.group(2).strip().casefold() != "status"
+            ):
+                break
+            visible.append(raw_line)
+        return "".join(visible)
+
+    @staticmethod
+    def _profile(header: str) -> tuple[str, str]:
         supported = {
-            f"# {PRODUCT_TITLE}": (PRODUCT_PROFILE, PRODUCT_TITLE),
-            f"# {ORDINARY_TITLE}": (ORDINARY_PROFILE, ORDINARY_TITLE),
+            PRODUCT_TITLE: (PRODUCT_PROFILE, PRODUCT_TITLE),
+            ORDINARY_TITLE: (ORDINARY_PROFILE, ORDINARY_TITLE),
         }
-        observed = [
-            value
-            for line, value in supported.items()
-            if source.count(line) == 1
-        ]
-        duplicated = any(source.count(line) > 1 for line in supported)
-        if duplicated or len(observed) > 1:
+        lines = header.splitlines()
+        contract_headings: list[str] = []
+        for index, line in enumerate(lines):
+            atx = re.match(r"^ {0,3}#(?!#)[ \t]+(.+?)[ \t]*$", line)
+            if atx is not None:
+                title = re.sub(r"[ \t]+#+[ \t]*$", "", atx.group(1)).strip()
+            elif (
+                line.strip()
+                and index + 1 < len(lines)
+                and re.match(r"^ {0,3}=+[ \t]*$", lines[index + 1])
+            ):
+                title = line.strip()
+            else:
+                continue
+            if re.search(r"\bContract\b", title, re.IGNORECASE):
+                contract_headings.append(title)
+        if not contract_headings:
+            ContractFixationCompiler._fail(
+                "PREP_TITLE_INVALID",
+                "A supported Contract title could not be identified.",
+            )
+        first = contract_headings[0]
+        if first not in supported:
+            ContractFixationCompiler._fail(
+                "PREP_UNSUPPORTED_CONTRACT_ROLE",
+                "This Contract family is not supported.",
+            )
+        if len(contract_headings) != 1:
             ContractFixationCompiler._fail(
                 "PREP_TITLE_INVALID",
                 "The Contract title is ambiguous.",
             )
-        if len(observed) != 1:
-            contract_headings = re.findall(
-                r"(?m)^# (?!Decision-OS ).*Contract.*(?:APPROVED CANDIDATE|approved candidate).*$",
-                source,
-            )
-            ContractFixationCompiler._fail(
-                (
-                    "PREP_UNSUPPORTED_CONTRACT_ROLE"
-                    if contract_headings
-                    else "PREP_TITLE_INVALID"
-                ),
-                (
-                    "This Contract family is not supported."
-                    if contract_headings
-                    else "A supported Contract title could not be identified."
-                ),
-            )
-        return observed[0]
+        return supported[first]
 
     @staticmethod
     def _validate_metadata(source: str, profile: str) -> None:
@@ -462,8 +516,9 @@ class ContractFixationCompiler:
                 "The active Contract history changed before preparation.",
                 409,
             )
-        profile, title = self._profile(source)
-        self._validate_metadata(source, profile)
+        header = self._canonical_header_region(source)
+        profile, title = self._profile(header)
+        self._validate_metadata(header, profile)
         template = self._template(profile)
         source_sha256 = sha256_bytes(source_bytes)
         prefix = (
@@ -915,10 +970,98 @@ class OrdinaryUserPathStore:
         return receipt
 
     def store_friction_receipt(self, receipt: Mapping[str, Any]) -> None:
-        self._atomic_write(
-            self.root / "friction" / "first-implementation-run.json",
-            canonical_json(receipt),
+        target = self.root / "friction" / "first-implementation-run.json"
+        if target.is_symlink():
+            raise OrdinaryUserPathIntegrityError(
+                "ORDINARY_STORE_CORRUPT",
+                "Ordinary friction evidence is corrupted.",
+                http_status=409,
+            )
+        if target.exists():
+            self._assert_private_file(target)
+            try:
+                payload = target.read_bytes()
+            except OSError as exc:
+                raise OrdinaryUserPathIntegrityError(
+                    "ORDINARY_STORE_CORRUPT",
+                    "Ordinary friction evidence is corrupted.",
+                    http_status=409,
+                ) from exc
+            self._validate_friction_receipt(payload)
+            return
+        payload = canonical_json(receipt)
+        self._validate_friction_receipt(payload)
+        self._atomic_write(target, payload)
+
+    @staticmethod
+    def _validate_friction_receipt(payload: bytes) -> dict[str, Any]:
+        try:
+            receipt = json.loads(payload, object_pairs_hook=_integrity_object)
+        except OrdinaryUserPathIntegrityError:
+            raise
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise OrdinaryUserPathIntegrityError(
+                "ORDINARY_STORE_CORRUPT",
+                "Ordinary friction evidence is corrupted.",
+                http_status=409,
+            ) from exc
+        expected_keys = {
+            "schema",
+            "run_ordinal",
+            "visible_user_actions",
+            "visible_user_action_count",
+            "repeated_click_count",
+            "waiting_intervals_ms",
+            "clarification_count",
+            "failed_automatic_recovery_count",
+            "user_intervention_count",
+            "internal_terms_exposed",
+        }
+        counts = (
+            (
+                receipt.get("visible_user_action_count"),
+                receipt.get("repeated_click_count"),
+                receipt.get("clarification_count"),
+                receipt.get("failed_automatic_recovery_count"),
+                receipt.get("user_intervention_count"),
+            )
+            if isinstance(receipt, dict)
+            else ()
         )
+        waiting = (
+            receipt.get("waiting_intervals_ms")
+            if isinstance(receipt, dict)
+            else None
+        )
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt) != expected_keys
+            or receipt.get("schema") != FRICTION_SCHEMA
+            or not isinstance(receipt.get("run_ordinal"), int)
+            or isinstance(receipt.get("run_ordinal"), bool)
+            or receipt.get("run_ordinal") != 1
+            or receipt.get("visible_user_actions")
+            != ["SELECT_CONTRACT", "REVIEW_INTERPRETATION", "FIX_CONTRACT"]
+            or receipt.get("visible_user_action_count") != 3
+            or any(
+                not isinstance(value, int) or isinstance(value, bool) or value < 0
+                for value in counts
+            )
+            or not isinstance(waiting, dict)
+            or set(waiting) != {"selection_to_review_ready", "fix_to_receipt"}
+            or any(
+                not isinstance(value, int) or isinstance(value, bool) or value < 0
+                for value in waiting.values()
+            )
+            or receipt.get("internal_terms_exposed") != []
+            or canonical_json(receipt) != payload
+        ):
+            raise OrdinaryUserPathIntegrityError(
+                "ORDINARY_STORE_CORRUPT",
+                "Ordinary friction evidence is corrupted.",
+                http_status=409,
+            )
+        return receipt
 
 
 class ConfirmationDeltaBuilder:
@@ -2118,7 +2261,7 @@ class OrdinaryUserPathCoordinator:
                         operation_id=preparation_id,
                         idempotency_key=key,
                     )
-            elif existing_freeze is not None and existing_freeze.get("current") is True:
+            else:
                 existing_freeze = None
             if state.get("state") == "FIXED" and self._matching_freeze(
                 existing_freeze, preparation
