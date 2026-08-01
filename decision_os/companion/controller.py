@@ -238,6 +238,7 @@ class CompanionController:
             "progress": [],
             "result": "",
             "file_actions": [],
+            "read_evidence": [],
             "outcomes": {
                 "execution": {
                     "state": "not_started",
@@ -609,6 +610,7 @@ class CompanionController:
                 "progress": [],
                 "result": "",
                 "file_actions": [],
+                "read_evidence": [],
                 "runtime": None,
                 "receipt_delta": None,
                 "approval": None,
@@ -1257,6 +1259,22 @@ class CompanionController:
         ]
 
     @staticmethod
+    def _public_read_evidence(
+        result: CodexRunResult,
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "path": evidence.path,
+                "bytes": evidence.byte_count,
+                "sha256": evidence.sha256,
+                "repository_identity": evidence.repository_identity,
+                "status": evidence.status,
+                "reason": evidence.reason,
+            }
+            for evidence in result.read_evidence
+        ]
+
+    @staticmethod
     def _public_outcomes(result: CodexRunResult) -> dict[str, Any]:
         execution_completed = result.turn_status == "completed"
         execution = {
@@ -1359,6 +1377,7 @@ class CompanionController:
             self._run["state"] = self._display_state(result)
             self._run["result"] = result.final_message
             self._run["file_actions"] = self._public_actions(result)
+            self._run["read_evidence"] = self._public_read_evidence(result)
             self._run["outcomes"] = self._public_outcomes(result)
             self._run["runtime"] = self._public_runtime(result)
             self._run["receipt_delta"] = self._receipt_delta(before, after)
@@ -1390,6 +1409,7 @@ class CompanionController:
             self._run["state"] = "needs_attention"
             self._run["result"] = ""
             self._run["file_actions"] = []
+            self._run["read_evidence"] = []
             self._run["outcomes"] = {
                 "execution": {
                     "state": "not_completed",

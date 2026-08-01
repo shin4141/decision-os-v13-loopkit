@@ -2274,6 +2274,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               },
               setHidden: (id, hidden) => elements.get(id).classList.toggle("hidden", hidden),
               renderActions: () => {},
+              renderCopyResponse: () => {},
+              renderReadEvidence: () => {},
               renderRuntime: () => {},
             };
             vm.createContext(sandbox);
@@ -2819,6 +2821,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 progress: [],
                 result: "",
                 file_actions: [],
+                read_evidence: [],
                 outcomes: null,
                 runtime: null,
                 receipt_delta: null,
@@ -2855,12 +2858,20 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 ...baseRun,
                 state: "unsupported",
                 progress: ["Finalizing the local Receipt."],
-                result: "The requested file was modified.",
+                result: "Line one\n日本語 🌐\nLine three",
                 file_actions: [{
                   action: "Modify",
                   path: "decision_os/companion/static/app.js",
                   access: "one-time",
                   status: "approved",
+                }],
+                read_evidence: [{
+                  path: "decision_os/companion/static/app.js",
+                  bytes: 43210,
+                  sha256: "a".repeat(64),
+                  repository_identity: "b".repeat(40),
+                  status: "succeeded",
+                  reason: null,
                 }],
                 outcomes: {
                   execution: {
@@ -2905,6 +2916,19 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }
               let serverPhase = "idle";
               let reducedMotion = false;
+              window.__clipboardWrites = [];
+              window.__clipboardFail = false;
+              Object.defineProperty(navigator, "clipboard", {
+                configurable: true,
+                value: {
+                  writeText: async (value) => {
+                    if (window.__clipboardFail) {
+                      throw new Error("Synthetic clipboard failure.");
+                    }
+                    window.__clipboardWrites.push(value);
+                  },
+                },
+              });
               window.__focusCounts = {};
               window.__scrollRecords = [];
               const nativeFocus = HTMLElement.prototype.focus;
@@ -2982,6 +3006,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   bridgeAction.focus();
                   document.body.dataset.advancedClosed = String(!advanced.open);
                   document.body.dataset.evidenceClosed = String(!additionalEvidence.open);
+                  document.body.dataset.copyHiddenEmpty = String(
+                    document.getElementById("copy-response").classList.contains("hidden") &&
+                    document.getElementById("copy-response").disabled
+                  );
                   document.body.dataset.bridgeContained = String(advanced.contains(bridge));
                   document.body.dataset.bridgeHidden = String(
                     typeof bridge.checkVisibility === "function"
@@ -3166,6 +3194,19 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     focusCounts["approval-heading"] === 1 &&
                     focusCounts["result-heading"] === 1
                   );
+                  const readEvidence = document.getElementById("read-evidence-card");
+                  const readEvidenceText = document.getElementById(
+                    "read-evidence-list",
+                  ).textContent;
+                  document.body.dataset.readEvidence = String(
+                    !readEvidence.classList.contains("hidden") &&
+                    readEvidenceText.includes("decision_os/companion/static/app.js") &&
+                    readEvidenceText.includes("43210") &&
+                    readEvidenceText.includes("a".repeat(64)) &&
+                    readEvidenceText.includes("b".repeat(40)) &&
+                    !readEvidenceText.includes("Line one") &&
+                    !readEvidenceText.includes("日本語")
+                  );
                   reducedMotion = true;
                   const taskStage = document.querySelector(
                     '[data-operation-stage="task"]'
@@ -3189,6 +3230,69 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     getComputedStyle(
                       document.getElementById("operation-awareness")
                     ).position === "sticky"
+                  );
+                  const copy = document.getElementById("copy-response");
+                  document.body.dataset.copyAvailable = String(
+                    !copy.classList.contains("hidden") &&
+                    !copy.disabled &&
+                    copy.tagName === "BUTTON"
+                  );
+                  copy.focus();
+                  copy.click();
+                  probePhase = "copy-success";
+                  return;
+                }
+                if (
+                  probePhase === "copy-success" &&
+                  document.getElementById("copy-response").textContent === "Copied"
+                ) {
+                  const copy = document.getElementById("copy-response");
+                  document.body.dataset.copySuccess = String(
+                    document.activeElement === copy &&
+                    document.getElementById("copy-response-status").textContent ===
+                      "Codex response copied." &&
+                    window.__clipboardWrites.length === 1 &&
+                    window.__clipboardWrites[0] ===
+                      "Line one\n日本語 🌐\nLine three" &&
+                    latestState.run.state === "unsupported"
+                  );
+                  copy.click();
+                  probePhase = "copy-repeat";
+                  return;
+                }
+                if (
+                  probePhase === "copy-repeat" &&
+                  window.__clipboardWrites.length === 2
+                ) {
+                  document.body.dataset.copyRepeated = String(
+                    window.__clipboardWrites[0] === window.__clipboardWrites[1] &&
+                    latestState.run.state === "unsupported"
+                  );
+                  probePhase = "copy-restore";
+                  return;
+                }
+                if (
+                  probePhase === "copy-restore" &&
+                  document.getElementById("copy-response").textContent === "Copy response"
+                ) {
+                  document.body.dataset.copyRestored = String(
+                    document.getElementById("copy-response-status").textContent === "" &&
+                    document.activeElement.id === "copy-response"
+                  );
+                  window.__clipboardFail = true;
+                  document.getElementById("copy-response").click();
+                  probePhase = "copy-failure";
+                  return;
+                }
+                if (
+                  probePhase === "copy-failure" &&
+                  document.getElementById("copy-response").textContent === "Copy failed"
+                ) {
+                  document.body.dataset.copyFailure = String(
+                    document.activeElement.id === "copy-response" &&
+                    document.getElementById("copy-response-status").textContent ===
+                      "Codex response could not be copied." &&
+                    latestState.run.state === "unsupported"
                   );
                   document.body.dataset.qualified = "true";
                   window.clearInterval(probe);
@@ -3256,6 +3360,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "contract-density",
             "advanced-closed",
             "evidence-closed",
+            "copy-hidden-empty",
             "bridge-contained",
             "bridge-hidden",
             "bridge-not-focused",
@@ -3275,8 +3380,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "approval-answered-immediate",
             "continuing",
             "terminal",
+            "read-evidence",
             "manual-navigation",
             "sticky",
+            "copy-available",
+            "copy-success",
+            "copy-repeated",
+            "copy-restored",
+            "copy-failure",
             "qualified",
         ):
             self.assertEqual("true", attributes.get(name), name)
@@ -3981,6 +4092,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "ordinary-contract-error-retry",
               "ordinary-contract-error-dismiss",
               "ordinary-contract-prepare-task",
+              "copy-response",
               "new-run",
               "run",
               ...guidedIntakeButtonIds,
@@ -4060,6 +4172,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "bounded-run-receipt-column",
               "choose-repository",
               "claim-boundary",
+              "copy-response",
+              "copy-response-status",
               "defaults",
               "file-actions",
               "global-error",
@@ -4165,6 +4279,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "progress-card",
               "progress-heading",
               "receipt-status",
+              "read-evidence-card",
+              "read-evidence-heading",
+              "read-evidence-list",
               "repository-name",
               "repository-path",
               "repository-receipt",

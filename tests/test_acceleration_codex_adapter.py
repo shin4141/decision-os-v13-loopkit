@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections import deque
+import hashlib
 import io
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -34,6 +36,27 @@ def create_repository(parent: Path) -> Path:
         capture_output=True,
     )
     (repository / "target.txt").write_text("one\n", encoding="utf-8")
+    subprocess.run(
+        ("git", "-C", str(repository), "add", "target.txt"),
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        (
+            "git",
+            "-C",
+            str(repository),
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "-qm",
+            "initial",
+        ),
+        check=True,
+        capture_output=True,
+    )
     return repository
 
 
@@ -268,6 +291,110 @@ def completed_agent_message(
     }
 
 
+def started_read(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    path: str,
+) -> dict[str, Any]:
+    return {
+        "method": "item/started",
+        "params": {
+            "item": {
+                "arguments": {"path": path},
+                "id": call_id,
+                "status": "inProgress",
+                "tool": "read_repository_text_file",
+                "type": "dynamicToolCall",
+            },
+            "startedAtMs": 1,
+            "threadId": thread_id,
+            "turnId": turn_id,
+        },
+    }
+
+
+def read_request(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    request_id: str | int,
+    path: str,
+) -> dict[str, Any]:
+    return {
+        "id": request_id,
+        "method": "item/tool/call",
+        "params": {
+            "arguments": {"path": path},
+            "callId": call_id,
+            "threadId": thread_id,
+            "tool": "read_repository_text_file",
+            "turnId": turn_id,
+        },
+    }
+
+
+def completed_read(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    path: str,
+    status: str = "completed",
+) -> dict[str, Any]:
+    return {
+        "method": "item/completed",
+        "params": {
+            "completedAtMs": 2,
+            "item": {
+                "arguments": {"path": path},
+                "id": call_id,
+                "status": status,
+                "tool": "read_repository_text_file",
+                "type": "dynamicToolCall",
+            },
+            "threadId": thread_id,
+            "turnId": turn_id,
+        },
+    }
+
+
+def read_messages(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    path: str,
+    status: str = "completed",
+) -> list[dict[str, Any]]:
+    request_id = f"request-{call_id}"
+    return [
+        started_read(
+            thread_id=thread_id,
+            turn_id=turn_id,
+            call_id=call_id,
+            path=path,
+        ),
+        read_request(
+            thread_id=thread_id,
+            turn_id=turn_id,
+            call_id=call_id,
+            request_id=request_id,
+            path=path,
+        ),
+        resolved_request(thread_id=thread_id, request_id=request_id),
+        completed_read(
+            thread_id=thread_id,
+            turn_id=turn_id,
+            call_id=call_id,
+            path=path,
+            status=status,
+        ),
+    ]
+
+
 def resolved_request(
     *,
     thread_id: str,
@@ -338,6 +465,22 @@ def file_run_messages(
         turn_id=turn_id,
         **handshake_overrides,
     )
+    if (
+        len(changes) == 1
+        and changes[0].get("kind", {}).get("type") == "update"
+        and changes[0].get("kind", {}).get("move_path") in {None, ""}
+        and isinstance(changes[0].get("path"), str)
+        and not Path(changes[0]["path"]).is_absolute()
+        and ".." not in Path(changes[0]["path"]).parts
+    ):
+        messages.extend(
+            read_messages(
+                thread_id=thread_id,
+                turn_id=turn_id,
+                call_id=f"read-{item_id}",
+                path=changes[0]["path"],
+            )
+        )
     messages.extend(
         [
             started_item(
@@ -529,6 +672,503 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 unsupported_reason="unsupported_request_method:other",
             )
 
+    async def test_dynamic_read_returns_exact_typed_content_without_approval(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            before = (repository / "target.txt").read_bytes()
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-1",
+                    path="target.txt",
+                )
+            )
+            messages.append(
+                completed_agent_message(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    text="Before\none\nAfter",
+                )
+            )
+            messages.append(
+                completed_turn(thread_id="thread-1", turn_id="turn-1")
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+
+            result = await adapter.run("Read target.txt.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(
+                "Before\n[Repository source content withheld.]After",
+                result.final_message,
+            )
+            self.assertEqual("", output.getvalue())
+            self.assertEqual([], engine.store.read_events())
+            self.assertEqual(before, (repository / "target.txt").read_bytes())
+            self.assertEqual((), result.file_actions)
+            self.assertEqual(1, len(result.read_evidence))
+            evidence = result.read_evidence[0]
+            self.assertEqual("succeeded", evidence.status)
+            self.assertEqual("target.txt", evidence.path)
+            self.assertEqual(len(before), evidence.byte_count)
+            self.assertEqual(hashlib.sha256(before).hexdigest(), evidence.sha256)
+            expected_head = subprocess.run(
+                ("git", "-C", str(repository), "rev-parse", "HEAD"),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual(expected_head, evidence.repository_identity)
+            sent = factory.transports[0].sent
+            thread_start = next(
+                value for value in sent if value.get("method") == "thread/start"
+            )
+            self.assertEqual(
+                [
+                    {
+                        "type": "function",
+                        "name": "read_repository_text_file",
+                        "description": (
+                            "Read one existing strict UTF-8 text file inside "
+                            "the selected repository before proposing a "
+                            "modification to that same file."
+                        ),
+                        "inputSchema": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["path"],
+                            "properties": {
+                                "path": {"type": "string", "minLength": 1}
+                            },
+                        },
+                    }
+                ],
+                thread_start["params"]["dynamicTools"],
+            )
+            response = next(
+                value
+                for value in sent
+                if value.get("id") == "request-read-1"
+            )
+            self.assertTrue(response["result"]["success"])
+            payload = json.loads(response["result"]["contentItems"][0]["text"])
+            self.assertEqual(
+                {
+                    "bytes": len(before),
+                    "content": "one\n",
+                    "path": "target.txt",
+                    "repository_identity": expected_head,
+                    "sha256": hashlib.sha256(before).hexdigest(),
+                },
+                payload,
+            )
+            self.assertFalse(
+                any(
+                    "decision" in value.get("result", {})
+                    for value in sent
+                )
+            )
+
+    async def test_exact_dynamic_read_replay_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            replay = read_messages(
+                thread_id="thread-1",
+                turn_id="turn-1",
+                call_id="read-1",
+                path="target.txt",
+            )
+            messages.extend(replay[:2])
+            messages.append(replay[1])
+            messages.extend(replay[2:])
+            messages.append(
+                completed_turn(thread_id="thread-1", turn_id="turn-1")
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read replay must not prompt"),
+            )
+
+            result = await adapter.run("Replay one read.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertEqual(1, len(result.read_evidence))
+            self.assertEqual([], engine.store.read_events())
+            responses = [
+                value
+                for value in factory.transports[0].sent
+                if value.get("id") == "request-read-1"
+            ]
+            self.assertEqual(2, len(responses))
+            self.assertEqual(responses[0], responses[1])
+
+    async def test_second_read_and_changed_replay_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            (repository / "other.txt").write_text("other\n", encoding="utf-8")
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-1",
+                    path="target.txt",
+                )
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-2",
+                    path="other.txt",
+                    status="failed",
+                )
+            )
+            messages.append(
+                completed_turn(thread_id="thread-1", turn_id="turn-1")
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+
+            result = await adapter.run("Try two reads.")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual("additional_read_target", result.unsupported_reason)
+            self.assertEqual(
+                ["succeeded", "failed"],
+                [value.status for value in result.read_evidence],
+            )
+            self.assertEqual([], engine.store.read_events())
+            response = next(
+                value
+                for value in factory.transports[0].sent
+                if value.get("id") == "request-read-2"
+            )
+            self.assertFalse(response["result"]["success"])
+            self.assertNotIn(
+                "content",
+                json.loads(response["result"]["contentItems"][0]["text"]),
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-2",
+                turn_id="turn-2",
+            )
+            replay = read_messages(
+                thread_id="thread-2",
+                turn_id="turn-2",
+                call_id="read-1",
+                path="target.txt",
+            )
+            replay[-1] = completed_read(
+                thread_id="thread-2",
+                turn_id="turn-2",
+                call_id="read-1",
+                path="target.txt",
+                status="failed",
+            )
+            messages.extend(replay[:2])
+            messages.append(replay[1])
+            messages.extend(replay[2:])
+            messages.append(
+                completed_turn(thread_id="thread-2", turn_id="turn-2")
+            )
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+            original = adapter._read_repository_file
+            calls = 0
+
+            def mutate_before_replay(path: str) -> tuple[str, bytes, str, str]:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    (repository / "target.txt").write_text(
+                        "changed\n",
+                        encoding="utf-8",
+                    )
+                return original(path)
+
+            with patch.object(
+                adapter,
+                "_read_repository_file",
+                side_effect=mutate_before_replay,
+            ):
+                result = await adapter.run("Replay after byte drift.")
+
+            self.assertEqual("read_identity_changed", result.unsupported_reason)
+            self.assertIsNone(result.error_type)
+            self.assertEqual(
+                ["succeeded", "failed"],
+                [value.status for value in result.read_evidence],
+            )
+
+    async def test_read_path_and_encoding_failures_are_typed(self) -> None:
+        cases = (
+            ("/tmp/outside.txt", "read_path_outside_repository", None),
+            ("../outside.txt", "read_path_outside_repository", None),
+            (".git/config", "read_path_outside_repository", None),
+            ("missing.txt", "read_path_not_found", None),
+            ("directory", "read_path_not_regular_file", "directory"),
+            ("invalid.txt", "read_file_not_utf8", "invalid"),
+            ("large.txt", "read_file_too_large", "large"),
+            ("escape.txt", "read_path_outside_repository", "symlink"),
+            ("git-config.txt", "read_path_outside_repository", "git-symlink"),
+        )
+        for index, (path, reason, fixture) in enumerate(cases, start=1):
+            with self.subTest(path=path):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    repository = create_repository(root)
+                    if fixture == "directory":
+                        (repository / path).mkdir()
+                    elif fixture == "invalid":
+                        (repository / path).write_bytes(b"\xff\xfe")
+                    elif fixture == "large":
+                        (repository / path).write_bytes(b"x" * 131_073)
+                    elif fixture == "symlink":
+                        outside = root / "outside.txt"
+                        outside.write_text("outside\n", encoding="utf-8")
+                        (repository / path).symlink_to(outside)
+                    elif fixture == "git-symlink":
+                        (repository / path).symlink_to(
+                            repository / ".git" / "config"
+                        )
+                    thread_id = f"thread-{index}"
+                    turn_id = f"turn-{index}"
+                    messages = handshake_messages(
+                        repository,
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                    )
+                    messages.extend(
+                        read_messages(
+                            thread_id=thread_id,
+                            turn_id=turn_id,
+                            call_id=f"read-{index}",
+                            path=path,
+                            status="failed",
+                        )
+                    )
+                    messages.append(
+                        completed_turn(thread_id=thread_id, turn_id=turn_id)
+                    )
+                    factory = FakeTransportFactory([messages])
+                    engine, adapter, _ = adapter_for(
+                        repository,
+                        factory,
+                        choice=lambda: self.fail("read must not prompt"),
+                    )
+
+                    result = await adapter.run("Rejected read.")
+
+                    self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+                    self.assertEqual(reason, result.unsupported_reason)
+                    self.assertEqual("failed", result.read_evidence[0].status)
+                    self.assertEqual([], engine.store.read_events())
+
+    async def test_modify_is_bound_to_read_path_and_current_preimage(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            factory = FakeTransportFactory(
+                [
+                    file_run_messages(
+                        repository,
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                    )
+                ]
+            )
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+
+            result = await adapter.run("Read then modify target.txt.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertEqual(1, len(result.read_evidence))
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual(
+                1,
+                len(
+                    [
+                        event
+                        for event in engine.store.read_events()
+                        if event["event_type"] == "DECISION_CHECK"
+                    ]
+                ),
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = file_run_messages(
+                repository,
+                thread_id="thread-2",
+                turn_id="turn-2",
+                item_id="item-2",
+                item_status="declined",
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("stale preimage must not prompt"),
+            )
+            original = adapter._read_repository_file
+            calls = 0
+
+            def mutate_before_approval(path: str) -> tuple[str, bytes, str, str]:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    (repository / "target.txt").write_text(
+                        "changed\n",
+                        encoding="utf-8",
+                    )
+                return original(path)
+
+            with patch.object(
+                adapter,
+                "_read_repository_file",
+                side_effect=mutate_before_approval,
+            ):
+                result = await adapter.run("Stale preimage.")
+
+            self.assertEqual(
+                "read_preimage_changed_before_approval",
+                result.unsupported_reason,
+            )
+            self.assertEqual((), result.file_actions)
+            self.assertEqual([], engine.store.read_events())
+            decisions = [
+                value["result"]["decision"]
+                for value in factory.transports[0].sent
+                if "decision" in value.get("result", {})
+            ]
+            self.assertEqual(["decline"], decisions)
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            (repository / "other.txt").write_text("other\n", encoding="utf-8")
+            changes = [change(path="other.txt")]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-3",
+                turn_id="turn-3",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-3",
+                    turn_id="turn-3",
+                    call_id="read-3",
+                    path="target.txt",
+                )
+            )
+            messages.extend(
+                [
+                    started_item(
+                        thread_id="thread-3",
+                        turn_id="turn-3",
+                        item_id="item-3",
+                        changes=changes,
+                    ),
+                    approval_request(
+                        thread_id="thread-3",
+                        turn_id="turn-3",
+                        item_id="item-3",
+                        request_id="approval-item-3",
+                    ),
+                    resolved_request(
+                        thread_id="thread-3",
+                        request_id="approval-item-3",
+                    ),
+                    completed_item(
+                        thread_id="thread-3",
+                        turn_id="turn-3",
+                        item_id="item-3",
+                        changes=changes,
+                        status="declined",
+                    ),
+                    completed_turn(thread_id="thread-3", turn_id="turn-3"),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("mismatched path must not prompt"),
+            )
+
+            result = await adapter.run("Modify a different file.")
+
+            self.assertEqual("read_write_path_mismatch", result.unsupported_reason)
+            self.assertEqual((), result.file_actions)
+            self.assertEqual([], engine.store.read_events())
+
+    async def test_create_remains_supported_without_repository_read(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            factory = FakeTransportFactory(
+                [
+                    file_run_messages(
+                        repository,
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        file_changes=[change(path="created.txt", kind="add")],
+                    )
+                ]
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+
+            result = await adapter.run("Create created.txt.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertEqual((), result.read_evidence)
+            self.assertEqual("Create", result.file_actions[0].action)
+
     async def test_structured_approval_lifecycle_and_final_message_bridge(
         self,
     ) -> None:
@@ -616,6 +1256,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
             )
             messages.extend(
                 [
@@ -719,6 +1367,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 thread_id="thread-1",
                 turn_id="turn-1",
             )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
+            )
             for index, item_id in enumerate(
                 ("item-1", "item-2", "item-3"),
                 start=1,
@@ -802,6 +1458,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
             )
             messages.extend(
                 [
@@ -895,6 +1559,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
             )
             for index, item_id in enumerate(("item-1", "item-2"), start=1):
                 messages.extend(
@@ -1109,14 +1781,26 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertLess(
                 events.index("approval_completed:accept"),
-                events.index("received:serverRequest/resolved"),
+                events.index(
+                    "received:serverRequest/resolved",
+                    events.index("approval_completed:accept"),
+                ),
             )
             self.assertLess(
-                events.index("received:serverRequest/resolved"),
-                events.index("received:item/completed"),
+                events.index(
+                    "received:serverRequest/resolved",
+                    events.index("approval_completed:accept"),
+                ),
+                events.index(
+                    "received:item/completed",
+                    events.index("approval_completed:accept"),
+                ),
             )
             self.assertLess(
-                events.index("received:item/completed"),
+                events.index(
+                    "received:item/completed",
+                    events.index("approval_completed:accept"),
+                ),
                 events.index("received:turn/completed"),
             )
             self.assertLess(
@@ -1134,6 +1818,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
             )
             messages.extend(
                 [
@@ -1293,6 +1985,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 message["result"]["decision"]
                 for message in factory.transports[0].sent
                 if "result" in message
+                and "decision" in message["result"]
             ]
             self.assertEqual(["decline"], approvals)
             self.assertEqual(
@@ -1348,6 +2041,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 turn_id="turn-1",
             )
             same_change = [change()]
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
+            )
             for item_id in ("item-1", "item-2"):
                 messages.extend(
                     [
@@ -1594,9 +2295,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 item_status="declined",
                 include_settings_update=True,
             )
-            matching_update = messages[5]
+            matching_update = next(
+                message
+                for message in messages
+                if message.get("method") == "thread/settings/updated"
+            )
             matching_settings = matching_update["params"]["threadSettings"]
-            messages[5] = {
+            update_index = messages.index(matching_update)
+            messages[update_index] = {
                 "method": "thread/settings/updated",
                 "params": {
                     "threadId": "thread-1",
@@ -1606,7 +2312,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                     },
                 },
             }
-            messages.insert(6, matching_update)
+            messages.insert(update_index + 1, matching_update)
             factory = FakeTransportFactory([messages])
             _, adapter, _ = adapter_for(
                 repository,
@@ -1623,7 +2329,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 result.error_type,
             )
             self.assertEqual(
-                "approval_identity_mismatch",
+                "unsupported_read_request_shape",
                 result.unsupported_reason,
             )
             self.assertIsNone(result.runtime_identity)
@@ -1791,6 +2497,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                         message["result"]["decision"]
                         for message in factory.transports[0].sent
                         if "result" in message
+                        and "decision" in message["result"]
                     ]
                     self.assertEqual(["decline"], responses)
 
@@ -1929,10 +2636,12 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                         result.status,
                     )
                     self.assertFalse(result.normal_terminal)
-                    self.assertEqual(
-                        f"unsupported_item_type:{item_type}",
-                        result.unsupported_reason,
+                    expected_reason = (
+                        "unsupported_dynamic_tool"
+                        if item_type == "dynamicToolCall"
+                        else f"unsupported_item_type:{item_type}"
                     )
+                    self.assertEqual(expected_reason, result.unsupported_reason)
                     self.assertNotIn(
                         "PRIVATE",
                         result.unsupported_reason,
@@ -2064,7 +2773,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 first.unsupported_reason,
             )
             self.assertEqual(
-                "unsupported_item_type:dynamicToolCall",
+                "unsupported_dynamic_tool",
                 second.unsupported_reason,
             )
 
@@ -2234,6 +2943,14 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 turn_id="turn-2",
             )
             second.extend(
+                read_messages(
+                    thread_id="thread-2",
+                    turn_id="turn-2",
+                    call_id="read-item-2",
+                    path="target.txt",
+                )
+            )
+            second.extend(
                 [
                     started_item(
                         thread_id="thread-2",
@@ -2306,7 +3023,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             second = [
                 message
                 for message in second
-                if message.get("method") != "serverRequest/resolved"
+                if not (
+                    message.get("method") == "serverRequest/resolved"
+                    and message.get("params", {}).get("requestId")
+                    == "approval-item-2"
+                )
             ]
             factory = FakeTransportFactory(
                 [
@@ -2362,6 +3083,18 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                             },
                         },
                     },
+                ]
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-1",
+                    turn_id="turn-1",
+                    call_id="read-item-1",
+                    path="target.txt",
+                )
+            )
+            messages.extend(
+                [
                     started_item(
                         thread_id="thread-1",
                         turn_id="turn-1",

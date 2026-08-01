@@ -315,7 +315,21 @@
           <dd id="result-verification-reason" class="path-value hidden"></dd>
         </div>
       </dl>
-      <h3>Codex response</h3>
+      <div class="response-heading">
+        <h3>Codex response</h3>
+        <button
+          id="copy-response"
+          class="secondary compact-action hidden"
+          type="button"
+          disabled
+        >Copy response</button>
+      </div>
+      <p
+        id="copy-response-status"
+        class="visually-hidden"
+        role="status"
+        aria-live="polite"
+      ></p>
       <pre id="result" class="result-text"></pre>
       <div id="file-actions" class="file-actions"></div>
       <dl id="runtime" class="runtime-grid"></dl>
@@ -325,6 +339,22 @@
     <details id="additional-evidence" class="additional-evidence">
       <summary>Additional evidence</summary>
       <div class="additional-evidence-content">
+        <section
+          id="read-evidence-card"
+          class="card hidden"
+          aria-labelledby="read-evidence-heading"
+        >
+          <div class="section-heading">
+            <div>
+              <p class="step">E</p>
+              <h2 id="read-evidence-heading">Repository read evidence</h2>
+            </div>
+          </div>
+          <p class="boundary">
+            Content is withheld. This records only the bounded read identity.
+          </p>
+          <div id="read-evidence-list" class="read-evidence-list"></div>
+        </section>
         <section
           id="intelligence-transplant-card"
           class="card hidden"

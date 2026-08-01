@@ -26,6 +26,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexApproval,
     CodexFileAction,
     CodexLifecycleEvent,
+    CodexReadEvidence,
     CodexRunResult,
     CodexRuntimeIdentity,
 )
@@ -196,6 +197,15 @@ class ScriptedAdapter:
                 runtime_identity=runtime_identity(),
                 checkpoint_outcomes=(),
                 final_message="Read-only result.",
+                read_evidence=(
+                    CodexReadEvidence(
+                        path="target.txt",
+                        byte_count=7,
+                        sha256="a" * 64,
+                        repository_identity="b" * 40,
+                        status="succeeded",
+                    ),
+                ),
             )
 
         run_id = self.engine.new_run_id()
@@ -533,6 +543,19 @@ class CompanionControllerTest(unittest.TestCase):
             )
 
             self.assertEqual("Read-only result.", snapshot["run"]["result"])
+            self.assertEqual(
+                [
+                    {
+                        "path": "target.txt",
+                        "bytes": 7,
+                        "sha256": "a" * 64,
+                        "repository_identity": "b" * 40,
+                        "status": "succeeded",
+                        "reason": None,
+                    }
+                ],
+                snapshot["run"]["read_evidence"],
+            )
             self.assertEqual(
                 {
                     "estimated_minutes": 0.0,
