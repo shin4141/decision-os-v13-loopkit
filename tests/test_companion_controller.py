@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 from typing import Any
 from unittest.mock import Mock
 
@@ -340,6 +341,94 @@ class CompanionControllerTest(unittest.TestCase):
             )
             with self.assertRaises(RepositorySelectionError):
                 controller.pick_repository()
+
+    def test_ordinary_contract_projection_and_golden_path_do_not_dispatch_runner(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            subprocess.run(
+                ("git", "config", "user.email", "ordinary@example.test"),
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(
+                ("git", "config", "user.name", "Ordinary Contract"),
+                cwd=repository,
+                check=True,
+            )
+            subprocess.run(("git", "add", "target.txt"), cwd=repository, check=True)
+            subprocess.run(
+                ("git", "commit", "-qm", "ordinary baseline"),
+                cwd=repository,
+                check=True,
+            )
+            factory = ScriptedFactory()
+            controller = self.make_controller(root, factory)
+            selected = controller.select_repository(repository)
+            panel = selected["ordinary_contract"]
+            self.assertEqual("NO_CONTRACT", panel["state"])
+            source_path = (
+                Path(__file__).parent
+                / "fixtures"
+                / "ordinary_user_path_v0_1"
+                / "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md"
+            )
+            source = source_path.read_bytes()
+            prepared = controller.ordinary_contract_prepare(
+                filename=source_path.name,
+                source_bytes=source,
+                source_byte_size=len(source),
+                source_sha256=hashlib.sha256(source).hexdigest(),
+                expected_repository_identity=panel["repository_identity"],
+                expected_active_request_id=panel["technical_details"][
+                    "active_request_id"
+                ],
+                idempotency_key=str(uuid.uuid4()),
+            )["ordinary_contract"]
+            self.assertEqual("REVIEW_READY", prepared["state"])
+            technical = prepared["technical_details"]
+            fixed = controller.ordinary_contract_fix(
+                preparation_id=prepared["preparation_id"],
+                expected_repository_identity=prepared["repository_identity"],
+                expected_source_sha256=prepared["source_identity"]["sha256"],
+                expected_request_id=technical["request_id"],
+                expected_draft_id=technical["draft_id"],
+                expected_interpretation_sha256=technical[
+                    "interpretation_sha256"
+                ],
+                idempotency_key=str(uuid.uuid4()),
+            )["ordinary_contract"]
+            self.assertEqual("FIXED", fixed["state"])
+            self.assertEqual(0, len(factory.modes))
+
+    def test_ordinary_contract_corruption_is_panel_local(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory()
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            ordinary = controller._ordinary_user_path
+            self.assertIsNotNone(ordinary)
+            ordinary.snapshot()
+            with ordinary.store.transaction():
+                ordinary.store.save_state(ordinary.store.load_state())
+            ordinary.store.state_path.write_bytes(b"{}")
+
+            snapshot = controller.snapshot()
+
+            self.assertEqual(
+                "CANNOT_FIX_SAFELY",
+                snapshot["ordinary_contract"]["state"],
+            )
+            self.assertEqual(
+                "ORDINARY_STORE_CORRUPT",
+                snapshot["ordinary_contract"]["action_error"]["code"],
+            )
+            self.assertIsNone(snapshot["guided_intake"]["error"])
+            self.assertEqual(0, len(factory.modes))
 
     def test_state_file_is_0600_and_contains_only_repository(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -1671,6 +1671,8 @@ class GuidedIntakeStore:
         self._assert_private_directory(self.root)
         if not self.state_path.exists():
             if self.events_path.exists():
+                if allow_event_head_mismatch:
+                    return _empty_state()
                 raise GuidedIntakeIntegrityError(
                     "HOLD — GUIDED INTAKE STATE CORRUPT"
                 )
@@ -4552,8 +4554,8 @@ class GuidedIntakeController:
             self.store.save_state(state)
             return self._complete_purge(state, purge_request)
 
+    @staticmethod
     def _validate_draft(
-        self,
         value: Mapping[str, Any],
         *,
         original: str,
@@ -4808,6 +4810,288 @@ class GuidedIntakeController:
                 },
                 recorded_at=imported_at,
             )
+            self.store.save_state(state)
+            return self._snapshot_from_state(state)
+
+    def prepare_compiled_contract(
+        self,
+        *,
+        wrapper_bytes: bytes,
+        draft_bytes: bytes,
+        producer_label: str,
+        expected_prior_request_id: str | None,
+        request_id: str,
+        draft_id: str,
+        capture_event_id: str,
+        import_event_id: str,
+        captured_at: str,
+        imported_at: str,
+    ) -> dict[str, Any]:
+        """Atomically install one compiler-verified Request and Draft pair.
+
+        The event IDs and times are supplied by the ordinary-path recovery
+        journal.  Replaying this method with the same declared operation rolls
+        forward a crash after either append without deleting or reordering a
+        native Guided Intake fact.
+        """
+
+        if not isinstance(wrapper_bytes, bytes):
+            raise GuidedIntakeValidationError(
+                "INVALID — ORIGINAL REQUEST ENCODING"
+            )
+        if not wrapper_bytes or len(wrapper_bytes) > MAX_ORIGINAL_REQUEST_BYTES:
+            raise GuidedIntakeValidationError(
+                "INVALID — ORIGINAL REQUEST TOO LARGE"
+            )
+        try:
+            original = wrapper_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise GuidedIntakeValidationError(
+                "INVALID — ORIGINAL REQUEST ENCODING"
+            ) from exc
+        if not original.strip():
+            raise GuidedIntakeValidationError(
+                "INVALID — ORIGINAL REQUEST EMPTY"
+            )
+        _quoted_payload_boundary(original)
+        if not isinstance(draft_bytes, bytes) or len(draft_bytes) > MAX_DRAFT_BYTES:
+            raise GuidedIntakeValidationError(
+                "INVALID — GUIDED INTAKE DRAFT: draft is too large."
+            )
+        try:
+            draft_text = draft_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise GuidedIntakeValidationError(
+                "INVALID — GUIDED INTAKE DRAFT: UTF-8 encoding failed."
+            ) from exc
+        draft_value = strict_json_object(draft_text)
+        if canonical_json(draft_value) != draft_bytes:
+            raise GuidedIntakeValidationError(
+                "INVALID — GUIDED INTAKE DRAFT: canonical JSON required."
+            )
+        producer = _bounded_text(
+            producer_label,
+            label="producer label",
+            maximum=200,
+        )
+        for identity in (
+            request_id,
+            draft_id,
+            capture_event_id,
+            import_event_id,
+        ):
+            if not isinstance(identity, str) or not _SAFE_ID.fullmatch(identity):
+                raise GuidedIntakeValidationError(
+                    "Generated Guided Intake identity is invalid."
+                )
+        if (
+            expected_prior_request_id is not None
+            and (
+                not isinstance(expected_prior_request_id, str)
+                or not _SAFE_ID.fullmatch(expected_prior_request_id)
+            )
+        ):
+            raise GuidedIntakeConflictError(
+                "Original Request supersession target is invalid."
+            )
+        captured_at = _timestamp(captured_at)
+        imported_at = _timestamp(imported_at)
+        wrapper_sha256 = sha256_bytes(wrapper_bytes)
+        draft_sha256 = sha256_bytes(draft_bytes)
+        interpretation, question = self._validate_draft(
+            draft_value,
+            original=original,
+            request_sha256=wrapper_sha256,
+            confirmations=[],
+        )
+        expected_capture_payload = {
+            "byte_size": len(wrapper_bytes),
+            "request_id": request_id,
+            "request_sha256": wrapper_sha256,
+            "source_label": SOURCE_LABEL,
+            "supersedes_request_id": expected_prior_request_id,
+        }
+        expected_import_payload = {
+            "draft_id": draft_id,
+            "draft_sha256": draft_sha256,
+            "gate": interpretation["gate"],
+            "producer_label": producer,
+            "request_id": request_id,
+            "source_request_sha256": wrapper_sha256,
+        }
+
+        def matching_event(
+            event: Mapping[str, Any],
+            *,
+            event_id: str,
+            kind: str,
+            recorded_at: str,
+            payload: Mapping[str, Any],
+        ) -> bool:
+            return bool(
+                event.get("event_id") == event_id
+                and event.get("kind") == kind
+                and event.get("recorded_at") == recorded_at
+                and event.get("payload") == payload
+            )
+
+        with self.store.transaction():
+            state = self.store.load_state(allow_event_head_mismatch=True)
+            events = self.store.read_events()
+            by_id = {event["event_id"]: event for event in events}
+            capture_event = by_id.get(capture_event_id)
+            import_event = by_id.get(import_event_id)
+            request_record = state.get("requests", {}).get(request_id)
+            draft_record = state.get("drafts", {}).get(draft_id)
+
+            if isinstance(request_record, dict) or isinstance(draft_record, dict):
+                if not (
+                    isinstance(request_record, dict)
+                    and isinstance(draft_record, dict)
+                    and state.get("active_request_id") == request_id
+                    and state.get("active_draft_id") == draft_id
+                    and request_record.get("sha256") == wrapper_sha256
+                    and draft_record.get("sha256") == draft_sha256
+                    and isinstance(capture_event, dict)
+                    and isinstance(import_event, dict)
+                    and matching_event(
+                        capture_event,
+                        event_id=capture_event_id,
+                        kind="ORIGINAL_REQUEST_CAPTURED",
+                        recorded_at=captured_at,
+                        payload=expected_capture_payload,
+                    )
+                    and matching_event(
+                        import_event,
+                        event_id=import_event_id,
+                        kind="PRO_DRAFT_IMPORTED",
+                        recorded_at=imported_at,
+                        payload=expected_import_payload,
+                    )
+                    and state.get("event_chain_head")
+                    == import_event.get("event_hash")
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+                self._verify_persisted_history(state)
+                return self._snapshot_from_state(state)
+
+            prior_id = state.get("active_request_id")
+            if prior_id != expected_prior_request_id:
+                raise GuidedIntakeConflictError(
+                    "A correction must explicitly supersede the current Original Request."
+                )
+            if prior_id is not None:
+                prior = state.get("requests", {}).get(prior_id)
+                if (
+                    not isinstance(prior, dict)
+                    or prior.get("superseded_by_request_id") is not None
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+
+            state_head = state.get("event_chain_head")
+            if isinstance(capture_event, dict):
+                if not matching_event(
+                    capture_event,
+                    event_id=capture_event_id,
+                    kind="ORIGINAL_REQUEST_CAPTURED",
+                    recorded_at=captured_at,
+                    payload=expected_capture_payload,
+                ) or capture_event.get("previous_event_hash") != state_head:
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+            elif (events[-1]["event_hash"] if events else GENESIS_EVENT_HASH) != state_head:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+
+            if isinstance(import_event, dict):
+                if not (
+                    isinstance(capture_event, dict)
+                    and matching_event(
+                        import_event,
+                        event_id=import_event_id,
+                        kind="PRO_DRAFT_IMPORTED",
+                        recorded_at=imported_at,
+                        payload=expected_import_payload,
+                    )
+                    and import_event.get("previous_event_hash")
+                    == capture_event.get("event_hash")
+                    and events[-1].get("event_id") == import_event_id
+                ):
+                    raise GuidedIntakeIntegrityError(
+                        "HOLD — GUIDED INTAKE STATE CORRUPT"
+                    )
+            elif isinstance(capture_event, dict) and events[-1].get("event_id") != capture_event_id:
+                raise GuidedIntakeIntegrityError(
+                    "HOLD — GUIDED INTAKE STATE CORRUPT"
+                )
+
+            self.store.store_blob(
+                "original-requests",
+                wrapper_bytes,
+                suffix=".utf8",
+            )
+            self.store.store_blob(
+                "drafts",
+                draft_bytes,
+                suffix=".json",
+            )
+            if not isinstance(capture_event, dict):
+                capture_event = self._append(
+                    state,
+                    "ORIGINAL_REQUEST_CAPTURED",
+                    expected_capture_payload,
+                    event_id=capture_event_id,
+                    recorded_at=captured_at,
+                )
+            if not isinstance(import_event, dict):
+                import_event = self._append(
+                    state,
+                    "PRO_DRAFT_IMPORTED",
+                    expected_import_payload,
+                    event_id=import_event_id,
+                    recorded_at=imported_at,
+                )
+
+            request_record = {
+                "byte_size": len(wrapper_bytes),
+                "captured_at": captured_at,
+                "encoding": "UTF-8",
+                "line_ending_treatment": "AS_DECODED",
+                "request_id": request_id,
+                "sha256": wrapper_sha256,
+                "source_label": SOURCE_LABEL,
+                "supersedes_request_id": expected_prior_request_id,
+                "superseded_by_request_id": None,
+                "unicode_normalization": "NONE",
+                "whitespace_identity_bearing": True,
+            }
+            if prior_id is not None:
+                state["requests"][prior_id]["superseded_by_request_id"] = request_id
+            state["requests"][request_id] = request_record
+            state["drafts"][draft_id] = {
+                "active_question": question,
+                "draft_id": draft_id,
+                "imported_at": imported_at,
+                "producer_label": producer,
+                "request_id": request_id,
+                "schema_version": DRAFT_SCHEMA,
+                "sha256": draft_sha256,
+                "source_request_sha256": wrapper_sha256,
+                "validation_result": interpretation["gate"],
+            }
+            state["active_request_id"] = request_id
+            state["active_draft_id"] = draft_id
+            state["current_interpretation"] = interpretation
+            state["copy_prompt_request_id"] = None
+            state["transfer_receipt"] = None
+            state["event_chain_head"] = import_event["event_hash"]
+            self._verify_persisted_history(state)
             self.store.save_state(state)
             return self._snapshot_from_state(state)
 
@@ -5382,6 +5666,47 @@ class GuidedIntakeController:
             == structured_sha256(interpretation)
             and interpretation.get("gate") == "CLEAR ENOUGH TO FREEZE"
         )
+
+    def verified_current_freeze(self) -> dict[str, Any] | None:
+        """Read back the current native Freeze and receipt as one identity."""
+
+        with self.store.transaction(
+            write=False,
+            timeout_seconds=0.05,
+        ):
+            state = self.store.load_state()
+            self._verify_persisted_history(state)
+            freeze_id = state.get("latest_freeze_id")
+            record = state.get("freezes", {}).get(freeze_id)
+            if not isinstance(record, dict):
+                return None
+            artifact, receipt = self._verified_freeze_record(
+                str(freeze_id),
+                record,
+            )
+            request, _original = self._active_request(state)
+            draft, _value = self._verified_active_draft(state, request)
+            interpretation = state.get("current_interpretation")
+            current = self._freeze_is_current(
+                state,
+                record,
+                request,
+                draft,
+                interpretation if isinstance(interpretation, dict) else None,
+            )
+            return {
+                "current": current,
+                "draft_id": record["draft_id"],
+                "freeze_id": record["freeze_id"],
+                "frozen_intake_sha256": record["sha256"],
+                "interpretation_sha256": record[
+                    "interpretation_sha256"
+                ],
+                "receipt": deepcopy(receipt),
+                "receipt_sha256": record["receipt_sha256"],
+                "repository_identity": artifact["repository_identity"],
+                "request_id": record["request_id"],
+            }
 
     def transfer_to_bridge(self, bridge: Any) -> dict[str, Any]:
         with self.store.transaction():

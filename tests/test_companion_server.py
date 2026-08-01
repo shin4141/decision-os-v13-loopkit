@@ -12,6 +12,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+import uuid
 from unittest.mock import Mock
 from urllib.parse import urlsplit
 
@@ -60,6 +61,12 @@ INTELLIGENCE_TRANSPLANT_POST_ROUTES = (
     "/api/intelligence-transplant/evidence/attach",
     "/api/intelligence-transplant/receipt/attach",
     "/api/intelligence-transplant/control/record",
+)
+ORDINARY_CONTRACT_POST_ROUTES = (
+    "/api/ordinary-contract/prepare",
+    "/api/ordinary-contract/confirm",
+    "/api/ordinary-contract/fix",
+    "/api/ordinary-contract/error/dismiss",
 )
 
 
@@ -1364,6 +1371,217 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn(b"max-height: 18rem", stylesheet)
         self.assertIn(b"overflow-wrap: anywhere", stylesheet)
 
+    def test_ordinary_contract_dom_precedes_collapsed_advanced_mode(self) -> None:
+        cookie, _csrf = self.bootstrap()
+        status, _headers, html = self.request("GET", "/", cookie=cookie)
+        self.assertEqual(200, status)
+        text = html.decode("utf-8")
+        ordinary_start = text.index('id="ordinary-contract-card"')
+        bounded_start = text.index('id="bounded-task-card"')
+        advanced_start = text.index('id="advanced-audit-mode"')
+        guided_start = text.index('id="guided-intake-card"')
+        self.assertLess(ordinary_start, bounded_start)
+        self.assertLess(ordinary_start, advanced_start)
+        self.assertLess(advanced_start, guided_start)
+        advanced_tag = text[advanced_start : text.index(">", advanced_start)]
+        self.assertNotIn(" open", advanced_tag)
+        ordinary_card = text[ordinary_start:bounded_start]
+        for element_id in (
+            "ordinary-contract-status",
+            "ordinary-contract-file",
+            "ordinary-contract-review",
+            "ordinary-contract-preserves",
+            "ordinary-contract-completion",
+            "ordinary-contract-dnt",
+            "ordinary-contract-unresolved",
+            "ordinary-contract-authority",
+            "ordinary-contract-clarification",
+            "ordinary-contract-fix",
+            "ordinary-contract-error",
+            "ordinary-contract-technical",
+        ):
+            self.assertIn(f'id="{element_id}"', ordinary_card)
+        self.assertNotIn("Import Contract", ordinary_card)
+        self.assertNotIn("Use in Guided Intake", ordinary_card)
+        self.assertNotIn("Capture Original Request", ordinary_card)
+        self.assertNotIn("Producer label", ordinary_card)
+        self.assertNotIn("Draft JSON", ordinary_card)
+        for internal_term in (
+            "PRESERVED",
+            "TESTABLE",
+            "authority_claim",
+            "schema_version",
+            "Request ID",
+            "Draft ID",
+            "Freeze ID",
+            "SHA-256",
+            "Producer label",
+            "Draft JSON",
+        ):
+            self.assertNotIn(internal_term, ordinary_card)
+        self.assertIn("Producer label", text[advanced_start:])
+        self.assertIn("Draft JSON", text[advanced_start:])
+
+        status, _headers, javascript = self.request(
+            "GET", "/app.js", cookie=cookie
+        )
+        self.assertEqual(200, status)
+        ordinary_handler = javascript.split(
+            b'byId("ordinary-contract-file").addEventListener', 1
+        )[1].split(b"function contractFileSelectionChanged", 1)[0]
+        self.assertIn(b"await file.arrayBuffer()", ordinary_handler)
+        self.assertIn(b'crypto.subtle.digest("SHA-256"', javascript)
+        self.assertIn(b"bytes?.fill(0)", ordinary_handler)
+        self.assertNotIn(b"file.text()", ordinary_handler)
+        self.assertNotIn(b"guided-intake-original-request", ordinary_handler)
+        self.assertNotIn(b'"/api/run"', ordinary_handler)
+        self.assertNotIn(b"innerHTML", javascript)
+        self.assertIn(b"window.setTimeout(refresh, 750)", javascript)
+        self.assertIn(b"revision < ordinaryLastRevision && requestActive", javascript)
+        self.assertIn(b"disableStateChangingControls();", javascript)
+        self.assertIn(b'byId("ordinary-contract-question").focus()', javascript)
+        self.assertIn(b'byId("ordinary-contract-success").focus()', javascript)
+        self.assertIn(b'byId("ordinary-contract-error").focus()', javascript)
+
+    def test_ordinary_contract_endpoints_are_private_and_strict(self) -> None:
+        for path in ORDINARY_CONTRACT_POST_ROUTES:
+            status, _headers, _raw = self.request(
+                "POST", path, body={}, origin=self.server.origin
+            )
+            self.assertEqual(401, status)
+
+        cookie, csrf = self.bootstrap()
+        raw_duplicate = (
+            b'{"error_id":"OUP-ERR-a","error_id":"OUP-ERR-b",'
+            b'"idempotency_key":"00000000-0000-4000-8000-000000000000"}'
+        )
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/error/dismiss",
+            raw_body=raw_duplicate,
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(400, status)
+        body = json.loads(raw)
+        self.assertIsInstance(body["error"], dict)
+        self.assertIn("ordinary_contract", body)
+        self.assertIsNotNone(body["error"]["error_id"])
+        self.assertEqual(
+            body["error"]["error_id"],
+            body["ordinary_contract"]["action_error"]["error_id"],
+        )
+
+        status, _headers, raw = self.request(
+            "GET", "/api/state", cookie=cookie
+        )
+        self.assertEqual(200, status)
+        persisted = json.loads(raw)["ordinary_contract"]["action_error"]
+        self.assertEqual(body["error"]["error_id"], persisted["error_id"])
+        self.assertEqual(
+            "PREP_SOURCE_TRANSPORT_MISMATCH",
+            persisted["code"],
+        )
+
+        oversized = b'{"padding":"' + (b"x" * 131_072) + b'"}'
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/prepare",
+            raw_body=oversized,
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(413, status)
+        body = json.loads(raw)
+        self.assertEqual("PREP_SOURCE_TOO_LARGE", body["error"]["code"])
+        self.assertIsNotNone(body["error"]["error_id"])
+        self.assertEqual(
+            body["error"]["error_id"],
+            body["ordinary_contract"]["action_error"]["error_id"],
+        )
+
+    def test_ordinary_contract_http_golden_prepare_and_fix(self) -> None:
+        subprocess.run(
+            ("git", "config", "user.email", "ordinary@example.test"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(
+            ("git", "config", "user.name", "Ordinary Contract Smoke"),
+            cwd=self.repository,
+            check=True,
+        )
+        subprocess.run(("git", "add", "target.txt"), cwd=self.repository, check=True)
+        subprocess.run(
+            ("git", "commit", "-qm", "ordinary baseline"),
+            cwd=self.repository,
+            check=True,
+        )
+        cookie, csrf = self.bootstrap()
+        status, _headers, raw = self.request("GET", "/api/state", cookie=cookie)
+        self.assertEqual(200, status)
+        initial = json.loads(raw)
+        panel = initial["ordinary_contract"]
+        source = (
+            Path(__file__).parent
+            / "fixtures"
+            / "ordinary_user_path_v0_1"
+            / "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md"
+        ).read_bytes()
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/prepare",
+            body={
+                "filename": "Decision_OS_Ordinary_User_Path_Contract_v0.1_APPROVED_CANDIDATE.md",
+                "source_base64": base64.b64encode(source).decode("ascii"),
+                "source_byte_size": len(source),
+                "source_sha256": hashlib.sha256(source).hexdigest(),
+                "expected_repository_identity": panel["repository_identity"],
+                "expected_active_request_id": panel["technical_details"][
+                    "active_request_id"
+                ],
+                "idempotency_key": str(uuid.uuid4()),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        prepared = json.loads(raw)["ordinary_contract"]
+        self.assertEqual("REVIEW_READY", prepared["state"])
+        self.assertEqual("Ready to fix", prepared["status_label"])
+        details = prepared["technical_details"]
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/ordinary-contract/fix",
+            body={
+                "preparation_id": prepared["preparation_id"],
+                "expected_repository_identity": prepared[
+                    "repository_identity"
+                ],
+                "expected_source_sha256": prepared["source_identity"][
+                    "sha256"
+                ],
+                "expected_request_id": details["request_id"],
+                "expected_draft_id": details["draft_id"],
+                "expected_interpretation_sha256": details[
+                    "interpretation_sha256"
+                ],
+                "idempotency_key": str(uuid.uuid4()),
+            },
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+        fixed = json.loads(raw)["ordinary_contract"]
+        self.assertEqual("FIXED", fixed["state"])
+        factory = self.controller.adapter_factory
+        self.assertIsInstance(factory, ScriptedFactory)
+        self.assertEqual(1, len(factory.modes))
+
     def test_guided_intake_dom_and_authority_boundary_are_present(self) -> None:
         cookie, _csrf = self.bootstrap()
         status, _headers, html = self.request("GET", "/", cookie=cookie)
@@ -2099,6 +2317,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "choose-repository",
               "contract-import",
               "contract-use-guided-intake",
+              "ordinary-contract-confirm",
+              "ordinary-contract-fix",
+              "ordinary-contract-error-retry",
+              "ordinary-contract-error-dismiss",
               "new-run",
               "run",
               ...guidedIntakeButtonIds,
@@ -2223,6 +2445,30 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "intelligence-transplant-cryptographic-provenance",
               "intelligence-transplant-delta-state",
               "intelligence-transplant-error",
+              "ordinary-contract-clarification",
+              "ordinary-contract-answer-confirm",
+              "ordinary-contract-answer-reject",
+              "ordinary-contract-authority",
+              "ordinary-contract-completion",
+              "ordinary-contract-confirm",
+              "ordinary-contract-dnt",
+              "ordinary-contract-error",
+              "ordinary-contract-error-action",
+              "ordinary-contract-error-dismiss",
+              "ordinary-contract-error-fixed",
+              "ordinary-contract-error-retry",
+              "ordinary-contract-error-state",
+              "ordinary-contract-error-what",
+              "ordinary-contract-file",
+              "ordinary-contract-fix",
+              "ordinary-contract-preserves",
+              "ordinary-contract-progress",
+              "ordinary-contract-question",
+              "ordinary-contract-review",
+              "ordinary-contract-status",
+              "ordinary-contract-success",
+              "ordinary-contract-technical-body",
+              "ordinary-contract-unresolved",
               "intelligence-transplant-evidence-objects",
               "intelligence-transplant-execution-status",
               "intelligence-transplant-gate",
@@ -2274,6 +2520,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "guided-intake-error",
               "intelligence-transplant-card",
               "intelligence-transplant-error",
+              "ordinary-contract-clarification",
+              "ordinary-contract-error",
+              "ordinary-contract-review",
+              "ordinary-contract-success",
               "progress-card",
               "result-card",
               "run-error",
