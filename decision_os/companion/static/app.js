@@ -21,6 +21,13 @@ let ordinaryLastErrorId = null;
 let ordinaryLastRevision = -1;
 let ordinarySelectedFilename = null;
 let ordinarySelectedFilenameRevision = null;
+let operationStartPending = false;
+let operationApprovalResponsePending = false;
+let operationApprovalWasVisible = false;
+let operationApprovalSeen = false;
+let operationContinuingAfterApproval = false;
+let operationTerminalTransitioned = false;
+let operationLastApprovalKey = null;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -106,6 +113,272 @@ function statusLabel(state) {
     unsupported: "Unsupported",
     needs_attention: "Needs attention",
   }[state] || "Needs attention";
+}
+
+const OPERATION_STAGES = ["contract", "task", "run", "approval", "result"];
+const OPERATION_TARGETS = {
+  contract: ["ordinary-contract-card", "ordinary-contract-heading"],
+  task: ["bounded-task-card", "task-heading"],
+  run: ["progress-card", "progress-heading"],
+  approval: ["approval-overlay", "approval-heading"],
+  result: ["result-card", "result-heading"],
+};
+const TERMINAL_RUN_STATES = [
+  "completed",
+  "denied",
+  "unsupported",
+  "needs_attention",
+];
+
+function reducedMotionRequested() {
+  return Boolean(
+    globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+  );
+}
+
+function moveToOperationStage(stage) {
+  const targetIds = OPERATION_TARGETS[stage];
+  if (!targetIds) {
+    return false;
+  }
+  const target = byId(targetIds[0]);
+  const focusTarget = byId(targetIds[1]);
+  if (!target || target.classList.contains("hidden")) {
+    return false;
+  }
+  target.scrollIntoView?.({
+    behavior: reducedMotionRequested() ? "auto" : "smooth",
+    block: "start",
+  });
+  focusTarget?.focus?.({ preventScroll: true });
+  return true;
+}
+
+function approvalIdentity(approval) {
+  if (!approval) {
+    return null;
+  }
+  return [approval.repository, approval.action, approval.path].join("|");
+}
+
+function operationPresentation(
+  run,
+  ordinary,
+  hasTask,
+  repository,
+  context = {},
+) {
+  const state = run?.state || "idle";
+  const approval = context.approvalResponsePending
+    ? null
+    : run?.approval || null;
+  const startPending = Boolean(context.startPending);
+  const approvalSeen = Boolean(context.approvalSeen);
+  const continuing = Boolean(context.continuingAfterApproval);
+  const fixed = ordinary?.state === "FIXED";
+  const statuses = {
+    contract: fixed ? "Complete" : repository ? "Current" : "Not started",
+    task: "Not started",
+    run: "Not started",
+    approval: approvalSeen ? "Complete" : "Not started",
+    result: "Not started",
+  };
+
+  if (startPending) {
+    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.task = "Complete";
+    statuses.run = "Waiting for system";
+    return {
+      currentStage: "run",
+      statuses,
+      current: "Starting Run",
+      happening: "The bounded Run is being started.",
+      action: "Wait — no action is needed.",
+      next: "Codex will begin working on the bounded task.",
+    };
+  }
+
+  if (state === "running") {
+    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.task = "Complete";
+    statuses.run = approval ? "Waiting for you" : "Waiting for system";
+    if (approval) {
+      statuses.approval = "Waiting for you";
+      return {
+        currentStage: "approval",
+        statuses,
+        current: "Approval required",
+        happening: `${approval.action} is requested for ${approval.path}.`,
+        action: "Choose one response for this exact file change.",
+        next: "Your decision will either continue or stop this Run.",
+      };
+    }
+    return {
+      currentStage: "run",
+      statuses,
+      current: continuing ? "The Run is continuing" : "Codex is working",
+      happening: continuing
+        ? "The Run is continuing after your approval decision."
+        : (run.progress || []).at(-1) || "Codex is working on the bounded task.",
+      action: "Wait — no action is needed.",
+      next: "Approval will appear if an exact file change needs your decision.",
+    };
+  }
+
+  if (TERMINAL_RUN_STATES.includes(state)) {
+    const needsAttention = ["unsupported", "needs_attention"].includes(state);
+    statuses.contract = fixed ? "Complete" : "Not started";
+    statuses.task = "Complete";
+    statuses.run = needsAttention ? "Needs attention" : "Complete";
+    statuses.result = needsAttention ? "Needs attention" : "Current";
+    return {
+      currentStage: "result",
+      statuses,
+      current: needsAttention ? "Run needs attention" : "Run finished",
+      happening: needsAttention
+        ? "The Run finished with a verification outcome that needs review."
+        : "The bounded Run reached its terminal result.",
+      action: needsAttention
+        ? "Review the Run verification outcome."
+        : "Nothing — this Run is complete.",
+      next: "A new Run will not start automatically.",
+    };
+  }
+
+  statuses.task = fixed ? "Current" : "Not started";
+  if (!repository) {
+    return {
+      currentStage: null,
+      statuses,
+      current: "Choose repository",
+      happening: "Choose one local Git repository.",
+      action: "Choose one repository.",
+      next: "The Contract stage will become available.",
+    };
+  }
+  if (!fixed) {
+    return {
+      currentStage: "contract",
+      statuses,
+      current: "Contract",
+      happening: "The Contract stage is ready for one supported local Contract.",
+      action: "Select one Contract.",
+      next: "You will review its interpretation before fixing it.",
+    };
+  }
+  return {
+    currentStage: "task",
+    statuses,
+    current: hasTask ? "Task ready" : "Contract fixed",
+    happening: hasTask
+      ? "One bounded task is ready to start."
+      : "The fixed Contract context is ready for a bounded task.",
+    action: hasTask
+      ? "Select Run to start this bounded task."
+      : "Enter or prepare one bounded task.",
+    next: hasTask
+      ? "The view will move to Run progress."
+      : "Run becomes available after a task is present.",
+  };
+}
+
+function renderOperationAwareness(run, ordinary, repository) {
+  const presentation = operationPresentation(
+    run,
+    ordinary,
+    byId("task").value.trim().length > 0,
+    repository,
+    {
+      approvalResponsePending: operationApprovalResponsePending,
+      approvalSeen: operationApprovalSeen,
+      continuingAfterApproval: operationContinuingAfterApproval,
+      startPending: operationStartPending,
+    },
+  );
+  setText("operation-current", presentation.current);
+  setText("operation-happening", presentation.happening);
+  setText("operation-action", presentation.action);
+  setText("operation-next", presentation.next);
+  const stageButtons = Array.from(
+    document.querySelectorAll("[data-operation-stage]"),
+  );
+  for (const stage of OPERATION_STAGES) {
+    const button = stageButtons.find(
+      (candidate) => candidate.dataset.operationStage === stage,
+    );
+    const status = presentation.statuses[stage];
+    setText(`operation-${stage}-status`, status);
+    button?.setAttribute("aria-label", `${stage}: ${status}`);
+    if (stage === presentation.currentStage) {
+      button?.setAttribute("aria-current", "step");
+    } else {
+      button?.removeAttribute("aria-current");
+    }
+  }
+}
+
+function resetOperationTransitionMemory() {
+  operationApprovalResponsePending = false;
+  operationApprovalWasVisible = false;
+  operationApprovalSeen = false;
+  operationContinuingAfterApproval = false;
+  operationTerminalTransitioned = false;
+  operationLastApprovalKey = null;
+}
+
+function coordinateOperationTransition(run) {
+  const state = run?.state || "idle";
+  const rawApproval = run?.approval || null;
+  if (operationApprovalResponsePending && !rawApproval) {
+    operationApprovalResponsePending = false;
+  }
+  const approval = operationApprovalResponsePending ? null : rawApproval;
+  const approvalKey = approvalIdentity(approval);
+
+  if (state === "idle") {
+    resetOperationTransitionMemory();
+    return;
+  }
+  if (approval && approvalKey !== operationLastApprovalKey) {
+    operationApprovalSeen = true;
+    operationContinuingAfterApproval = false;
+    moveToOperationStage("approval");
+  } else if (
+    operationApprovalWasVisible &&
+    !approval &&
+    state === "running"
+  ) {
+    operationContinuingAfterApproval = true;
+    moveToOperationStage("run");
+  }
+  if (
+    TERMINAL_RUN_STATES.includes(state) &&
+    !operationTerminalTransitioned
+  ) {
+    operationTerminalTransitioned = true;
+    operationApprovalResponsePending = false;
+    moveToOperationStage("result");
+  }
+  operationApprovalWasVisible = Boolean(approval);
+  operationLastApprovalKey = approvalKey;
+}
+
+function beginOperationRun() {
+  resetOperationTransitionMemory();
+  operationStartPending = true;
+  byId("run").disabled = true;
+  setHidden("progress-card", false);
+  setText("run-state", "Starting Run");
+  const progress = byId("progress");
+  const item = document.createElement("li");
+  item.textContent = "Starting Run";
+  progress.replaceChildren(item);
+  renderOperationAwareness(
+    { state: "running", progress: ["Starting Run"], approval: null },
+    latestState?.ordinary_contract,
+    latestState?.repository,
+  );
+  moveToOperationStage("run");
 }
 
 function formatNumber(value, digits = 0) {
@@ -202,12 +475,28 @@ function renderRuntime(runtime) {
 }
 
 function renderResult(run) {
-  const terminal = ["completed", "denied", "unsupported", "needs_attention"].includes(
-    run.state,
-  );
+  const terminal = TERMINAL_RUN_STATES.includes(run.state);
   setHidden("result-card", !terminal);
   byId("new-run").disabled = !terminal;
-  setText("result-state", statusLabel(run.state));
+  setText(
+    "result-state",
+    ["unsupported", "needs_attention"].includes(run.state)
+      ? "Review required"
+      : "Result available",
+  );
+  const outcomes = run.outcomes || {};
+  setText("result-execution", outcomes.execution?.label || "Not established");
+  setText(
+    "result-file-change",
+    outcomes.file_change?.label || "No file was modified",
+  );
+  setText(
+    "result-verification",
+    outcomes.verification?.label || "Not established",
+  );
+  const verificationReason = outcomes.verification?.reason || "";
+  setText("result-verification-reason", verificationReason);
+  setHidden("result-verification-reason", !verificationReason);
   setText(
     "result",
     run.result ||
@@ -1198,6 +1487,7 @@ function render(state) {
         progress: [],
         result: "",
         file_actions: [],
+        outcomes: null,
         runtime: null,
         receipt_delta: null,
         approval: null,
@@ -1216,7 +1506,15 @@ function render(state) {
 
   renderProgress(boundedRunView);
   renderResult(boundedRunView);
-  renderApproval(boundedRunView.approval);
+  renderApproval(
+    operationApprovalResponsePending ? null : boundedRunView.approval,
+  );
+  coordinateOperationTransition(boundedRunView);
+  renderOperationAwareness(
+    boundedRunView,
+    state.ordinary_contract,
+    repository,
+  );
   renderDefaults(state.defaults);
 
   setText(
@@ -1307,6 +1605,7 @@ function enterDisconnected() {
     progress: [],
     result: "",
     file_actions: [],
+    outcomes: null,
     runtime: null,
     receipt_delta: null,
     approval: null,
@@ -1318,6 +1617,9 @@ function enterDisconnected() {
   setText("result-state", "");
   setText("result", "");
   renderApproval(null);
+  operationStartPending = false;
+  resetOperationTransitionMemory();
+  renderOperationAwareness(emptyRun, null, null);
 
   byId("defaults").replaceChildren();
   setText("receipt-status", "Session ended");
@@ -1708,6 +2010,32 @@ byId("contract-use-guided-intake").addEventListener("click", () => {
   originalRequestInput.focus();
 });
 
+const operationStageButtons = Array.from(
+  document.querySelectorAll("[data-operation-stage]"),
+);
+for (const [index, button] of operationStageButtons.entries()) {
+  button.addEventListener("click", () => {
+    moveToOperationStage(button.dataset.operationStage);
+  });
+  button.addEventListener("keydown", (event) => {
+    const lastIndex = operationStageButtons.length - 1;
+    let targetIndex = null;
+    if (["ArrowRight", "ArrowDown"].includes(event.key)) {
+      targetIndex = Math.min(index + 1, lastIndex);
+    } else if (["ArrowLeft", "ArrowUp"].includes(event.key)) {
+      targetIndex = Math.max(index - 1, 0);
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = lastIndex;
+    }
+    if (targetIndex !== null) {
+      event.preventDefault();
+      operationStageButtons[targetIndex].focus();
+    }
+  });
+}
+
 byId("task").addEventListener("input", () => {
   if (connected && latestState) {
     render(latestState);
@@ -1719,12 +2047,24 @@ byId("choose-repository").addEventListener("click", async () => {
 });
 
 byId("run").addEventListener("click", async () => {
-  await postJSON("/api/run", { task: byId("task").value });
+  if (byId("run").disabled || requestActive) {
+    return;
+  }
+  beginOperationRun();
+  const state = await postJSON("/api/run", { task: byId("task").value });
+  operationStartPending = false;
+  if (state) {
+    render(state);
+  } else if (latestState) {
+    render(latestState);
+  }
 });
 
 byId("new-run").addEventListener("click", async () => {
   const state = await postJSON("/api/new-run", {});
   if (state) {
+    operationStartPending = false;
+    resetOperationTransitionMemory();
     byId("task").value = "";
     render(state);
     byId("task").focus();
@@ -1733,7 +2073,30 @@ byId("new-run").addEventListener("click", async () => {
 
 for (const button of document.querySelectorAll("[data-choice]")) {
   button.addEventListener("click", async () => {
-    await postJSON("/api/approval", { choice: button.dataset.choice });
+    if (button.disabled || requestActive) {
+      return;
+    }
+    operationApprovalResponsePending = true;
+    operationApprovalSeen = true;
+    operationApprovalWasVisible = false;
+    operationContinuingAfterApproval = true;
+    renderApproval(null);
+    renderOperationAwareness(
+      { ...latestState.run, approval: null },
+      latestState.ordinary_contract,
+      latestState.repository,
+    );
+    moveToOperationStage("run");
+    const state = await postJSON("/api/approval", {
+      choice: button.dataset.choice,
+    });
+    if (!state) {
+      operationApprovalResponsePending = false;
+      operationContinuingAfterApproval = false;
+      if (latestState) {
+        render(latestState);
+      }
+    }
   });
 }
 

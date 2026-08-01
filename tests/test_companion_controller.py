@@ -238,6 +238,32 @@ class ScriptedAdapter:
                     ),
                 ),
             )
+        if self.mode == "modified_unsupported":
+            return CodexRunResult(
+                run_id=run_id,
+                normal_terminal=False,
+                status="UNSUPPORTED_MUTATION",
+                error_type=None,
+                turn_status="completed",
+                runtime_identity=runtime_identity(),
+                checkpoint_outcomes=(),
+                final_message=(
+                    "The requested file was modified.\n\n"
+                    "Decision OS verification: not verified "
+                    "(unsupported_request_method:commandExecution)."
+                ),
+                file_actions=(
+                    CodexFileAction(
+                        "Modify",
+                        "target.txt",
+                        "one-time",
+                        "approved",
+                    ),
+                ),
+                unsupported_reason=(
+                    "unsupported_request_method:commandExecution"
+                ),
+            )
         checkpoint = self.engine.finish_checkpoint(
             outcome,
             normal_terminal=True,
@@ -551,6 +577,55 @@ class CompanionControllerTest(unittest.TestCase):
                 persisted["run"]["file_actions"][0]["access"],
             )
             self.assertEqual(1, len(persisted["defaults"]))
+
+    def test_modified_file_and_unsupported_verification_are_separate(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root,
+                ScriptedFactory("modified_unsupported"),
+            )
+            controller.select_repository(repository)
+            controller.start_run("Modify one file, then request shell validation.")
+            wait_for(
+                controller,
+                lambda state: state["run"]["approval"] is not None,
+            )
+            controller.submit_approval("allow_once")
+
+            completed = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "unsupported",
+            )
+
+            self.assertEqual(
+                {
+                    "execution": {
+                        "state": "completed",
+                        "label": "Codex turn completed",
+                    },
+                    "file_change": {
+                        "state": "modified",
+                        "label": "Modified successfully",
+                    },
+                    "verification": {
+                        "state": "unsupported",
+                        "label": "Unsupported — review required",
+                        "reason": (
+                            "unsupported_request_method:commandExecution"
+                        ),
+                    },
+                },
+                completed["run"]["outcomes"],
+            )
+            self.assertEqual(
+                "approved",
+                completed["run"]["file_actions"][0]["status"],
+            )
+            self.assertEqual([], completed["defaults"])
 
     def test_default_reuse_receipt_delta_enumeration_and_revoke(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

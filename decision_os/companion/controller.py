@@ -236,6 +236,21 @@ class CompanionController:
             "progress": [],
             "result": "",
             "file_actions": [],
+            "outcomes": {
+                "execution": {
+                    "state": "not_started",
+                    "label": "Not started",
+                },
+                "file_change": {
+                    "state": "none",
+                    "label": "No file was modified",
+                },
+                "verification": {
+                    "state": "not_started",
+                    "label": "Not started",
+                    "reason": None,
+                },
+            },
             "runtime": None,
             "receipt_delta": None,
             "approval": None,
@@ -1110,6 +1125,15 @@ class CompanionController:
             self._run = self._empty_run()
             self._run["state"] = "running"
             self._run["progress"] = ["Preparing the bounded task."]
+            self._run["outcomes"]["execution"] = {
+                "state": "running",
+                "label": "Codex is working",
+            }
+            self._run["outcomes"]["verification"] = {
+                "state": "pending",
+                "label": "Pending",
+                "reason": None,
+            }
             self._run["receipt_before"] = before
             self._approval_choice = None
             self._worker = threading.Thread(
@@ -1231,6 +1255,73 @@ class CompanionController:
         ]
 
     @staticmethod
+    def _public_outcomes(result: CodexRunResult) -> dict[str, Any]:
+        execution_completed = result.turn_status == "completed"
+        execution = {
+            "state": "completed" if execution_completed else "not_completed",
+            "label": (
+                "Codex turn completed"
+                if execution_completed
+                else "Codex turn did not complete"
+            ),
+        }
+
+        completed_actions = [
+            action
+            for action in result.file_actions
+            if action.status == "approved"
+        ]
+        if completed_actions:
+            action = completed_actions[-1]
+            verb = "Created" if action.action == "Create" else "Modified"
+            file_change = {
+                "state": verb.lower(),
+                "label": f"{verb} successfully",
+            }
+        elif any(
+            action.status == "denied" for action in result.file_actions
+        ):
+            file_change = {
+                "state": "denied",
+                "label": "No file was modified — change denied",
+            }
+        else:
+            file_change = {
+                "state": "none",
+                "label": "No file was modified",
+            }
+
+        if result.status in {
+            "NORMAL_TERMINAL",
+            "VERIFIED_SAVE",
+            "VERIFIED_REUSE",
+        }:
+            verification_state = "completed"
+            verification_label = (
+                "Verified"
+                if result.status in {"VERIFIED_SAVE", "VERIFIED_REUSE"}
+                else "Completed"
+            )
+        elif result.status == "UNSUPPORTED_MUTATION":
+            verification_state = "unsupported"
+            verification_label = "Unsupported — review required"
+        elif result.status == "DENIED":
+            verification_state = "not_completed"
+            verification_label = "Not completed — change denied"
+        else:
+            verification_state = "needs_attention"
+            verification_label = "Needs attention"
+        return {
+            "execution": execution,
+            "file_change": file_change,
+            "verification": {
+                "state": verification_state,
+                "label": verification_label,
+                "reason": result.unsupported_reason,
+            },
+        }
+
+    @staticmethod
     def _display_state(result: CodexRunResult) -> str:
         if result.status in {
             "NORMAL_TERMINAL",
@@ -1255,6 +1346,7 @@ class CompanionController:
             self._run["state"] = self._display_state(result)
             self._run["result"] = result.final_message
             self._run["file_actions"] = self._public_actions(result)
+            self._run["outcomes"] = self._public_outcomes(result)
             self._run["runtime"] = self._public_runtime(result)
             self._run["receipt_delta"] = self._receipt_delta(before, after)
             self._run["approval"] = None
@@ -1285,6 +1377,21 @@ class CompanionController:
             self._run["state"] = "needs_attention"
             self._run["result"] = ""
             self._run["file_actions"] = []
+            self._run["outcomes"] = {
+                "execution": {
+                    "state": "not_completed",
+                    "label": "Codex turn did not complete",
+                },
+                "file_change": {
+                    "state": "none",
+                    "label": "No file was modified",
+                },
+                "verification": {
+                    "state": "needs_attention",
+                    "label": "Needs attention",
+                    "reason": None,
+                },
+            }
             self._run["runtime"] = None
             self._run["receipt_delta"] = (
                 self._receipt_delta(before, after)

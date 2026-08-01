@@ -36,6 +36,95 @@
       </p>
     </section>
 
+    <aside
+      id="operation-awareness"
+      class="operation-awareness"
+      aria-labelledby="operation-awareness-heading"
+    >
+      <div class="operation-awareness-heading">
+        <div>
+          <p class="eyebrow">OPERATION AWARENESS</p>
+          <h2 id="operation-awareness-heading">Current operation</h2>
+        </div>
+        <p id="operation-current" class="operation-current" aria-live="polite">
+          Choose repository
+        </p>
+      </div>
+      <nav aria-label="Operation stages">
+        <ol class="operation-rail">
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="contract"
+              aria-controls="ordinary-contract-card"
+            >
+              <span>Contract</span>
+              <span id="operation-contract-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="task"
+              aria-controls="bounded-task-card"
+            >
+              <span>Task</span>
+              <span id="operation-task-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="run"
+              aria-controls="progress-card"
+            >
+              <span>Run</span>
+              <span id="operation-run-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="approval"
+              aria-controls="approval-overlay"
+            >
+              <span>Approval</span>
+              <span id="operation-approval-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="result"
+              aria-controls="result-card"
+            >
+              <span>Result</span>
+              <span id="operation-result-status">Not started</span>
+            </button>
+          </li>
+        </ol>
+      </nav>
+      <dl class="operation-summary" aria-live="polite">
+        <div>
+          <dt>What is happening</dt>
+          <dd id="operation-happening">Choose one local Git repository.</dd>
+        </div>
+        <div>
+          <dt>What you need to do</dt>
+          <dd id="operation-action">Choose one repository.</dd>
+        </div>
+        <div>
+          <dt>What happens next</dt>
+          <dd id="operation-next">The Contract stage will become available.</dd>
+        </div>
+      </dl>
+    </aside>
+
     <section
       id="ordinary-contract-card"
       class="card ordinary-contract-card"
@@ -44,7 +133,7 @@
       <div class="section-heading">
         <div>
           <p class="step">C</p>
-          <h2 id="ordinary-contract-heading">Fix a Contract</h2>
+          <h2 id="ordinary-contract-heading" tabindex="-1">Fix a Contract</h2>
         </div>
         <span
           id="ordinary-contract-status"
@@ -156,7 +245,7 @@
       <div class="section-heading">
         <div>
           <p class="step">2</p>
-          <h2 id="task-heading">Bounded task</h2>
+          <h2 id="task-heading" tabindex="-1">Bounded task</h2>
         </div>
       </div>
       <label class="visually-hidden" for="task">Bounded task</label>
@@ -173,82 +262,11 @@
       <button id="run" class="primary" type="button">Run</button>
     </section>
 
-    <section
-      id="intelligence-transplant-card"
-      class="card hidden"
-      aria-labelledby="intelligence-transplant-heading"
-    >
-      <div class="section-heading">
-        <div>
-          <p class="step">5</p>
-          <h2 id="intelligence-transplant-heading">
-            Intelligence Transplant Run
-          </h2>
-        </div>
-        <span id="intelligence-transplant-gate" class="status">HOLD</span>
-      </div>
-      <p class="boundary">
-        This panel is read-only. Evidence transport never starts Codex,
-        assigns a Role, invokes a model, or authorizes the next loop.
-      </p>
-      <dl class="metric-grid">
-        <dt>Run ID</dt>
-        <dd id="intelligence-transplant-run-id">UNKNOWN</dd>
-        <dt>Execution Status</dt>
-        <dd id="intelligence-transplant-execution-status">NOT_ESTABLISHED</dd>
-        <dt>Delta State</dt>
-        <dd id="intelligence-transplant-delta-state">NONE</dd>
-        <dt>Structural Validation</dt>
-        <dd id="intelligence-transplant-structural-validation">UNKNOWN</dd>
-        <dt>Authority Provenance</dt>
-        <dd id="intelligence-transplant-authority-provenance">
-          MANUAL OWNER ATTESTED
-        </dd>
-        <dt>Cryptographic Provenance</dt>
-        <dd id="intelligence-transplant-cryptographic-provenance">
-          NOT ESTABLISHED
-        </dd>
-        <dt>Generalized Transplant</dt>
-        <dd id="intelligence-transplant-generalized-transplant">
-          NOT ESTABLISHED
-        </dd>
-      </dl>
-      <p class="claim-boundary">
-        Local manual authority receipt —not cryptographic identity proof.
-      </p>
-      <h3>Missing Evidence</h3>
-      <ul
-        id="intelligence-transplant-missing-evidence"
-        class="progress-list"
-      ></ul>
-      <h3>Next One Action</h3>
-      <p id="intelligence-transplant-next-action" class="primary-value"></p>
-      <h3>Not Allowed Next</h3>
-      <ul
-        id="intelligence-transplant-not-allowed-next"
-        class="progress-list"
-      ></ul>
-      <h3>Active CAP</h3>
-      <pre id="intelligence-transplant-active-cap" class="result-text"></pre>
-      <h3>Evidence Objects</h3>
-      <pre
-        id="intelligence-transplant-evidence-objects"
-        class="result-text"
-      ></pre>
-      <h3>Lineage</h3>
-      <pre id="intelligence-transplant-lineage" class="result-text"></pre>
-      <p
-        id="intelligence-transplant-error"
-        class="error hidden"
-        role="alert"
-      ></p>
-    </section>
-
     <section id="progress-card" class="card hidden" aria-labelledby="progress-heading">
       <div class="section-heading">
         <div>
           <p class="step">3</p>
-          <h2 id="progress-heading">Run progress</h2>
+          <h2 id="progress-heading" tabindex="-1">Run progress</h2>
         </div>
         <span id="run-state" class="status">Idle</span>
       </div>
@@ -259,16 +277,106 @@
     <section id="result-card" class="card hidden" aria-labelledby="result-heading">
       <div class="section-heading">
         <div>
-          <p class="step">4</p>
-          <h2 id="result-heading">Result</h2>
+          <p class="step">5</p>
+          <h2 id="result-heading" tabindex="-1">Result</h2>
         </div>
-        <span id="result-state" class="status">Completed</span>
+        <span id="result-state" class="status">Result available</span>
       </div>
+      <dl class="result-outcomes">
+        <div>
+          <dt>Run execution</dt>
+          <dd id="result-execution">Not started</dd>
+        </div>
+        <div>
+          <dt>File change</dt>
+          <dd id="result-file-change">No file was modified</dd>
+        </div>
+        <div>
+          <dt>Run verification</dt>
+          <dd id="result-verification">Not started</dd>
+          <dd id="result-verification-reason" class="path-value hidden"></dd>
+        </div>
+      </dl>
+      <h3>Codex response</h3>
       <pre id="result" class="result-text"></pre>
       <div id="file-actions" class="file-actions"></div>
       <dl id="runtime" class="runtime-grid"></dl>
       <button id="new-run" class="primary" type="button">New Run</button>
     </section>
+
+    <details id="additional-evidence" class="additional-evidence">
+      <summary>Additional evidence</summary>
+      <div class="additional-evidence-content">
+        <section
+          id="intelligence-transplant-card"
+          class="card hidden"
+          aria-labelledby="intelligence-transplant-heading"
+        >
+          <div class="section-heading">
+            <div>
+              <p class="step">E</p>
+              <h2 id="intelligence-transplant-heading">
+                Intelligence Transplant Run
+              </h2>
+            </div>
+            <span id="intelligence-transplant-gate" class="status">HOLD</span>
+          </div>
+          <p class="boundary">
+            This panel is read-only. Evidence transport never starts Codex,
+            assigns a Role, invokes a model, or authorizes the next loop.
+          </p>
+          <dl class="metric-grid">
+            <dt>Run ID</dt>
+            <dd id="intelligence-transplant-run-id">UNKNOWN</dd>
+            <dt>Execution Status</dt>
+            <dd id="intelligence-transplant-execution-status">NOT_ESTABLISHED</dd>
+            <dt>Delta State</dt>
+            <dd id="intelligence-transplant-delta-state">NONE</dd>
+            <dt>Structural Validation</dt>
+            <dd id="intelligence-transplant-structural-validation">UNKNOWN</dd>
+            <dt>Authority Provenance</dt>
+            <dd id="intelligence-transplant-authority-provenance">
+              MANUAL OWNER ATTESTED
+            </dd>
+            <dt>Cryptographic Provenance</dt>
+            <dd id="intelligence-transplant-cryptographic-provenance">
+              NOT ESTABLISHED
+            </dd>
+            <dt>Generalized Transplant</dt>
+            <dd id="intelligence-transplant-generalized-transplant">
+              NOT ESTABLISHED
+            </dd>
+          </dl>
+          <p class="claim-boundary">
+            Local manual authority receipt —not cryptographic identity proof.
+          </p>
+          <h3>Missing Evidence</h3>
+          <ul
+            id="intelligence-transplant-missing-evidence"
+            class="progress-list"
+          ></ul>
+          <h3>Next One Action</h3>
+          <p id="intelligence-transplant-next-action" class="primary-value"></p>
+          <h3>Not Allowed Next</h3>
+          <ul
+            id="intelligence-transplant-not-allowed-next"
+            class="progress-list"
+          ></ul>
+          <h3>Active CAP</h3>
+          <pre id="intelligence-transplant-active-cap" class="result-text"></pre>
+          <h3>Evidence Objects</h3>
+          <pre
+            id="intelligence-transplant-evidence-objects"
+            class="result-text"
+          ></pre>
+          <h3>Lineage</h3>
+          <pre id="intelligence-transplant-lineage" class="result-text"></pre>
+          <p
+            id="intelligence-transplant-error"
+            class="error hidden"
+            role="alert"
+          ></p>
+        </section>
 
     <section class="card receipt-card" aria-labelledby="receipt-heading">
       <div class="section-heading">
@@ -307,6 +415,8 @@
       </p>
       <div id="defaults" class="defaults-list"></div>
     </section>
+      </div>
+    </details>
 
     <details id="advanced-audit-mode" class="advanced-audit-mode">
       <summary>Advanced / Audit Mode</summary>
@@ -714,7 +824,11 @@
   <div id="approval-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="approval-heading">
     <section class="approval-card">
       <p class="eyebrow">APPROVAL REQUIRED</p>
-      <h2 id="approval-heading">One exact file change</h2>
+      <h2 id="approval-heading" tabindex="-1">One exact file change</h2>
+      <p class="approval-instruction">
+        Review the exact action and path. Your decision either continues or
+        stops this Run; no option is selected automatically.
+      </p>
       <dl class="approval-details">
         <dt>Repository</dt>
         <dd id="approval-repository"></dd>
@@ -727,17 +841,28 @@
       </dl>
       <h3>Proposed diff</h3>
       <pre id="approval-diff" class="diff"></pre>
-      <p class="boundary">
-        “Use for this repository” saves only this exact action and path.
-      </p>
       <div class="approval-actions">
-        <button data-choice="allow_once" class="secondary" type="button">
-          Allow once
-        </button>
-        <button data-choice="repository" class="primary" type="button">
-          Use for this repository
-        </button>
-        <button data-choice="deny" class="danger" type="button">Deny</button>
+        <div class="approval-option">
+          <button data-choice="allow_once" class="primary" type="button">
+            Allow this change once
+          </button>
+          <p>Allows only the exact action and path shown for this Run.</p>
+        </div>
+        <div class="approval-option">
+          <button data-choice="repository" class="secondary" type="button">
+            Save this exact permission
+          </button>
+          <p>
+            Allows the same exact action and path in this repository in later
+            Runs.
+          </p>
+        </div>
+        <div class="approval-option">
+          <button data-choice="deny" class="danger" type="button">
+            Deny and stop this Run
+          </button>
+          <p>No requested file change will be approved.</p>
+        </div>
       </div>
     </section>
   </div>
