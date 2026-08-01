@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import copy
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -53,6 +54,8 @@ _UNSUPPORTED_REQUEST_METHOD_REASONS = {
 _UNSUPPORTED_REASON_CODES = frozenset(
     {
         "approval_identity_mismatch",
+        "additional_file_action_item",
+        "duplicate_file_action_item_after_completion",
         "duplicate_approval_request",
         "unapproved_file_completion",
         "unsupported_file_change_shape",
@@ -151,6 +154,18 @@ class _CodexFileActionCandidate:
 
     action: str
     item_id: str
+    outcome: DecisionOutcome
+
+
+@dataclass(frozen=True)
+class _CodexApprovalBinding:
+    """Exact one-Run human decision binding for one protocol item."""
+
+    run_id: str
+    item_id: str
+    decision_type: DecisionType
+    normalized_scope: str
+    change_identity: str
     outcome: DecisionOutcome
 
 
@@ -382,7 +397,7 @@ class CodexAdapter:
         self._resolved_items: set[str] = set()
         self._completed_items: set[str] = set()
         self._pending: dict[str, DecisionOutcome] = {}
-        self._seen: dict[str, DecisionOutcome] = {}
+        self._approval_binding: _CodexApprovalBinding | None = None
         self._permission_denied = False
         self._unsupported_mutation = False
         self._unsupported_reason: str | None = None
@@ -411,7 +426,7 @@ class CodexAdapter:
         self._resolved_items = set()
         self._completed_items = set()
         self._pending = {}
-        self._seen = {}
+        self._approval_binding = None
         self._permission_denied = False
         self._unsupported_mutation = False
         self._unsupported_reason = None
@@ -911,21 +926,24 @@ class CodexAdapter:
             "file approval parameters",
         )
         item_id = params.get("itemId")
-        duplicate_item = (
-            isinstance(item_id, str)
-            and item_id in self._approval_requests.values()
+        valid_request_id = (
+            isinstance(request_id, (str, int))
+            and not isinstance(request_id, bool)
         )
-        if not self._register_approval_request(request_id, item_id):
-            reason = (
-                "duplicate_approval_request"
-                if (
-                    isinstance(request_id, (str, int))
-                    and not isinstance(request_id, bool)
-                    and request_id in self._approval_requests
+        request_replay = bool(
+            valid_request_id and request_id in self._approval_requests
+        )
+        if request_replay:
+            if self._approval_requests[request_id] != item_id:
+                self._mark_unsupported("approval_identity_mismatch")
+                if isinstance(item_id, str):
+                    self._declined_items.add(item_id)
+                self._send(
+                    {"id": request_id, "result": {"decision": "decline"}}
                 )
-                else "approval_identity_mismatch"
-            )
-            self._mark_unsupported(reason)
+                return
+        elif not self._register_approval_request(request_id, item_id):
+            self._mark_unsupported("approval_identity_mismatch")
             if isinstance(item_id, str):
                 self._declined_items.add(item_id)
             self._send(
@@ -945,13 +963,6 @@ class CodexAdapter:
                 {"id": request_id, "result": {"decision": "decline"}}
             )
             return
-        if duplicate_item:
-            self._mark_unsupported("duplicate_approval_request")
-            self._declined_items.add(item_id)
-            self._send(
-                {"id": request_id, "result": {"decision": "decline"}}
-            )
-            return
         try:
             decision_type, raw_path = self._map_file_change(
                 self._items[item_id]
@@ -965,29 +976,74 @@ class CodexAdapter:
             )
             return
 
-        key = (
-            f"{self.engine.store.repository_id}|"
-            f"{decision_type.value}|{normalized}"
-        )
-        if key in self._seen:
-            outcome = self._seen[key]
-        else:
-            self._iteration += 1
-            outcome = self.engine.evaluate(
-                run_id=self._run_id,
-                iteration=self._iteration,
-                decision_type=decision_type,
-                requested_scope=raw_path,
-                source_interrupt_id=item_id,
-                choice_provider=lambda identity: self._approval_choice(
-                    identity,
-                    self._items[item_id],
-                    params,
-                ),
+        changes = self._items[item_id]["changes"]
+        change_identity = hashlib.sha256(
+            json.dumps(
+                changes,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        binding = self._approval_binding
+        if binding is not None:
+            exact_item_replay = bool(
+                binding.run_id == self._run_id
+                and binding.item_id == item_id
+                and binding.decision_type is decision_type
+                and binding.normalized_scope == normalized
+                and binding.change_identity == change_identity
             )
-            self._seen[key] = outcome
-            if outcome.pending_cross_run_checkpoint:
-                self._pending[outcome.identity.decision_key] = outcome
+            if exact_item_replay:
+                self._send(
+                    {
+                        "id": request_id,
+                        "result": {
+                            "decision": (
+                                "accept" if binding.outcome.allowed else "decline"
+                            )
+                        },
+                    }
+                )
+                return
+            reason = (
+                "duplicate_file_action_item_after_completion"
+                if (
+                    binding.decision_type is decision_type
+                    and binding.normalized_scope == normalized
+                )
+                else "additional_file_action_item"
+            )
+            self._mark_unsupported(reason)
+            self._declined_items.add(item_id)
+            self._send(
+                {"id": request_id, "result": {"decision": "decline"}}
+            )
+            return
+
+        self._iteration += 1
+        outcome = self.engine.evaluate(
+            run_id=self._run_id,
+            iteration=self._iteration,
+            decision_type=decision_type,
+            requested_scope=raw_path,
+            source_interrupt_id=item_id,
+            choice_provider=lambda identity: self._approval_choice(
+                identity,
+                self._items[item_id],
+                params,
+            ),
+        )
+        self._approval_binding = _CodexApprovalBinding(
+            run_id=self._run_id,
+            item_id=item_id,
+            decision_type=decision_type,
+            normalized_scope=normalized,
+            change_identity=change_identity,
+            outcome=outcome,
+        )
+        if outcome.pending_cross_run_checkpoint:
+            self._pending[outcome.identity.decision_key] = outcome
 
         if outcome.allowed:
             decision_type, _ = self._map_file_change(self._items[item_id])
@@ -1040,16 +1096,16 @@ class CodexAdapter:
             return
         if (
             request_id not in self._approval_requests
-            or request_id in self._resolved_approval_requests
         ):
             self._identity_failure = True
+            return
+        if request_id in self._resolved_approval_requests:
             return
         self._resolved_approval_requests.add(request_id)
         item_id = self._approval_requests[request_id]
         if item_id is None:
             return
         if item_id in self._resolved_items:
-            self._identity_failure = True
             return
         self._resolved_items.add(item_id)
 
@@ -1097,7 +1153,8 @@ class CodexAdapter:
             self._identity_failure = True
             return
         if item_id in self._items:
-            self._identity_failure = True
+            if self._items[item_id] != item:
+                self._identity_failure = True
             return
         self._items[item_id] = item
 
@@ -1159,11 +1216,19 @@ class CodexAdapter:
             self._identity_failure = True
             return
         approved = self._approved_changes.get(item_id)
+        if item_id in self._completed_items:
+            if (
+                item.get("status") != "completed"
+                or approved is None
+                or item.get("changes") != approved
+                or item_id not in self._resolved_items
+            ):
+                self._identity_failure = True
+            return
         if (
             item.get("status") != "completed"
             or approved is None
             or item.get("changes") != approved
-            or item_id in self._completed_items
             or item_id not in self._resolved_items
         ):
             self._identity_failure = True

@@ -608,6 +608,357 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 [event.kind for event in lifecycle],
             )
 
+    async def test_exact_file_item_replay_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            changes = [change()]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    started_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    started_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        request_id="approval-item-1",
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        request_id="approval-item-1",
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        request_id="approval-item-1-retry",
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="approval-item-1",
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="approval-item-1",
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="approval-item-1-retry",
+                    ),
+                    completed_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    completed_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=changes,
+                    ),
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+
+            result = await adapter.run("idempotent item replay")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual({"item-1"}, adapter._completed_items)
+            self.assertEqual(1, len(adapter._file_action_candidates))
+            checks = [
+                event
+                for event in engine.store.read_events()
+                if event["event_type"] == "DECISION_CHECK"
+            ]
+            self.assertEqual(1, len(checks))
+            decisions = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["accept", "accept", "accept"], decisions)
+
+    async def test_live_incident_distinct_same_scope_items_fail_closed(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            changes = [change()]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            for index, item_id in enumerate(
+                ("item-1", "item-2", "item-3"),
+                start=1,
+            ):
+                messages.extend(
+                    [
+                        started_item(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            changes=changes,
+                        ),
+                        approval_request(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            request_id=f"approval-{index}",
+                        ),
+                        resolved_request(
+                            thread_id="thread-1",
+                            request_id=f"approval-{index}",
+                        ),
+                        completed_item(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            changes=changes,
+                            status=(
+                                "completed" if index == 1 else "declined"
+                            ),
+                        ),
+                    ]
+                )
+            messages.append(
+                completed_turn(thread_id="thread-1", turn_id="turn-1")
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+
+            result = await adapter.run("live incident shape")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertFalse(result.normal_terminal)
+            self.assertIsNone(result.error_type)
+            self.assertEqual(
+                "duplicate_file_action_item_after_completion",
+                result.unsupported_reason,
+            )
+            self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("target.txt", result.file_actions[0].normalized_scope)
+            self.assertEqual({"item-1"}, adapter._completed_items)
+            self.assertEqual({"item-2", "item-3"}, adapter._declined_items)
+            checks = [
+                event
+                for event in engine.store.read_events()
+                if event["event_type"] == "DECISION_CHECK"
+            ]
+            self.assertEqual(1, len(checks))
+            self.assertEqual("item-1", checks[0]["source_interrupt_id"])
+            decisions = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["accept", "decline", "decline"], decisions)
+
+    async def test_distinct_different_file_item_never_inherits_decision(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            first_changes = [change()]
+            second_changes = [change(path="other.txt", kind="add")]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    started_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=first_changes,
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        request_id="approval-1",
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="approval-1",
+                    ),
+                    completed_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-1",
+                        changes=first_changes,
+                    ),
+                    started_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-2",
+                        changes=second_changes,
+                    ),
+                    approval_request(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-2",
+                        request_id="approval-2",
+                    ),
+                    resolved_request(
+                        thread_id="thread-1",
+                        request_id="approval-2",
+                    ),
+                    completed_item(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        item_id="item-2",
+                        changes=second_changes,
+                        status="declined",
+                    ),
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+
+            result = await adapter.run("different second item")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual(
+                "additional_file_action_item",
+                result.unsupported_reason,
+            )
+            self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual({"item-1"}, adapter._completed_items)
+            checks = [
+                event
+                for event in engine.store.read_events()
+                if event["event_type"] == "DECISION_CHECK"
+            ]
+            self.assertEqual(1, len(checks))
+            decisions = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["accept", "decline"], decisions)
+
+    async def test_denied_item_cannot_be_reused_or_upgraded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            changes = [change()]
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            for index, item_id in enumerate(("item-1", "item-2"), start=1):
+                messages.extend(
+                    [
+                        started_item(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            changes=changes,
+                        ),
+                        approval_request(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            request_id=f"approval-{index}",
+                        ),
+                        resolved_request(
+                            thread_id="thread-1",
+                            request_id=f"approval-{index}",
+                        ),
+                        completed_item(
+                            thread_id="thread-1",
+                            turn_id="turn-1",
+                            item_id=item_id,
+                            changes=changes,
+                            status="declined",
+                        ),
+                    ]
+                )
+            messages.append(
+                completed_turn(thread_id="thread-1", turn_id="turn-1")
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "3",
+            )
+
+            result = await adapter.run("deny and repeat")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual(
+                "duplicate_file_action_item_after_completion",
+                result.unsupported_reason,
+            )
+            self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("denied", result.file_actions[0].status)
+            self.assertEqual(set(), adapter._completed_items)
+            checks = [
+                event
+                for event in engine.store.read_events()
+                if event["event_type"] == "DECISION_CHECK"
+            ]
+            self.assertEqual(1, len(checks))
+            decisions = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["decline", "decline"], decisions)
+
     async def test_two_fresh_threads_create_default_then_verified_save(
         self,
     ) -> None:
@@ -986,7 +1337,9 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(result.normal_terminal)
                     self.assertEqual((), result.file_actions)
 
-    async def test_same_run_repeat_never_becomes_verified(self) -> None:
+    async def test_saved_permission_never_authorizes_distinct_same_run_item(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory))
             messages = handshake_messages(
@@ -1034,9 +1387,21 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             result = await adapter.run("same run repeat")
 
-            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual(
+                "duplicate_file_action_item_after_completion",
+                result.unsupported_reason,
+            )
             self.assertEqual((0, 0), engine.store.counters())
             self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertLessEqual(len(result.file_actions), 1)
+            decisions = [
+                message["result"]["decision"]
+                for message in factory.transports[0].sent
+                if "result" in message
+                and "decision" in message["result"]
+            ]
+            self.assertEqual(["accept", "decline"], decisions)
             self.assertFalse(
                 any(
                     event["event_type"] == "VERIFIED_SAVE"
