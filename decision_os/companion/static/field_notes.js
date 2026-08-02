@@ -99,6 +99,7 @@
       root.appendChild(text("p", `${approval.action} ${approval.path}`));
       root.appendChild(text("p", `SHA-256: ${approval.content_sha256}`));
       root.appendChild(text("p", `Precondition: ${approval.precondition}`));
+      root.appendChild(text("p", `Scope: ${approval.approval_scope}`));
       root.appendChild(text("pre", approval.content, "field-note-content"));
       const actions = document.createElement("div");
       actions.className = "field-note-actions";

@@ -155,7 +155,11 @@ class FieldNoteDraft:
 
 
 def _bounded_string(value: Any, minimum: int, maximum: int) -> str:
-    if not isinstance(value, str) or not minimum <= len(value) <= maximum:
+    if (
+        not isinstance(value, str)
+        or not minimum <= len(value) <= maximum
+        or not value.strip()
+    ):
         raise ValueError("String is outside the bounded schema.")
     if "\x00" in value:
         raise ValueError("NUL is not allowed.")

@@ -269,6 +269,15 @@ class FieldNotesCompanionController(CompanionController):
         except ValueError as exc:
             raise FieldNoteError("Field Note path escapes the repository.") from exc
         self._ensure_safe_directory(repository, target.parent)
+        if (
+            target.exists()
+            or target.is_symlink()
+            or self._case_collision(target.parent, target.name)
+        ):
+            raise FieldNoteError(
+                "Field Note create-new precondition failed."
+            )
+        opened_identity: tuple[int, int] | None = None
         try:
             descriptor = os.open(
                 target,
@@ -283,25 +292,56 @@ class FieldNotesCompanionController(CompanionController):
                 "Field Note create-new precondition failed."
             ) from exc
         try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode):
+                raise FieldNoteError(
+                    "Field Note target is not a safe regular file."
+                )
+            opened_identity = (opened.st_dev, opened.st_ino)
             with os.fdopen(descriptor, "wb") as stream:
                 stream.write(pending.draft.markdown)
                 stream.flush()
                 os.fsync(stream.fileno())
-            observed = target.read_bytes()
+            observed_info = target.lstat()
             if (
-                observed != pending.draft.markdown
+                stat.S_ISLNK(observed_info.st_mode)
+                or not stat.S_ISREG(observed_info.st_mode)
+                or (observed_info.st_dev, observed_info.st_ino)
+                != opened_identity
+            ):
+                raise FieldNoteError(
+                    "Field Note post-write path identity did not match."
+                )
+            observed = target.read_bytes()
+            readback_info = target.lstat()
+            if (
+                stat.S_ISLNK(readback_info.st_mode)
+                or not stat.S_ISREG(readback_info.st_mode)
+                or (readback_info.st_dev, readback_info.st_ino)
+                != opened_identity
+                or observed != pending.draft.markdown
                 or hashlib.sha256(observed).hexdigest()
                 != pending.draft.sha256
             ):
                 raise FieldNoteError(
                     "Field Note readback identity did not match."
                 )
-        except Exception:
+        except Exception as exc:
             try:
-                target.unlink(missing_ok=True)
+                current = target.lstat()
+                if (
+                    opened_identity is not None
+                    and stat.S_ISREG(current.st_mode)
+                    and (current.st_dev, current.st_ino) == opened_identity
+                ):
+                    target.unlink()
             except OSError:
                 pass
-            raise
+            if isinstance(exc, FieldNoteError):
+                raise
+            raise FieldNoteError(
+                "Field Note write or readback failed safely."
+            ) from exc
 
     def field_note_approval(self, choice: str) -> dict[str, Any]:
         with self._condition:
@@ -322,9 +362,20 @@ class FieldNotesCompanionController(CompanionController):
                 raise FieldNoteError(
                     "Field Note save allows exact one-time Approval only."
                 )
-            self._write_pending(pending)
-            path = pending.draft.relative_path
             self._field_note_pending = None
+            try:
+                self._write_pending(pending)
+            except FieldNoteError:
+                self._field_note_draft = pending.draft
+                self._run["field_note"] = {
+                    **pending.draft.public_candidate(),
+                    "error": (
+                        "Save failed; prepare a new exact Approval before "
+                        "retrying."
+                    ),
+                }
+                raise
+            path = pending.draft.relative_path
             self._field_note_draft = None
             self._run["field_note"] = {"state": "saved", "path": path}
             return self._snapshot_locked()

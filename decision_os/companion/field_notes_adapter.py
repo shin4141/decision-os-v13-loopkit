@@ -187,7 +187,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 {"code": code, "status": "rejected"}
             ),
         )
-        self._proposal_responses[call_id] = response
+        # A malformed replay must never replace the first response record.
+        self._proposal_responses.setdefault(call_id, response)
         self._send_proposal_response(request_id, response)
 
     def _respond_field_note_tool_call(self, message: dict[str, Any]) -> None:
@@ -248,10 +249,26 @@ class FieldNotesCodexAdapter(CodexAdapter):
             )
             self._mark_identity_failure()
             return
+        assert isinstance(call_id, str)
+        assert isinstance(arguments, dict)
+        arguments_identity = self._arguments_identity(arguments)
+        existing = self._proposal_responses.get(call_id)
+        if existing is not None:
+            if existing.arguments_identity != arguments_identity:
+                self._failed_proposal_response(
+                    request_id=request_id,
+                    call_id=call_id,
+                    arguments=arguments,
+                    code="proposal_request_identity_mismatch",
+                )
+                self._mark_identity_failure()
+                return
+            self._send_proposal_response(request_id, existing)
+            return
         accepted, code = self._field_note_gate.propose(arguments)
         response = _ProposalResponse(
             call_id=safe_call_id,
-            arguments_identity=self._arguments_identity(arguments),
+            arguments_identity=arguments_identity,
             success=accepted,
             content_items=self._proposal_content(
                 {

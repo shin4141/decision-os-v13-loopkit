@@ -1,24 +1,40 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from decision_os.acceleration.codex_adapter import (
+    ADAPTER_NAME,
+    CODEX_CLI_VERSION,
     CodexReadEvidence,
     CodexRunResult,
 )
-from decision_os.companion.field_notes_adapter import FieldNoteCodexRunResult
+from decision_os.acceleration.engine import AccelerationEngine
+from decision_os.companion.field_notes_adapter import (
+    FieldNoteCodexRunResult,
+    FieldNotesCodexAdapter,
+)
 from decision_os.companion.field_notes_controller import (
+    FieldNoteError,
     FieldNotesCompanionController,
 )
 from decision_os.companion.field_notes_model import (
     FIELD_NOTE_SCHEMA_VERSION,
+    FIELD_NOTE_TOOL_NAME,
     FieldNoteProposalGate,
     compile_draft,
+)
+from tests.test_acceleration_codex_adapter import (
+    FakeTransportFactory,
+    completed_agent_message,
+    completed_turn,
+    handshake_messages,
 )
 
 
@@ -68,6 +84,75 @@ def create_repository(parent: Path) -> Path:
         raise AssertionError(completed.stderr)
     (repository / "seed.txt").write_text("seed\n", encoding="utf-8")
     return repository
+
+
+def started_proposal(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    arguments: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "method": "item/started",
+        "params": {
+            "item": {
+                "arguments": arguments,
+                "id": call_id,
+                "status": "inProgress",
+                "tool": FIELD_NOTE_TOOL_NAME,
+                "type": "dynamicToolCall",
+            },
+            "startedAtMs": 1,
+            "threadId": thread_id,
+            "turnId": turn_id,
+        },
+    }
+
+
+def proposal_request(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    request_id: str,
+    arguments: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "id": request_id,
+        "method": "item/tool/call",
+        "params": {
+            "arguments": arguments,
+            "callId": call_id,
+            "threadId": thread_id,
+            "tool": FIELD_NOTE_TOOL_NAME,
+            "turnId": turn_id,
+        },
+    }
+
+
+def completed_proposal(
+    *,
+    thread_id: str,
+    turn_id: str,
+    call_id: str,
+    arguments: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "method": "item/completed",
+        "params": {
+            "completedAtMs": 2,
+            "item": {
+                "arguments": arguments,
+                "id": call_id,
+                "status": "completed",
+                "tool": FIELD_NOTE_TOOL_NAME,
+                "type": "dynamicToolCall",
+            },
+            "threadId": thread_id,
+            "turnId": turn_id,
+        },
+    }
 
 
 class FieldNotesModelTests(unittest.TestCase):
@@ -149,6 +234,92 @@ class FieldNotesModelTests(unittest.TestCase):
                 created_at="2026-08-02T12:34:56Z",
                 field_note_id="fn_fixed_identity",
             )
+
+    def test_whitespace_only_typed_text_is_schema_invalid(self) -> None:
+        invalid = proposal()
+        invalid["body"]["procedure"] = " \n\t "  # type: ignore[index]
+        with self.assertRaises(ValueError):
+            compile_draft(
+                invalid,
+                source_run_id="run_001",
+                created_at="2026-08-02T12:34:56Z",
+                field_note_id="fn_fixed_identity",
+            )
+
+
+class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_proposal_request_replay_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = create_repository(Path(temporary))
+            thread_id = "thread-field-note"
+            turn_id = "turn-field-note"
+            call_id = "proposal-call"
+            request_id = "proposal-request"
+            arguments = proposal()
+            request = proposal_request(
+                thread_id=thread_id,
+                turn_id=turn_id,
+                call_id=call_id,
+                request_id=request_id,
+                arguments=arguments,
+            )
+            messages = handshake_messages(
+                repository,
+                thread_id=thread_id,
+                turn_id=turn_id,
+            )
+            messages.extend(
+                [
+                    started_proposal(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        arguments=arguments,
+                    ),
+                    request,
+                    request,
+                    completed_proposal(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        arguments=arguments,
+                    ),
+                    completed_agent_message(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        text="Completed.",
+                    ),
+                    completed_turn(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+            adapter = FieldNotesCodexAdapter(
+                engine,
+                input_func=lambda: None,
+                stdout=io.StringIO(),
+                transport_factory=factory,
+            )
+
+            result = await adapter.run("Read and report one bounded insight.")
+
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNotNone(result.field_note_proposal)
+            responses = [
+                message
+                for message in factory.transports[0].sent
+                if message.get("id") == request_id
+            ]
+            self.assertEqual(2, len(responses))
+            self.assertEqual(responses[0], responses[1])
+            self.assertTrue(responses[0]["result"]["success"])
 
 
 class FieldNotesControllerTests(unittest.TestCase):
@@ -270,6 +441,10 @@ class FieldNotesControllerTests(unittest.TestCase):
             surface = approval["run"]["field_note"]["approval"]
             self.assertEqual(surface["action"], "CREATE")
             self.assertEqual(surface["precondition"], "MUST_NOT_EXIST")
+            self.assertEqual(
+                surface["approval_scope"],
+                "THIS ONE FILE ONLY",
+            )
             self.assertEqual(surface["content_sha256"], draft.sha256)
             saved = controller.field_note_approval("allow_once")
             self.assertEqual(target.read_bytes(), draft.markdown)
@@ -281,6 +456,52 @@ class FieldNotesControllerTests(unittest.TestCase):
                 saved["run"]["field_note"],
                 {"state": "saved", "path": draft.relative_path},
             )
+
+    def test_failed_allow_once_requires_a_fresh_approval(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller, repository = self._controller(root)
+            draft = compile_draft(
+                proposal(),
+                source_run_id="run_001",
+                created_at="2026-08-02T12:34:56Z",
+                field_note_id="fn_fixed_identity",
+            )
+            with controller._condition:
+                controller._run["state"] = "completed"
+                controller._field_note_draft = draft
+                controller._run["field_note"] = draft.public_candidate()
+            with patch.object(
+                controller,
+                "_case_collision",
+                side_effect=[False, True],
+            ):
+                controller.field_note_save()
+                with self.assertRaises(FieldNoteError):
+                    controller.field_note_approval("allow_once")
+            self.assertFalse((repository / draft.relative_path).exists())
+            state = controller.snapshot()["run"]["field_note"]
+            self.assertEqual("candidate", state["state"])
+            self.assertIn("new exact Approval", state["error"])
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_approval("allow_once")
+            renewed = controller.field_note_save()
+            self.assertEqual(
+                "approval",
+                renewed["run"]["field_note"]["state"],
+            )
+
+
+class FieldNotesStaticUiTests(unittest.TestCase):
+    def test_approval_renders_the_exact_one_file_scope(self) -> None:
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "field_notes.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("approval.approval_scope", javascript)
 
 
 if __name__ == "__main__":
