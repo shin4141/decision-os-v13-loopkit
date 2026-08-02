@@ -45,7 +45,7 @@ _DEVELOPER_INSTRUCTIONS = (
 )
 _READ_TOOL_NAME = "read_repository_text_file"
 _READ_MAX_BYTES = 131_072
-_READ_MAX_TARGETS = 4
+_READ_MAX_DISTINCT_PATHS = 4
 _WINDOWS_ABSOLUTE_PATH = re.compile(r"^[A-Za-z]:[/\\]")
 _SOURCE_ECHO_MARKER = "[Repository source content withheld.]"
 _FENCE_OPENING = re.compile(
@@ -58,8 +58,10 @@ _READ_TOOL_SPEC = {
     "name": _READ_TOOL_NAME,
     "description": (
         "Read one existing strict UTF-8 text file inside the selected "
-        "repository. One bounded Run may read up to four exact paths; "
-        "modifying an existing file still requires reading that same path."
+        "repository. One bounded Run may read up to four distinct normalized "
+        "repository paths; additional calls for an admitted path do not use "
+        "another path slot. Modifying an existing file still requires reading "
+        "that same path."
     ),
     "inputSchema": {
         "type": "object",
@@ -1029,7 +1031,9 @@ class CodexAdapter:
         self._read_responses: dict[str, _CodexReadResponse] = {}
         self._read_replay_failures: dict[str, _CodexReadResponse] = {}
         self._read_evidence: list[CodexReadEvidence] = []
+        self._read_evidence_keys: set[tuple[str, str, str | None]] = set()
         self._read_bindings: dict[str, _CodexReadBinding] = {}
+        self._admitted_read_paths: set[str] = set()
         self._completed_read_items: set[str] = set()
         self._accepted_items: set[str] = set()
         self._declined_items: set[str] = set()
@@ -1067,7 +1071,9 @@ class CodexAdapter:
         self._read_responses = {}
         self._read_replay_failures = {}
         self._read_evidence = []
+        self._read_evidence_keys = set()
         self._read_bindings = {}
+        self._admitted_read_paths = set()
         self._completed_read_items = set()
         self._accepted_items = set()
         self._declined_items = set()
@@ -1699,8 +1705,19 @@ class CodexAdapter:
             },
         )
 
-    def _record_read_evidence(self, evidence: CodexReadEvidence) -> None:
-        if evidence not in self._read_evidence:
+    def _record_read_evidence(
+        self,
+        evidence: CodexReadEvidence,
+        *,
+        call_id: str | None = None,
+    ) -> None:
+        if call_id is None:
+            if evidence not in self._read_evidence:
+                self._read_evidence.append(evidence)
+            return
+        key = (call_id, evidence.status, evidence.reason)
+        if key not in self._read_evidence_keys:
+            self._read_evidence_keys.add(key)
             self._read_evidence.append(evidence)
 
     def _read_failure_response(
@@ -1721,7 +1738,7 @@ class CodexAdapter:
             status="failed",
             reason=reason,
         )
-        self._record_read_evidence(evidence)
+        self._record_read_evidence(evidence, call_id=call_id)
         return _CodexReadResponse(
             call_id=call_id,
             arguments_identity=arguments_identity,
@@ -2036,27 +2053,42 @@ class CodexAdapter:
             self._send_read_response(request_id, existing)
             return
 
-        if len(self._read_bindings) >= _READ_MAX_TARGETS:
-            try:
-                failed_path = self._normalized_read_path(arguments["path"])
-            except _ReadValidationError:
-                failed_path = None
+        try:
+            requested_path = self._normalized_read_path(arguments["path"])
+        except _ReadValidationError as exc:
             response = self._read_failure_response(
                 call_id=call_id,
                 arguments_identity=arguments_identity,
-                reason="additional_read_target",
-                path=failed_path,
-                repository_identity=next(
-                    iter(self._read_bindings.values())
-                ).repository_identity,
+                reason=exc.reason,
+                path=exc.path,
+                repository_identity=exc.repository_identity,
             )
             self._read_responses[call_id] = response
             self._send_read_response(request_id, response)
             return
 
+        is_new_path = requested_path not in self._admitted_read_paths
+        if (
+            is_new_path
+            and len(self._admitted_read_paths) >= _READ_MAX_DISTINCT_PATHS
+        ):
+            response = self._read_failure_response(
+                call_id=call_id,
+                arguments_identity=arguments_identity,
+                reason="additional_read_target",
+                path=requested_path,
+                repository_identity=None,
+            )
+            self._read_responses[call_id] = response
+            self._send_read_response(request_id, response)
+            return
+
+        if is_new_path:
+            self._admitted_read_paths.add(requested_path)
+
         try:
             normalized, data, content, repository_identity = (
-                self._read_repository_file(arguments["path"])
+                self._read_repository_file(requested_path)
             )
         except _ReadValidationError as exc:
             response = self._read_failure_response(
@@ -2081,6 +2113,29 @@ class CodexAdapter:
             self._send_read_response(request_id, response)
             return
         digest = hashlib.sha256(data).hexdigest()
+        prior_binding = next(
+            (
+                binding
+                for binding in self._read_bindings.values()
+                if binding.normalized_scope == normalized
+            ),
+            None,
+        )
+        if prior_binding is not None and (
+            data != prior_binding.content.encode("utf-8")
+            or digest != prior_binding.sha256
+            or repository_identity != prior_binding.repository_identity
+        ):
+            response = self._read_failure_response(
+                call_id=call_id,
+                arguments_identity=arguments_identity,
+                reason="read_identity_changed",
+                path=normalized,
+                repository_identity=prior_binding.repository_identity,
+            )
+            self._read_responses[call_id] = response
+            self._send_read_response(request_id, response)
+            return
         binding = _CodexReadBinding(
             run_id=self._run_id,
             call_id=call_id,
@@ -2114,7 +2169,8 @@ class CodexAdapter:
                 sha256=digest,
                 repository_identity=repository_identity,
                 status="succeeded",
-            )
+            ),
+            call_id=call_id,
         )
         self._send_read_response(request_id, response)
 
