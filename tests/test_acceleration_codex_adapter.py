@@ -1548,6 +1548,111 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 )
             )
 
+    async def test_live_read_response_resolves_without_server_notification(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            relative_path = (
+                "validation/companion_thread_start_recovery_001.md"
+            )
+            source = repository / relative_path
+            source.parent.mkdir()
+            source.write_text("captured source\n", encoding="utf-8")
+            subprocess.run(
+                ("git", "-C", str(repository), "add", relative_path),
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                (
+                    "git",
+                    "-C",
+                    str(repository),
+                    "-c",
+                    "user.name=Test",
+                    "-c",
+                    "user.email=test@example.invalid",
+                    "commit",
+                    "-qm",
+                    "captured source",
+                ),
+                check=True,
+                capture_output=True,
+            )
+            thread_id = "019fc147-2f85-78f1-a077-ccd4a7888438"
+            turn_id = "019fc147-3022-78e3-ad11-0bfc683ebaaa"
+            call_id = "exec-66413325-bcb1-43fd-969b-c410a3f51ec3"
+            request_id = 0
+            messages = handshake_messages(
+                repository,
+                thread_id=thread_id,
+                turn_id=turn_id,
+            )
+            messages.extend(
+                [
+                    started_read(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        path=relative_path,
+                    ),
+                    read_request(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        request_id=request_id,
+                        path=relative_path,
+                    ),
+                    completed_read(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        path=relative_path,
+                    ),
+                    completed_turn(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                    ),
+                ]
+            )
+            factory = FakeTransportFactory([messages])
+            engine, adapter, output = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+            before = source.read_bytes()
+
+            result = await adapter.run("Replay the captured bounded read.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNone(result.error_type)
+            self.assertEqual("completed", result.turn_status)
+            self.assertEqual("", output.getvalue())
+            self.assertEqual([], engine.store.read_events())
+            self.assertEqual(before, source.read_bytes())
+            self.assertEqual((), result.file_actions)
+            self.assertEqual(1, len(result.read_evidence))
+            self.assertEqual("succeeded", result.read_evidence[0].status)
+            self.assertEqual(relative_path, result.read_evidence[0].path)
+            self.assertIn(request_id, adapter._resolved_read_requests)
+            self.assertIn(call_id, adapter._completed_read_items)
+            self.assertFalse(adapter._approval_requests)
+            self.assertFalse(
+                any(
+                    message.get("method") == "serverRequest/resolved"
+                    for message in messages
+                )
+            )
+            response = next(
+                value
+                for value in factory.transports[0].sent
+                if value.get("id") == request_id
+            )
+            self.assertTrue(response["result"]["success"])
+
     async def test_exact_dynamic_read_replay_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory))

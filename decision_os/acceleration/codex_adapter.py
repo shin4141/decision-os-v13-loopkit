@@ -1893,6 +1893,13 @@ class CodexAdapter:
                 },
             }
         )
+        # Dynamic tool calls resolve with the client response itself; app-server
+        # proceeds directly to item/completed without a resolved notification.
+        if (
+            isinstance(request_id, (str, int))
+            and not isinstance(request_id, bool)
+        ):
+            self._resolved_read_requests.add(request_id)
 
     def _respond_read_tool_call(self, message: dict[str, Any]) -> None:
         request_id = message.get("id")
