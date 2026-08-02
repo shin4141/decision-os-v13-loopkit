@@ -25,6 +25,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexFailureDiagnostic,
     CodexLifecycleEvent,
     CodexRunResult,
+    canonical_failure_diagnostic,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import RepositoryIdentityError, git_root
@@ -1374,7 +1375,11 @@ class CompanionController:
         result: CodexRunResult,
     ) -> None:
         after = self._safe_receipt(repository)
-        diagnostic = result.failure_diagnostic
+        diagnostic = (
+            None
+            if result.failure_diagnostic is None
+            else canonical_failure_diagnostic(result.failure_diagnostic)
+        )
         with self._condition:
             before = self._run.pop("receipt_before")
             self._run["state"] = (
@@ -1410,14 +1415,18 @@ class CompanionController:
     def _safe_failure(
         exc: Exception,
     ) -> CodexFailureDiagnostic | None:
+        try:
+            attached = exc.diagnostic
+        except Exception:
+            attached = object()
         if isinstance(exc, CodexAdapterUnavailable):
-            return exc.diagnostic or CodexFailureDiagnostic.for_phase(
-                "transport_start"
-            )
+            if attached is None:
+                return CodexFailureDiagnostic.for_phase("transport_start")
+            return canonical_failure_diagnostic(attached)
         if isinstance(exc, CodexAdapterFailure):
-            return exc.diagnostic or CodexFailureDiagnostic.for_phase(
-                "unknown"
-            )
+            if attached is None:
+                return CodexFailureDiagnostic.for_phase("unknown")
+            return canonical_failure_diagnostic(attached)
         return None
 
     @staticmethod

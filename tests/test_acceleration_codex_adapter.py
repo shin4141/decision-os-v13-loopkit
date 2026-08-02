@@ -19,12 +19,14 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_SERVICE_TIER,
     CodexAdapter,
     CodexAdapterFailure,
+    CodexAdapterUnavailable,
     CodexApproval,
     CodexFailureDiagnostic,
     CodexLifecycleEvent,
     CodexRunResult,
     _SubprocessTransport,
     _redact_complete_source_echo,
+    canonical_failure_diagnostic,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 
@@ -647,6 +649,56 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    def test_untrusted_failure_diagnostics_are_canonically_rebuilt(self) -> None:
+        private = "PRIVATE raw exception, source, prompt, and secret"
+
+        class Lookalike:
+            code = "codex_thread_start_failed"
+            protocol_phase = "thread_start"
+            reason = private
+            action = "expose_private_data"
+
+            def as_dict(self) -> dict[str, str]:
+                raise AssertionError("untrusted as_dict must not be called")
+
+        class DiagnosticSubclass(CodexFailureDiagnostic):
+            def as_dict(self) -> dict[str, str]:
+                return {"reason": private}
+
+        canonical = CodexFailureDiagnostic.for_phase("thread_start")
+        invalid_values: list[object] = [
+            Lookalike(),
+            DiagnosticSubclass(
+                code=canonical.code,
+                protocol_phase=canonical.protocol_phase,
+                reason=canonical.reason,
+                action=canonical.action,
+            ),
+        ]
+        for field, value in (
+            ("code", "PRIVATE_FAILURE"),
+            ("protocol_phase", "private_phase"),
+            ("reason", private),
+            ("action", "expose_private_data"),
+        ):
+            forged = CodexFailureDiagnostic.for_phase("thread_start")
+            object.__setattr__(forged, field, value)
+            invalid_values.append(forged)
+        incomplete = object.__new__(CodexFailureDiagnostic)
+        object.__setattr__(incomplete, "protocol_phase", "thread_start")
+        invalid_values.append(incomplete)
+
+        for value in invalid_values:
+            with self.subTest(value_type=type(value).__name__):
+                rebuilt = canonical_failure_diagnostic(value)
+                self.assertEqual("unknown", rebuilt.protocol_phase)
+                self.assertEqual("codex_unknown_failure", rebuilt.code)
+                self.assertNotIn(private, json.dumps(rebuilt.as_dict()))
+
+        rebuilt = canonical_failure_diagnostic(canonical)
+        self.assertIsNot(canonical, rebuilt)
+        self.assertEqual(canonical.as_dict(), rebuilt.as_dict())
+
     async def test_safe_failure_diagnostics_distinguish_protocol_phases(
         self,
     ) -> None:
@@ -738,6 +790,279 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                     self.assertNotIn("secret", json.dumps(diagnostic.as_dict()))
                     self.assertEqual((), result.file_actions)
                     self.assertEqual((), result.checkpoint_outcomes)
+
+    async def test_first_failure_phase_latch_preserves_actual_boundary(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    {
+                        "method": "turn/started",
+                        "params": {
+                            "threadId": "thread-1",
+                            "turn": {"id": "wrong-turn"},
+                        },
+                    },
+                    completed_turn(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    ),
+                ]
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                FakeTransportFactory([messages]),
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            result = await adapter.run("turn identity failure")
+
+            self.assertEqual(
+                "turn_started",
+                result.failure_diagnostic.protocol_phase,
+            )
+
+            deferred = handshake_messages(
+                repository,
+                thread_id="thread-2",
+                turn_id="turn-2",
+            )
+            deferred.insert(
+                3,
+                {
+                    "method": "thread/settings/updated",
+                    "params": {
+                        "threadId": "thread-2",
+                        "threadSettings": "PRIVATE malformed settings",
+                    },
+                },
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                FakeTransportFactory([deferred]),
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            with self.assertRaises(CodexAdapterFailure) as captured:
+                await adapter.run("deferred settings failure")
+
+            diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual(
+                "settings_verification",
+                diagnostic.protocol_phase,
+            )
+            self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
+
+    async def test_item_failure_phases_follow_the_actual_item_type(self) -> None:
+        cases = (
+            (
+                "agent_message",
+                {
+                    "id": "message-1",
+                    "phase": "final_answer",
+                    "text": 42,
+                    "type": "agentMessage",
+                },
+            ),
+            (
+                "dynamic_tool_call",
+                {
+                    "id": "read-1",
+                    "status": "completed",
+                    "tool": "read_repository_text_file",
+                    "type": "dynamicToolCall",
+                },
+            ),
+            (
+                "file_change_item",
+                {
+                    "changes": [],
+                    "id": "file-1",
+                    "status": "completed",
+                    "type": "fileChange",
+                },
+            ),
+        )
+        for index, (expected_phase, item) in enumerate(cases, start=1):
+            with self.subTest(expected_phase=expected_phase):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    thread_id = f"thread-{index}"
+                    turn_id = f"turn-{index}"
+                    messages = handshake_messages(
+                        repository,
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                    )
+                    messages.extend(
+                        [
+                            {
+                                "method": "item/completed",
+                                "params": {
+                                    "item": item,
+                                    "threadId": thread_id,
+                                    "turnId": turn_id,
+                                },
+                            },
+                            completed_turn(
+                                thread_id=thread_id,
+                                turn_id=turn_id,
+                            ),
+                        ]
+                    )
+                    _, adapter, _ = adapter_for(
+                        repository,
+                        FakeTransportFactory([messages]),
+                        choice=lambda: self.fail("must not prompt"),
+                    )
+
+                    result = await adapter.run("typed item failure")
+
+                    diagnostic = result.failure_diagnostic
+                    self.assertIsNotNone(diagnostic)
+                    assert diagnostic is not None
+                    self.assertEqual(
+                        expected_phase,
+                        diagnostic.protocol_phase,
+                    )
+
+    async def test_unsupported_item_phase_precedes_secondary_error(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    {
+                        "method": "item/completed",
+                        "params": {
+                            "item": {
+                                "id": "command-1",
+                                "type": "commandExecution",
+                            },
+                            "threadId": "thread-1",
+                            "turnId": "turn-1",
+                        },
+                    },
+                    {
+                        "method": "item/completed",
+                        "params": "PRIVATE malformed secondary error",
+                    },
+                ]
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                FakeTransportFactory([messages]),
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            result = await adapter.run("unsupported item failure")
+
+            diagnostic = result.failure_diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual("unsupported_item", diagnostic.protocol_phase)
+            self.assertEqual((), result.file_actions)
+            self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
+
+    async def test_later_failure_does_not_replace_first_latched_phase(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )
+            messages.extend(
+                [
+                    {
+                        "method": "turn/started",
+                        "params": {
+                            "threadId": "thread-1",
+                            "turn": {"id": "wrong-turn"},
+                        },
+                    },
+                    {
+                        "method": "item/completed",
+                        "params": "PRIVATE malformed secondary error",
+                    },
+                ]
+            )
+            _, adapter, _ = adapter_for(
+                repository,
+                FakeTransportFactory([messages]),
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            result = await adapter.run("multiple failure signals")
+
+            self.assertEqual(
+                "turn_started",
+                result.failure_diagnostic.protocol_phase,
+            )
+
+    def test_transport_start_distinguishes_version_and_process_failures(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / "codex"
+            executable.write_text("placeholder", encoding="utf-8")
+            transport = _SubprocessTransport(executable)
+            invalid_version = subprocess.CompletedProcess(
+                args=(str(executable), "--version"),
+                returncode=1,
+                stdout="PRIVATE invalid version response",
+                stderr="PRIVATE stderr",
+            )
+            with patch.object(subprocess, "run", return_value=invalid_version):
+                with self.assertRaises(CodexAdapterFailure) as captured:
+                    transport.start()
+            diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual(
+                "version_verification",
+                diagnostic.protocol_phase,
+            )
+            self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
+
+            valid_version = subprocess.CompletedProcess(
+                args=(str(executable), "--version"),
+                returncode=0,
+                stdout=f"codex-cli {CODEX_CLI_VERSION}\n",
+                stderr="",
+            )
+            transport = _SubprocessTransport(executable)
+            with (
+                patch.object(subprocess, "run", return_value=valid_version),
+                patch.object(
+                    subprocess,
+                    "Popen",
+                    side_effect=OSError("PRIVATE process path and secret"),
+                ),
+            ):
+                with self.assertRaises(CodexAdapterUnavailable) as captured:
+                    transport.start()
+            diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual("transport_start", diagnostic.protocol_phase)
+            self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
 
     def test_failure_diagnostic_rejects_unbounded_public_values(self) -> None:
         with self.assertRaisesRegex(ValueError, "bounded"):

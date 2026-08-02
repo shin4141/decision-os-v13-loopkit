@@ -292,6 +292,16 @@ _FAILURE_DIAGNOSTIC_SPECS = {
         "The bounded Codex Run failed closed while verifying a typed file-change item.",
         "review_file_change",
     ),
+    "agent_message": (
+        "codex_agent_message_failed",
+        "The bounded Codex Run failed closed while validating a model response item.",
+        "review_terminal_state",
+    ),
+    "unsupported_item": (
+        "codex_unsupported_item_failed",
+        "The bounded Codex Run failed closed while validating an unsupported item.",
+        "recheck_protocol",
+    ),
     "approval_bridge": (
         "codex_approval_bridge_failed",
         "The bounded Codex Run failed closed at the exact Approval boundary.",
@@ -372,6 +382,32 @@ def _failure_diagnostic(protocol_phase: str) -> CodexFailureDiagnostic:
     )
 
 
+def canonical_failure_diagnostic(value: object) -> CodexFailureDiagnostic:
+    """Rebuild one untrusted diagnostic from canonical identifiers only."""
+
+    unknown = _failure_diagnostic("unknown")
+    if type(value) is not CodexFailureDiagnostic:
+        return unknown
+    try:
+        code = object.__getattribute__(value, "code")
+        protocol_phase = object.__getattribute__(value, "protocol_phase")
+        reason = object.__getattribute__(value, "reason")
+        action = object.__getattribute__(value, "action")
+    except Exception:
+        return unknown
+    if (
+        type(code) is not str
+        or type(protocol_phase) is not str
+        or type(reason) is not str
+        or (action is not None and type(action) is not str)
+    ):
+        return unknown
+    spec = _FAILURE_DIAGNOSTIC_SPECS.get(protocol_phase)
+    if spec != (code, reason, action):
+        return unknown
+    return _failure_diagnostic(protocol_phase)
+
+
 class CodexAdapterUnavailable(RuntimeError):
     """The bundled Codex app-server executable is unavailable."""
 
@@ -382,7 +418,11 @@ class CodexAdapterUnavailable(RuntimeError):
         diagnostic: CodexFailureDiagnostic | None = None,
     ) -> None:
         super().__init__(message)
-        self.diagnostic = diagnostic
+        self.diagnostic = (
+            None
+            if diagnostic is None
+            else canonical_failure_diagnostic(diagnostic)
+        )
 
 
 class CodexAdapterFailure(RuntimeError):
@@ -395,7 +435,11 @@ class CodexAdapterFailure(RuntimeError):
         diagnostic: CodexFailureDiagnostic | None = None,
     ) -> None:
         super().__init__(message)
-        self.diagnostic = diagnostic
+        self.diagnostic = (
+            None
+            if diagnostic is None
+            else canonical_failure_diagnostic(diagnostic)
+        )
 
 
 class _ReadValidationError(RuntimeError):
@@ -590,7 +634,8 @@ class _SubprocessTransport:
     def start(self) -> None:
         if not self.executable.is_file():
             raise CodexAdapterUnavailable(
-                f"Bundled Codex executable is unavailable at {self.executable}."
+                f"Bundled Codex executable is unavailable at {self.executable}.",
+                diagnostic=_failure_diagnostic("transport_start"),
             )
         try:
             completed = subprocess.run(
@@ -601,13 +646,15 @@ class _SubprocessTransport:
             )
         except OSError as exc:
             raise CodexAdapterUnavailable(
-                "Bundled Codex version could not be read."
+                "Bundled Codex version could not be read.",
+                diagnostic=_failure_diagnostic("version_verification"),
             ) from exc
         observed = completed.stdout.strip()
         prefix = "codex-cli "
         if completed.returncode != 0 or not observed.startswith(prefix):
             raise CodexAdapterFailure(
-                "Bundled Codex CLI returned an invalid version identity."
+                "Bundled Codex CLI returned an invalid version identity.",
+                diagnostic=_failure_diagnostic("version_verification"),
             )
         self._version = observed[len(prefix) :].strip()
         try:
@@ -641,7 +688,8 @@ class _SubprocessTransport:
             )
         except OSError as exc:
             raise CodexAdapterUnavailable(
-                "Bundled Codex app-server could not be started."
+                "Bundled Codex app-server could not be started.",
+                diagnostic=_failure_diagnostic("transport_start"),
             ) from exc
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr,
@@ -797,6 +845,7 @@ class CodexAdapter:
         self._final_message = ""
         self._file_action_candidates: list[_CodexFileActionCandidate] = []
         self._protocol_phase = "unknown"
+        self._failure_phase: str | None = None
 
     def _reset_run(self) -> None:
         self._request_id = 0
@@ -834,11 +883,39 @@ class CodexAdapter:
         self._final_message = ""
         self._file_action_candidates = []
         self._protocol_phase = "unknown"
+        self._failure_phase = None
 
     def _emit(self, kind: str, message: str) -> None:
         if self.lifecycle_sink is None:
             return
         self.lifecycle_sink(CodexLifecycleEvent(kind=kind, message=message))
+
+    def _latch_failure_phase(self, protocol_phase: str | None = None) -> None:
+        if self._failure_phase is not None:
+            return
+        phase = self._protocol_phase if protocol_phase is None else protocol_phase
+        self._failure_phase = (
+            phase if phase in _FAILURE_DIAGNOSTIC_SPECS else "unknown"
+        )
+
+    def _mark_identity_failure(self) -> None:
+        self._latch_failure_phase()
+        self._identity_failure = True
+
+    def _latched_failure_diagnostic(self) -> CodexFailureDiagnostic:
+        return _failure_diagnostic(self._failure_phase or "unknown")
+
+    def _diagnostic_for_typed_exception(
+        self,
+        exc: CodexAdapterUnavailable | CodexAdapterFailure,
+    ) -> CodexFailureDiagnostic:
+        if self._failure_phase is None:
+            if exc.diagnostic is None:
+                self._latch_failure_phase()
+            else:
+                diagnostic = canonical_failure_diagnostic(exc.diagnostic)
+                self._latch_failure_phase(diagnostic.protocol_phase)
+        return self._latched_failure_diagnostic()
 
     def _send(self, message: dict[str, Any]) -> None:
         if self._transport is None:
@@ -1066,8 +1143,10 @@ class CodexAdapter:
         )
         deferred = tuple(self._deferred_settings)
         self._deferred_settings = []
+        self._protocol_phase = "settings_verification"
         for params in deferred:
             self._verify_settings(params)
+        self._protocol_phase = "thread_identity_verification"
 
     def _start_turn(self, prompt: str) -> None:
         if self._thread_id is None:
@@ -1181,6 +1260,7 @@ class CodexAdapter:
             raise CodexAdapterFailure(
                 "Codex unsupported reason is not a bounded code."
             )
+        self._latch_failure_phase()
         self._unsupported_mutation = True
         if self._unsupported_reason is None:
             self._unsupported_reason = reason
@@ -1981,19 +2061,19 @@ class CodexAdapter:
 
     def _resolve_request(self, params: dict[str, Any]) -> None:
         if params.get("threadId") != self._thread_id:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         request_id = params.get("requestId")
         if (
             not isinstance(request_id, (str, int))
             or isinstance(request_id, bool)
         ):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         is_approval = request_id in self._approval_requests
         is_read = request_id in self._read_requests
         if is_approval == is_read:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         if is_read:
             if request_id in self._resolved_read_requests:
@@ -2038,7 +2118,7 @@ class CodexAdapter:
 
     def _cache_item(self, params: dict[str, Any]) -> None:
         if not self._ids_match(params):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         item = self._require_object(params.get("item"), "started item")
         item_type = item.get("type")
@@ -2051,7 +2131,7 @@ class CodexAdapter:
             return
         item_id = item.get("id")
         if not isinstance(item_id, str) or not item_id:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         if item_type == "dynamicToolCall":
             arguments = item.get("arguments")
@@ -2067,13 +2147,13 @@ class CodexAdapter:
                 return
         if item_id in self._items:
             if self._items[item_id] != item:
-                self._identity_failure = True
+                self._mark_identity_failure()
             return
         self._items[item_id] = item
 
     def _update_patch(self, params: dict[str, Any]) -> None:
         if not self._ids_match(params):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         item_id = params.get("itemId")
         changes = params.get("changes")
@@ -2082,10 +2162,10 @@ class CodexAdapter:
             or item_id not in self._items
             or not isinstance(changes, list)
         ):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         if item_id in self._approved_changes:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         updated = dict(self._items[item_id])
         updated["changes"] = changes
@@ -2093,7 +2173,7 @@ class CodexAdapter:
 
     def _complete_item(self, params: dict[str, Any]) -> None:
         if not self._ids_match(params):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         item = self._require_object(params.get("item"), "completed item")
         item_type = item.get("type")
@@ -2143,7 +2223,7 @@ class CodexAdapter:
                 )
                 or not resolved
             ):
-                self._identity_failure = True
+                self._mark_identity_failure()
                 return
             self._completed_read_items.add(item_id)
             return
@@ -2154,7 +2234,7 @@ class CodexAdapter:
                 not isinstance(text, str)
                 or phase not in {None, "final_answer", "commentary"}
             ):
-                self._identity_failure = True
+                self._mark_identity_failure()
                 return
             if phase in {None, "final_answer"}:
                 self._final_message = text
@@ -2167,11 +2247,11 @@ class CodexAdapter:
                 item.get("status") != "declined"
                 or item_id not in self._resolved_items
             ):
-                self._identity_failure = True
+                self._mark_identity_failure()
             return
         if item_id not in self._accepted_items:
             self._mark_unsupported("unapproved_file_completion")
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         approved = self._approved_changes.get(item_id)
         if item_id in self._completed_items:
@@ -2181,7 +2261,7 @@ class CodexAdapter:
                 or item.get("changes") != approved
                 or item_id not in self._resolved_items
             ):
-                self._identity_failure = True
+                self._mark_identity_failure()
             return
         if (
             item.get("status") != "completed"
@@ -2189,12 +2269,12 @@ class CodexAdapter:
             or item.get("changes") != approved
             or item_id not in self._resolved_items
         ):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         self._completed_items.add(item_id)
 
     def _invalidate_runtime_identity(self) -> None:
-        self._identity_failure = True
+        self._mark_identity_failure()
         self._settings_verified = False
         self._runtime_identity = None
 
@@ -2232,24 +2312,62 @@ class CodexAdapter:
 
     def _complete_turn(self, params: dict[str, Any]) -> None:
         if params.get("threadId") != self._thread_id:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         turn = self._require_object(params.get("turn"), "completed turn")
         turn_id = turn.get("id")
         if not isinstance(turn_id, str) or not turn_id:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         if self._turn_id is None:
             self._turn_id = turn_id
         elif turn_id != self._turn_id:
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         status = turn.get("status")
         if not isinstance(status, str):
-            self._identity_failure = True
+            self._mark_identity_failure()
             return
         self._turn_status = status
         self._emit("finalizing", "Finalizing the local Receipt.")
+
+    def _notification_protocol_phase(
+        self,
+        method: str,
+        message: dict[str, Any],
+    ) -> str:
+        if method == "item/fileChange/patchUpdated":
+            return "file_change_item"
+        if method in {"item/started", "item/completed"}:
+            params = message.get("params")
+            item = params.get("item") if isinstance(params, dict) else None
+            item_type = item.get("type") if isinstance(item, dict) else None
+            if item_type == "dynamicToolCall":
+                return "dynamic_tool_call"
+            if item_type == "agentMessage":
+                return "agent_message"
+            if item_type == "fileChange":
+                return "file_change_item"
+            if item_type in _UNSUPPORTED_ITEM_TYPES:
+                return "unsupported_item"
+            return "protocol_message"
+        if method == "serverRequest/resolved":
+            params = message.get("params")
+            request_id = (
+                params.get("requestId") if isinstance(params, dict) else None
+            )
+            if request_id in self._read_requests:
+                return "dynamic_tool_call"
+            if request_id in self._approval_requests:
+                return "approval_bridge"
+            return "protocol_message"
+        return {
+            "thread/settings/updated": "settings_verification",
+            "turn/started": "turn_started",
+            "turn/completed": "terminal_completion",
+            "model/rerouted": "runtime_identity_verification",
+            "error": "protocol_message",
+        }.get(method, "protocol_message")
 
     def _dispatch(self, message: dict[str, Any]) -> None:
         method = message.get("method")
@@ -2269,17 +2387,10 @@ class CodexAdapter:
                 self._protocol_phase = "protocol_message"
                 self._respond_unsupported_request(message)
             return
-        self._protocol_phase = {
-            "item/started": "file_change_item",
-            "item/fileChange/patchUpdated": "file_change_item",
-            "item/completed": "file_change_item",
-            "thread/settings/updated": "settings_verification",
-            "serverRequest/resolved": "approval_bridge",
-            "turn/started": "turn_started",
-            "turn/completed": "terminal_completion",
-            "model/rerouted": "runtime_identity_verification",
-            "error": "protocol_message",
-        }.get(method, "protocol_message")
+        self._protocol_phase = self._notification_protocol_phase(
+            method,
+            message,
+        )
         params = self._require_object(
             message.get("params", {}),
             f"{method} parameters",
@@ -2296,7 +2407,7 @@ class CodexAdapter:
             self._resolve_request(params)
         elif method == "turn/started":
             if params.get("threadId") != self._thread_id:
-                self._identity_failure = True
+                self._mark_identity_failure()
             else:
                 turn = self._require_object(
                     params.get("turn"),
@@ -2304,15 +2415,15 @@ class CodexAdapter:
                 )
                 turn_id = turn.get("id")
                 if not isinstance(turn_id, str) or not turn_id:
-                    self._identity_failure = True
+                    self._mark_identity_failure()
                 elif self._turn_id is None:
                     self._turn_id = turn_id
                 elif self._turn_id != turn_id:
-                    self._identity_failure = True
+                    self._mark_identity_failure()
         elif method == "turn/completed":
             self._complete_turn(params)
         elif method in {"model/rerouted", "error"}:
-            self._identity_failure = True
+            self._mark_identity_failure()
             self._runtime_identity = None
 
     async def run(self, prompt: str) -> CodexRunResult:
@@ -2352,16 +2463,14 @@ class CodexAdapter:
                 self._protocol_phase = "terminal_wait"
                 self._dispatch(self._receive())
         except (CodexAdapterUnavailable, CodexAdapterFailure) as exc:
-            failure_diagnostic = (
-                exc.diagnostic
-                or _failure_diagnostic(self._protocol_phase)
-            )
+            failure_diagnostic = self._diagnostic_for_typed_exception(exc)
             exc.diagnostic = failure_diagnostic
             if not turn_started:
                 raise
             error_type = type(exc).__name__
         except Exception as exc:
-            failure_diagnostic = _failure_diagnostic("unknown")
+            self._latch_failure_phase("unknown")
+            failure_diagnostic = self._latched_failure_diagnostic()
             if not turn_started:
                 raise CodexAdapterFailure(
                     "Codex app-server failed before the turn started.",
@@ -2375,15 +2484,18 @@ class CodexAdapter:
             except Exception:
                 if error_type is None and turn_started:
                     error_type = "CodexTransportCloseError"
-                    failure_diagnostic = _failure_diagnostic("finalization")
+                    self._latch_failure_phase("finalization")
+                    failure_diagnostic = self._latched_failure_diagnostic()
 
         if self._identity_failure and error_type is None:
             error_type = "CodexRuntimeIdentityError"
-            failure_diagnostic = _failure_diagnostic(
-                "settings_verification"
-                if not self._settings_verified
-                else "runtime_identity_verification"
-            )
+            if self._failure_phase is None:
+                self._latch_failure_phase(
+                    "settings_verification"
+                    if not self._settings_verified
+                    else "runtime_identity_verification"
+                )
+            failure_diagnostic = self._latched_failure_diagnostic()
         all_accepted_completed = self._accepted_items.issubset(
             self._completed_items
         )
