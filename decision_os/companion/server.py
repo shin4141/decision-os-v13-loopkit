@@ -519,9 +519,15 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                     raise CompanionError("Repository picker takes no input.")
                 snapshot = self.server.controller.pick_repository()
             elif path == "/api/run":
-                if set(value) != {"task"}:
+                if set(value) not in ({"task"}, {"task", "task_mode"}):
                     raise CompanionError("Run request fields are invalid.")
-                snapshot = self.server.controller.start_run(value["task"])
+                if "task_mode" in value:
+                    snapshot = self.server.controller.start_run(
+                        value["task"],
+                        task_mode=value["task_mode"],
+                    )
+                else:
+                    snapshot = self.server.controller.start_run(value["task"])
             elif path == "/api/approval":
                 if set(value) != {"choice"}:
                     raise CompanionError("Approval request fields are invalid.")

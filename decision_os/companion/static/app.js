@@ -29,6 +29,7 @@ let operationContinuingAfterApproval = false;
 let operationTerminalTransitioned = false;
 let operationLastApprovalKey = null;
 let preparedContractTaskBinding = null;
+let preparedContractTaskStarter = null;
 let ordinaryReviewDisclosureIdentity = null;
 let currentCodexResponse = "";
 let copyResponseResetTimer = null;
@@ -266,8 +267,28 @@ function looksLikePreparedContractTask(value) {
   );
 }
 
+function clearPreparedContractTaskBinding() {
+  preparedContractTaskBinding = null;
+  preparedContractTaskStarter = null;
+}
+
+function invalidateReplacedContractTask(value) {
+  if (value.trim().length === 0) {
+    clearPreparedContractTaskBinding();
+    return;
+  }
+  if (
+    preparedContractTaskBinding !== null &&
+    (!nonEmptyString(preparedContractTaskStarter) ||
+      !value.startsWith(preparedContractTaskStarter))
+  ) {
+    clearPreparedContractTaskBinding();
+  }
+}
+
 function taskReadiness(ordinary, repository) {
   const value = byId("task").value;
+  invalidateReplacedContractTask(value);
   if (value.trim().length === 0) {
     return {
       mode: "empty",
@@ -320,17 +341,27 @@ function operationPresentation(
   const startPending = Boolean(context.startPending);
   const approvalSeen = Boolean(context.approvalSeen);
   const continuing = Boolean(context.continuingAfterApproval);
+  const runLifecycleActive =
+    startPending || state === "running" || TERMINAL_RUN_STATES.includes(state);
+  const runTaskMode = ["manual", "contract"].includes(run?.task_mode)
+    ? run.task_mode
+    : null;
+  const taskMode = runLifecycleActive && runTaskMode ? runTaskMode : task.mode;
   const historicalFixed = ordinary?.state === "FIXED";
   const fixed = usableCurrentOrdinaryContext(ordinary);
   const staleFixed = historicalFixed && !fixed;
+  const contractStatus =
+    taskMode === "manual"
+      ? "Not used"
+      : fixed
+        ? "Complete"
+        : staleFixed
+          ? "Needs attention"
+          : repository && !runLifecycleActive
+            ? "Current"
+            : "Not started";
   const statuses = {
-    contract: fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : repository
-          ? "Current"
-          : "Not started",
+    contract: contractStatus,
     task: "Not started",
     run: "Not started",
     approval: approvalSeen ? "Complete" : "Not started",
@@ -338,11 +369,7 @@ function operationPresentation(
   };
 
   if (startPending) {
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = "Waiting for system";
     return {
@@ -356,11 +383,7 @@ function operationPresentation(
   }
 
   if (state === "running") {
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = approval ? "Waiting for you" : "Waiting for system";
     if (approval) {
@@ -388,11 +411,7 @@ function operationPresentation(
 
   if (TERMINAL_RUN_STATES.includes(state)) {
     const needsAttention = ["unsupported", "needs_attention"].includes(state);
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = needsAttention ? "Needs attention" : "Complete";
     statuses.result = needsAttention ? "Needs attention" : "Current";
@@ -587,7 +606,7 @@ function coordinateOperationTransition(run) {
   operationLastApprovalKey = approvalKey;
 }
 
-function beginOperationRun() {
+function beginOperationRun(taskMode) {
   resetOperationTransitionMemory();
   operationStartPending = true;
   byId("run").disabled = true;
@@ -598,7 +617,12 @@ function beginOperationRun() {
   item.textContent = "Starting Run";
   progress.replaceChildren(item);
   renderOperationAwareness(
-    { state: "running", progress: ["Starting Run"], approval: null },
+    {
+      state: "running",
+      task_mode: taskMode,
+      progress: ["Starting Run"],
+      approval: null,
+    },
     latestState?.ordinary_contract,
     latestState?.repository,
   );
@@ -1136,8 +1160,10 @@ function ensureOrdinaryPrepareTaskButton() {
     }
     const task = byId("task");
     if (task.value.trim().length === 0) {
+      const starter = ordinaryFixedTaskStarter(panel);
       preparedContractTaskBinding = binding;
-      task.value = ordinaryFixedTaskStarter(panel);
+      preparedContractTaskStarter = starter;
+      task.value = starter;
       task.dispatchEvent(new Event("input", { bubbles: true }));
     }
     task.scrollIntoView?.({ block: "center" });
@@ -1840,6 +1866,7 @@ function render(state) {
     ? run
     : {
         run_type: "bounded_task",
+        task_mode: null,
         state: "idle",
         progress: [],
         result: "",
@@ -1960,6 +1987,7 @@ function enterDisconnected() {
 
   const emptyRun = {
     run_type: "bounded_task",
+    task_mode: null,
     state: "idle",
     progress: [],
     result: "",
@@ -1979,6 +2007,7 @@ function enterDisconnected() {
   renderApproval(null);
   operationStartPending = false;
   resetOperationTransitionMemory();
+  clearPreparedContractTaskBinding();
   renderOperationAwareness(emptyRun, null, null);
 
   byId("defaults").replaceChildren();
@@ -2397,9 +2426,7 @@ for (const [index, button] of operationStageButtons.entries()) {
 }
 
 byId("task").addEventListener("input", () => {
-  if (byId("task").value.trim().length === 0) {
-    preparedContractTaskBinding = null;
-  }
+  invalidateReplacedContractTask(byId("task").value);
   if (connected && latestState) {
     render(latestState);
   }
@@ -2417,8 +2444,11 @@ byId("run").addEventListener("click", async () => {
   if (byId("run").disabled || requestActive || !currentTask.runnable) {
     return;
   }
-  beginOperationRun();
-  const state = await postJSON("/api/run", { task: byId("task").value });
+  beginOperationRun(currentTask.mode);
+  const state = await postJSON("/api/run", {
+    task: byId("task").value,
+    task_mode: currentTask.mode,
+  });
   operationStartPending = false;
   if (state) {
     render(state);
@@ -2433,7 +2463,7 @@ byId("new-run").addEventListener("click", async () => {
     operationStartPending = false;
     resetOperationTransitionMemory();
     byId("task").value = "";
-    preparedContractTaskBinding = null;
+    clearPreparedContractTaskBinding();
     render(state);
     byId("task").focus();
   }
