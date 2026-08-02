@@ -1,0 +1,25 @@
+name: Field Notes Implementation A CI
+
+on:
+  push:
+    branches:
+      - feat/field-notes-lite-implementation-a
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Focused Field Notes tests
+        run: python -m unittest -v tests.test_field_notes_lite
+      - name: Full test suite
+        run: python -m unittest discover -v
