@@ -179,6 +179,18 @@ class MaliciousDiagnostic:
         raise AssertionError("untrusted as_dict must not be called")
 
 
+def allowed_value_cross_forged_diagnostic() -> CodexFailureDiagnostic:
+    diagnostic = CodexFailureDiagnostic.for_phase("thread_start")
+    object.__setattr__(
+        diagnostic,
+        "category",
+        "jsonrpc_method_rejected",
+    )
+    object.__setattr__(diagnostic, "jsonrpc_code", -32601)
+    object.__setattr__(diagnostic, "protocol_method", "turn/start")
+    return diagnostic
+
+
 class ScriptedAdapter:
     def __init__(
         self,
@@ -222,6 +234,13 @@ class ScriptedAdapter:
             )
             failure.diagnostic = MaliciousDiagnostic()  # type: ignore[assignment]
             raise failure
+        if self.mode == "cross_forged_failure":
+            failure = CodexAdapterFailure(
+                "PRIVATE raw exception message",
+                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+            )
+            failure.diagnostic = allowed_value_cross_forged_diagnostic()
+            raise failure
         if self.mode == "typed_result_failure":
             return CodexRunResult(
                 run_id=self.engine.new_run_id(),
@@ -254,6 +273,26 @@ class ScriptedAdapter:
                 result,
                 "failure_diagnostic",
                 MaliciousDiagnostic(),
+            )
+            return result
+        if self.mode == "cross_forged_result_failure":
+            result = CodexRunResult(
+                run_id=self.engine.new_run_id(),
+                normal_terminal=False,
+                status="ABNORMAL_TERMINAL",
+                error_type="CodexAdapterFailure",
+                turn_status=None,
+                runtime_identity=None,
+                checkpoint_outcomes=(),
+                final_message="PRIVATE incomplete model text",
+                failure_diagnostic=CodexFailureDiagnostic.for_phase(
+                    "dynamic_tool_call"
+                ),
+            )
+            object.__setattr__(
+                result,
+                "failure_diagnostic",
+                allowed_value_cross_forged_diagnostic(),
             )
             return result
         if self.mode == "read_only":
@@ -1913,11 +1952,18 @@ class CompanionControllerTest(unittest.TestCase):
                 ScriptedFactory(
                     "forged_failure",
                     "forged_result_failure",
+                    "cross_forged_failure",
+                    "cross_forged_result_failure",
                 ),
             )
             controller.select_repository(repository)
 
-            for task in ("Forged exception.", "Forged result."):
+            for task in (
+                "Forged exception.",
+                "Forged result.",
+                "Cross-forged exception.",
+                "Cross-forged result.",
+            ):
                 with self.subTest(task=task):
                     controller.start_run(task)
                     state = wait_for(

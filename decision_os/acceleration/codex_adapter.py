@@ -357,6 +357,13 @@ _PROTOCOL_METHODS = frozenset(
         "turn/start",
     }
 )
+_PROTOCOL_METHOD_BY_PHASE = {
+    "account_verification": "account/read",
+    "initialize_handshake": "initialize",
+    "model_verification": "model/list",
+    "thread_start": "thread/start",
+    "turn_start": "turn/start",
+}
 _STATE_OR_FILESYSTEM_MARKERS = (
     "codex home",
     "database",
@@ -380,6 +387,34 @@ _INVALID_PARAMS_MARKERS = (
     "schema",
     "unknown field",
 )
+
+
+def _coherent_failure_evidence(
+    protocol_phase: str,
+    category: str,
+    jsonrpc_code: int | None,
+    protocol_method: str | None,
+) -> bool:
+    if category not in _FAILURE_CATEGORIES:
+        return False
+    if protocol_method is not None:
+        if _PROTOCOL_METHOD_BY_PHASE.get(protocol_phase) != protocol_method:
+            return False
+    elif jsonrpc_code is not None or category != "unknown":
+        return False
+
+    if category == "jsonrpc_method_rejected":
+        return jsonrpc_code == -32601
+    if category == "jsonrpc_invalid_params":
+        return jsonrpc_code in {-32600, -32602}
+    if category == "transport_or_process":
+        return jsonrpc_code is None and protocol_method is not None
+    if category == "state_or_filesystem":
+        return bool(
+            protocol_method is not None
+            and jsonrpc_code not in {-32600, -32601, -32602}
+        )
+    return jsonrpc_code not in {-32601, -32602}
 
 
 @dataclass(frozen=True)
@@ -407,26 +442,17 @@ class CodexFailureDiagnostic:
             self.protocol_method is None
             or self.protocol_method in _PROTOCOL_METHODS
         )
-        coherent_category = bool(
-            self.category in _FAILURE_CATEGORIES
-            and (
-                self.category != "jsonrpc_method_rejected"
-                or self.jsonrpc_code == -32601
-            )
-            and (
-                self.category != "jsonrpc_invalid_params"
-                or self.jsonrpc_code in {-32600, -32602}
-            )
-            and (
-                not self.category.startswith("jsonrpc_")
-                or self.protocol_method is not None
-            )
+        coherent_evidence = _coherent_failure_evidence(
+            self.protocol_phase,
+            self.category,
+            self.jsonrpc_code,
+            self.protocol_method,
         )
         if (
             spec != (self.code, self.reason, self.action)
             or not bounded_code
             or not bounded_method
-            or not coherent_category
+            or not coherent_evidence
         ):
             raise ValueError("Codex failure diagnostic must be bounded.")
 

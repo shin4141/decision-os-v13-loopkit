@@ -705,6 +705,104 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNot(canonical, rebuilt)
         self.assertEqual(canonical.as_dict(), rebuilt.as_dict())
 
+    def test_allowed_value_cross_combinations_downgrade_to_unknown(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "thread_start",
+                "jsonrpc_method_rejected",
+                -32601,
+                "turn/start",
+            ),
+            (
+                "turn_start",
+                "jsonrpc_invalid_params",
+                -32602,
+                "thread/start",
+            ),
+            (
+                "model_verification",
+                "jsonrpc_method_rejected",
+                -32601,
+                "account/read",
+            ),
+            (
+                "thread_identity_verification",
+                "jsonrpc_invalid_params",
+                -32600,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "transport_or_process",
+                -32000,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "unknown",
+                -32601,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "jsonrpc_invalid_params",
+                -32600,
+                None,
+            ),
+        )
+
+        for phase, category, code, method in cases:
+            with self.subTest(
+                phase=phase,
+                category=category,
+                code=code,
+                method=method,
+            ):
+                forged = CodexFailureDiagnostic.for_phase(phase)
+                object.__setattr__(forged, "category", category)
+                object.__setattr__(forged, "jsonrpc_code", code)
+                object.__setattr__(forged, "protocol_method", method)
+
+                rebuilt = canonical_failure_diagnostic(forged)
+
+                self.assertEqual(
+                    CodexFailureDiagnostic.for_phase("unknown").as_dict(),
+                    rebuilt.as_dict(),
+                )
+
+    def test_valid_thread_start_diagnostics_survive_canonical_rebuild(
+        self,
+    ) -> None:
+        phase = CodexFailureDiagnostic.for_phase("thread_start")
+        cases = (
+            ("jsonrpc_method_rejected", -32601),
+            ("jsonrpc_invalid_params", -32600),
+            ("jsonrpc_invalid_params", -32602),
+            ("state_or_filesystem", -32000),
+            ("transport_or_process", None),
+            ("unknown", -32600),
+            ("unknown", None),
+        )
+
+        for category, code in cases:
+            with self.subTest(category=category, code=code):
+                diagnostic = CodexFailureDiagnostic(
+                    code=phase.code,
+                    protocol_phase=phase.protocol_phase,
+                    reason=phase.reason,
+                    action=phase.action,
+                    category=category,
+                    jsonrpc_code=code,
+                    protocol_method="thread/start",
+                )
+
+                rebuilt = canonical_failure_diagnostic(diagnostic)
+
+                self.assertIsNot(diagnostic, rebuilt)
+                self.assertEqual(diagnostic.as_dict(), rebuilt.as_dict())
+
     async def test_safe_failure_diagnostics_distinguish_protocol_phases(
         self,
     ) -> None:

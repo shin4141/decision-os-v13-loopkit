@@ -131,21 +131,28 @@ The diagnostic repair retains only canonical bounded values:
 - an exact signed 64-bit JSON-RPC integer code when present;
 - one known adapter protocol method when present.
 
+Canonical rebuilding also requires those bounded values to form one coherent
+protocol tuple. A method must belong to its declared request phase; JSON-RPC
+codes must agree with their bounded category; transport failures cannot carry a
+JSON-RPC code; and code-bearing failures must identify the matching request
+method. Valid `thread/start` diagnostics retain their bounded evidence.
+
 Raw JSON-RPC messages, stderr, credentials, prompts, repository contents,
 provider text, and private paths are not stored or projected. App-server error
 and stderr text are reduced immediately to bounded categories. Malformed,
-lookalike, subclassed, incomplete, or forged diagnostics still rebuild to the
-canonical `unknown` diagnostic.
+lookalike, subclassed, incomplete, or forged diagnostics with incoherent
+phase, method, category, or code combinations rebuild to the canonical
+`unknown` diagnostic.
 
 ## Regression and Qualification Status
 
-Focused adapter tests: PASS — 54 tests.
+Focused adapter tests: PASS — 56 tests.
 
 Companion controller tests: PASS — 27 tests.
 
 Companion server/client and headless presentation tests: PASS — 35 tests.
 
-Full repository suite: PASS — 690 tests.
+Full repository suite: PASS — 692 tests.
 
 Staged `git diff --check`: PASS after the validation record was added.
 
