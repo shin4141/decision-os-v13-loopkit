@@ -657,6 +657,9 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             protocol_phase = "thread_start"
             reason = private
             action = "expose_private_data"
+            category = "PRIVATE_CATEGORY"
+            jsonrpc_code = -32600
+            protocol_method = "thread/start"
 
             def as_dict(self) -> dict[str, str]:
                 raise AssertionError("untrusted as_dict must not be called")
@@ -680,6 +683,9 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             ("protocol_phase", "private_phase"),
             ("reason", private),
             ("action", "expose_private_data"),
+            ("category", "PRIVATE_CATEGORY"),
+            ("jsonrpc_code", True),
+            ("protocol_method", "private/method"),
         ):
             forged = CodexFailureDiagnostic.for_phase("thread_start")
             object.__setattr__(forged, field, value)
@@ -699,6 +705,104 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNot(canonical, rebuilt)
         self.assertEqual(canonical.as_dict(), rebuilt.as_dict())
 
+    def test_allowed_value_cross_combinations_downgrade_to_unknown(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "thread_start",
+                "jsonrpc_method_rejected",
+                -32601,
+                "turn/start",
+            ),
+            (
+                "turn_start",
+                "jsonrpc_invalid_params",
+                -32602,
+                "thread/start",
+            ),
+            (
+                "model_verification",
+                "jsonrpc_method_rejected",
+                -32601,
+                "account/read",
+            ),
+            (
+                "thread_identity_verification",
+                "jsonrpc_invalid_params",
+                -32600,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "transport_or_process",
+                -32000,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "unknown",
+                -32601,
+                "thread/start",
+            ),
+            (
+                "thread_start",
+                "jsonrpc_invalid_params",
+                -32600,
+                None,
+            ),
+        )
+
+        for phase, category, code, method in cases:
+            with self.subTest(
+                phase=phase,
+                category=category,
+                code=code,
+                method=method,
+            ):
+                forged = CodexFailureDiagnostic.for_phase(phase)
+                object.__setattr__(forged, "category", category)
+                object.__setattr__(forged, "jsonrpc_code", code)
+                object.__setattr__(forged, "protocol_method", method)
+
+                rebuilt = canonical_failure_diagnostic(forged)
+
+                self.assertEqual(
+                    CodexFailureDiagnostic.for_phase("unknown").as_dict(),
+                    rebuilt.as_dict(),
+                )
+
+    def test_valid_thread_start_diagnostics_survive_canonical_rebuild(
+        self,
+    ) -> None:
+        phase = CodexFailureDiagnostic.for_phase("thread_start")
+        cases = (
+            ("jsonrpc_method_rejected", -32601),
+            ("jsonrpc_invalid_params", -32600),
+            ("jsonrpc_invalid_params", -32602),
+            ("state_or_filesystem", -32000),
+            ("transport_or_process", None),
+            ("unknown", -32600),
+            ("unknown", None),
+        )
+
+        for category, code in cases:
+            with self.subTest(category=category, code=code):
+                diagnostic = CodexFailureDiagnostic(
+                    code=phase.code,
+                    protocol_phase=phase.protocol_phase,
+                    reason=phase.reason,
+                    action=phase.action,
+                    category=category,
+                    jsonrpc_code=code,
+                    protocol_method="thread/start",
+                )
+
+                rebuilt = canonical_failure_diagnostic(diagnostic)
+
+                self.assertIsNot(diagnostic, rebuilt)
+                self.assertEqual(diagnostic.as_dict(), rebuilt.as_dict())
+
     async def test_safe_failure_diagnostics_distinguish_protocol_phases(
         self,
     ) -> None:
@@ -713,7 +817,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 {
                     "id": 4,
                     "error": {
-                        "message": "PRIVATE thread source and secret",
+                        "code": -32600,
+                        "message": (
+                            "thread/start.dynamicTools requires "
+                            "experimentalApi capability; PRIVATE secret"
+                        ),
                     },
                 }
             )
@@ -732,8 +840,21 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             assert thread_diagnostic is not None
             self.assertEqual("codex_thread_start_failed", thread_diagnostic.code)
             self.assertEqual("thread_start", thread_diagnostic.protocol_phase)
+            self.assertEqual(
+                "jsonrpc_invalid_params",
+                thread_diagnostic.category,
+            )
+            self.assertEqual(-32600, thread_diagnostic.jsonrpc_code)
+            self.assertEqual("thread/start", thread_diagnostic.protocol_method)
             self.assertNotIn("PRIVATE", json.dumps(thread_diagnostic.as_dict()))
             self.assertNotIn("secret", json.dumps(thread_diagnostic.as_dict()))
+            self.assertNotIn(
+                "turn/start",
+                [
+                    message.get("method")
+                    for message in factory.transports[0].sent
+                ],
+            )
 
             cases = (
                 (
@@ -790,6 +911,159 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                     self.assertNotIn("secret", json.dumps(diagnostic.as_dict()))
                     self.assertEqual((), result.file_actions)
                     self.assertEqual((), result.checkpoint_outcomes)
+
+    def test_repaired_capability_qualifies_thread_without_starting_turn(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            before = subprocess.run(
+                ("git", "-C", str(repository), "status", "--porcelain"),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-qualified",
+                turn_id="unused-turn",
+            )[:4]
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("qualification must not prompt"),
+            )
+            transport = factory(adapter.executable)
+            adapter._transport = transport
+
+            try:
+                transport.start()
+                adapter._protocol_phase = "initialize_handshake"
+                adapter._initialize()
+                adapter._protocol_phase = "account_verification"
+                adapter._verify_account()
+                adapter._protocol_phase = "model_verification"
+                adapter._verify_model_catalog()
+                adapter._protocol_phase = "thread_start"
+                adapter._start_thread()
+            finally:
+                transport.close()
+
+            methods = [
+                message.get("method")
+                for message in transport.sent
+                if "method" in message
+            ]
+            initialize = next(
+                message
+                for message in transport.sent
+                if message.get("method") == "initialize"
+            )
+            self.assertEqual(
+                {"experimentalApi": True},
+                initialize["params"]["capabilities"],
+            )
+            self.assertIn("thread/start", methods)
+            self.assertNotIn("turn/start", methods)
+            self.assertEqual("thread-qualified", adapter._thread_id)
+            after = subprocess.run(
+                ("git", "-C", str(repository), "status", "--porcelain"),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertEqual(before, after)
+
+    async def test_thread_start_jsonrpc_categories_are_bounded(self) -> None:
+        cases = (
+            (-32601, "PRIVATE method secret", "jsonrpc_method_rejected"),
+            (-32602, "PRIVATE schema secret", "jsonrpc_invalid_params"),
+            (
+                -32000,
+                "Failed to create state database at /PRIVATE/path secret",
+                "state_or_filesystem",
+            ),
+            (-32099, "PRIVATE arbitrary provider secret", "unknown"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            for code, message, category in cases:
+                with self.subTest(code=code):
+                    messages = handshake_messages(
+                        repository,
+                        thread_id="unused-thread",
+                        turn_id="unused-turn",
+                    )[:3]
+                    messages.append(
+                        {
+                            "id": 4,
+                            "error": {"code": code, "message": message},
+                        }
+                    )
+                    factory = FakeTransportFactory([messages])
+                    _, adapter, _ = adapter_for(
+                        repository,
+                        factory,
+                        choice=lambda: self.fail("must not prompt"),
+                    )
+
+                    with self.assertRaises(CodexAdapterFailure) as captured:
+                        await adapter.run("bounded thread failure")
+
+                    diagnostic = captured.exception.diagnostic
+                    self.assertIsNotNone(diagnostic)
+                    assert diagnostic is not None
+                    self.assertEqual(category, diagnostic.category)
+                    self.assertEqual(code, diagnostic.jsonrpc_code)
+                    self.assertEqual(
+                        "thread/start",
+                        diagnostic.protocol_method,
+                    )
+                    serialized = json.dumps(diagnostic.as_dict())
+                    self.assertNotIn("PRIVATE", serialized)
+                    self.assertNotIn("secret", serialized)
+
+    async def test_thread_start_transport_failure_is_bounded(self) -> None:
+        class FailingReceiveTransport(FakeTransport):
+            def receive(self) -> dict[str, Any]:
+                if self.messages:
+                    return super().receive()
+                raise CodexAdapterFailure(
+                    "PRIVATE control stream path and secret"
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            transport = FailingReceiveTransport(
+                handshake_messages(
+                    repository,
+                    thread_id="unused-thread",
+                    turn_id="unused-turn",
+                )[:3]
+            )
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+            adapter = CodexAdapter(
+                engine,
+                input_func=lambda: self.fail("must not prompt"),
+                stdout=io.StringIO(),
+                transport_factory=lambda _executable: transport,
+            )
+
+            with self.assertRaises(CodexAdapterFailure) as captured:
+                await adapter.run("transport failure")
+
+            diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual("transport_or_process", diagnostic.category)
+            self.assertIsNone(diagnostic.jsonrpc_code)
+            self.assertEqual("thread/start", diagnostic.protocol_method)
+            self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
 
     async def test_first_failure_phase_latch_preserves_actual_boundary(
         self,

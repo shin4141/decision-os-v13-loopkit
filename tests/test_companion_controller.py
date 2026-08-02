@@ -171,9 +171,24 @@ class MaliciousDiagnostic:
     protocol_phase = "private_phase"
     reason = "PRIVATE raw exception, source, prompt, path, and secret"
     action = "expose_private_data"
+    category = "PRIVATE_CATEGORY"
+    jsonrpc_code = -32600
+    protocol_method = "private/method"
 
     def as_dict(self) -> dict[str, str]:
         raise AssertionError("untrusted as_dict must not be called")
+
+
+def allowed_value_cross_forged_diagnostic() -> CodexFailureDiagnostic:
+    diagnostic = CodexFailureDiagnostic.for_phase("thread_start")
+    object.__setattr__(
+        diagnostic,
+        "category",
+        "jsonrpc_method_rejected",
+    )
+    object.__setattr__(diagnostic, "jsonrpc_code", -32601)
+    object.__setattr__(diagnostic, "protocol_method", "turn/start")
+    return diagnostic
 
 
 class ScriptedAdapter:
@@ -199,9 +214,18 @@ class ScriptedAdapter:
         if self.mode == "failure":
             raise CodexAdapterFailure("sensitive raw adapter failure")
         if self.mode == "typed_failure":
+            base = CodexFailureDiagnostic.for_phase("thread_start")
             raise CodexAdapterFailure(
                 "sensitive raw thread/start response",
-                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+                diagnostic=CodexFailureDiagnostic(
+                    code=base.code,
+                    protocol_phase=base.protocol_phase,
+                    reason=base.reason,
+                    action=base.action,
+                    category="jsonrpc_invalid_params",
+                    jsonrpc_code=-32600,
+                    protocol_method="thread/start",
+                ),
             )
         if self.mode == "forged_failure":
             failure = CodexAdapterFailure(
@@ -209,6 +233,13 @@ class ScriptedAdapter:
                 diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
             )
             failure.diagnostic = MaliciousDiagnostic()  # type: ignore[assignment]
+            raise failure
+        if self.mode == "cross_forged_failure":
+            failure = CodexAdapterFailure(
+                "PRIVATE raw exception message",
+                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+            )
+            failure.diagnostic = allowed_value_cross_forged_diagnostic()
             raise failure
         if self.mode == "typed_result_failure":
             return CodexRunResult(
@@ -242,6 +273,26 @@ class ScriptedAdapter:
                 result,
                 "failure_diagnostic",
                 MaliciousDiagnostic(),
+            )
+            return result
+        if self.mode == "cross_forged_result_failure":
+            result = CodexRunResult(
+                run_id=self.engine.new_run_id(),
+                normal_terminal=False,
+                status="ABNORMAL_TERMINAL",
+                error_type="CodexAdapterFailure",
+                turn_status=None,
+                runtime_identity=None,
+                checkpoint_outcomes=(),
+                final_message="PRIVATE incomplete model text",
+                failure_diagnostic=CodexFailureDiagnostic.for_phase(
+                    "dynamic_tool_call"
+                ),
+            )
+            object.__setattr__(
+                result,
+                "failure_diagnostic",
+                allowed_value_cross_forged_diagnostic(),
             )
             return result
         if self.mode == "read_only":
@@ -1860,6 +1911,9 @@ class CompanionControllerTest(unittest.TestCase):
                     "protocol_phase": "thread_start",
                     "reason": typed["run"]["error"],
                     "action": "recheck_protocol",
+                    "category": "jsonrpc_invalid_params",
+                    "jsonrpc_code": -32600,
+                    "protocol_method": "thread/start",
                 },
                 typed["run"]["failure"],
             )
@@ -1898,11 +1952,18 @@ class CompanionControllerTest(unittest.TestCase):
                 ScriptedFactory(
                     "forged_failure",
                     "forged_result_failure",
+                    "cross_forged_failure",
+                    "cross_forged_result_failure",
                 ),
             )
             controller.select_repository(repository)
 
-            for task in ("Forged exception.", "Forged result."):
+            for task in (
+                "Forged exception.",
+                "Forged result.",
+                "Cross-forged exception.",
+                "Cross-forged result.",
+            ):
                 with self.subTest(task=task):
                     controller.start_run(task)
                     state = wait_for(
@@ -1926,6 +1987,9 @@ class CompanionControllerTest(unittest.TestCase):
                             "protocol_phase": "unknown",
                             "reason": run["error"],
                             "action": None,
+                            "category": "unknown",
+                            "jsonrpc_code": None,
+                            "protocol_method": None,
                         },
                         run["failure"],
                     )
