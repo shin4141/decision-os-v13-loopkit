@@ -743,6 +743,87 @@ class FieldNotesControllerTests(unittest.TestCase):
             with self.assertRaises(FieldNoteError):
                 controller.field_note_approval("allow_once")
 
+    def test_casefold_sibling_race_fails_closed_and_consumes_approval(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller, repository = self._controller(root)
+            draft = compile_draft(
+                proposal(),
+                source_run_id="run_001",
+                created_at="2026-08-02T12:34:56Z",
+                field_note_id="fn_fixed_identity",
+            )
+            self._arm_candidate(controller, draft)
+            controller.field_note_save()
+            target = repository / draft.relative_path
+            filename = target.name
+            competing_name = filename.upper()
+            competing_bytes = b"competing sibling remains unchanged\n"
+            competitor = target.with_name("casefold-race-sentinel")
+            real_open = os.open
+            real_listdir = os.listdir
+            inserted = False
+
+            def raced_open(
+                path: object,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal inserted
+                if (
+                    not inserted
+                    and os.fspath(path) == filename
+                    and flags & os.O_CREAT
+                ):
+                    inserted = True
+                    competitor.write_bytes(competing_bytes)
+                if dir_fd is None:
+                    return real_open(path, flags, mode)
+                return real_open(path, flags, mode, dir_fd=dir_fd)
+
+            def raced_listdir(path: object) -> list[str]:
+                entries = real_listdir(path)
+                if inserted and competitor.name in entries:
+                    return [
+                        competing_name if name == competitor.name else name
+                        for name in entries
+                    ]
+                return entries
+
+            self.assertNotEqual(competing_name, filename)
+            self.assertEqual(competing_name.casefold(), filename.casefold())
+            with patch.object(
+                controller,
+                "_descriptor_containment_supported",
+                return_value=None,
+            ), patch(
+                "decision_os.companion.field_notes_controller.os.open",
+                side_effect=raced_open,
+            ), patch(
+                "decision_os.companion.field_notes_controller.os.listdir",
+                side_effect=raced_listdir,
+            ):
+                with self.assertRaises(FieldNoteError):
+                    controller.field_note_approval("allow_once")
+
+            self.assertTrue(inserted)
+            self.assertEqual(competitor.read_bytes(), competing_bytes)
+            self.assertFalse(target.exists())
+            state = controller.snapshot()["run"]["field_note"]
+            self.assertEqual("candidate", state["state"])
+            self.assertIn("new exact Approval", state["error"])
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_approval("allow_once")
+            renewed = controller.field_note_save()
+            self.assertEqual(
+                "approval",
+                renewed["run"]["field_note"]["state"],
+            )
+
     def test_failed_allow_once_requires_a_fresh_approval(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

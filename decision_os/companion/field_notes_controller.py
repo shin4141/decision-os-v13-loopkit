@@ -541,6 +541,35 @@ class FieldNotesCompanionController(CompanionController):
             ) from exc
 
     @classmethod
+    def _verify_casefold_file_link(
+        cls,
+        directory_descriptor: int,
+        filename: str,
+        descriptor: int,
+        expected_identity: tuple[int, int],
+    ) -> None:
+        try:
+            matches = [
+                name
+                for name in os.listdir(directory_descriptor)
+                if name.casefold() == filename.casefold()
+            ]
+        except OSError as exc:
+            raise FieldNoteError(
+                "Field Note directory cannot be inspected safely."
+            ) from exc
+        if matches != [filename]:
+            raise FieldNoteError(
+                "Field Note case-normalized identity changed."
+            )
+        cls._verify_file_link(
+            directory_descriptor,
+            filename,
+            descriptor,
+            expected_identity,
+        )
+
+    @classmethod
     def _unlink_exact_created_file(
         cls,
         directory_descriptor: int,
@@ -623,7 +652,7 @@ class FieldNotesCompanionController(CompanionController):
                     "Field Note target is not a safe regular file."
                 )
             created_identity = self._identity(created)
-            self._verify_file_link(
+            self._verify_casefold_file_link(
                 field_notes_descriptor,
                 filename,
                 file_descriptor,
@@ -648,7 +677,7 @@ class FieldNotesCompanionController(CompanionController):
                 "field-notes",
                 field_notes_descriptor,
             )
-            self._verify_file_link(
+            self._verify_casefold_file_link(
                 field_notes_descriptor,
                 filename,
                 file_descriptor,
@@ -672,21 +701,43 @@ class FieldNotesCompanionController(CompanionController):
                 "field-notes",
                 field_notes_descriptor,
             )
-            self._verify_file_link(
+            if observed != pending.draft.markdown:
+                raise FieldNoteError(
+                    "Field Note readback identity did not match."
+                )
+            self._verify_casefold_file_link(
                 field_notes_descriptor,
                 filename,
                 file_descriptor,
                 created_identity,
             )
-            if (
-                observed != pending.draft.markdown
-                or hashlib.sha256(observed).hexdigest()
-                != pending.draft.sha256
-            ):
+            if hashlib.sha256(observed).hexdigest() != pending.draft.sha256:
                 raise FieldNoteError(
                     "Field Note readback identity did not match."
                 )
+            self._verify_casefold_file_link(
+                field_notes_descriptor,
+                filename,
+                file_descriptor,
+                created_identity,
+            )
             os.fsync(field_notes_descriptor)
+            self._verify_directory_link(
+                repository_descriptor,
+                ".decision-os",
+                decision_descriptor,
+            )
+            self._verify_directory_link(
+                decision_descriptor,
+                "field-notes",
+                field_notes_descriptor,
+            )
+            self._verify_casefold_file_link(
+                field_notes_descriptor,
+                filename,
+                file_descriptor,
+                created_identity,
+            )
         except Exception as exc:
             if (
                 field_notes_descriptor is not None
