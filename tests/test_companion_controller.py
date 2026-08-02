@@ -171,6 +171,9 @@ class MaliciousDiagnostic:
     protocol_phase = "private_phase"
     reason = "PRIVATE raw exception, source, prompt, path, and secret"
     action = "expose_private_data"
+    category = "PRIVATE_CATEGORY"
+    jsonrpc_code = -32600
+    protocol_method = "private/method"
 
     def as_dict(self) -> dict[str, str]:
         raise AssertionError("untrusted as_dict must not be called")
@@ -199,9 +202,18 @@ class ScriptedAdapter:
         if self.mode == "failure":
             raise CodexAdapterFailure("sensitive raw adapter failure")
         if self.mode == "typed_failure":
+            base = CodexFailureDiagnostic.for_phase("thread_start")
             raise CodexAdapterFailure(
                 "sensitive raw thread/start response",
-                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+                diagnostic=CodexFailureDiagnostic(
+                    code=base.code,
+                    protocol_phase=base.protocol_phase,
+                    reason=base.reason,
+                    action=base.action,
+                    category="jsonrpc_invalid_params",
+                    jsonrpc_code=-32600,
+                    protocol_method="thread/start",
+                ),
             )
         if self.mode == "forged_failure":
             failure = CodexAdapterFailure(
@@ -1860,6 +1872,9 @@ class CompanionControllerTest(unittest.TestCase):
                     "protocol_phase": "thread_start",
                     "reason": typed["run"]["error"],
                     "action": "recheck_protocol",
+                    "category": "jsonrpc_invalid_params",
+                    "jsonrpc_code": -32600,
+                    "protocol_method": "thread/start",
                 },
                 typed["run"]["failure"],
             )
@@ -1926,6 +1941,9 @@ class CompanionControllerTest(unittest.TestCase):
                             "protocol_phase": "unknown",
                             "reason": run["error"],
                             "action": None,
+                            "category": "unknown",
+                            "jsonrpc_code": None,
+                            "protocol_method": None,
                         },
                         run["failure"],
                     )

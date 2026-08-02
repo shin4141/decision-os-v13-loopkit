@@ -339,6 +339,48 @@ _FAILURE_DIAGNOSTIC_SPECS = {
     ),
 }
 
+_FAILURE_CATEGORIES = frozenset(
+    {
+        "jsonrpc_method_rejected",
+        "jsonrpc_invalid_params",
+        "state_or_filesystem",
+        "transport_or_process",
+        "unknown",
+    }
+)
+_PROTOCOL_METHODS = frozenset(
+    {
+        "account/read",
+        "initialize",
+        "model/list",
+        "thread/start",
+        "turn/start",
+    }
+)
+_STATE_OR_FILESYSTEM_MARKERS = (
+    "codex home",
+    "database",
+    "failed to create",
+    "file system",
+    "filesystem",
+    "no such file",
+    "permission denied",
+    "read-only file system",
+    "sqlite",
+    "state directory",
+    "unable to create",
+)
+_INVALID_PARAMS_MARKERS = (
+    "deserialize",
+    "invalid parameter",
+    "invalid params",
+    "invalid request",
+    "missing field",
+    "requires experimentalapi capability",
+    "schema",
+    "unknown field",
+)
+
 
 @dataclass(frozen=True)
 class CodexFailureDiagnostic:
@@ -348,18 +390,55 @@ class CodexFailureDiagnostic:
     protocol_phase: str
     reason: str
     action: str | None = None
+    category: str = "unknown"
+    jsonrpc_code: int | None = None
+    protocol_method: str | None = None
 
     def __post_init__(self) -> None:
         spec = _FAILURE_DIAGNOSTIC_SPECS.get(self.protocol_phase)
-        if spec != (self.code, self.reason, self.action):
+        bounded_code = bool(
+            self.jsonrpc_code is None
+            or (
+                type(self.jsonrpc_code) is int
+                and -(2**63) <= self.jsonrpc_code < 2**63
+            )
+        )
+        bounded_method = bool(
+            self.protocol_method is None
+            or self.protocol_method in _PROTOCOL_METHODS
+        )
+        coherent_category = bool(
+            self.category in _FAILURE_CATEGORIES
+            and (
+                self.category != "jsonrpc_method_rejected"
+                or self.jsonrpc_code == -32601
+            )
+            and (
+                self.category != "jsonrpc_invalid_params"
+                or self.jsonrpc_code in {-32600, -32602}
+            )
+            and (
+                not self.category.startswith("jsonrpc_")
+                or self.protocol_method is not None
+            )
+        )
+        if (
+            spec != (self.code, self.reason, self.action)
+            or not bounded_code
+            or not bounded_method
+            or not coherent_category
+        ):
             raise ValueError("Codex failure diagnostic must be bounded.")
 
-    def as_dict(self) -> dict[str, str | None]:
+    def as_dict(self) -> dict[str, str | int | None]:
         return {
             "code": self.code,
             "protocol_phase": self.protocol_phase,
             "reason": self.reason,
             "action": self.action,
+            "category": self.category,
+            "jsonrpc_code": self.jsonrpc_code,
+            "protocol_method": self.protocol_method,
         }
 
     @classmethod
@@ -367,7 +446,13 @@ class CodexFailureDiagnostic:
         return _failure_diagnostic(protocol_phase)
 
 
-def _failure_diagnostic(protocol_phase: str) -> CodexFailureDiagnostic:
+def _failure_diagnostic(
+    protocol_phase: str,
+    *,
+    category: str = "unknown",
+    jsonrpc_code: int | None = None,
+    protocol_method: str | None = None,
+) -> CodexFailureDiagnostic:
     phase = (
         protocol_phase
         if protocol_phase in _FAILURE_DIAGNOSTIC_SPECS
@@ -379,6 +464,63 @@ def _failure_diagnostic(protocol_phase: str) -> CodexFailureDiagnostic:
         protocol_phase=phase,
         reason=reason,
         action=action,
+        category=category,
+        jsonrpc_code=jsonrpc_code,
+        protocol_method=protocol_method,
+    )
+
+
+def _bounded_failure_text_category(value: object) -> str:
+    if type(value) is not str:
+        return "unknown"
+    lowered = value.casefold()
+    if "path aliases" in lowered:
+        return "unknown"
+    if any(marker in lowered for marker in _STATE_OR_FILESYSTEM_MARKERS):
+        return "state_or_filesystem"
+    if any(marker in lowered for marker in _INVALID_PARAMS_MARKERS):
+        return "jsonrpc_invalid_params"
+    return "unknown"
+
+
+def _jsonrpc_failure_diagnostic(
+    protocol_phase: str,
+    protocol_method: str,
+    error: object,
+) -> CodexFailureDiagnostic:
+    category = "unknown"
+    jsonrpc_code: int | None = None
+    message: object = None
+    if isinstance(error, dict):
+        raw_code = error.get("code")
+        if type(raw_code) is int and -(2**63) <= raw_code < 2**63:
+            jsonrpc_code = raw_code
+        message = error.get("message")
+    if jsonrpc_code == -32601:
+        category = "jsonrpc_method_rejected"
+    elif jsonrpc_code == -32602:
+        category = "jsonrpc_invalid_params"
+    elif jsonrpc_code == -32600:
+        classified = _bounded_failure_text_category(message)
+        category = (
+            classified
+            if classified == "jsonrpc_invalid_params"
+            else "unknown"
+        )
+    else:
+        category = _bounded_failure_text_category(message)
+    if category == "jsonrpc_invalid_params" and jsonrpc_code not in {
+        -32600,
+        -32602,
+    }:
+        category = "unknown"
+    return _failure_diagnostic(
+        protocol_phase,
+        category=category,
+        jsonrpc_code=jsonrpc_code,
+        protocol_method=(
+            protocol_method if protocol_method in _PROTOCOL_METHODS else None
+        ),
     )
 
 
@@ -393,6 +535,9 @@ def canonical_failure_diagnostic(value: object) -> CodexFailureDiagnostic:
         protocol_phase = object.__getattribute__(value, "protocol_phase")
         reason = object.__getattribute__(value, "reason")
         action = object.__getattribute__(value, "action")
+        category = object.__getattribute__(value, "category")
+        jsonrpc_code = object.__getattribute__(value, "jsonrpc_code")
+        protocol_method = object.__getattribute__(value, "protocol_method")
     except Exception:
         return unknown
     if (
@@ -400,12 +545,23 @@ def canonical_failure_diagnostic(value: object) -> CodexFailureDiagnostic:
         or type(protocol_phase) is not str
         or type(reason) is not str
         or (action is not None and type(action) is not str)
+        or type(category) is not str
+        or (jsonrpc_code is not None and type(jsonrpc_code) is not int)
+        or (protocol_method is not None and type(protocol_method) is not str)
     ):
         return unknown
     spec = _FAILURE_DIAGNOSTIC_SPECS.get(protocol_phase)
     if spec != (code, reason, action):
         return unknown
-    return _failure_diagnostic(protocol_phase)
+    try:
+        return _failure_diagnostic(
+            protocol_phase,
+            category=category,
+            jsonrpc_code=jsonrpc_code,
+            protocol_method=protocol_method,
+        )
+    except ValueError:
+        return unknown
 
 
 class CodexAdapterUnavailable(RuntimeError):
@@ -605,6 +761,10 @@ class AppServerTransport(Protocol):
     def version(self) -> str:
         """Return the exact CLI version used by this transport."""
 
+    @property
+    def failure_category(self) -> str:
+        """Return one bounded category inferred from private stderr."""
+
     def start(self) -> None:
         """Start one fresh app-server process."""
 
@@ -624,12 +784,19 @@ class _SubprocessTransport:
     def __init__(self, executable: Path) -> None:
         self.executable = executable
         self._version = ""
+        self._failure_category = "unknown"
+        self._failure_category_lock = threading.Lock()
         self._process: subprocess.Popen[str] | None = None
         self._stderr_thread: threading.Thread | None = None
 
     @property
     def version(self) -> str:
         return self._version
+
+    @property
+    def failure_category(self) -> str:
+        with self._failure_category_lock:
+            return self._failure_category
 
     def start(self) -> None:
         if not self.executable.is_file():
@@ -703,8 +870,12 @@ class _SubprocessTransport:
         if process is None or process.stderr is None:
             return
         try:
-            for _line in process.stderr:
-                pass
+            for line in process.stderr:
+                category = _bounded_failure_text_category(line)
+                if category != "state_or_filesystem":
+                    continue
+                with self._failure_category_lock:
+                    self._failure_category = category
         except (OSError, UnicodeError):
             return
 
@@ -909,13 +1080,37 @@ class CodexAdapter:
         self,
         exc: CodexAdapterUnavailable | CodexAdapterFailure,
     ) -> CodexFailureDiagnostic:
+        attached = (
+            None
+            if exc.diagnostic is None
+            else canonical_failure_diagnostic(exc.diagnostic)
+        )
         if self._failure_phase is None:
-            if exc.diagnostic is None:
+            if attached is None:
                 self._latch_failure_phase()
             else:
-                diagnostic = canonical_failure_diagnostic(exc.diagnostic)
-                self._latch_failure_phase(diagnostic.protocol_phase)
-        return self._latched_failure_diagnostic()
+                self._latch_failure_phase(attached.protocol_phase)
+        latched = self._latched_failure_diagnostic()
+        if (
+            attached is not None
+            and attached.protocol_phase == latched.protocol_phase
+        ):
+            return attached
+        return latched
+
+    def _transport_failure_category(self) -> str:
+        transport = self._transport
+        if transport is None:
+            return "transport_or_process"
+        try:
+            category = transport.failure_category
+        except (AttributeError, RuntimeError):
+            category = "unknown"
+        return (
+            category
+            if category == "state_or_filesystem"
+            else "transport_or_process"
+        )
 
     def _send(self, message: dict[str, Any]) -> None:
         if self._transport is None:
@@ -931,20 +1126,55 @@ class CodexAdapter:
         request_phase = self._protocol_phase
         self._request_id += 1
         request_id = self._request_id
-        self._send({"id": request_id, "method": method, "params": params})
+        try:
+            self._send({"id": request_id, "method": method, "params": params})
+        except (CodexAdapterUnavailable, CodexAdapterFailure) as exc:
+            raise CodexAdapterFailure(
+                f"Codex app-server {method} transport failed.",
+                diagnostic=_failure_diagnostic(
+                    request_phase,
+                    category=self._transport_failure_category(),
+                    protocol_method=(
+                        method if method in _PROTOCOL_METHODS else None
+                    ),
+                ),
+            ) from exc
         while True:
-            message = self._receive()
+            try:
+                message = self._receive()
+            except (CodexAdapterUnavailable, CodexAdapterFailure) as exc:
+                raise CodexAdapterFailure(
+                    f"Codex app-server {method} transport failed.",
+                    diagnostic=_failure_diagnostic(
+                        request_phase,
+                        category=self._transport_failure_category(),
+                        protocol_method=(
+                            method if method in _PROTOCOL_METHODS else None
+                        ),
+                    ),
+                ) from exc
             if (
                 message.get("id") == request_id
                 and "method" not in message
             ):
                 if "error" in message:
                     raise CodexAdapterFailure(
-                        f"Codex app-server {method} request failed."
+                        f"Codex app-server {method} request failed.",
+                        diagnostic=_jsonrpc_failure_diagnostic(
+                            request_phase,
+                            method,
+                            message.get("error"),
+                        ),
                     )
                 if "result" not in message:
                     raise CodexAdapterFailure(
-                        f"Codex app-server {method} response is incomplete."
+                        f"Codex app-server {method} response is incomplete.",
+                        diagnostic=_failure_diagnostic(
+                            request_phase,
+                            protocol_method=(
+                                method if method in _PROTOCOL_METHODS else None
+                            ),
+                        ),
                     )
                 return message["result"]
             self._dispatch(message)
@@ -962,7 +1192,7 @@ class CodexAdapter:
             self._request(
                 "initialize",
                 {
-                    "capabilities": {"experimentalApi": False},
+                    "capabilities": {"experimentalApi": True},
                     "clientInfo": {
                         "name": _CLIENT_NAME,
                         "title": "Decision OS Verified Save",
