@@ -45,6 +45,7 @@ _DEVELOPER_INSTRUCTIONS = (
 )
 _READ_TOOL_NAME = "read_repository_text_file"
 _READ_MAX_BYTES = 131_072
+_READ_MAX_TARGETS = 4
 _WINDOWS_ABSOLUTE_PATH = re.compile(r"^[A-Za-z]:[/\\]")
 _SOURCE_ECHO_MARKER = "[Repository source content withheld.]"
 _FENCE_OPENING = re.compile(
@@ -57,7 +58,8 @@ _READ_TOOL_SPEC = {
     "name": _READ_TOOL_NAME,
     "description": (
         "Read one existing strict UTF-8 text file inside the selected "
-        "repository before proposing a modification to that same file."
+        "repository. One bounded Run may read up to four exact paths; "
+        "modifying an existing file still requires reading that same path."
     ),
     "inputSchema": {
         "type": "object",
@@ -1027,7 +1029,7 @@ class CodexAdapter:
         self._read_responses: dict[str, _CodexReadResponse] = {}
         self._read_replay_failures: dict[str, _CodexReadResponse] = {}
         self._read_evidence: list[CodexReadEvidence] = []
-        self._read_binding: _CodexReadBinding | None = None
+        self._read_bindings: dict[str, _CodexReadBinding] = {}
         self._completed_read_items: set[str] = set()
         self._accepted_items: set[str] = set()
         self._declined_items: set[str] = set()
@@ -1065,7 +1067,7 @@ class CodexAdapter:
         self._read_responses = {}
         self._read_replay_failures = {}
         self._read_evidence = []
-        self._read_binding = None
+        self._read_bindings = {}
         self._completed_read_items = set()
         self._accepted_items = set()
         self._declined_items = set()
@@ -1576,8 +1578,11 @@ class CodexAdapter:
 
     def _final_message_with_diagnostic(self, status: str) -> str:
         message = self._final_message
-        read_binding = self._read_binding
-        if read_binding is not None:
+        for read_binding in sorted(
+            self._read_bindings.values(),
+            key=lambda value: len(value.content),
+            reverse=True,
+        ):
             message = _redact_complete_source_echo(
                 message,
                 read_binding.content,
@@ -2002,7 +2007,7 @@ class CodexAdapter:
                 self._send_read_response(request_id, replay_failure)
                 return
             if existing.success:
-                binding = self._read_binding
+                binding = self._read_bindings.get(call_id)
                 try:
                     current = self._read_repository_file(arguments["path"])
                 except (CodexAdapterFailure, _ReadValidationError):
@@ -2031,13 +2036,19 @@ class CodexAdapter:
             self._send_read_response(request_id, existing)
             return
 
-        if self._read_binding is not None:
+        if len(self._read_bindings) >= _READ_MAX_TARGETS:
+            try:
+                failed_path = self._normalized_read_path(arguments["path"])
+            except _ReadValidationError:
+                failed_path = None
             response = self._read_failure_response(
                 call_id=call_id,
                 arguments_identity=arguments_identity,
                 reason="additional_read_target",
-                path=None,
-                repository_identity=self._read_binding.repository_identity,
+                path=failed_path,
+                repository_identity=next(
+                    iter(self._read_bindings.values())
+                ).repository_identity,
             )
             self._read_responses[call_id] = response
             self._send_read_response(request_id, response)
@@ -2094,7 +2105,7 @@ class CodexAdapter:
                 }
             ),
         )
-        self._read_binding = binding
+        self._read_bindings[call_id] = binding
         self._read_responses[call_id] = response
         self._record_read_evidence(
             CodexReadEvidence(
@@ -2210,16 +2221,28 @@ class CodexAdapter:
             return
 
         if decision_type is DecisionType.MODIFY_FILE:
-            read_binding = self._read_binding
-            if (
-                read_binding is None
-                or read_binding.run_id != self._run_id
-                or read_binding.call_id not in self._completed_read_items
+            matching_bindings = tuple(
+                binding
+                for binding in self._read_bindings.values()
+                if binding.normalized_scope == normalized
+            )
+            read_binding = next(
+                (
+                    binding
+                    for binding in reversed(matching_bindings)
+                    if binding.run_id == self._run_id
+                    and binding.call_id in self._completed_read_items
+                ),
+                None,
+            )
+            if not self._read_bindings or (
+                matching_bindings and read_binding is None
             ):
                 reason = "modify_requires_repository_read"
-            elif read_binding.normalized_scope != normalized:
+            elif not matching_bindings:
                 reason = "read_write_path_mismatch"
             else:
+                assert read_binding is not None
                 try:
                     current = self._read_repository_file(normalized)
                 except (CodexAdapterFailure, _ReadValidationError):
