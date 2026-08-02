@@ -22,8 +22,10 @@ from decision_os.acceleration.codex_adapter import (
     CodexAdapterFailure,
     CodexAdapterUnavailable,
     CodexApproval,
+    CodexFailureDiagnostic,
     CodexLifecycleEvent,
     CodexRunResult,
+    canonical_failure_diagnostic,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import RepositoryIdentityError, git_root
@@ -258,6 +260,7 @@ class CompanionController:
             "receipt_delta": None,
             "approval": None,
             "error": None,
+            "failure": None,
         }
 
     def _load_last_repository(self) -> None:
@@ -1372,27 +1375,67 @@ class CompanionController:
         result: CodexRunResult,
     ) -> None:
         after = self._safe_receipt(repository)
+        diagnostic = (
+            None
+            if result.failure_diagnostic is None
+            else canonical_failure_diagnostic(result.failure_diagnostic)
+        )
         with self._condition:
             before = self._run.pop("receipt_before")
-            self._run["state"] = self._display_state(result)
-            self._run["result"] = result.final_message
+            self._run["state"] = (
+                "needs_attention"
+                if diagnostic is not None
+                else self._display_state(result)
+            )
+            self._run["result"] = (
+                "" if diagnostic is not None else result.final_message
+            )
             self._run["file_actions"] = self._public_actions(result)
             self._run["read_evidence"] = self._public_read_evidence(result)
-            self._run["outcomes"] = self._public_outcomes(result)
+            outcomes = self._public_outcomes(result)
+            if diagnostic is not None:
+                outcomes["verification"] = {
+                    "state": "needs_attention",
+                    "label": "Needs attention",
+                    "reason": diagnostic.reason,
+                }
+            self._run["outcomes"] = outcomes
             self._run["runtime"] = self._public_runtime(result)
             self._run["receipt_delta"] = self._receipt_delta(before, after)
             self._run["approval"] = None
-            self._run["error"] = None
+            self._run["error"] = (
+                diagnostic.reason if diagnostic is not None else None
+            )
+            self._run["failure"] = (
+                diagnostic.as_dict() if diagnostic is not None else None
+            )
             self._condition.notify_all()
 
     @staticmethod
+    def _safe_failure(
+        exc: Exception,
+    ) -> CodexFailureDiagnostic | None:
+        try:
+            attached = exc.diagnostic
+        except Exception:
+            attached = object()
+        if isinstance(exc, CodexAdapterUnavailable):
+            if attached is None:
+                return CodexFailureDiagnostic.for_phase("transport_start")
+            return canonical_failure_diagnostic(attached)
+        if isinstance(exc, CodexAdapterFailure):
+            if attached is None:
+                return CodexFailureDiagnostic.for_phase("unknown")
+            return canonical_failure_diagnostic(attached)
+        return None
+
+    @staticmethod
     def _safe_error(exc: Exception) -> str:
+        diagnostic = CompanionController._safe_failure(exc)
+        if diagnostic is not None:
+            return diagnostic.reason
         if isinstance(exc, StateIntegrityError):
             return "Repository verification state is corrupted."
-        if isinstance(exc, CodexAdapterUnavailable):
-            return "The private Codex runtime is unavailable."
-        if isinstance(exc, CodexAdapterFailure):
-            return "The bounded Codex Run failed closed."
         if isinstance(exc, LifecycleEventError):
             return "The companion received an invalid progress event."
         if isinstance(exc, ApprovalStateError):
@@ -1404,6 +1447,7 @@ class CompanionController:
             after = self._safe_receipt(repository)
         except StateIntegrityError:
             after = None
+        diagnostic = self._safe_failure(exc)
         with self._condition:
             before = self._run.pop("receipt_before", None)
             self._run["state"] = "needs_attention"
@@ -1424,7 +1468,11 @@ class CompanionController:
                 "verification": {
                     "state": "needs_attention",
                     "label": "Needs attention",
-                    "reason": None,
+                    "reason": (
+                        diagnostic.reason
+                        if diagnostic is not None
+                        else None
+                    ),
                 },
             }
             self._run["runtime"] = None
@@ -1435,6 +1483,9 @@ class CompanionController:
             )
             self._run["approval"] = None
             self._run["error"] = self._safe_error(exc)
+            self._run["failure"] = (
+                diagnostic.as_dict() if diagnostic is not None else None
+            )
             self._approval_choice = "3"
             self._condition.notify_all()
 

@@ -24,6 +24,7 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_SERVICE_TIER,
     CodexAdapterFailure,
     CodexApproval,
+    CodexFailureDiagnostic,
     CodexFileAction,
     CodexLifecycleEvent,
     CodexReadEvidence,
@@ -165,6 +166,16 @@ def runtime_identity() -> CodexRuntimeIdentity:
     )
 
 
+class MaliciousDiagnostic:
+    code = "PRIVATE_FAILURE"
+    protocol_phase = "private_phase"
+    reason = "PRIVATE raw exception, source, prompt, path, and secret"
+    action = "expose_private_data"
+
+    def as_dict(self) -> dict[str, str]:
+        raise AssertionError("untrusted as_dict must not be called")
+
+
 class ScriptedAdapter:
     def __init__(
         self,
@@ -187,6 +198,52 @@ class ScriptedAdapter:
             self.lifecycle_sink({"kind": "raw", "message": "<script>"})
         if self.mode == "failure":
             raise CodexAdapterFailure("sensitive raw adapter failure")
+        if self.mode == "typed_failure":
+            raise CodexAdapterFailure(
+                "sensitive raw thread/start response",
+                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+            )
+        if self.mode == "forged_failure":
+            failure = CodexAdapterFailure(
+                "PRIVATE raw exception message",
+                diagnostic=CodexFailureDiagnostic.for_phase("thread_start"),
+            )
+            failure.diagnostic = MaliciousDiagnostic()  # type: ignore[assignment]
+            raise failure
+        if self.mode == "typed_result_failure":
+            return CodexRunResult(
+                run_id=self.engine.new_run_id(),
+                normal_terminal=False,
+                status="ABNORMAL_TERMINAL",
+                error_type="CodexAdapterFailure",
+                turn_status=None,
+                runtime_identity=None,
+                checkpoint_outcomes=(),
+                final_message="sensitive incomplete model text",
+                failure_diagnostic=CodexFailureDiagnostic.for_phase(
+                    "dynamic_tool_call"
+                ),
+            )
+        if self.mode == "forged_result_failure":
+            result = CodexRunResult(
+                run_id=self.engine.new_run_id(),
+                normal_terminal=False,
+                status="ABNORMAL_TERMINAL",
+                error_type="CodexAdapterFailure",
+                turn_status=None,
+                runtime_identity=None,
+                checkpoint_outcomes=(),
+                final_message="PRIVATE incomplete model text",
+                failure_diagnostic=CodexFailureDiagnostic.for_phase(
+                    "dynamic_tool_call"
+                ),
+            )
+            object.__setattr__(
+                result,
+                "failure_diagnostic",
+                MaliciousDiagnostic(),
+            )
+            return result
         if self.mode == "read_only":
             return CodexRunResult(
                 run_id=self.engine.new_run_id(),
@@ -1756,6 +1813,14 @@ class CompanionControllerTest(unittest.TestCase):
                 failed["run"]["error"],
             )
             self.assertEqual(
+                "The bounded Codex Run failed closed.",
+                failed["run"]["outcomes"]["verification"]["reason"],
+            )
+            self.assertEqual(
+                "codex_unknown_failure",
+                failed["run"]["failure"]["code"],
+            )
+            self.assertEqual(
                 {
                     "state": "unknown",
                     "label": (
@@ -1765,6 +1830,108 @@ class CompanionControllerTest(unittest.TestCase):
                 failed["run"]["outcomes"]["file_change"],
             )
             self.assertNotIn("sensitive", json.dumps(failed))
+
+            controller = self.make_controller(
+                root / "typed-failure",
+                ScriptedFactory("typed_failure", "typed_result_failure"),
+            )
+            controller.select_repository(repository)
+            controller.start_run("Typed adapter failure.")
+            typed = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "needs_attention",
+            )
+            self.assertEqual(
+                "The bounded Codex Run failed closed while starting its isolated thread.",
+                typed["run"]["error"],
+            )
+            self.assertEqual(
+                typed["run"]["error"],
+                typed["run"]["outcomes"]["verification"]["reason"],
+            )
+            self.assertEqual(
+                {
+                    "code": "codex_thread_start_failed",
+                    "protocol_phase": "thread_start",
+                    "reason": typed["run"]["error"],
+                    "action": "recheck_protocol",
+                },
+                typed["run"]["failure"],
+            )
+            self.assertEqual([], typed["run"]["file_actions"])
+            self.assertIsNone(typed["run"]["approval"])
+            self.assertNotIn("sensitive", json.dumps(typed))
+
+            controller.new_run()
+            controller.start_run("Typed result failure.")
+            typed_result = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "needs_attention",
+            )
+            self.assertEqual(
+                "The bounded Codex Run failed closed while handling the bounded repository read.",
+                typed_result["run"]["error"],
+            )
+            self.assertEqual(
+                "dynamic_tool_call",
+                typed_result["run"]["failure"]["protocol_phase"],
+            )
+            self.assertEqual(
+                typed_result["run"]["error"],
+                typed_result["run"]["outcomes"]["verification"]["reason"],
+            )
+            self.assertEqual([], typed_result["run"]["file_actions"])
+            self.assertIsNone(typed_result["run"]["approval"])
+            self.assertNotIn("sensitive", json.dumps(typed_result))
+
+    def test_forged_diagnostics_downgrade_before_public_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(
+                root / "forged",
+                ScriptedFactory(
+                    "forged_failure",
+                    "forged_result_failure",
+                ),
+            )
+            controller.select_repository(repository)
+
+            for task in ("Forged exception.", "Forged result."):
+                with self.subTest(task=task):
+                    controller.start_run(task)
+                    state = wait_for(
+                        controller,
+                        lambda value: (
+                            value["run"]["state"] == "needs_attention"
+                        ),
+                    )
+                    run = state["run"]
+                    self.assertEqual(
+                        "The bounded Codex Run failed closed.",
+                        run["error"],
+                    )
+                    self.assertEqual(
+                        run["error"],
+                        run["outcomes"]["verification"]["reason"],
+                    )
+                    self.assertEqual(
+                        {
+                            "code": "codex_unknown_failure",
+                            "protocol_phase": "unknown",
+                            "reason": run["error"],
+                            "action": None,
+                        },
+                        run["failure"],
+                    )
+                    self.assertEqual("", run["result"])
+                    self.assertEqual([], run["file_actions"])
+                    self.assertEqual([], run["read_evidence"])
+                    self.assertIsNone(run["approval"])
+                    serialized = json.dumps(state)
+                    self.assertNotIn("PRIVATE", serialized)
+                    self.assertNotIn("secret", serialized)
+                    controller.new_run()
 
     def test_corrupted_event_chain_blocks_repository_selection(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
