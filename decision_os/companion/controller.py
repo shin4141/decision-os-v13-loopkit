@@ -236,6 +236,7 @@ class CompanionController:
     def _empty_run() -> dict[str, Any]:
         return {
             "run_type": "bounded_task",
+            "task_mode": None,
             "state": "idle",
             "progress": [],
             "result": "",
@@ -1109,11 +1110,21 @@ class CompanionController:
             operation="control",
         )
 
-    def start_run(self, task: str) -> dict[str, Any]:
+    def start_run(
+        self,
+        task: str,
+        *,
+        task_mode: str = "manual",
+    ) -> dict[str, Any]:
         if not isinstance(task, str) or not task.strip():
             raise CompanionError("Enter one bounded task before running.")
         if len(task) > 20_000:
             raise CompanionError("The bounded task exceeds the local size limit.")
+        if not isinstance(task_mode, str) or task_mode not in {
+            "manual",
+            "contract",
+        }:
+            raise CompanionError("Run task mode is invalid.")
         with self._condition:
             repository = self._require_repository()
             if (
@@ -1130,6 +1141,7 @@ class CompanionController:
                 )
             before = self._safe_receipt(repository)
             self._run = self._empty_run()
+            self._run["task_mode"] = task_mode
             self._run["state"] = "running"
             self._run["progress"] = ["Preparing the bounded task."]
             self._run["outcomes"]["execution"] = {

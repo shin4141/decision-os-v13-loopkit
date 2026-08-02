@@ -2035,7 +2035,10 @@ class CompanionServerTest(unittest.TestCase):
         status, _headers, _raw = self.request(
             "POST",
             "/api/run",
-            body={"task": "Modify target.txt once."},
+            body={
+                "task": "Modify target.txt once.",
+                "task_mode": "contract",
+            },
             cookie=cookie,
             csrf=csrf,
             origin=self.server.origin,
@@ -2056,6 +2059,7 @@ class CompanionServerTest(unittest.TestCase):
             time.sleep(0.01)
         self.assertIsNotNone(first)
         self.assertIsNotNone(first["run"]["approval"])
+        self.assertEqual("contract", first["run"]["task_mode"])
 
         status, _headers, raw = self.request(
             "GET",
@@ -2255,6 +2259,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               operationApprovalSeen: false,
               operationContinuingAfterApproval: false,
               preparedContractTaskBinding: null,
+              preparedContractTaskStarter: null,
               operationLastApprovalKey: null,
               operationStartPending: false,
               operationTerminalTransitioned: false,
@@ -2330,15 +2335,21 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(view.statuses.task, "Current");
             assert.strictEqual(view.action, "Select Run to start this bounded task.");
             const manualLifecycle = [
-              [idle, { startPending: true }, "Run starting"],
+              [{ ...idle, task_mode: "manual" }, { startPending: true }, "Run starting"],
               [
-                { state: "running", progress: ["Working"], approval: null },
+                {
+                  state: "running",
+                  task_mode: "manual",
+                  progress: ["Working"],
+                  approval: null,
+                },
                 {},
                 "Run working",
               ],
               [
                 {
                   state: "running",
+                  task_mode: "manual",
                   progress: ["Waiting for approval"],
                   approval: {
                     action: "Modify",
@@ -2349,14 +2360,42 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 "Approval waiting",
               ],
               [
-                { state: "running", progress: ["Continuing"], approval: null },
+                {
+                  state: "running",
+                  task_mode: "manual",
+                  progress: ["Continuing"],
+                  approval: null,
+                },
                 { approvalSeen: true, continuingAfterApproval: true },
                 "post-Approval continuation",
               ],
-              [{ state: "completed", progress: [], approval: null }, {}, "terminal success"],
-              [{ state: "denied", progress: [], approval: null }, {}, "terminal denial"],
               [
-                { state: "needs_attention", progress: [], approval: null },
+                {
+                  state: "completed",
+                  task_mode: "manual",
+                  progress: [],
+                  approval: null,
+                },
+                {},
+                "terminal success",
+              ],
+              [
+                {
+                  state: "denied",
+                  task_mode: "manual",
+                  progress: [],
+                  approval: null,
+                },
+                {},
+                "terminal denial",
+              ],
+              [
+                {
+                  state: "needs_attention",
+                  task_mode: "manual",
+                  progress: [],
+                  approval: null,
+                },
                 {},
                 "terminal needs-attention",
               ],
@@ -2370,6 +2409,20 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 context,
               );
               assert.strictEqual(view.statuses.contract, "Not used", label);
+            }
+            for (const state of ["running", "completed", "needs_attention"]) {
+              view = sandbox.operationPresentation(
+                { state, task_mode: "contract", progress: [], approval: null },
+                null,
+                emptyTask,
+                repository,
+                {},
+              );
+              assert.strictEqual(
+                view.statuses.contract,
+                "Not started",
+                `non-manual repository without Contract: ${state}`,
+              );
             }
             const insertedTask = {
               mode: "contract",
@@ -2476,7 +2529,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
 
             elements.get("task").value = "one bounded task";
             sandbox.latestState = { ordinary_contract: fixed, repository };
-            sandbox.beginOperationRun();
+            sandbox.beginOperationRun("manual");
             assert.strictEqual(elements.get("run").disabled, true);
             assert.strictEqual(elements.get("operation-current").textContent, "Starting Run");
             assert.strictEqual(
@@ -2493,6 +2546,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.operationStartPending = false;
             const working = {
               state: "running",
+              task_mode: "manual",
               progress: ["Starting the private Codex runtime."],
               approval: null,
             };
@@ -2511,6 +2565,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             elements.get("approval-overlay").classList.toggle("hidden", false);
             const approval = {
               state: "running",
+              task_mode: "manual",
               progress: ["Waiting for one exact file-change decision."],
               approval: {
                 repository: "repo",
@@ -2543,6 +2598,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             elements.get("result-card").classList.toggle("hidden", false);
             const terminal = {
               state: "unsupported",
+              task_mode: "manual",
               progress: ["Finalizing the local Receipt."],
               result: "The requested file was modified.",
               file_actions: [{ action: "Modify", path: "app.js", status: "approved", access: "one-time" }],
@@ -2571,6 +2627,51 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
             sandbox.coordinateOperationTransition(terminal);
             assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
+
+            elements.get("task").value = "one bounded task";
+            for (const state of ["completed", "denied", "needs_attention"]) {
+              const manualTerminal = {
+                state,
+                task_mode: "manual",
+                progress: [],
+                approval: null,
+              };
+              sandbox.renderOperationAwareness(manualTerminal, fixed, repository);
+              assert.strictEqual(
+                elements.get("operation-contract-status").textContent,
+                "Not used",
+                `manual terminal DOM: ${state}`,
+              );
+            }
+            elements.get("task").value = "";
+            sandbox.renderOperationAwareness(
+              { ...terminal, state: "completed" },
+              fixed,
+              repository,
+            );
+            assert.strictEqual(
+              elements.get("operation-contract-status").textContent,
+              "Not used",
+              "clearing the editor must not relabel a completed manual Run",
+            );
+            elements.get("task").value = [
+              sandbox.CONTRACT_TASK_PREFIX,
+              "Current repository identity: commit-a",
+              "Fixed Contract Request identity: GI-REQ-ONE",
+              `Interpretation SHA-256: ${"a".repeat(64)}`,
+              sandbox.CONTRACT_TASK_MARKER,
+              "Contract-bound replacement.",
+            ].join("\n");
+            sandbox.renderOperationAwareness(
+              { ...terminal, state: "completed" },
+              fixed,
+              repository,
+            );
+            assert.strictEqual(
+              elements.get("operation-contract-status").textContent,
+              "Not used",
+              "editing the editor must not relabel a completed manual Run",
+            );
 
             reducedMotion = true;
             sandbox.moveToOperationStage("task");
@@ -2684,6 +2785,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               UNKNOWN_EXECUTION_AUTHORITY_MESSAGE:
                 "Execution authority is not established for this Contract.",
               preparedContractTaskBinding: null,
+              preparedContractTaskStarter: null,
               latestState: {
                 ordinary_contract: { state: "REVIEW_READY" },
                 repository: { name: "repo-a", path: "/tmp/repo-a" },
@@ -2780,6 +2882,22 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const manual = sandbox.taskReadiness(interpretationOnly, otherRepository);
             assert.strictEqual(manual.mode, "manual");
             assert.strictEqual(manual.runnable, true);
+
+            elements.get("task").value = "";
+            sandbox.latestState = {
+              ordinary_contract: fixed,
+              repository: { name: "repo-a", path: "/tmp/repo-a" },
+            };
+            button.dispatch("click");
+            assert(elements.get("task").value.includes("GI-REQ-ONE"));
+            elements.get("task").value = "Replacement manual task.";
+            const replaced = sandbox.taskReadiness(
+              fixed,
+              sandbox.latestState.repository,
+            );
+            assert.strictEqual(replaced.mode, "manual");
+            assert.strictEqual(replaced.runnable, true);
+            assert.strictEqual(sandbox.preparedContractTaskBinding, null);
 
             const renderStart = source.indexOf("function renderOrdinaryContract");
             const renderEnd = source.indexOf("\nconst guidedIntakeActionIds", renderStart);
@@ -3618,6 +3736,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               UNKNOWN_EXECUTION_AUTHORITY_MESSAGE:
                 "Execution authority is not established for this Contract.",
               preparedContractTaskBinding: null,
+              preparedContractTaskStarter: null,
               byId: (id) => elements.get(id),
               setText: (id, value) => {
                 elements.get(id).textContent = value == null ? "" : String(value);

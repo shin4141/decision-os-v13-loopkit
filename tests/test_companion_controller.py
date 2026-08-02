@@ -593,12 +593,17 @@ class CompanionControllerTest(unittest.TestCase):
             )
             controller.select_repository(repository)
 
-            controller.start_run("Read the target without changing it.")
+            started = controller.start_run(
+                "Read the target without changing it.",
+                task_mode="contract",
+            )
+            self.assertEqual("contract", started["run"]["task_mode"])
             snapshot = wait_for(
                 controller,
                 lambda state: state["run"]["state"] == "completed",
             )
 
+            self.assertEqual("contract", snapshot["run"]["task_mode"])
             self.assertEqual("Read-only result.", snapshot["run"]["result"])
             self.assertEqual(
                 [
