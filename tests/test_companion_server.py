@@ -2326,9 +2326,51 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(view.statuses.run, "Not started");
             view = sandbox.operationPresentation(idle, fixed, manualTask, repository, {});
             assert.strictEqual(view.currentStage, "task");
-            assert.strictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(view.statuses.contract, "Not used");
             assert.strictEqual(view.statuses.task, "Current");
             assert.strictEqual(view.action, "Select Run to start this bounded task.");
+            const manualLifecycle = [
+              [idle, { startPending: true }, "Run starting"],
+              [
+                { state: "running", progress: ["Working"], approval: null },
+                {},
+                "Run working",
+              ],
+              [
+                {
+                  state: "running",
+                  progress: ["Waiting for approval"],
+                  approval: {
+                    action: "Modify",
+                    path: "decision_os/companion/static/app.js",
+                  },
+                },
+                { approvalSeen: true },
+                "Approval waiting",
+              ],
+              [
+                { state: "running", progress: ["Continuing"], approval: null },
+                { approvalSeen: true, continuingAfterApproval: true },
+                "post-Approval continuation",
+              ],
+              [{ state: "completed", progress: [], approval: null }, {}, "terminal success"],
+              [{ state: "denied", progress: [], approval: null }, {}, "terminal denial"],
+              [
+                { state: "needs_attention", progress: [], approval: null },
+                {},
+                "terminal needs-attention",
+              ],
+            ];
+            for (const [run, context, label] of manualLifecycle) {
+              view = sandbox.operationPresentation(
+                run,
+                fixed,
+                manualTask,
+                repository,
+                context,
+              );
+              assert.strictEqual(view.statuses.contract, "Not used", label);
+            }
             const insertedTask = {
               mode: "contract",
               runnable: false,
@@ -2441,6 +2483,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("operation-action").textContent,
               "Wait — no action is needed.",
             );
+            assert.strictEqual(
+              elements.get("operation-contract-status").textContent,
+              "Not used",
+            );
             assert.strictEqual(elements.get("progress-card").classList.contains("hidden"), false);
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, 1);
 
@@ -2453,6 +2499,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.coordinateOperationTransition(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "Codex is working");
+            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
             assert.strictEqual(elements.get("operation-run-status").textContent, "Waiting for system");
             const progressFocusAfterWorking = elements.get("progress-heading").focusCalls.length;
             sandbox.coordinateOperationTransition(working);
@@ -2475,6 +2522,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.renderOperationAwareness(approval, fixed, repository);
             assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
             assert.strictEqual(elements.get("operation-current").textContent, "Approval required");
+            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
             assert.strictEqual(elements.get("operation-approval-status").textContent, "Waiting for you");
             assert.strictEqual(
               elements.get("operation-happening").textContent,
@@ -2487,6 +2535,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.coordinateOperationTransition(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "The Run is continuing");
+            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
             sandbox.coordinateOperationTransition(working);
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
@@ -2519,6 +2568,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "unsupported_request_method:commandExecution",
             );
             assert.strictEqual(elements.get("operation-current").textContent, "Run needs attention");
+            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
             sandbox.coordinateOperationTransition(terminal);
             assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
 

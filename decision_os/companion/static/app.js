@@ -323,14 +323,18 @@ function operationPresentation(
   const historicalFixed = ordinary?.state === "FIXED";
   const fixed = usableCurrentOrdinaryContext(ordinary);
   const staleFixed = historicalFixed && !fixed;
+  const contractStatus =
+    task.mode === "manual"
+      ? "Not used"
+      : fixed
+        ? "Complete"
+        : staleFixed
+          ? "Needs attention"
+          : repository
+            ? "Current"
+            : "Not started";
   const statuses = {
-    contract: fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : repository
-          ? "Current"
-          : "Not started",
+    contract: contractStatus,
     task: "Not started",
     run: "Not started",
     approval: approvalSeen ? "Complete" : "Not started",
@@ -338,11 +342,7 @@ function operationPresentation(
   };
 
   if (startPending) {
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = "Waiting for system";
     return {
@@ -356,11 +356,7 @@ function operationPresentation(
   }
 
   if (state === "running") {
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = approval ? "Waiting for you" : "Waiting for system";
     if (approval) {
@@ -388,11 +384,7 @@ function operationPresentation(
 
   if (TERMINAL_RUN_STATES.includes(state)) {
     const needsAttention = ["unsupported", "needs_attention"].includes(state);
-    statuses.contract = fixed
-      ? "Complete"
-      : staleFixed
-        ? "Needs attention"
-        : "Not started";
+    statuses.contract = contractStatus;
     statuses.task = "Complete";
     statuses.run = needsAttention ? "Needs attention" : "Complete";
     statuses.result = needsAttention ? "Needs attention" : "Current";
