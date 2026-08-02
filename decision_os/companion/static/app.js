@@ -773,8 +773,26 @@ async function writeClipboardText(value) {
   }
 }
 
+function visibleResponse(run) {
+  const error = typeof run.error === "string" ? run.error : "";
+  if (error) {
+    return error;
+  }
+  const result = typeof run.result === "string" ? run.result : "";
+  if (result) {
+    return result;
+  }
+  if (!TERMINAL_RUN_STATES.includes(run.state)) {
+    return "";
+  }
+  return run.state === "completed"
+    ? "The bounded Run completed without a final text response."
+    : "No final result was available.";
+}
+
 function renderResult(run) {
   const terminal = TERMINAL_RUN_STATES.includes(run.state);
+  const response = visibleResponse(run);
   setHidden("result-card", !terminal);
   byId("new-run").disabled = !terminal;
   setText(
@@ -797,14 +815,8 @@ function renderResult(run) {
   const verificationReason = outcomes.verification?.reason || "";
   setText("result-verification-reason", verificationReason);
   setHidden("result-verification-reason", !verificationReason);
-  setText(
-    "result",
-    run.result ||
-      (run.state === "completed"
-        ? "The bounded Run completed without a final text response."
-        : run.error || "No final result was available."),
-  );
-  renderCopyResponse(run.result, terminal);
+  setText("result", response);
+  renderCopyResponse(response, terminal);
   renderActions(run.file_actions);
   renderRuntime(run.runtime);
   renderReadEvidence(run.read_evidence);

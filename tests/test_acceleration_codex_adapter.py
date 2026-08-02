@@ -20,6 +20,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexAdapter,
     CodexAdapterFailure,
     CodexApproval,
+    CodexFailureDiagnostic,
     CodexLifecycleEvent,
     CodexRunResult,
     _SubprocessTransport,
@@ -646,6 +647,107 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    async def test_safe_failure_diagnostics_distinguish_protocol_phases(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            thread_failure_messages = handshake_messages(
+                repository,
+                thread_id="thread-1",
+                turn_id="turn-1",
+            )[:3]
+            thread_failure_messages.append(
+                {
+                    "id": 4,
+                    "error": {
+                        "message": "PRIVATE thread source and secret",
+                    },
+                }
+            )
+            factory = FakeTransportFactory([thread_failure_messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("must not prompt"),
+            )
+
+            with self.assertRaises(CodexAdapterFailure) as captured:
+                await adapter.run("thread failure")
+
+            thread_diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(thread_diagnostic)
+            assert thread_diagnostic is not None
+            self.assertEqual("codex_thread_start_failed", thread_diagnostic.code)
+            self.assertEqual("thread_start", thread_diagnostic.protocol_phase)
+            self.assertNotIn("PRIVATE", json.dumps(thread_diagnostic.as_dict()))
+            self.assertNotIn("secret", json.dumps(thread_diagnostic.as_dict()))
+
+            cases = (
+                (
+                    "settings_verification",
+                    {
+                        "method": "thread/settings/updated",
+                        "params": {
+                            "threadId": "thread-1",
+                            "threadSettings": "PRIVATE settings secret",
+                        },
+                    },
+                ),
+                (
+                    "dynamic_tool_call",
+                    {
+                        "id": "read-private",
+                        "method": "item/tool/call",
+                        "params": "PRIVATE repository source",
+                    },
+                ),
+                (
+                    "terminal_completion",
+                    {
+                        "method": "turn/completed",
+                        "params": {
+                            "threadId": "thread-1",
+                            "turn": "PRIVATE terminal secret",
+                        },
+                    },
+                ),
+            )
+            for phase, failure_message in cases:
+                with self.subTest(phase=phase):
+                    messages = handshake_messages(
+                        repository,
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                    )
+                    messages.append(failure_message)
+                    case_factory = FakeTransportFactory([messages])
+                    _, case_adapter, _ = adapter_for(
+                        repository,
+                        case_factory,
+                        choice=lambda: self.fail("must not prompt"),
+                    )
+
+                    result = await case_adapter.run(f"{phase} failure")
+
+                    diagnostic = result.failure_diagnostic
+                    self.assertIsNotNone(diagnostic)
+                    assert diagnostic is not None
+                    self.assertEqual(phase, diagnostic.protocol_phase)
+                    self.assertNotIn("PRIVATE", json.dumps(diagnostic.as_dict()))
+                    self.assertNotIn("secret", json.dumps(diagnostic.as_dict()))
+                    self.assertEqual((), result.file_actions)
+                    self.assertEqual((), result.checkpoint_outcomes)
+
+    def test_failure_diagnostic_rejects_unbounded_public_values(self) -> None:
+        with self.assertRaisesRegex(ValueError, "bounded"):
+            CodexFailureDiagnostic(
+                code="PRIVATE_FAILURE",
+                protocol_phase="thread_start",
+                reason="PRIVATE source body and secret",
+                action="expose_private_data",
+            )
+
     def test_complete_source_echo_guard_preserves_short_and_partial_text(
         self,
     ) -> None:

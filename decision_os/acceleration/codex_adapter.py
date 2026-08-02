@@ -226,13 +226,176 @@ _UNSUPPORTED_REASON_CODES = frozenset(
     | set(_UNSUPPORTED_REQUEST_METHOD_REASONS.values())
 )
 
+_FAILURE_DIAGNOSTIC_SPECS = {
+    "input_validation": (
+        "codex_input_validation_failed",
+        "The bounded Codex task input was rejected safely.",
+        "review_bounded_task",
+    ),
+    "transport_start": (
+        "codex_transport_start_failed",
+        "The private Codex runtime is unavailable.",
+        "recheck_runtime",
+    ),
+    "version_verification": (
+        "codex_version_verification_failed",
+        "The bounded Codex Run failed closed while verifying the runtime version.",
+        "recheck_runtime",
+    ),
+    "initialize_handshake": (
+        "codex_initialize_handshake_failed",
+        "The bounded Codex Run failed closed during runtime initialization.",
+        "recheck_runtime",
+    ),
+    "account_verification": (
+        "codex_account_verification_failed",
+        "The bounded Codex Run failed closed while verifying authentication.",
+        "recheck_runtime",
+    ),
+    "model_verification": (
+        "codex_model_verification_failed",
+        "The bounded Codex Run failed closed while verifying the model configuration.",
+        "recheck_runtime",
+    ),
+    "thread_start": (
+        "codex_thread_start_failed",
+        "The bounded Codex Run failed closed while starting its isolated thread.",
+        "recheck_protocol",
+    ),
+    "thread_identity_verification": (
+        "codex_thread_identity_verification_failed",
+        "The bounded Codex Run failed closed while verifying the isolated thread.",
+        "recheck_protocol",
+    ),
+    "settings_verification": (
+        "codex_settings_verification_failed",
+        "The bounded Codex Run failed closed while verifying runtime settings.",
+        "recheck_runtime",
+    ),
+    "turn_start": (
+        "codex_turn_start_failed",
+        "The bounded Codex Run failed closed while starting the model turn.",
+        "recheck_protocol",
+    ),
+    "turn_started": (
+        "codex_turn_identity_failed",
+        "The bounded Codex Run failed closed while verifying the started turn.",
+        "recheck_protocol",
+    ),
+    "dynamic_tool_call": (
+        "codex_dynamic_tool_call_failed",
+        "The bounded Codex Run failed closed while handling the bounded repository read.",
+        "review_bounded_read",
+    ),
+    "file_change_item": (
+        "codex_file_change_item_failed",
+        "The bounded Codex Run failed closed while verifying a typed file-change item.",
+        "review_file_change",
+    ),
+    "approval_bridge": (
+        "codex_approval_bridge_failed",
+        "The bounded Codex Run failed closed at the exact Approval boundary.",
+        "review_approval_bridge",
+    ),
+    "terminal_wait": (
+        "codex_terminal_wait_failed",
+        "The bounded Codex Run failed closed while waiting for terminal completion.",
+        "review_terminal_state",
+    ),
+    "terminal_completion": (
+        "codex_terminal_completion_failed",
+        "The bounded Codex Run failed closed while verifying terminal completion.",
+        "review_terminal_state",
+    ),
+    "runtime_identity_verification": (
+        "codex_runtime_identity_failed",
+        "The bounded Codex Run failed closed because runtime identity could not be verified.",
+        "recheck_runtime",
+    ),
+    "protocol_message": (
+        "codex_protocol_message_failed",
+        "The bounded Codex Run failed closed while validating an app-server message.",
+        "recheck_protocol",
+    ),
+    "finalization": (
+        "codex_finalization_failed",
+        "The bounded Codex Run failed closed during finalization.",
+        "review_terminal_state",
+    ),
+    "unknown": (
+        "codex_unknown_failure",
+        "The bounded Codex Run failed closed.",
+        None,
+    ),
+}
+
+
+@dataclass(frozen=True)
+class CodexFailureDiagnostic:
+    """Bounded public diagnostic for one failed app-server boundary."""
+
+    code: str
+    protocol_phase: str
+    reason: str
+    action: str | None = None
+
+    def __post_init__(self) -> None:
+        spec = _FAILURE_DIAGNOSTIC_SPECS.get(self.protocol_phase)
+        if spec != (self.code, self.reason, self.action):
+            raise ValueError("Codex failure diagnostic must be bounded.")
+
+    def as_dict(self) -> dict[str, str | None]:
+        return {
+            "code": self.code,
+            "protocol_phase": self.protocol_phase,
+            "reason": self.reason,
+            "action": self.action,
+        }
+
+    @classmethod
+    def for_phase(cls, protocol_phase: str) -> CodexFailureDiagnostic:
+        return _failure_diagnostic(protocol_phase)
+
+
+def _failure_diagnostic(protocol_phase: str) -> CodexFailureDiagnostic:
+    phase = (
+        protocol_phase
+        if protocol_phase in _FAILURE_DIAGNOSTIC_SPECS
+        else "unknown"
+    )
+    code, reason, action = _FAILURE_DIAGNOSTIC_SPECS[phase]
+    return CodexFailureDiagnostic(
+        code=code,
+        protocol_phase=phase,
+        reason=reason,
+        action=action,
+    )
+
 
 class CodexAdapterUnavailable(RuntimeError):
     """The bundled Codex app-server executable is unavailable."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostic: CodexFailureDiagnostic | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.diagnostic = diagnostic
+
 
 class CodexAdapterFailure(RuntimeError):
     """The app-server contract or bounded run failed before a safe result."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        diagnostic: CodexFailureDiagnostic | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.diagnostic = diagnostic
 
 
 class _ReadValidationError(RuntimeError):
@@ -277,6 +440,7 @@ class CodexRunResult:
     file_actions: tuple[CodexFileAction, ...] = ()
     read_evidence: tuple[CodexReadEvidence, ...] = ()
     unsupported_reason: str | None = None
+    failure_diagnostic: CodexFailureDiagnostic | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -632,6 +796,7 @@ class CodexAdapter:
         self._identity_failure = False
         self._final_message = ""
         self._file_action_candidates: list[_CodexFileActionCandidate] = []
+        self._protocol_phase = "unknown"
 
     def _reset_run(self) -> None:
         self._request_id = 0
@@ -668,6 +833,7 @@ class CodexAdapter:
         self._identity_failure = False
         self._final_message = ""
         self._file_action_candidates = []
+        self._protocol_phase = "unknown"
 
     def _emit(self, kind: str, message: str) -> None:
         if self.lifecycle_sink is None:
@@ -685,6 +851,7 @@ class CodexAdapter:
         return self._transport.receive()
 
     def _request(self, method: str, params: dict[str, Any]) -> Any:
+        request_phase = self._protocol_phase
         self._request_id += 1
         request_id = self._request_id
         self._send({"id": request_id, "method": method, "params": params})
@@ -704,6 +871,7 @@ class CodexAdapter:
                     )
                 return message["result"]
             self._dispatch(message)
+            self._protocol_phase = request_phase
 
     @staticmethod
     def _require_object(value: Any, label: str) -> dict[str, Any]:
@@ -847,6 +1015,7 @@ class CodexAdapter:
             ),
             "thread/start result",
         )
+        self._protocol_phase = "thread_identity_verification"
         thread = self._require_object(result.get("thread"), "thread identity")
         thread_id = thread.get("id")
         cli_version = thread.get("cliVersion")
@@ -2085,17 +2254,32 @@ class CodexAdapter:
     def _dispatch(self, message: dict[str, Any]) -> None:
         method = message.get("method")
         if not isinstance(method, str):
+            self._protocol_phase = "protocol_message"
             raise CodexAdapterFailure(
                 "Codex app-server emitted an uncorrelated response."
             )
         if "id" in message:
             if method == "item/fileChange/requestApproval":
+                self._protocol_phase = "approval_bridge"
                 self._respond_file_approval(message)
             elif method == "item/tool/call":
+                self._protocol_phase = "dynamic_tool_call"
                 self._respond_read_tool_call(message)
             else:
+                self._protocol_phase = "protocol_message"
                 self._respond_unsupported_request(message)
             return
+        self._protocol_phase = {
+            "item/started": "file_change_item",
+            "item/fileChange/patchUpdated": "file_change_item",
+            "item/completed": "file_change_item",
+            "thread/settings/updated": "settings_verification",
+            "serverRequest/resolved": "approval_bridge",
+            "turn/started": "turn_started",
+            "turn/completed": "terminal_completion",
+            "model/rerouted": "runtime_identity_verification",
+            "error": "protocol_message",
+        }.get(method, "protocol_message")
         params = self._require_object(
             message.get("params", {}),
             f"{method} parameters",
@@ -2135,45 +2319,71 @@ class CodexAdapter:
         """Run one fresh thread and promote matches only at a normal checkpoint."""
 
         if not isinstance(prompt, str) or not prompt.strip():
-            raise CodexAdapterFailure("Codex prompt must be a non-empty string.")
+            raise CodexAdapterFailure(
+                "Codex prompt must be a non-empty string.",
+                diagnostic=_failure_diagnostic("input_validation"),
+            )
         self._reset_run()
         self._emit("starting", "Preparing the bounded task.")
         self._transport = self.transport_factory(self.executable)
         turn_started = False
         error_type: str | None = None
+        failure_diagnostic: CodexFailureDiagnostic | None = None
         try:
+            self._protocol_phase = "transport_start"
             self._transport.start()
+            self._protocol_phase = "version_verification"
             if self._transport.version != self.expected_cli_version:
                 raise CodexAdapterFailure(
                     "Bundled Codex CLI version identity mismatch."
                 )
+            self._protocol_phase = "initialize_handshake"
             self._initialize()
+            self._protocol_phase = "account_verification"
             self._verify_account()
+            self._protocol_phase = "model_verification"
             self._verify_model_catalog()
+            self._protocol_phase = "thread_start"
             self._start_thread()
+            self._protocol_phase = "turn_start"
             self._start_turn(prompt)
             turn_started = True
             while self._turn_status is None:
+                self._protocol_phase = "terminal_wait"
                 self._dispatch(self._receive())
         except (CodexAdapterUnavailable, CodexAdapterFailure) as exc:
+            failure_diagnostic = (
+                exc.diagnostic
+                or _failure_diagnostic(self._protocol_phase)
+            )
+            exc.diagnostic = failure_diagnostic
             if not turn_started:
                 raise
             error_type = type(exc).__name__
         except Exception as exc:
+            failure_diagnostic = _failure_diagnostic("unknown")
             if not turn_started:
                 raise CodexAdapterFailure(
-                    "Codex app-server failed before the turn started."
+                    "Codex app-server failed before the turn started.",
+                    diagnostic=failure_diagnostic,
                 ) from exc
             error_type = type(exc).__name__
         finally:
             try:
+                self._protocol_phase = "finalization"
                 self._transport.close()
             except Exception:
                 if error_type is None and turn_started:
                     error_type = "CodexTransportCloseError"
+                    failure_diagnostic = _failure_diagnostic("finalization")
 
         if self._identity_failure and error_type is None:
             error_type = "CodexRuntimeIdentityError"
+            failure_diagnostic = _failure_diagnostic(
+                "settings_verification"
+                if not self._settings_verified
+                else "runtime_identity_verification"
+            )
         all_accepted_completed = self._accepted_items.issubset(
             self._completed_items
         )
@@ -2239,4 +2449,5 @@ class CodexAdapter:
             file_actions=file_actions,
             read_evidence=tuple(self._read_evidence),
             unsupported_reason=self._unsupported_reason,
+            failure_diagnostic=failure_diagnostic,
         )

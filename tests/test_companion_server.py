@@ -2180,7 +2180,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const source = fs.readFileSync(process.argv[2], "utf8");
             const operationStart = source.indexOf("function statusLabel");
             const operationEnd = source.indexOf("\nfunction formatNumber", operationStart);
-            const resultStart = source.indexOf("function renderResult");
+            const resultStart = source.indexOf("function visibleResponse");
             const resultEnd = source.indexOf("\nfunction renderApproval", resultStart);
             assert(operationStart >= 0 && operationEnd > operationStart);
             assert(resultStart >= 0 && resultEnd > resultStart);
@@ -2889,6 +2889,36 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   },
                 },
               };
+              const failureResponse =
+                "The bounded Codex Run failed closed while verifying runtime settings.";
+              const failureRun = {
+                ...baseRun,
+                state: "needs_attention",
+                progress: ["Starting the private Codex runtime."],
+                result: "PRIVATE incomplete model text",
+                error: failureResponse,
+                failure: {
+                  code: "codex_settings_verification_failed",
+                  protocol_phase: "settings_verification",
+                  reason: failureResponse,
+                  action: "recheck_runtime",
+                },
+                outcomes: {
+                  execution: {
+                    state: "not_completed",
+                    label: "Codex turn did not complete",
+                  },
+                  file_change: {
+                    state: "unknown",
+                    label: "Not established — file-change outcome requires review",
+                  },
+                  verification: {
+                    state: "needs_attention",
+                    label: "Needs attention",
+                    reason: failureResponse,
+                  },
+                },
+              };
               function state(run) {
                 return {
                   csrf: "browser-csrf",
@@ -2983,6 +3013,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   }
                   if (serverPhase === "terminal") {
                     return browserResponse(state(terminalRun));
+                  }
+                  if (serverPhase === "failure") {
+                    return browserResponse(state(failureRun));
                   }
                   return browserResponse(state(baseRun));
                 }
@@ -3288,11 +3321,46 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   probePhase === "copy-failure" &&
                   document.getElementById("copy-response").textContent === "Copy failed"
                 ) {
-                  document.body.dataset.copyFailure = String(
+                  const failedCopyPreserved = (
                     document.activeElement.id === "copy-response" &&
                     document.getElementById("copy-response-status").textContent ===
                       "Codex response could not be copied." &&
                     latestState.run.state === "unsupported"
+                  );
+                  serverPhase = "failure";
+                  window.__clipboardFail = false;
+                  render(state(failureRun));
+                  const failureCopy = document.getElementById("copy-response");
+                  document.body.dataset.copyFailure = String(
+                    failedCopyPreserved &&
+                    document.getElementById("result").textContent === failureResponse &&
+                    document.getElementById("result-verification-reason").textContent ===
+                      failureResponse &&
+                    !failureCopy.classList.contains("hidden") &&
+                    !failureCopy.disabled &&
+                    visibleResponse({ state: "running", result: "", error: null }) === "" &&
+                    visibleResponse({ state: "completed", result: "", error: null }) ===
+                      "The bounded Run completed without a final text response." &&
+                    visibleResponse({
+                      state: "needs_attention",
+                      result: "",
+                      error: null,
+                    }) === "No final result was available."
+                  );
+                  failureCopy.click();
+                  probePhase = "failure-copy";
+                  return;
+                }
+                if (
+                  probePhase === "failure-copy" &&
+                  document.getElementById("copy-response").textContent === "Copied"
+                ) {
+                  document.body.dataset.failureCopy = String(
+                    document.getElementById("result").textContent === failureResponse &&
+                    window.__clipboardWrites.at(-1) === failureResponse &&
+                    latestState.run.state === "needs_attention" &&
+                    latestState.run.file_actions.length === 0 &&
+                    latestState.run.approval == null
                   );
                   document.body.dataset.qualified = "true";
                   window.clearInterval(probe);
@@ -3388,6 +3456,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "copy-repeated",
             "copy-restored",
             "copy-failure",
+            "failure-copy",
             "qualified",
         ):
             self.assertEqual("true", attributes.get(name), name)
