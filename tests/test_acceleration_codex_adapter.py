@@ -24,6 +24,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexFailureDiagnostic,
     CodexLifecycleEvent,
     CodexRunResult,
+    _READ_MAX_DISTINCT_PATHS,
     _SubprocessTransport,
     _redact_complete_source_echo,
     canonical_failure_diagnostic,
@@ -1509,8 +1510,11 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                         "name": "read_repository_text_file",
                         "description": (
                             "Read one existing strict UTF-8 text file inside "
-                            "the selected repository before proposing a "
-                            "modification to that same file."
+                            "the selected repository. One bounded Run may read "
+                            "up to four distinct normalized repository paths; "
+                            "additional calls for an admitted path do not use "
+                            "another path slot. Modifying an existing file still "
+                            "requires reading that same path."
                         ),
                         "inputSchema": {
                             "type": "object",
@@ -1693,32 +1697,28 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(2, len(responses))
             self.assertEqual(responses[0], responses[1])
 
-    async def test_second_read_and_changed_replay_fail_closed(self) -> None:
+    async def test_four_distinct_paths_succeed_and_changed_replay_fails_closed(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory))
-            (repository / "other.txt").write_text("other\n", encoding="utf-8")
+            paths = ("target.txt", "second.txt", "third.txt", "fourth.txt")
+            for path in paths[1:]:
+                (repository / path).write_text(f"{path}\n", encoding="utf-8")
             messages = handshake_messages(
                 repository,
                 thread_id="thread-1",
                 turn_id="turn-1",
             )
-            messages.extend(
-                read_messages(
-                    thread_id="thread-1",
-                    turn_id="turn-1",
-                    call_id="read-1",
-                    path="target.txt",
+            for index, path in enumerate(paths, start=1):
+                messages.extend(
+                    read_messages(
+                        thread_id="thread-1",
+                        turn_id="turn-1",
+                        call_id=f"read-{index}",
+                        path=path,
+                    )
                 )
-            )
-            messages.extend(
-                read_messages(
-                    thread_id="thread-1",
-                    turn_id="turn-1",
-                    call_id="read-2",
-                    path="other.txt",
-                    status="failed",
-                )
-            )
             messages.append(
                 completed_turn(thread_id="thread-1", turn_id="turn-1")
             )
@@ -1731,23 +1731,25 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             result = await adapter.run("Try two reads.")
 
-            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
-            self.assertEqual("additional_read_target", result.unsupported_reason)
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNone(result.unsupported_reason)
             self.assertEqual(
-                ["succeeded", "failed"],
+                ["succeeded"] * _READ_MAX_DISTINCT_PATHS,
                 [value.status for value in result.read_evidence],
             )
+            self.assertEqual(
+                list(paths),
+                [value.path for value in result.read_evidence],
+            )
             self.assertEqual([], engine.store.read_events())
-            response = next(
-                value
-                for value in factory.transports[0].sent
-                if value.get("id") == "request-read-2"
-            )
-            self.assertFalse(response["result"]["success"])
-            self.assertNotIn(
-                "content",
-                json.loads(response["result"]["contentItems"][0]["text"]),
-            )
+            for index in range(1, _READ_MAX_DISTINCT_PATHS + 1):
+                response = next(
+                    value
+                    for value in factory.transports[0].sent
+                    if value.get("id") == f"request-read-{index}"
+                )
+                self.assertTrue(response["result"]["success"])
 
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory))
@@ -1807,6 +1809,347 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 ["succeeded", "failed"],
                 [value.status for value in result.read_evidence],
             )
+
+    async def test_new_call_ids_for_admitted_path_do_not_consume_path_slots(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            for path in ("second.txt", "third.txt", "fourth.txt"):
+                (repository / path).write_text(f"{path}\n", encoding="utf-8")
+            calls = (
+                ("read-target-1", "target.txt"),
+                ("read-second", "second.txt"),
+                ("read-third", "third.txt"),
+                ("read-fourth", "fourth.txt"),
+                ("read-target-2", "./target.txt"),
+                ("read-target-3", "target.txt/"),
+                ("read-target-4", " target.txt "),
+            )
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-repeat",
+                turn_id="turn-repeat",
+            )
+            for call_id, path in calls:
+                messages.extend(
+                    read_messages(
+                        thread_id="thread-repeat",
+                        turn_id="turn-repeat",
+                        call_id=call_id,
+                        path=path,
+                    )
+                )
+            messages.append(
+                completed_turn(
+                    thread_id="thread-repeat",
+                    turn_id="turn-repeat",
+                )
+            )
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+
+            result = await adapter.run("Reuse one admitted normalized path.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(len(calls), len(result.read_evidence))
+            self.assertEqual(
+                [
+                    "target.txt",
+                    "second.txt",
+                    "third.txt",
+                    "fourth.txt",
+                    "target.txt",
+                    "target.txt",
+                    "target.txt",
+                ],
+                [evidence.path for evidence in result.read_evidence],
+            )
+            self.assertTrue(
+                all(
+                    evidence.status == "succeeded"
+                    for evidence in result.read_evidence
+                )
+            )
+            self.assertEqual(
+                {"target.txt", "second.txt", "third.txt", "fourth.txt"},
+                adapter._admitted_read_paths,
+            )
+            self.assertEqual(len(calls), len(adapter._read_bindings))
+
+    async def test_new_call_id_same_path_reread_detects_changed_content(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-reread",
+                turn_id="turn-reread",
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-reread",
+                    turn_id="turn-reread",
+                    call_id="read-before",
+                    path="target.txt",
+                )
+            )
+            messages.extend(
+                read_messages(
+                    thread_id="thread-reread",
+                    turn_id="turn-reread",
+                    call_id="read-after",
+                    path="./target.txt",
+                    status="failed",
+                )
+            )
+            messages.append(
+                completed_turn(
+                    thread_id="thread-reread",
+                    turn_id="turn-reread",
+                )
+            )
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+            original = adapter._read_repository_file
+            read_count = 0
+
+            def mutate_before_new_call(
+                path: str,
+            ) -> tuple[str, bytes, str, str]:
+                nonlocal read_count
+                read_count += 1
+                if read_count == 2:
+                    (repository / "target.txt").write_text(
+                        "changed\n",
+                        encoding="utf-8",
+                    )
+                return original(path)
+
+            with patch.object(
+                adapter,
+                "_read_repository_file",
+                side_effect=mutate_before_new_call,
+            ):
+                result = await adapter.run("Reread one admitted path.")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual("read_identity_changed", result.unsupported_reason)
+            self.assertEqual(
+                ["succeeded", "failed"],
+                [evidence.status for evidence in result.read_evidence],
+            )
+            self.assertEqual("target.txt", result.read_evidence[-1].path)
+            self.assertEqual({"target.txt"}, adapter._admitted_read_paths)
+            self.assertEqual({"read-before"}, set(adapter._read_bindings))
+            response = next(
+                value
+                for value in factory.transports[0].sent
+                if value.get("id") == "request-read-after"
+            )
+            self.assertFalse(response["result"]["success"])
+
+    async def test_medium_create_reads_three_sources_and_output_after_write(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            source_paths = (
+                "validation/companion_thread_start_recovery_001.md",
+                "validation/companion_repository_read_recovery_001.md",
+                "validation/companion_live_task_001.md",
+            )
+            for index, path in enumerate(source_paths, start=1):
+                target = repository / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(f"source {index}\n", encoding="utf-8")
+            output_path = "validation/companion_medium_live_task_001.md"
+            output_content = "# Companion Medium Live Task 001\n"
+            thread_id = "thread-medium"
+            turn_id = "turn-medium"
+            messages = handshake_messages(
+                repository,
+                thread_id=thread_id,
+                turn_id=turn_id,
+            )
+            for index, path in enumerate(source_paths, start=1):
+                messages.extend(
+                    read_messages(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=f"read-source-{index}",
+                        path=path,
+                    )
+                )
+            changes = [
+                change(
+                    path=output_path,
+                    kind="add",
+                    diff=(
+                        "@@ -0,0 +1 @@\n"
+                        "+# Companion Medium Live Task 001\n"
+                    ),
+                )
+            ]
+            messages.extend(
+                [
+                    started_item(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        item_id="create-output",
+                        changes=changes,
+                    ),
+                    approval_request(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        item_id="create-output",
+                        request_id="approval-output",
+                    ),
+                    resolved_request(
+                        thread_id=thread_id,
+                        request_id="approval-output",
+                    ),
+                    completed_item(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        item_id="create-output",
+                        changes=changes,
+                    ),
+                ]
+            )
+            messages.extend(
+                read_messages(
+                    thread_id=thread_id,
+                    turn_id=turn_id,
+                    call_id="read-output",
+                    path=output_path,
+                )
+            )
+            messages.append(
+                completed_turn(thread_id=thread_id, turn_id=turn_id)
+            )
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: "1",
+            )
+            original = adapter._read_repository_file
+
+            def materialize_completed_output(
+                path: str,
+            ) -> tuple[str, bytes, str, str]:
+                if path == output_path:
+                    (repository / output_path).write_text(
+                        output_content,
+                        encoding="utf-8",
+                    )
+                return original(path)
+
+            with patch.object(
+                adapter,
+                "_read_repository_file",
+                side_effect=materialize_completed_output,
+            ):
+                result = await adapter.run("Run the retained medium shape.")
+
+            self.assertEqual("NORMAL_TERMINAL", result.status)
+            self.assertTrue(result.normal_terminal)
+            self.assertIsNone(result.unsupported_reason)
+            self.assertEqual(
+                [*source_paths, output_path],
+                [evidence.path for evidence in result.read_evidence],
+            )
+            self.assertTrue(
+                all(
+                    evidence.status == "succeeded"
+                    for evidence in result.read_evidence
+                )
+            )
+            self.assertEqual(1, len(result.file_actions))
+            self.assertEqual("Create", result.file_actions[0].action)
+            self.assertEqual("one-time", result.file_actions[0].access)
+            self.assertEqual("approved", result.file_actions[0].status)
+
+    async def test_fifth_distinct_path_fails_before_filesystem_read(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            paths = tuple(
+                f"source-{index}.txt"
+                for index in range(1, _READ_MAX_DISTINCT_PATHS + 2)
+            )
+            for path in paths:
+                (repository / path).write_text(path, encoding="utf-8")
+            messages = handshake_messages(
+                repository,
+                thread_id="thread-limit",
+                turn_id="turn-limit",
+            )
+            for index, path in enumerate(paths, start=1):
+                messages.extend(
+                    read_messages(
+                        thread_id="thread-limit",
+                        turn_id="turn-limit",
+                        call_id=f"read-{index}",
+                        path=path,
+                        status=(
+                            "failed"
+                            if index > _READ_MAX_DISTINCT_PATHS
+                            else "completed"
+                        ),
+                    )
+                )
+            messages.append(
+                completed_turn(
+                    thread_id="thread-limit",
+                    turn_id="turn-limit",
+                )
+            )
+            factory = FakeTransportFactory([messages])
+            _, adapter, _ = adapter_for(
+                repository,
+                factory,
+                choice=lambda: self.fail("read must not prompt"),
+            )
+
+            with patch.object(
+                adapter,
+                "_read_repository_file",
+                wraps=adapter._read_repository_file,
+            ) as read_file:
+                result = await adapter.run("Exceed the distinct-path cap.")
+
+            self.assertEqual("UNSUPPORTED_MUTATION", result.status)
+            self.assertEqual("additional_read_target", result.unsupported_reason)
+            self.assertEqual(
+                _READ_MAX_DISTINCT_PATHS + 1,
+                len(result.read_evidence),
+            )
+            self.assertEqual("failed", result.read_evidence[-1].status)
+            self.assertEqual(paths[-1], result.read_evidence[-1].path)
+            self.assertIsNone(result.read_evidence[-1].byte_count)
+            self.assertIsNone(result.read_evidence[-1].sha256)
+            self.assertIsNone(result.read_evidence[-1].repository_identity)
+            self.assertEqual(_READ_MAX_DISTINCT_PATHS, read_file.call_count)
+            response = next(
+                value
+                for value in factory.transports[0].sent
+                if value.get("id")
+                == f"request-read-{_READ_MAX_DISTINCT_PATHS + 1}"
+            )
+            self.assertFalse(response["result"]["success"])
 
     async def test_read_path_and_encoding_failures_are_typed(self) -> None:
         cases = (
