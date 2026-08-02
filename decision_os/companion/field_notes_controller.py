@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 import hashlib
 import io
 import os
@@ -23,7 +24,12 @@ from decision_os.companion.field_notes_adapter import (
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
 )
-from decision_os.companion.field_notes_model import FieldNoteDraft, compile_draft
+from decision_os.companion.field_notes_model import (
+    FieldNoteDraft,
+    compile_draft,
+    configured_model_class,
+    validate_compiled_markdown,
+)
 
 
 class FieldNoteError(CompanionError):
@@ -34,6 +40,9 @@ def _field_notes_adapter_factory(
     engine: AccelerationEngine,
     approval_provider: Any,
     lifecycle_sink: Any,
+    *,
+    trusted_source_model_class: str = "UNKNOWN",
+    trusted_target_model_class: str = "UNKNOWN",
 ) -> FieldNotesCodexAdapter:
     return FieldNotesCodexAdapter(
         engine,
@@ -41,12 +50,17 @@ def _field_notes_adapter_factory(
         stdout=io.StringIO(),
         approval_provider=approval_provider,
         lifecycle_sink=lifecycle_sink,
+        trusted_source_model_class=trusted_source_model_class,
+        trusted_target_model_class=trusted_target_model_class,
     )
 
 
 @dataclass(frozen=True)
 class _PendingSave:
     draft: FieldNoteDraft
+    repository_identity: tuple[int, int]
+    decision_directory_identity: tuple[int, int] | None
+    field_notes_directory_identity: tuple[int, int] | None
 
 
 class FieldNotesCompanionController(CompanionController):
@@ -55,7 +69,18 @@ class FieldNotesCompanionController(CompanionController):
     def __init__(self, **kwargs: Any) -> None:
         self._field_note_draft: FieldNoteDraft | None = None
         self._field_note_pending: _PendingSave | None = None
-        kwargs.setdefault("adapter_factory", _field_notes_adapter_factory)
+        trusted_source_model_class = configured_model_class(
+            kwargs.pop("trusted_source_model_class", "UNKNOWN")
+        )
+        trusted_target_model_class = configured_model_class(
+            kwargs.pop("trusted_target_model_class", "UNKNOWN")
+        )
+        if kwargs.get("adapter_factory") is None:
+            kwargs["adapter_factory"] = partial(
+                _field_notes_adapter_factory,
+                trusted_source_model_class=trusted_source_model_class,
+                trusted_target_model_class=trusted_target_model_class,
+            )
         super().__init__(**kwargs)
 
     @staticmethod
@@ -102,8 +127,13 @@ class FieldNotesCompanionController(CompanionController):
         draft = getattr(result, "field_note_proposal", None)
         if not isinstance(draft, FieldNoteDraft):
             return None
+        try:
+            validate_compiled_markdown(draft.markdown)
+        except ValueError:
+            return None
         if (
             draft.source_run_id != result.run_id
+            or hashlib.sha256(draft.markdown).hexdigest() != draft.sha256
             or not result.normal_terminal
             or result.turn_status != "completed"
             or result.status
@@ -172,13 +202,8 @@ class FieldNotesCompanionController(CompanionController):
         repository = self._require_repository().resolve(strict=True)
         current = draft
         for _ in range(8):
-            target = repository.joinpath(*current.relative_path.split("/"))
-            try:
-                target.parent.relative_to(repository)
-            except ValueError as exc:
-                raise FieldNoteError(
-                    "Field Note path escapes the repository."
-                ) from exc
+            filename = self._field_note_filename(current)
+            target = repository / ".decision-os" / "field-notes" / filename
             if (
                 not target.exists()
                 and not target.is_symlink()
@@ -206,8 +231,28 @@ class FieldNotesCompanionController(CompanionController):
             if self._field_note_pending is not None:
                 raise FieldNoteError("A Field Note Approval is already pending.")
             draft = self._safe_candidate_path(self._field_note_draft)
+            try:
+                validate_compiled_markdown(draft.markdown)
+            except ValueError as exc:
+                raise FieldNoteError(
+                    "Field Note compiled structure is invalid."
+                ) from exc
+            if hashlib.sha256(draft.markdown).hexdigest() != draft.sha256:
+                raise FieldNoteError(
+                    "Field Note compiled digest is invalid."
+                )
+            (
+                repository_identity,
+                decision_directory_identity,
+                field_notes_directory_identity,
+            ) = self._capture_parent_identities()
             self._field_note_draft = draft
-            self._field_note_pending = _PendingSave(draft)
+            self._field_note_pending = _PendingSave(
+                draft,
+                repository_identity,
+                decision_directory_identity,
+                field_notes_directory_identity,
+            )
             self._run["field_note"] = {
                 "state": "approval",
                 "title": draft.title,
@@ -232,116 +277,440 @@ class FieldNotesCompanionController(CompanionController):
             return self._snapshot_locked()
 
     @staticmethod
-    def _ensure_safe_directory(repository: Path, directory: Path) -> None:
-        try:
-            parts = directory.relative_to(repository).parts
-        except ValueError as exc:
-            raise FieldNoteError(
-                "Field Note directory escapes the repository."
-            ) from exc
-        current = repository
-        for part in parts:
-            current = current / part
-            if current.exists():
-                try:
-                    info = current.lstat()
-                except OSError as exc:
-                    raise FieldNoteError(
-                        "Field Note parent path cannot be inspected safely."
-                    ) from exc
-                if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
-                    raise FieldNoteError(
-                        "Field Note parent path is not a safe directory."
-                    )
-                continue
-            try:
-                os.mkdir(current, 0o700)
-            except OSError as exc:
-                raise FieldNoteError(
-                    "Field Note directory could not be materialized safely."
-                ) from exc
-
-    def _write_pending(self, pending: _PendingSave) -> None:
-        repository = self._require_repository().resolve(strict=True)
-        target = repository.joinpath(*pending.draft.relative_path.split("/"))
-        try:
-            target.relative_to(repository)
-        except ValueError as exc:
-            raise FieldNoteError("Field Note path escapes the repository.") from exc
-        self._ensure_safe_directory(repository, target.parent)
+    def _descriptor_containment_supported() -> None:
         if (
-            target.exists()
-            or target.is_symlink()
-            or self._case_collision(target.parent, target.name)
+            not getattr(os, "O_DIRECTORY", 0)
+            or not getattr(os, "O_NOFOLLOW", 0)
+            or os.open not in os.supports_dir_fd
+            or os.mkdir not in os.supports_dir_fd
+            or os.stat not in os.supports_dir_fd
+            or os.stat not in os.supports_follow_symlinks
+            or os.unlink not in os.supports_dir_fd
+            or os.listdir not in os.supports_fd
         ):
             raise FieldNoteError(
-                "Field Note create-new precondition failed."
+                "Descriptor-bound Field Note containment is unavailable."
             )
-        opened_identity: tuple[int, int] | None = None
+
+    @staticmethod
+    def _identity(info: os.stat_result) -> tuple[int, int]:
+        return (info.st_dev, info.st_ino)
+
+    @classmethod
+    def _open_repository_descriptor(
+        cls,
+        repository: Path,
+        expected_identity: tuple[int, int] | None = None,
+    ) -> tuple[int, tuple[int, int]]:
+        descriptor: int | None = None
+        flags = (
+            os.O_RDONLY
+            | os.O_DIRECTORY
+            | os.O_NOFOLLOW
+            | getattr(os, "O_CLOEXEC", 0)
+        )
         try:
-            descriptor = os.open(
-                target,
-                os.O_WRONLY
-                | os.O_CREAT
-                | os.O_EXCL
-                | getattr(os, "O_NOFOLLOW", 0),
-                0o600,
+            linked = repository.lstat()
+            descriptor = os.open(repository, flags)
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            if descriptor is not None:
+                os.close(descriptor)
+            raise FieldNoteError(
+                "Field Note repository cannot be anchored safely."
+            ) from exc
+        identity = cls._identity(opened)
+        if (
+            stat.S_ISLNK(linked.st_mode)
+            or not stat.S_ISDIR(linked.st_mode)
+            or not stat.S_ISDIR(opened.st_mode)
+            or cls._identity(linked) != identity
+            or (
+                expected_identity is not None
+                and identity != expected_identity
+            )
+        ):
+            os.close(descriptor)
+            raise FieldNoteError(
+                "Field Note repository identity changed."
+            )
+        return descriptor, identity
+
+    @classmethod
+    def _verify_directory_link(
+        cls,
+        parent_descriptor: int,
+        name: str,
+        descriptor: int,
+    ) -> tuple[int, int]:
+        try:
+            opened = os.fstat(descriptor)
+            linked = os.stat(
+                name,
+                dir_fd=parent_descriptor,
+                follow_symlinks=False,
             )
         except OSError as exc:
             raise FieldNoteError(
-                "Field Note create-new precondition failed."
+                "Field Note parent directory identity changed."
+            ) from exc
+        identity = cls._identity(opened)
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or not stat.S_ISDIR(linked.st_mode)
+            or cls._identity(linked) != identity
+        ):
+            raise FieldNoteError(
+                "Field Note parent directory identity changed."
+            )
+        return identity
+
+    @classmethod
+    def _open_existing_directory(
+        cls,
+        parent_descriptor: int,
+        name: str,
+    ) -> tuple[int, tuple[int, int]] | None:
+        flags = (
+            os.O_RDONLY
+            | os.O_DIRECTORY
+            | os.O_NOFOLLOW
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        try:
+            descriptor = os.open(name, flags, dir_fd=parent_descriptor)
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise FieldNoteError(
+                "Field Note parent path is not a safe directory."
             ) from exc
         try:
+            identity = cls._verify_directory_link(
+                parent_descriptor,
+                name,
+                descriptor,
+            )
+        except Exception:
+            os.close(descriptor)
+            raise
+        return descriptor, identity
+
+    @classmethod
+    def _open_or_create_directory(
+        cls,
+        parent_descriptor: int,
+        name: str,
+        expected_identity: tuple[int, int] | None,
+    ) -> tuple[int, tuple[int, int]]:
+        opened = cls._open_existing_directory(parent_descriptor, name)
+        created = False
+        if opened is None:
+            try:
+                os.mkdir(name, 0o700, dir_fd=parent_descriptor)
+                created = True
+            except FileExistsError:
+                created = False
+            except OSError as exc:
+                raise FieldNoteError(
+                    "Field Note directory could not be created safely."
+                ) from exc
+            opened = cls._open_existing_directory(parent_descriptor, name)
+            if opened is None:
+                raise FieldNoteError(
+                    "Field Note directory could not be anchored safely."
+                )
+        descriptor, identity = opened
+        if (
+            (expected_identity is None and not created)
+            or (expected_identity is not None and created)
+            or (
+                expected_identity is not None
+                and identity != expected_identity
+            )
+        ):
+            os.close(descriptor)
+            raise FieldNoteError(
+                "Field Note parent directory changed after Approval."
+            )
+        return descriptor, identity
+
+    @classmethod
+    def _verify_file_link(
+        cls,
+        directory_descriptor: int,
+        filename: str,
+        descriptor: int,
+        expected_identity: tuple[int, int],
+    ) -> None:
+        try:
             opened = os.fstat(descriptor)
-            if not stat.S_ISREG(opened.st_mode):
+            linked = os.stat(
+                filename,
+                dir_fd=directory_descriptor,
+                follow_symlinks=False,
+            )
+        except OSError as exc:
+            raise FieldNoteError(
+                "Field Note file identity changed."
+            ) from exc
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or not stat.S_ISREG(linked.st_mode)
+            or cls._identity(opened) != expected_identity
+            or cls._identity(linked) != expected_identity
+        ):
+            raise FieldNoteError(
+                "Field Note file identity changed."
+            )
+
+    @staticmethod
+    def _field_note_filename(draft: FieldNoteDraft) -> str:
+        parts = draft.relative_path.split("/")
+        if (
+            len(parts) != 3
+            or parts[:2] != [".decision-os", "field-notes"]
+            or not parts[2]
+            or parts[2] in {".", ".."}
+            or Path(parts[2]).name != parts[2]
+        ):
+            raise FieldNoteError("Field Note path is outside its fixed root.")
+        return parts[2]
+
+    def _capture_parent_identities(
+        self,
+    ) -> tuple[
+        tuple[int, int],
+        tuple[int, int] | None,
+        tuple[int, int] | None,
+    ]:
+        self._descriptor_containment_supported()
+        repository_descriptor: int | None = None
+        decision_descriptor: int | None = None
+        field_notes_descriptor: int | None = None
+        try:
+            repository_descriptor, repository_identity = (
+                self._open_repository_descriptor(self._require_repository())
+            )
+            decision = self._open_existing_directory(
+                repository_descriptor,
+                ".decision-os",
+            )
+            if decision is None:
+                return repository_identity, None, None
+            decision_descriptor, decision_identity = decision
+            field_notes = self._open_existing_directory(
+                decision_descriptor,
+                "field-notes",
+            )
+            if field_notes is None:
+                return repository_identity, decision_identity, None
+            field_notes_descriptor, field_notes_identity = field_notes
+            self._verify_directory_link(
+                repository_descriptor,
+                ".decision-os",
+                decision_descriptor,
+            )
+            return (
+                repository_identity,
+                decision_identity,
+                field_notes_identity,
+            )
+        finally:
+            for descriptor in (
+                field_notes_descriptor,
+                decision_descriptor,
+                repository_descriptor,
+            ):
+                if descriptor is not None:
+                    os.close(descriptor)
+
+    @staticmethod
+    def _descriptor_case_collision(
+        directory_descriptor: int,
+        filename: str,
+    ) -> bool:
+        try:
+            return any(
+                name.casefold() == filename.casefold()
+                for name in os.listdir(directory_descriptor)
+            )
+        except OSError as exc:
+            raise FieldNoteError(
+                "Field Note directory cannot be inspected safely."
+            ) from exc
+
+    @classmethod
+    def _unlink_exact_created_file(
+        cls,
+        directory_descriptor: int,
+        filename: str,
+        expected_identity: tuple[int, int],
+    ) -> None:
+        try:
+            linked = os.stat(
+                filename,
+                dir_fd=directory_descriptor,
+                follow_symlinks=False,
+            )
+            if (
+                stat.S_ISREG(linked.st_mode)
+                and cls._identity(linked) == expected_identity
+            ):
+                os.unlink(filename, dir_fd=directory_descriptor)
+                os.fsync(directory_descriptor)
+        except OSError:
+            pass
+
+    def _write_pending(self, pending: _PendingSave) -> None:
+        self._descriptor_containment_supported()
+        filename = self._field_note_filename(pending.draft)
+        repository_descriptor: int | None = None
+        decision_descriptor: int | None = None
+        field_notes_descriptor: int | None = None
+        file_descriptor: int | None = None
+        created_identity: tuple[int, int] | None = None
+        try:
+            repository_descriptor, _ = self._open_repository_descriptor(
+                self._require_repository(),
+                pending.repository_identity,
+            )
+            decision_descriptor, _ = self._open_or_create_directory(
+                repository_descriptor,
+                ".decision-os",
+                pending.decision_directory_identity,
+            )
+            field_notes_descriptor, _ = self._open_or_create_directory(
+                decision_descriptor,
+                "field-notes",
+                pending.field_notes_directory_identity,
+            )
+            self._verify_directory_link(
+                repository_descriptor,
+                ".decision-os",
+                decision_descriptor,
+            )
+            self._verify_directory_link(
+                decision_descriptor,
+                "field-notes",
+                field_notes_descriptor,
+            )
+            if self._descriptor_case_collision(
+                field_notes_descriptor,
+                filename,
+            ):
+                raise FieldNoteError(
+                    "Field Note create-new precondition failed."
+                )
+            try:
+                file_descriptor = os.open(
+                    filename,
+                    os.O_RDWR
+                    | os.O_CREAT
+                    | os.O_EXCL
+                    | os.O_NOFOLLOW
+                    | getattr(os, "O_CLOEXEC", 0),
+                    0o600,
+                    dir_fd=field_notes_descriptor,
+                )
+            except OSError as exc:
+                raise FieldNoteError(
+                    "Field Note create-new precondition failed."
+                ) from exc
+            created = os.fstat(file_descriptor)
+            if not stat.S_ISREG(created.st_mode):
                 raise FieldNoteError(
                     "Field Note target is not a safe regular file."
                 )
-            opened_identity = (opened.st_dev, opened.st_ino)
-            with os.fdopen(descriptor, "wb") as stream:
-                stream.write(pending.draft.markdown)
-                stream.flush()
-                os.fsync(stream.fileno())
-            observed_info = target.lstat()
+            created_identity = self._identity(created)
+            self._verify_file_link(
+                field_notes_descriptor,
+                filename,
+                file_descriptor,
+                created_identity,
+            )
+            remaining = memoryview(pending.draft.markdown)
+            while remaining:
+                written = os.write(file_descriptor, remaining)
+                if written <= 0:
+                    raise FieldNoteError(
+                        "Field Note write did not make progress."
+                    )
+                remaining = remaining[written:]
+            os.fsync(file_descriptor)
+            self._verify_directory_link(
+                repository_descriptor,
+                ".decision-os",
+                decision_descriptor,
+            )
+            self._verify_directory_link(
+                decision_descriptor,
+                "field-notes",
+                field_notes_descriptor,
+            )
+            self._verify_file_link(
+                field_notes_descriptor,
+                filename,
+                file_descriptor,
+                created_identity,
+            )
+            os.lseek(file_descriptor, 0, os.SEEK_SET)
+            chunks: list[bytes] = []
+            while True:
+                chunk = os.read(file_descriptor, 64 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            observed = b"".join(chunks)
+            self._verify_directory_link(
+                repository_descriptor,
+                ".decision-os",
+                decision_descriptor,
+            )
+            self._verify_directory_link(
+                decision_descriptor,
+                "field-notes",
+                field_notes_descriptor,
+            )
+            self._verify_file_link(
+                field_notes_descriptor,
+                filename,
+                file_descriptor,
+                created_identity,
+            )
             if (
-                stat.S_ISLNK(observed_info.st_mode)
-                or not stat.S_ISREG(observed_info.st_mode)
-                or (observed_info.st_dev, observed_info.st_ino)
-                != opened_identity
-            ):
-                raise FieldNoteError(
-                    "Field Note post-write path identity did not match."
-                )
-            observed = target.read_bytes()
-            readback_info = target.lstat()
-            if (
-                stat.S_ISLNK(readback_info.st_mode)
-                or not stat.S_ISREG(readback_info.st_mode)
-                or (readback_info.st_dev, readback_info.st_ino)
-                != opened_identity
-                or observed != pending.draft.markdown
+                observed != pending.draft.markdown
                 or hashlib.sha256(observed).hexdigest()
                 != pending.draft.sha256
             ):
                 raise FieldNoteError(
                     "Field Note readback identity did not match."
                 )
+            os.fsync(field_notes_descriptor)
         except Exception as exc:
-            try:
-                current = target.lstat()
-                if (
-                    opened_identity is not None
-                    and stat.S_ISREG(current.st_mode)
-                    and (current.st_dev, current.st_ino) == opened_identity
-                ):
-                    target.unlink()
-            except OSError:
-                pass
+            if (
+                field_notes_descriptor is not None
+                and created_identity is not None
+            ):
+                self._unlink_exact_created_file(
+                    field_notes_descriptor,
+                    filename,
+                    created_identity,
+                )
             if isinstance(exc, FieldNoteError):
                 raise
             raise FieldNoteError(
                 "Field Note write or readback failed safely."
             ) from exc
+        finally:
+            for descriptor in (
+                file_descriptor,
+                field_notes_descriptor,
+                decision_descriptor,
+                repository_descriptor,
+            ):
+                if descriptor is not None:
+                    os.close(descriptor)
 
     def field_note_approval(self, choice: str) -> dict[str, Any]:
         with self._condition:

@@ -38,6 +38,25 @@ BODY_HEADINGS = (
     ("remaining_unknowns", "Remaining UNKNOWNs"),
 )
 MODEL_CLASSES = frozenset({"stronger", "lower-cost", "UNKNOWN"})
+METADATA_START_MARKER = "<!-- decision-os-field-note-metadata:v0.1"
+_LINE_BREAKS = frozenset("\r\n\v\f\x1c\x1d\x1e\x85\u2028\u2029")
+_MARKDOWN_HEADING_RE = re.compile(
+    r"^[ \t]*(?:(?:>[ \t]*)+)?"
+    r"(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?#{1,6}(?:[ \t]+|$)"
+)
+_MARKDOWN_FENCE_RE = re.compile(
+    r"^[ \t]*(?:(?:>[ \t]*)+)?"
+    r"(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?(?:`{3,}|~{3,})"
+)
+_MARKDOWN_RULE_RE = re.compile(
+    r"^[ \t]*(?:(?:>[ \t]*)+)?"
+    r"(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,}|=+[ \t]*)$"
+)
+_MARKDOWN_HTML_BLOCK_RE = re.compile(
+    r"^[ \t]*(?:(?:>[ \t]*)+)?"
+    r"(?:(?:[-+*]|[0-9]+[.)])[ \t]+)?"
+    r"<(?:/?[A-Za-z][A-Za-z0-9-]*(?:[ \t/>]|$)|[!?])"
+)
 
 FIELD_NOTE_TOOL_SPEC = {
     "type": "function",
@@ -166,6 +185,80 @@ def _bounded_string(value: Any, minimum: int, maximum: int) -> str:
     return value
 
 
+def configured_model_class(value: Any) -> str:
+    if not isinstance(value, str) or value not in MODEL_CLASSES:
+        raise ValueError("Trusted model class is invalid.")
+    return value
+
+
+def _structured_text(value: Any, maximum: int, *, title: bool) -> str:
+    text = _bounded_string(value, 1, maximum)
+    if title and any(character in _LINE_BREAKS for character in text):
+        raise ValueError("Field Note title must be one line.")
+    if METADATA_START_MARKER in text or "<!--" in text or "-->" in text:
+        raise ValueError("Field Note text contains a structural marker.")
+    for line in text.splitlines() or [text]:
+        if (
+            _MARKDOWN_HEADING_RE.match(line)
+            or _MARKDOWN_FENCE_RE.match(line)
+            or _MARKDOWN_RULE_RE.match(line)
+            or _MARKDOWN_HTML_BLOCK_RE.match(line)
+        ):
+            raise ValueError("Field Note text contains Markdown structure.")
+    return text
+
+
+def validate_compiled_markdown(markdown: bytes) -> None:
+    if not isinstance(markdown, bytes):
+        raise ValueError("Compiled Field Note must be UTF-8 bytes.")
+    try:
+        text = markdown.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Compiled Field Note is not valid UTF-8.") from exc
+    if len(markdown) > MAX_MARKDOWN_BYTES:
+        raise ValueError("Compiled Field Note exceeds 64 KiB.")
+    if text.count(METADATA_START_MARKER) != 1:
+        raise ValueError("Compiled Field Note metadata marker is not unique.")
+    lines = text.splitlines()
+    if (
+        len(lines) < 5
+        or lines[0] != METADATA_START_MARKER
+        or lines[2] != "-->"
+        or text.count("-->") != 1
+    ):
+        raise ValueError("Compiled Field Note metadata block is invalid.")
+    h1_positions = [
+        index
+        for index, line in enumerate(lines)
+        if re.match(r"^#[ \t]+\S", line)
+    ]
+    if len(h1_positions) != 1:
+        raise ValueError("Compiled Field Note H1 is not unique.")
+    if h1_positions[0] != 4:
+        raise ValueError("Compiled Field Note H1 position is invalid.")
+    heading_positions: list[int] = []
+    allowed_headings = {f"## {heading}" for _, heading in BODY_HEADINGS}
+    for _, heading in BODY_HEADINGS:
+        expected = f"## {heading}"
+        positions = [
+            index for index, line in enumerate(lines) if line == expected
+        ]
+        if len(positions) != 1:
+            raise ValueError(
+                "Compiled Field Note fixed heading is not unique."
+            )
+        heading_positions.append(positions[0])
+    if heading_positions != sorted(heading_positions) or (
+        heading_positions and h1_positions[0] >= heading_positions[0]
+    ):
+        raise ValueError("Compiled Field Note heading order is invalid.")
+    for line in lines:
+        if _MARKDOWN_HEADING_RE.match(line) and not (
+            re.match(r"^#[ \t]+\S", line) or line in allowed_headings
+        ):
+            raise ValueError("Compiled Field Note has an extra heading.")
+
+
 def _unique_strings(
     value: Any,
     *,
@@ -240,7 +333,7 @@ def compile_draft(
         "body",
     }:
         raise ValueError("Proposal keys are invalid.")
-    title = _bounded_string(arguments["title"], 1, 120)
+    title = _structured_text(arguments["title"], 120, title=True)
     value_level = arguments["value_level"]
     if type(value_level) is not int or value_level not in {1, 2, 3}:
         raise ValueError("Value level is invalid.")
@@ -282,7 +375,8 @@ def compile_draft(
     if not isinstance(body, dict) or set(body) != set(BODY_KEYS):
         raise ValueError("Body is invalid.")
     body_items = tuple(
-        (key, _bounded_string(body[key], 1, 60_000)) for key in BODY_KEYS
+        (key, _structured_text(body[key], 60_000, title=False))
+        for key in BODY_KEYS
     )
     if not source_run_id:
         raise ValueError("Source Run identity is missing.")
@@ -319,7 +413,7 @@ def compile_draft(
         "value_level": value_level,
     }
     metadata_block = (
-        "<!-- decision-os-field-note-metadata:v0.1\n"
+        f"{METADATA_START_MARKER}\n"
         f"{canonical_json(metadata)}\n"
         "-->\n"
     )
@@ -333,6 +427,7 @@ def compile_draft(
     markdown = f"{metadata_block}\n# {title}\n{sections}".encode("utf-8")
     if len(markdown) > MAX_MARKDOWN_BYTES:
         raise ValueError("Compiled Field Note exceeds 64 KiB.")
+    validate_compiled_markdown(markdown)
     relative_path = (
         f"{FIELD_NOTE_ROOT}/{normalized.date().isoformat()}-"
         f"{_slug(title)}-{_short_id(identity)}.md"
@@ -359,8 +454,20 @@ def compile_draft(
 class FieldNoteProposalGate:
     """Run-local one-shot admission gate for a typed proposal."""
 
-    def __init__(self, source_run_id: str) -> None:
+    def __init__(
+        self,
+        source_run_id: str,
+        *,
+        trusted_source_model_class: str = "UNKNOWN",
+        trusted_target_model_class: str = "UNKNOWN",
+    ) -> None:
         self.source_run_id = source_run_id
+        self.trusted_source_model_class = configured_model_class(
+            trusted_source_model_class
+        )
+        self.trusted_target_model_class = configured_model_class(
+            trusted_target_model_class
+        )
         self.attempted = False
         self.accepted: FieldNoteDraft | None = None
 
@@ -369,8 +476,27 @@ class FieldNoteProposalGate:
             return False, "proposal_attempt_already_consumed"
         self.attempted = True
         try:
+            source_class = arguments.get("source_model_class")
+            target_class = arguments.get("target_model_class")
+            if source_class not in MODEL_CLASSES or target_class not in MODEL_CLASSES:
+                raise ValueError("Proposal model class is invalid.")
+            value_level = arguments.get("value_level")
+            if value_level == 3 and (
+                self.trusted_source_model_class != "stronger"
+                or self.trusted_target_model_class != "lower-cost"
+                or source_class != self.trusted_source_model_class
+                or target_class != self.trusted_target_model_class
+            ):
+                raise ValueError("Level 3 trusted model classes do not match.")
+            trusted_arguments = dict(arguments)
+            trusted_arguments["source_model_class"] = (
+                self.trusted_source_model_class
+            )
+            trusted_arguments["target_model_class"] = (
+                self.trusted_target_model_class
+            )
             self.accepted = compile_draft(
-                arguments,
+                trusted_arguments,
                 source_run_id=self.source_run_id,
             )
         except (TypeError, ValueError):

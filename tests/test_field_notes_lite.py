@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -198,7 +200,11 @@ class FieldNotesModelTests(unittest.TestCase):
         )
 
     def test_one_shot_accepts_at_most_one_candidate(self) -> None:
-        gate = FieldNoteProposalGate("run_001")
+        gate = FieldNoteProposalGate(
+            "run_001",
+            trusted_source_model_class="stronger",
+            trusted_target_model_class="lower-cost",
+        )
         self.assertEqual(
             gate.propose(proposal()),
             (True, "proposal_accepted"),
@@ -234,6 +240,108 @@ class FieldNotesModelTests(unittest.TestCase):
                 created_at="2026-08-02T12:34:56Z",
                 field_note_id="fn_fixed_identity",
             )
+
+    def test_self_asserted_level_three_with_unknown_trust_is_rejected(
+        self,
+    ) -> None:
+        gate = FieldNoteProposalGate("run_001")
+        self.assertEqual(
+            gate.propose(proposal()),
+            (False, "proposal_schema_invalid"),
+        )
+        self.assertIsNone(gate.accepted)
+
+    def test_level_three_proposal_and_trusted_classes_must_match(
+        self,
+    ) -> None:
+        gate = FieldNoteProposalGate(
+            "run_001",
+            trusted_source_model_class="stronger",
+            trusted_target_model_class="lower-cost",
+        )
+        mismatched = proposal()
+        mismatched["source_model_class"] = "UNKNOWN"
+        self.assertEqual(
+            gate.propose(mismatched),
+            (False, "proposal_schema_invalid"),
+        )
+        self.assertIsNone(gate.accepted)
+
+    def test_trusted_stronger_to_lower_cost_level_three_is_accepted(
+        self,
+    ) -> None:
+        gate = FieldNoteProposalGate(
+            "run_001",
+            trusted_source_model_class="stronger",
+            trusted_target_model_class="lower-cost",
+        )
+        self.assertEqual(
+            gate.propose(proposal()),
+            (True, "proposal_accepted"),
+        )
+        assert gate.accepted is not None
+        self.assertEqual(gate.accepted.source_model_class, "stronger")
+        self.assertEqual(gate.accepted.target_model_class, "lower-cost")
+
+    def test_levels_one_and_two_remain_available_with_unknown_trust(
+        self,
+    ) -> None:
+        for value_level in (1, 2):
+            with self.subTest(value_level=value_level):
+                candidate = proposal()
+                candidate["value_level"] = value_level
+                gate = FieldNoteProposalGate("run_001")
+                self.assertEqual(
+                    gate.propose(candidate),
+                    (True, "proposal_accepted"),
+                )
+                assert gate.accepted is not None
+                self.assertEqual(
+                    gate.accepted.source_model_class,
+                    "UNKNOWN",
+                )
+                self.assertEqual(
+                    gate.accepted.target_model_class,
+                    "UNKNOWN",
+                )
+
+    def test_title_newline_and_h1_injection_are_rejected(self) -> None:
+        for title in ("Safe title\nInjected", "# Injected H1"):
+            with self.subTest(title=title):
+                invalid = proposal()
+                invalid["title"] = title
+                with self.assertRaises(ValueError):
+                    compile_draft(invalid, source_run_id="run_001")
+
+    def test_body_heading_and_metadata_injections_are_rejected(self) -> None:
+        injected_values = (
+            "Safe prose\n## Evidence\nInjected fixed heading.",
+            "Safe prose\n### Arbitrary heading\nInjected structure.",
+            (
+                "Safe prose\n"
+                "<!-- decision-os-field-note-metadata:v0.1"
+            ),
+            "Safe prose\n<script>\nInjected HTML block.",
+        )
+        for injected in injected_values:
+            with self.subTest(injected=injected):
+                invalid = proposal()
+                invalid["body"]["procedure"] = injected  # type: ignore[index]
+                with self.assertRaises(ValueError):
+                    compile_draft(invalid, source_run_id="run_001")
+
+    def test_normal_multiline_prose_remains_valid(self) -> None:
+        candidate = proposal()
+        candidate["body"]["procedure"] = (  # type: ignore[index]
+            "First preserve the exact path.\n"
+            "Then verify the exact bytes.\n"
+            "Finally record the digest."
+        )
+        draft = compile_draft(candidate, source_run_id="run_001")
+        self.assertIn(
+            b"First preserve the exact path.\nThen verify the exact bytes.",
+            draft.markdown,
+        )
 
     def test_whitespace_only_typed_text_is_schema_invalid(self) -> None:
         invalid = proposal()
@@ -306,6 +414,8 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
                 input_func=lambda: None,
                 stdout=io.StringIO(),
                 transport_factory=factory,
+                trusted_source_model_class="stronger",
+                trusted_target_model_class="lower-cost",
             )
 
             result = await adapter.run("Read and report one bounded insight.")
@@ -334,6 +444,16 @@ class FieldNotesControllerTests(unittest.TestCase):
         )
         controller.select_repository(repository)
         return controller, repository
+
+    @staticmethod
+    def _arm_candidate(
+        controller: FieldNotesCompanionController,
+        draft: object,
+    ) -> None:
+        with controller._condition:
+            controller._run["state"] = "completed"
+            controller._field_note_draft = draft
+            controller._run["field_note"] = draft.public_candidate()
 
     @staticmethod
     def _eligible_result(draft: object) -> FieldNoteCodexRunResult:
@@ -393,6 +513,64 @@ class FieldNotesControllerTests(unittest.TestCase):
             FieldNotesCompanionController._eligible_draft(failed)
         )
 
+    def test_controller_factory_owns_trusted_model_classes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = FieldNotesCompanionController(
+                state_path=root / "state.json",
+                picker_script=root / "picker.scpt",
+                trusted_source_model_class="stronger",
+                trusted_target_model_class="lower-cost",
+            )
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+            adapter = controller.adapter_factory(
+                engine,
+                lambda _: None,
+                lambda _: None,
+            )
+            self.assertIsInstance(adapter, FieldNotesCodexAdapter)
+            self.assertEqual(
+                adapter.trusted_source_model_class,
+                "stronger",
+            )
+            self.assertEqual(
+                adapter.trusted_target_model_class,
+                "lower-cost",
+            )
+
+    def test_invalid_compiled_structure_is_rejected_before_approval(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller, repository = self._controller(root)
+            draft = compile_draft(
+                proposal(),
+                source_run_id="run_001",
+                created_at="2026-08-02T12:34:56Z",
+                field_note_id="fn_fixed_identity",
+            )
+            injected = draft.markdown.replace(
+                b"\n## Evidence\n",
+                b"\n## Injected\nambiguous\n\n## Evidence\n",
+                1,
+            )
+            tampered = replace(
+                draft,
+                markdown=injected,
+                sha256=hashlib.sha256(injected).hexdigest(),
+            )
+            self._arm_candidate(controller, tampered)
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_save()
+            self.assertIsNone(controller._field_note_pending)
+            self.assertFalse((repository / draft.relative_path).exists())
+
     def test_skip_changes_no_repository_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -408,10 +586,7 @@ class FieldNotesControllerTests(unittest.TestCase):
                 for path in repository.rglob("*")
                 if ".git" not in path.parts
             )
-            with controller._condition:
-                controller._run["state"] = "completed"
-                controller._field_note_draft = draft
-                controller._run["field_note"] = draft.public_candidate()
+            self._arm_candidate(controller, draft)
             snapshot = controller.field_note_skip()
             after = sorted(
                 path.relative_to(repository).as_posix()
@@ -431,10 +606,7 @@ class FieldNotesControllerTests(unittest.TestCase):
                 created_at="2026-08-02T12:34:56Z",
                 field_note_id="fn_fixed_identity",
             )
-            with controller._condition:
-                controller._run["state"] = "completed"
-                controller._field_note_draft = draft
-                controller._run["field_note"] = draft.public_candidate()
+            self._arm_candidate(controller, draft)
             approval = controller.field_note_save()
             target = repository / draft.relative_path
             self.assertFalse(target.exists())
@@ -446,7 +618,30 @@ class FieldNotesControllerTests(unittest.TestCase):
                 "THIS ONE FILE ONLY",
             )
             self.assertEqual(surface["content_sha256"], draft.sha256)
-            saved = controller.field_note_approval("allow_once")
+            real_open = os.open
+            open_calls: list[tuple[str, int, int | None]] = []
+
+            def traced_open(
+                path: object,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                open_calls.append((os.fspath(path), flags, dir_fd))
+                if dir_fd is None:
+                    return real_open(path, flags, mode)
+                return real_open(path, flags, mode, dir_fd=dir_fd)
+
+            with patch.object(
+                controller,
+                "_descriptor_containment_supported",
+                return_value=None,
+            ), patch(
+                "decision_os.companion.field_notes_controller.os.open",
+                side_effect=traced_open,
+            ):
+                saved = controller.field_note_approval("allow_once")
             self.assertEqual(target.read_bytes(), draft.markdown)
             self.assertEqual(
                 hashlib.sha256(target.read_bytes()).hexdigest(),
@@ -456,6 +651,97 @@ class FieldNotesControllerTests(unittest.TestCase):
                 saved["run"]["field_note"],
                 {"state": "saved", "path": draft.relative_path},
             )
+            create_calls = [
+                call for call in open_calls if call[1] & os.O_CREAT
+            ]
+            self.assertEqual(1, len(create_calls))
+            self.assertEqual(target.name, create_calls[0][0])
+            self.assertFalse(Path(create_calls[0][0]).is_absolute())
+            self.assertIsNotNone(create_calls[0][2])
+
+    def test_parent_symlink_before_traversal_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller, repository = self._controller(root)
+            external = root / "external"
+            external.mkdir()
+            (repository / ".decision-os").symlink_to(
+                external,
+                target_is_directory=True,
+            )
+            draft = compile_draft(proposal(), source_run_id="run_001")
+            self._arm_candidate(controller, draft)
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_save()
+            self.assertEqual([], list(external.iterdir()))
+
+    def test_parent_swap_after_descriptor_open_writes_nothing_external(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            controller, repository = self._controller(root)
+            external = root / "external"
+            external.mkdir()
+            draft = compile_draft(
+                proposal(),
+                source_run_id="run_001",
+                created_at="2026-08-02T12:34:56Z",
+                field_note_id="fn_fixed_identity",
+            )
+            self._arm_candidate(controller, draft)
+            controller.field_note_save()
+            filename = Path(draft.relative_path).name
+            real_open = os.open
+            swapped = False
+
+            def swap_before_create(
+                path: object,
+                flags: int,
+                mode: int = 0o777,
+                *,
+                dir_fd: int | None = None,
+            ) -> int:
+                nonlocal swapped
+                if (
+                    not swapped
+                    and os.fspath(path) == filename
+                    and flags & os.O_CREAT
+                ):
+                    swapped = True
+                    (repository / ".decision-os").rename(
+                        repository / ".decision-os-original"
+                    )
+                    (repository / ".decision-os").symlink_to(
+                        external,
+                        target_is_directory=True,
+                    )
+                if dir_fd is None:
+                    return real_open(path, flags, mode)
+                return real_open(path, flags, mode, dir_fd=dir_fd)
+
+            with patch.object(
+                controller,
+                "_descriptor_containment_supported",
+                return_value=None,
+            ), patch(
+                "decision_os.companion.field_notes_controller.os.open",
+                side_effect=swap_before_create,
+            ):
+                with self.assertRaises(FieldNoteError):
+                    controller.field_note_approval("allow_once")
+            self.assertTrue(swapped)
+            self.assertEqual([], list(external.iterdir()))
+            self.assertFalse(
+                (
+                    repository
+                    / ".decision-os-original"
+                    / "field-notes"
+                    / filename
+                ).exists()
+            )
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_approval("allow_once")
 
     def test_failed_allow_once_requires_a_fresh_approval(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -467,19 +753,14 @@ class FieldNotesControllerTests(unittest.TestCase):
                 created_at="2026-08-02T12:34:56Z",
                 field_note_id="fn_fixed_identity",
             )
-            with controller._condition:
-                controller._run["state"] = "completed"
-                controller._field_note_draft = draft
-                controller._run["field_note"] = draft.public_candidate()
-            with patch.object(
-                controller,
-                "_case_collision",
-                side_effect=[False, True],
-            ):
-                controller.field_note_save()
-                with self.assertRaises(FieldNoteError):
-                    controller.field_note_approval("allow_once")
-            self.assertFalse((repository / draft.relative_path).exists())
+            target = repository / draft.relative_path
+            target.parent.mkdir(parents=True)
+            self._arm_candidate(controller, draft)
+            controller.field_note_save()
+            target.write_bytes(b"collision\n")
+            with self.assertRaises(FieldNoteError):
+                controller.field_note_approval("allow_once")
+            self.assertEqual(b"collision\n", target.read_bytes())
             state = controller.snapshot()["run"]["field_note"]
             self.assertEqual("candidate", state["state"])
             self.assertIn("new exact Approval", state["error"])
@@ -489,6 +770,10 @@ class FieldNotesControllerTests(unittest.TestCase):
             self.assertEqual(
                 "approval",
                 renewed["run"]["field_note"]["state"],
+            )
+            self.assertNotEqual(
+                draft.relative_path,
+                renewed["run"]["field_note"]["approval"]["path"],
             )
 
 

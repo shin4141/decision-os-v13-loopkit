@@ -14,6 +14,7 @@ from decision_os.companion.field_notes_model import (
     FIELD_NOTE_TOOL_SPEC,
     FieldNoteDraft,
     FieldNoteProposalGate,
+    configured_model_class,
 )
 
 
@@ -33,9 +34,28 @@ class FieldNoteCodexRunResult(CodexRunResult):
 class FieldNotesCodexAdapter(CodexAdapter):
     """Codex adapter with one side-effect-free same-Run proposal tool."""
 
+    def __init__(
+        self,
+        *args: Any,
+        trusted_source_model_class: str = "UNKNOWN",
+        trusted_target_model_class: str = "UNKNOWN",
+        **kwargs: Any,
+    ) -> None:
+        self.trusted_source_model_class = configured_model_class(
+            trusted_source_model_class
+        )
+        self.trusted_target_model_class = configured_model_class(
+            trusted_target_model_class
+        )
+        super().__init__(*args, **kwargs)
+
     def _reset_run(self) -> None:
         super()._reset_run()
-        self._field_note_gate = FieldNoteProposalGate(self._run_id)
+        self._field_note_gate = FieldNoteProposalGate(
+            self._run_id,
+            trusted_source_model_class=self.trusted_source_model_class,
+            trusted_target_model_class=self.trusted_target_model_class,
+        )
         self._proposal_responses: dict[str, _ProposalResponse] = {}
         self._proposal_request_ids: dict[str | int, str | None] = {}
         self._resolved_proposal_requests: set[str | int] = set()
