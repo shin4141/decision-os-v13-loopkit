@@ -2,7 +2,7 @@
   "contract_identity": {
     "contract_id": "stage4-example-builder-001",
     "version": "0.1",
-    "contract_hash": "6dd126cd5a557c9d2f07d059ca50b6e3c05040934a6dd881c5e6620115734f33"
+    "contract_hash": "2a12469766b09ba4b4593b90c77990b83f251ad9044488312103d15607276267"
   },
   "assignment": {
     "task_id": "stage4-example-task-001",
@@ -43,12 +43,12 @@
   },
   "task_artifact_packet": {
     "repo": "shin4141/decision-os-v13-loopkit",
-    "head": "fe7d51806ac06ae6b4110d7443521abc351d7e87",
+    "head": "3a14dc65ea15f2d81cf3b3cd33362b3c001c0a41",
     "paths": [
       "README.md"
     ],
     "artifact_hashes": {
-      "README.md": "d1ec370e2b44b3df732204ccf4e78b0d14b82591163911da1b7854227cf5460a"
+      "README.md": "decc254e317b693604084ecdc1e9bfe034b8d6b69b32a70404fc63d64055ad39"
     },
     "as_of": "2026-07-29T00:00:00Z"
   },
