@@ -398,7 +398,7 @@ class FieldNoteWholeFlowPassTests(WholeFlowTestCase):
     def test_negative_outcome_remains_in_receipt_and_manifest(self) -> None:
         bundle, _ = build_bundle(self.root / "negative", outcome="HARMFUL")
         receipt = self.verify(bundle)
-        manifest = build_portable_candidate_warehouse_manifest(receipt)
+        manifest = build_portable_candidate_warehouse_manifest(bundle)
         self.assertEqual("HARMFUL", receipt.effective_outcome)
         self.assertEqual(1, manifest.as_dict()["outcome_summary"]["harmful"])
         self.assertEqual("HARMFUL", manifest.as_dict()["effective_outcome"])
@@ -409,7 +409,7 @@ class FieldNoteWholeFlowPassTests(WholeFlowTestCase):
             human_intervention="MATERIAL",
         )
         receipt = self.verify(bundle)
-        manifest = build_portable_candidate_warehouse_manifest(receipt)
+        manifest = build_portable_candidate_warehouse_manifest(bundle)
         self.assertEqual("PASS", receipt.state)
         self.assertEqual("MATERIAL", receipt.human_intervention)
         self.assertEqual("MATERIAL", manifest.as_dict()["human_intervention"])
@@ -445,8 +445,8 @@ class FieldNoteWholeFlowPassTests(WholeFlowTestCase):
             for path in paths
         }
         note_before = bytes(self.bundle.note_bytes)
-        receipt = self.verify()
-        build_portable_candidate_warehouse_manifest(receipt)
+        self.verify()
+        build_portable_candidate_warehouse_manifest(self.bundle)
         after = {
             path: (
                 path.read_bytes(),
@@ -458,6 +458,120 @@ class FieldNoteWholeFlowPassTests(WholeFlowTestCase):
         }
         self.assertEqual(before, after)
         self.assertEqual(note_before, self.bundle.note_bytes)
+
+
+class FieldNoteWholeFlowProofSealingTests(WholeFlowTestCase):
+    def test_pass_receipt_seals_exact_six_checkpoint_trace(self) -> None:
+        receipt = self.verify()
+        self.assertEqual(whole_flow.WHOLE_FLOW_TRACE_SCHEMA, receipt.proof_trace_schema)
+        self.assertEqual(6, receipt.proof_trace_event_count)
+        self.assertEqual(self.bundle.proof_trace, receipt.proof_trace)
+        self.assertEqual(
+            self.bundle.proof_trace[-1].trace_sha256,
+            receipt.proof_trace_chain_head_sha256,
+        )
+        self.assertEqual(
+            receipt.proof_trace_chain_head_sha256,
+            receipt.as_dict()["proof_trace_chain_head_sha256"],
+        )
+
+    def test_valid_checkpoint_identity_change_changes_receipt_identity(self) -> None:
+        original = self.verify()
+        changed_trace = (
+            *self.bundle.proof_trace[:-1],
+            replace(
+                self.bundle.proof_trace[-1],
+                observed_at="2026-08-05T11:42:00Z",
+            ),
+        )
+        changed = self.verify(replace(self.bundle, proof_trace=changed_trace))
+        self.assertEqual("PASS", changed.state)
+        self.assertNotEqual(
+            original.proof_trace_chain_head_sha256,
+            changed.proof_trace_chain_head_sha256,
+        )
+        self.assertNotEqual(original.receipt_sha256, changed.receipt_sha256)
+
+    def test_direct_receipt_cannot_claim_verified_without_trace_identity(self) -> None:
+        receipt = self.verify()
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            replace(
+                receipt,
+                proof_trace=(),
+                proof_trace_event_count=0,
+                proof_trace_chain_head_sha256=None,
+            )
+
+    def test_receipt_seals_complete_run_identities(self) -> None:
+        receipt = self.verify()
+        self.assertEqual(self.bundle.run_1, receipt.run_1)
+        self.assertEqual(self.bundle.run_2, receipt.run_2)
+        self.assertEqual(RUN_1_ID, receipt.run_1_id)
+        self.assertEqual(RUN_2_ID, receipt.run_2_id)
+        self.assertEqual(
+            self.bundle.run_1.as_dict(),
+            receipt.as_dict()["run_1"],
+        )
+        self.assertEqual(
+            self.bundle.run_2.as_dict(),
+            receipt.as_dict()["run_2"],
+        )
+
+    def test_direct_pass_receipt_rejects_inconsistent_run_identities(self) -> None:
+        receipt = self.verify()
+        cases = (
+            ("same_run", replace(receipt.run_2, run_id=receipt.run_1_id)),
+            (
+                "not_later",
+                replace(receipt.run_2, started_at=receipt.run_1.started_at),
+            ),
+            (
+                "other_attempt",
+                replace(receipt.run_2, proof_attempt_id="other_attempt"),
+            ),
+            (
+                "other_repository",
+                replace(receipt.run_2, repository=source_repository(suffix="c")),
+            ),
+            (
+                "other_runtime",
+                replace(receipt.run_2, runtime=runtime(model="other-model")),
+            ),
+        )
+        for label, run_2 in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(FieldNoteWholeFlowValidationError):
+                    replace(receipt, run_2=run_2)
+
+    def test_creator_live_mode_is_exactly_not_ready(self) -> None:
+        live_attempt = replace(self.bundle.attempt, proof_mode="CREATOR_LIVE")
+        receipt = self.verify(replace(self.bundle, attempt=live_attempt))
+        self.assertEqual("NOT_READY", receipt.state)
+        self.assertEqual("RUNTIME_ENFORCEMENT", receipt.failed_boundary)
+        self.assertEqual(
+            "CREATOR_LIVE_RUNTIME_ENFORCEMENT_NOT_IMPLEMENTED",
+            receipt.failure_reason,
+        )
+
+    def test_hand_built_six_checkpoint_trace_cannot_enable_creator_live(self) -> None:
+        self.assertEqual(6, len(self.bundle.proof_trace))
+        self.assertTrue(
+            all(
+                event.emitter == "COMPANION_RUNTIME"
+                for event in self.bundle.proof_trace
+            )
+        )
+        live_attempt = replace(self.bundle.attempt, proof_mode="CREATOR_LIVE")
+        live_bundle = replace(
+            self.bundle,
+            attempt=live_attempt,
+            proof_trace=trace_for(self.bundle),
+        )
+        receipt = self.verify(live_bundle)
+        self.assertEqual("NOT_READY", receipt.state)
+        self.assertNotEqual("TYPED_TRACE_VERIFIED", receipt.human_repair_result)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            build_portable_candidate_warehouse_manifest(live_bundle)
 
 
 class FieldNoteWholeFlowReadinessTests(WholeFlowTestCase):
@@ -737,6 +851,64 @@ class FieldNoteWholeFlowBindingTests(WholeFlowTestCase):
         receipt = self.verify()
         self.assertEqual("A6_LEDGER_IDENTITY_MISMATCH", receipt.failure_reason)
 
+    def test_a6_must_exactly_match_every_projected_a3_evidence_axis(self) -> None:
+        assert self.bundle.a6_review is not None
+        review = self.bundle.a6_review.ordered_event_reviews[0]
+        cases = (
+            ("evidence_origin", {"evidence_origin": "REUSING_RUN"}),
+            (
+                "use_observer_id",
+                {"use_evidence_observer_id": "other_use_observer"},
+            ),
+            (
+                "use_observer_relation",
+                {"use_evidence_observer_relation": "REUSING_RUN_SELF"},
+            ),
+            ("outcome_scope", {"outcome_scope": "A different task scope."}),
+            (
+                "causal_evidence_ref",
+                {"causal_evidence_ref": "run:other/causal:evidence"},
+            ),
+            (
+                "causal_evidence_sha256",
+                {"causal_evidence_sha256": "f" * 64},
+            ),
+            (
+                "outcome_observer_id",
+                {"outcome_observer_id": "other_outcome_observer"},
+            ),
+            (
+                "outcome_observer_relation",
+                {"outcome_observer_relation": "REUSING_RUN_PARTICIPANT"},
+            ),
+            (
+                "outcome_confirmation",
+                {"outcome_confirmation": "RUN_RELATED_CLAIM"},
+            ),
+            (
+                "contribution_separated",
+                {"contribution_separated": False},
+            ),
+        )
+        for label, mutation in cases:
+            with self.subTest(label=label):
+                changed_review = replace(review, **mutation)
+                changed_a6 = replace(self.bundle.a6_review)
+                object.__setattr__(
+                    changed_a6,
+                    "ordered_event_reviews",
+                    (changed_review,),
+                )
+                receipt = self.verify(
+                    replace(self.bundle, a6_review=changed_a6)
+                )
+                self.assertEqual("FAIL", receipt.state)
+                self.assertEqual("A6_REVIEW", receipt.failed_boundary)
+                self.assertEqual(
+                    "A6_EXACT_EVENT_MISMATCH",
+                    receipt.failure_reason,
+                )
+
     def test_a6_future_dated_evidence_cannot_pass(self) -> None:
         assert self.bundle.a6_review is not None
         object.__setattr__(
@@ -773,12 +945,52 @@ class FieldNoteWholeFlowBindingTests(WholeFlowTestCase):
 
 class PortableCandidateWarehouseManifestTests(WholeFlowTestCase):
     def manifest(self) -> PortableCandidateWarehouseManifest:
-        return build_portable_candidate_warehouse_manifest(self.verify())
+        return build_portable_candidate_warehouse_manifest(self.bundle)
 
     def test_pass_produces_one_typed_manifest(self) -> None:
         manifest = self.manifest()
         self.assertIsInstance(manifest, PortableCandidateWarehouseManifest)
-        self.assertEqual("PORTABLE_CANDIDATE", manifest.claim_boundary.portability_state)
+        self.assertEqual(
+            "PORTABLE_CANDIDATE",
+            manifest.claim_boundary.portability_state,
+        )
+
+    def test_arbitrary_pass_receipt_cannot_mint_a_manifest(self) -> None:
+        arbitrary = replace(self.verify(), effective_outcome="HARMFUL")
+        self.assertEqual("PASS", arbitrary.state)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            PortableCandidateWarehouseManifest(arbitrary)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            build_portable_candidate_warehouse_manifest(
+                arbitrary  # type: ignore[arg-type]
+            )
+
+    def test_failed_or_not_ready_bundle_cannot_mint_a_manifest(self) -> None:
+        cases = (
+            replace(
+                self.bundle,
+                note_bytes=self.bundle.note_bytes + b"changed",
+            ),
+            replace(self.bundle, a1_capture=None),
+        )
+        for bundle in cases:
+            with self.subTest(state=self.verify(bundle).state):
+                with self.assertRaises(FieldNoteWholeFlowValidationError):
+                    build_portable_candidate_warehouse_manifest(bundle)
+
+    def test_bundle_mutation_cannot_reuse_an_old_receipt(self) -> None:
+        old_receipt = self.verify()
+        changed = replace(
+            self.bundle,
+            note_bytes=self.bundle.note_bytes + b"post-receipt mutation",
+        )
+        self.assertEqual("FAIL", self.verify(changed).state)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            build_portable_candidate_warehouse_manifest(changed)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            build_portable_candidate_warehouse_manifest(
+                old_receipt  # type: ignore[arg-type]
+            )
 
     def test_repeated_manifest_generation_is_deterministic(self) -> None:
         first = self.manifest()
@@ -789,9 +1001,8 @@ class PortableCandidateWarehouseManifestTests(WholeFlowTestCase):
         self.assertEqual(first.render_text(), second.render_text())
 
     def test_manifest_identity_is_stable_for_identical_immutable_evidence(self) -> None:
-        receipt = self.verify()
-        first = build_portable_candidate_warehouse_manifest(receipt)
-        second = build_portable_candidate_warehouse_manifest(receipt)
+        first = build_portable_candidate_warehouse_manifest(self.bundle)
+        second = build_portable_candidate_warehouse_manifest(self.bundle)
         self.assertEqual(first.portable_asset_id, second.portable_asset_id)
         self.assertEqual(first.manifest_id, second.manifest_id)
 
@@ -803,10 +1014,12 @@ class PortableCandidateWarehouseManifestTests(WholeFlowTestCase):
         receipt = self.verify(changed)
         self.assertEqual("FAIL", receipt.state)
         with self.assertRaises(FieldNoteWholeFlowValidationError):
-            build_portable_candidate_warehouse_manifest(receipt)
+            build_portable_candidate_warehouse_manifest(changed)
 
     def test_manifest_coverage_is_exactly_one_one_one(self) -> None:
-        coverage = self.manifest().as_dict()["verified_coverage"]
+        manifest = self.manifest()
+        body = manifest.as_dict()
+        coverage = body["verified_coverage"]
         self.assertEqual(
             {
                 "repositories": 1,
@@ -814,6 +1027,42 @@ class PortableCandidateWarehouseManifestTests(WholeFlowTestCase):
                 "verified_later_reuse_runs": 1,
             },
             coverage,
+        )
+        self.assertEqual("FIXTURE", body["coverage_evidence_mode"])
+        self.assertFalse(body["creator_live_coverage_verified"])
+        self.assertIn("Fixture-covered repositories: 1", manifest.render_text())
+        self.assertNotIn("Verified repositories: 1", manifest.render_text())
+
+    def test_fixture_receipt_and_manifest_emit_no_creator_live_claim(self) -> None:
+        receipt = self.verify()
+        manifest = self.manifest()
+        self.assertEqual("FIXTURE", receipt.proof_mode)
+        self.assertFalse(
+            receipt.claim_boundary.creator_live_proof_inferred_from_fixture
+        )
+        self.assertEqual("FIXTURE", manifest.as_dict()["coverage_evidence_mode"])
+        self.assertFalse(
+            manifest.as_dict()["creator_live_coverage_verified"]
+        )
+        self.assertNotIn('"proof_mode":"CREATOR_LIVE"', receipt.serialize())
+        self.assertNotIn('"proof_mode":"CREATOR_LIVE"', manifest.serialize())
+
+    def test_manifest_is_bound_to_trace_sealed_receipt(self) -> None:
+        receipt = self.verify()
+        manifest = self.manifest()
+        proof_trace = manifest.as_dict()["proof_trace"]
+        self.assertEqual(receipt, manifest.proof_receipt)
+        self.assertEqual(
+            {
+                "schema": receipt.proof_trace_schema,
+                "event_count": receipt.proof_trace_event_count,
+                "chain_head_sha256": receipt.proof_trace_chain_head_sha256,
+            },
+            proof_trace,
+        )
+        self.assertEqual(
+            receipt.receipt_sha256,
+            manifest.as_dict()["whole_flow_proof_receipt_sha256"],
         )
 
     def test_manifest_is_candidate_not_portability_proven(self) -> None:
@@ -833,7 +1082,7 @@ class PortableCandidateWarehouseManifestTests(WholeFlowTestCase):
             self.root / "artifact",
             evidence_class="OUTPUT_ARTIFACT",
         )
-        manifest = build_portable_candidate_warehouse_manifest(self.verify(bundle))
+        manifest = build_portable_candidate_warehouse_manifest(bundle)
         self.assertNotIn(ARTIFACT_SECRET, manifest.serialize())
 
     def test_promotable_remains_unset(self) -> None:

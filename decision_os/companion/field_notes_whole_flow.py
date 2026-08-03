@@ -49,6 +49,7 @@ TRACE_GENESIS_SHA256 = "0" * 64
 WholeFlowState = Literal["NOT_READY", "PASS", "FAIL"]
 WholeFlowMode = Literal["FIXTURE", "CREATOR_LIVE"]
 WholeFlowBoundary = Literal[
+    "RUNTIME_ENFORCEMENT",
     "A1_CAPTURE",
     "RUN_SEPARATION",
     "MODEL_IDENTITY",
@@ -479,8 +480,8 @@ class FieldNoteWholeFlowProofReceipt:
     creator_id: str
     source_repository: FieldNoteSourceRepositoryIdentity
     source_runtime: CodexRuntimeIdentity
-    run_1_id: str
-    run_2_id: str
+    run_1: FieldNoteWholeFlowRunIdentity
+    run_2: FieldNoteWholeFlowRunIdentity
     note: FieldNoteIdentity
     note_byte_count: int
     reused_structure_id: str | None
@@ -504,6 +505,12 @@ class FieldNoteWholeFlowProofReceipt:
     outcome_summary: FieldNoteOutcomeSummary | None
     human_intervention: str | None
     next_disposition: str | None
+    proof_trace_schema: Literal[
+        "decision-os.field-note-whole-flow-trace-event.v0.1"
+    ]
+    proof_trace_event_count: int
+    proof_trace_chain_head_sha256: str | None
+    proof_trace: tuple[FieldNoteWholeFlowTraceEvent, ...]
     human_repair_result: HumanRepairResult
     state: WholeFlowState
     failed_boundary: WholeFlowBoundary | None
@@ -517,8 +524,6 @@ class FieldNoteWholeFlowProofReceipt:
             )
         _bounded_text(self.proof_attempt_id, "Proof attempt ID")
         _bounded_text(self.creator_id, "Creator identity")
-        _bounded_text(self.run_1_id, "Run 1 ID")
-        _bounded_text(self.run_2_id, "Run 2 ID")
         _parse_time(self.proof_as_of, "Proof As-of")
         if self.proof_mode not in {"FIXTURE", "CREATOR_LIVE"}:
             raise FieldNoteWholeFlowValidationError(
@@ -529,6 +534,16 @@ class FieldNoteWholeFlowProofReceipt:
                 "Whole-Flow receipt repository identity is invalid."
             )
         _validate_runtime(self.source_runtime)
+        if not isinstance(
+            self.run_1,
+            FieldNoteWholeFlowRunIdentity,
+        ) or not isinstance(
+            self.run_2,
+            FieldNoteWholeFlowRunIdentity,
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "Whole-Flow receipt Run identity is invalid."
+            )
         if not isinstance(self.note, FieldNoteIdentity):
             raise FieldNoteWholeFlowValidationError(
                 "Whole-Flow receipt Note identity is invalid."
@@ -552,6 +567,10 @@ class FieldNoteWholeFlowProofReceipt:
             (self.a4_snapshot_sha256, "A4 snapshot identity"),
             (self.a5_confirmation_sha256, "A5 confirmation identity"),
             (self.a6_packet_sha256, "A6 packet identity"),
+            (
+                self.proof_trace_chain_head_sha256,
+                "Proof trace chain-head identity",
+            ),
         ):
             if value is not None:
                 _require_sha256(value, label)
@@ -601,11 +620,13 @@ class FieldNoteWholeFlowProofReceipt:
             raise FieldNoteWholeFlowValidationError(
                 "Whole-Flow human-repair result is invalid."
             )
+        self._validate_proof_trace_identity()
         if self.state not in {"NOT_READY", "PASS", "FAIL"}:
             raise FieldNoteWholeFlowValidationError(
                 "Whole-Flow proof state is invalid."
             )
         if self.failed_boundary is not None and self.failed_boundary not in {
+            "RUNTIME_ENFORCEMENT",
             "A1_CAPTURE",
             "RUN_SEPARATION",
             "MODEL_IDENTITY",
@@ -657,6 +678,7 @@ class FieldNoteWholeFlowProofReceipt:
             )
             if (
                 any(value is None for value in required)
+                or self.proof_mode != "FIXTURE"
                 or self.a4_event_count != 1
                 or self.a4_chain_head_sha256 != self.a4_event_sha256
                 or self.a5_status not in {"RECORDED", "ALREADY_RECORDED"}
@@ -667,10 +689,122 @@ class FieldNoteWholeFlowProofReceipt:
                 raise FieldNoteWholeFlowValidationError(
                     "PASS receipt lacks complete fixed-scope evidence."
                 )
+            self._validate_complete_run_binding()
+        if (
+            self.human_repair_result == "TYPED_TRACE_VERIFIED"
+            and self.state != "PASS"
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "Typed proof trace verification requires a PASS receipt."
+            )
         if not isinstance(self.claim_boundary, FieldNoteWholeFlowClaimBoundary):
             raise FieldNoteWholeFlowValidationError(
                 "Whole-Flow receipt claim boundary is invalid."
             )
+
+    @property
+    def run_1_id(self) -> str:
+        return self.run_1.run_id
+
+    @property
+    def run_2_id(self) -> str:
+        return self.run_2.run_id
+
+    def _validate_complete_run_binding(self) -> None:
+        _, run_1_time = _parse_time(self.run_1.started_at, "Run 1 start time")
+        _, run_2_time = _parse_time(self.run_2.started_at, "Run 2 start time")
+        if (
+            self.run_1.run_id == self.run_2.run_id
+            or run_2_time <= run_1_time
+            or self.run_1.proof_attempt_id != self.proof_attempt_id
+            or self.run_2.proof_attempt_id != self.proof_attempt_id
+            or self.run_1.repository != self.source_repository
+            or self.run_2.repository != self.source_repository
+            or self.run_1.runtime != self.source_runtime
+            or self.run_2.runtime != self.source_runtime
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "PASS receipt Run identities are not exactly cross-bound."
+            )
+
+    def _validate_proof_trace_identity(self) -> None:
+        if self.proof_trace_schema != WHOLE_FLOW_TRACE_SCHEMA:
+            raise FieldNoteWholeFlowValidationError(
+                "Whole-Flow receipt proof trace schema is unsupported."
+            )
+        if (
+            not isinstance(self.proof_trace, tuple)
+            or any(
+                not isinstance(item, FieldNoteWholeFlowTraceEvent)
+                for item in self.proof_trace
+            )
+            or type(self.proof_trace_event_count) is not int
+            or self.proof_trace_event_count != len(self.proof_trace)
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "Whole-Flow receipt proof trace count is invalid."
+            )
+        expected_head = (
+            self.proof_trace[-1].trace_sha256 if self.proof_trace else None
+        )
+        if self.proof_trace_chain_head_sha256 != expected_head:
+            raise FieldNoteWholeFlowValidationError(
+                "Whole-Flow receipt proof trace head is invalid."
+            )
+        if self.human_repair_result != "TYPED_TRACE_VERIFIED":
+            return
+        expected_evidence = (
+            self.a1_evidence_sha256,
+            self.a2_receipt_sha256,
+            self.a3_reuse_event_id,
+            self.a4_event_sha256,
+            self.a5_confirmation_sha256,
+            self.a6_packet_sha256,
+        )
+        expected_runs = (
+            self.run_1.run_id,
+            self.run_2.run_id,
+            self.run_2.run_id,
+            self.run_2.run_id,
+            self.run_2.run_id,
+            self.run_2.run_id,
+        )
+        previous = TRACE_GENESIS_SHA256
+        _, proof_time = _parse_time(self.proof_as_of, "Proof As-of")
+        _, run_1_time = _parse_time(self.run_1.started_at, "Run 1 start time")
+        _, run_2_time = _parse_time(self.run_2.started_at, "Run 2 start time")
+        previous_time: datetime | None = None
+        if self.proof_trace_event_count != len(_TRACE_STAGES) or any(
+            evidence is None for evidence in expected_evidence
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "Typed proof trace lacks its exact six-checkpoint identity."
+            )
+        for index, event in enumerate(self.proof_trace):
+            _, event_time = _parse_time(
+                event.observed_at,
+                "Trace observation time",
+            )
+            minimum_time = run_1_time if index == 0 else run_2_time
+            if (
+                event.sequence != index
+                or event.stage != _TRACE_STAGES[index]
+                or event.run_id != expected_runs[index]
+                or event.evidence_sha256 != expected_evidence[index]
+                or event.previous_trace_sha256 != previous
+                or event.repair_action != "NONE"
+                or event_time < minimum_time
+                or event_time > proof_time
+                or (
+                    previous_time is not None
+                    and event_time < previous_time
+                )
+            ):
+                raise FieldNoteWholeFlowValidationError(
+                    "Typed proof trace identity is invalid."
+                )
+            previous = event.trace_sha256
+            previous_time = event_time
 
     def _body(self) -> dict[str, Any]:
         return {
@@ -681,8 +815,8 @@ class FieldNoteWholeFlowProofReceipt:
             "creator_id": self.creator_id,
             "source_repository": self.source_repository.as_dict(),
             "source_runtime": _runtime_as_dict(self.source_runtime),
-            "run_1_id": self.run_1_id,
-            "run_2_id": self.run_2_id,
+            "run_1": self.run_1.as_dict(),
+            "run_2": self.run_2.as_dict(),
             "note": self.note.as_dict(),
             "note_byte_count": self.note_byte_count,
             "reused_structure": {
@@ -718,6 +852,12 @@ class FieldNoteWholeFlowProofReceipt:
             ),
             "human_intervention": self.human_intervention,
             "next_disposition": self.next_disposition,
+            "proof_trace_schema": self.proof_trace_schema,
+            "proof_trace_event_count": self.proof_trace_event_count,
+            "proof_trace_chain_head_sha256": (
+                self.proof_trace_chain_head_sha256
+            ),
+            "proof_trace": [event.as_dict() for event in self.proof_trace],
             "human_repair_result": self.human_repair_result,
             "state": self.state,
             "failed_boundary": self.failed_boundary,
@@ -746,6 +886,11 @@ class FieldNoteWholeFlowProofReceipt:
                 f"Creator: {self.creator_id}",
                 f"Run 1: {self.run_1_id}",
                 f"Run 2: {self.run_2_id}",
+                f"Proof trace events: {self.proof_trace_event_count}",
+                (
+                    "Proof trace head: "
+                    f"{self.proof_trace_chain_head_sha256 or 'NONE'}"
+                ),
                 f"Field Note: {self.note.note_path}",
                 f"Outcome: {self.effective_outcome or 'NOT_ESTABLISHED'}",
                 f"Disposition: {self.next_disposition or 'NOT_ESTABLISHED'}",
@@ -795,7 +940,7 @@ class PortableCandidateClaimBoundary:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class PortableCandidateWarehouseManifest:
     """Portable immutable label; future evidence remains repository-local."""
 
@@ -804,13 +949,34 @@ class PortableCandidateWarehouseManifest:
         PortableCandidateClaimBoundary()
     )
 
-    def __post_init__(self) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        raise FieldNoteWholeFlowValidationError(
+            "Warehouse manifests must be built from a verified evidence bundle."
+        )
+
+    @classmethod
+    def _from_verified_receipt(
+        cls,
+        receipt: FieldNoteWholeFlowProofReceipt,
+    ) -> PortableCandidateWarehouseManifest:
+        manifest = object.__new__(cls)
+        object.__setattr__(manifest, "proof_receipt", receipt)
+        object.__setattr__(
+            manifest,
+            "claim_boundary",
+            PortableCandidateClaimBoundary(),
+        )
+        manifest._validate()
+        return manifest
+
+    def _validate(self) -> None:
         if (
             not isinstance(self.proof_receipt, FieldNoteWholeFlowProofReceipt)
             or self.proof_receipt.state != "PASS"
+            or self.proof_receipt.proof_mode != "FIXTURE"
         ):
             raise FieldNoteWholeFlowValidationError(
-                "Warehouse manifest requires one PASS proof receipt."
+                "Warehouse manifest requires one verified FIXTURE PASS receipt."
             )
         if not isinstance(self.claim_boundary, PortableCandidateClaimBoundary):
             raise FieldNoteWholeFlowValidationError(
@@ -852,8 +1018,15 @@ class PortableCandidateWarehouseManifest:
             "source_runtime": _runtime_as_dict(receipt.source_runtime),
             "whole_flow_proof_receipt_sha256": receipt.receipt_sha256,
             "proof_mode": receipt.proof_mode,
+            "proof_trace": {
+                "schema": receipt.proof_trace_schema,
+                "event_count": receipt.proof_trace_event_count,
+                "chain_head_sha256": receipt.proof_trace_chain_head_sha256,
+            },
             "a4_evidence_snapshot_sha256": receipt.a4_snapshot_sha256,
             "a6_review_packet_sha256": receipt.a6_packet_sha256,
+            "coverage_evidence_mode": "FIXTURE",
+            "creator_live_coverage_verified": False,
             "verified_coverage": {
                 "repositories": 1,
                 "model_identities": 1,
@@ -894,9 +1067,15 @@ class PortableCandidateWarehouseManifest:
                 "State: PORTABLE_CANDIDATE",
                 f"Asset: {self.portable_asset_id}",
                 f"Field Note: {self.proof_receipt.note.note_path}",
-                "Verified repositories: 1",
-                "Verified model identities: 1",
-                "Verified later reuse Runs: 1",
+                "Coverage evidence mode: FIXTURE",
+                "Creator-live coverage verified: false",
+                "Fixture-covered repositories: 1",
+                "Fixture-covered model identities: 1",
+                "Fixture-covered later reuse Runs: 1",
+                (
+                    "Proof trace head: "
+                    f"{self.proof_receipt.proof_trace_chain_head_sha256}"
+                ),
                 "PROMOTABLE: UNSET",
                 "Serving Policy: DELAY",
                 "Portability proven: false",
@@ -1004,8 +1183,8 @@ def _receipt(
         creator_id=bundle.attempt.creator_id,
         source_repository=bundle.source_repository,
         source_runtime=bundle.run_1.runtime,
-        run_1_id=bundle.run_1.run_id,
-        run_2_id=bundle.run_2.run_id,
+        run_1=bundle.run_1,
+        run_2=bundle.run_2,
         note=bundle.note,
         note_byte_count=len(bundle.note_bytes),
         reused_structure_id=binding.structure_id if binding else None,
@@ -1039,6 +1218,14 @@ def _receipt(
         outcome_summary=_outcome_summary(a6) if a6 else None,
         human_intervention=a3.human_intervention if a3 else None,
         next_disposition=a3.next_action if a3 else None,
+        proof_trace_schema=WHOLE_FLOW_TRACE_SCHEMA,
+        proof_trace_event_count=len(bundle.proof_trace),
+        proof_trace_chain_head_sha256=(
+            bundle.proof_trace[-1].trace_sha256
+            if bundle.proof_trace
+            else None
+        ),
+        proof_trace=bundle.proof_trace,
         human_repair_result=human_repair_result,
         state=state,
         failed_boundary=failed_boundary,
@@ -1087,6 +1274,12 @@ def verify_field_note_whole_flow(
     if not isinstance(bundle, FieldNoteWholeFlowEvidenceBundle):
         raise FieldNoteWholeFlowValidationError(
             "Whole-Flow verifier requires a typed evidence bundle."
+        )
+    if bundle.attempt.proof_mode == "CREATOR_LIVE":
+        return _not_ready(
+            bundle,
+            "RUNTIME_ENFORCEMENT",
+            "CREATOR_LIVE_RUNTIME_ENFORCEMENT_NOT_IMPLEMENTED",
         )
     for value, boundary, reason in (
         (bundle.a1_capture, "A1_CAPTURE", "A1_EVIDENCE_MISSING"),
@@ -1268,12 +1461,23 @@ def verify_field_note_whole_flow(
         or review.structure_binding_sha256
         != a3.use_evidence.structure_binding.binding_sha256
         or review.evidence_class != a3.use_evidence.evidence_class
+        or review.evidence_origin != a3.use_evidence.evidence_origin
         or review.evidence_ref != a3.use_evidence.evidence_ref
         or review.evidence_sha256 != a3.use_evidence.evidence_sha256
+        or review.use_evidence_observer_id != a3.use_evidence.observer_id
+        or review.use_evidence_observer_relation
+        != a3.use_evidence.observer_relation
         or review.use_evidence_as_of != a3.use_evidence.as_of
         or review.claimed_outcome != a3.claimed_outcome
         or review.effective_outcome != a3.outcome
+        or review.outcome_scope != a3.outcome_scope
+        or review.causal_evidence_ref != a3.causal_evidence_ref
+        or review.causal_evidence_sha256 != a3.causal_evidence_sha256
+        or review.outcome_observer_id != a3.outcome_observer_id
+        or review.outcome_observer_relation != a3.outcome_observer_relation
+        or review.outcome_confirmation != a3.outcome_confirmation
         or review.outcome_as_of != a3.outcome_as_of
+        or review.contribution_separated != a3.contribution_separated
         or review.human_intervention != a3.human_intervention
         or review.next_action != a3.next_action
         or review.reevaluation_condition != a3.reevaluation_condition
@@ -1363,8 +1567,13 @@ def verify_field_note_whole_flow(
 
 
 def build_portable_candidate_warehouse_manifest(
-    receipt: FieldNoteWholeFlowProofReceipt,
+    bundle: FieldNoteWholeFlowEvidenceBundle,
 ) -> PortableCandidateWarehouseManifest:
-    """Create a portable candidate label only from one A7 PASS receipt."""
+    """Reverify one bundle before creating its fixture-labelled candidate."""
 
-    return PortableCandidateWarehouseManifest(receipt)
+    receipt = verify_field_note_whole_flow(bundle)
+    if receipt.state != "PASS":
+        raise FieldNoteWholeFlowValidationError(
+            "Warehouse manifest requires a bundle that verifies to PASS."
+        )
+    return PortableCandidateWarehouseManifest._from_verified_receipt(receipt)
