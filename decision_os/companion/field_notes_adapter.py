@@ -16,6 +16,20 @@ from decision_os.companion.field_notes_model import (
     FieldNoteProposalGate,
     configured_model_class,
 )
+from decision_os.companion.field_notes_reconnect import (
+    FieldNoteReconnectPlan,
+    FieldNoteReconnectReceipt,
+    prepare_field_note_reconnect,
+)
+
+
+_FIELD_NOTE_PROPOSAL_INSTRUCTIONS = (
+    " You may optionally call propose_field_note_candidate "
+    "once inside this same Run after identifying one bounded "
+    "reusable insight. The proposal tool is side-effect-free. "
+    "Do not emit raw Field Note JSON or Markdown and do not "
+    "call it twice."
+)
 
 
 @dataclass(frozen=True)
@@ -29,6 +43,7 @@ class _ProposalResponse:
 @dataclass(frozen=True)
 class FieldNoteCodexRunResult(CodexRunResult):
     field_note_proposal: FieldNoteDraft | None = None
+    reconnect_receipt: FieldNoteReconnectReceipt | None = None
 
 
 class FieldNotesCodexAdapter(CodexAdapter):
@@ -41,6 +56,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
         trusted_target_model_class: str = "UNKNOWN",
         **kwargs: Any,
     ) -> None:
+        self._reconnect_prompt: str | None = None
+        self._reconnect_plan: FieldNoteReconnectPlan | None = None
         self.trusted_source_model_class = configured_model_class(
             trusted_source_model_class
         )
@@ -60,10 +77,27 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._proposal_request_ids: dict[str | int, str | None] = {}
         self._resolved_proposal_requests: set[str | int] = set()
         self._completed_proposal_items: set[str] = set()
+        prompt = self._reconnect_prompt
+        if isinstance(prompt, str):
+            self._reconnect_plan = prepare_field_note_reconnect(
+                self.engine.store.repository,
+                prompt,
+                self._run_id,
+            )
+        else:
+            self._reconnect_plan = None
+
+    def _developer_instructions(self) -> str:
+        existing = codex._DEVELOPER_INSTRUCTIONS + _FIELD_NOTE_PROPOSAL_INSTRUCTIONS
+        plan = self._reconnect_plan
+        if plan is None or plan.envelope is None:
+            return existing
+        return plan.envelope + existing
 
     def _start_thread(self) -> None:
         self._emit("run", "Starting one fresh bounded Run.")
         repository = self.engine.store.repository
+        developer_instructions = self._developer_instructions()
         isolated_features = {
             "apps": False,
             "hooks": False,
@@ -85,13 +119,7 @@ class FieldNotesCodexAdapter(CodexAdapter):
                         "plugins": {},
                     },
                     "cwd": str(repository),
-                    "developerInstructions": codex._DEVELOPER_INSTRUCTIONS + (
-                        " You may optionally call propose_field_note_candidate "
-                        "once inside this same Run after identifying one bounded "
-                        "reusable insight. The proposal tool is side-effect-free. "
-                        "Do not emit raw Field Note JSON or Markdown and do not "
-                        "call it twice."
-                    ),
+                    "developerInstructions": developer_instructions,
                     "dynamicTools": [
                         copy.deepcopy(codex._READ_TOOL_SPEC),
                         copy.deepcopy(FIELD_NOTE_TOOL_SPEC),
@@ -105,6 +133,11 @@ class FieldNotesCodexAdapter(CodexAdapter):
             ),
             "thread/start result",
         )
+        if (
+            self._reconnect_plan is not None
+            and self._reconnect_plan.envelope is not None
+        ):
+            self._reconnect_plan = self._reconnect_plan.injected()
         self._protocol_phase = "thread_identity_verification"
         thread = self._require_object(result.get("thread"), "thread identity")
         thread_id = thread.get("id")
@@ -393,7 +426,11 @@ class FieldNotesCodexAdapter(CodexAdapter):
         super()._dispatch(message)
 
     async def run(self, prompt: str) -> FieldNoteCodexRunResult:
-        result = await super().run(prompt)
+        self._reconnect_prompt = prompt
+        try:
+            result = await super().run(prompt)
+        finally:
+            self._reconnect_prompt = None
         all_proposals_completed = set(self._proposal_responses).issubset(
             self._completed_proposal_items
         )
@@ -402,9 +439,20 @@ class FieldNotesCodexAdapter(CodexAdapter):
             if result.normal_terminal and all_proposals_completed
             else None
         )
+        normal_terminal = result.normal_terminal and all_proposals_completed
+        if self._reconnect_plan is not None:
+            self._reconnect_plan = self._reconnect_plan.finalized(
+                normal_terminal=normal_terminal,
+                ordinary_paths=len(self._admitted_read_paths),
+            )
+        reconnect_receipt = (
+            None
+            if self._reconnect_plan is None
+            else self._reconnect_plan.receipt
+        )
         return FieldNoteCodexRunResult(
             run_id=result.run_id,
-            normal_terminal=result.normal_terminal and all_proposals_completed,
+            normal_terminal=normal_terminal,
             status=(
                 result.status
                 if all_proposals_completed
@@ -424,4 +472,5 @@ class FieldNotesCodexAdapter(CodexAdapter):
             unsupported_reason=result.unsupported_reason,
             failure_diagnostic=result.failure_diagnostic,
             field_note_proposal=proposal,
+            reconnect_receipt=reconnect_receipt,
         )

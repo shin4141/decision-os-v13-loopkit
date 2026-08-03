@@ -19,7 +19,10 @@ from decision_os.acceleration.codex_adapter import (
     CodexRunResult,
 )
 from decision_os.acceleration.engine import AccelerationEngine
-from decision_os.companion.controller import CompanionController, CompanionError
+from decision_os.companion.controller import (
+    CompanionController,
+    CompanionError,
+)
 from decision_os.companion.field_notes_adapter import (
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
@@ -29,6 +32,9 @@ from decision_os.companion.field_notes_model import (
     compile_draft,
     configured_model_class,
     validate_compiled_markdown,
+)
+from decision_os.companion.field_notes_reconnect import (
+    FieldNoteReconnectReceipt,
 )
 
 
@@ -87,6 +93,7 @@ class FieldNotesCompanionController(CompanionController):
     def _empty_run() -> dict[str, Any]:
         run = CompanionController._empty_run()
         run["field_note"] = {"state": "none"}
+        run["field_note_reconnect"] = None
         return run
 
     def _clear_field_note_locked(self) -> None:
@@ -151,9 +158,17 @@ class FieldNotesCompanionController(CompanionController):
         repository: Path,
         result: CodexRunResult,
     ) -> None:
-        super()._complete_run(repository, result)
         draft = self._eligible_draft(result)
+        reconnect_receipt = getattr(result, "reconnect_receipt", None)
+        reconnect_projection = (
+            reconnect_receipt.as_dict()
+            if isinstance(reconnect_receipt, FieldNoteReconnectReceipt)
+            and reconnect_receipt.run_id == result.run_id
+            else None
+        )
         with self._condition:
+            super()._complete_run(repository, result)
+            self._run["field_note_reconnect"] = reconnect_projection
             if draft is None:
                 self._clear_field_note_locked()
             else:
