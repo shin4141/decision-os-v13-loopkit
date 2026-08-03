@@ -9,23 +9,39 @@ from decision_os.companion.field_notes_reconnect import (
     FieldNoteReconnectReceipt,
 )
 from decision_os.companion.field_notes_reuse import (
+    FieldNoteA3Projection,
     FieldNoteIdentity,
     FieldNoteMaturitySummary,
     FieldNoteOutcomeEvaluation,
     FieldNoteReuseClaim,
     FieldNoteReuseDisposition,
     FieldNoteReuseReceipt,
+    FieldNoteServingPolicyBoundary,
+    FieldNoteStructureBinding,
     FieldNoteUseEvidence,
-    assess_field_note_reuse,
+    assess_field_note_reuse as assess_reuse_core,
+    bind_field_note_structure,
+    project_field_note_a3_status,
     summarize_field_note_maturity,
 )
 
 
 AS_OF = "2026-08-03T12:00:00Z"
+STRUCTURE_BYTES = b"Verify canonical state before restart."
+NOTE_BYTES = (
+    b"# A3 Reuse Core\n\n"
+    b"## Decision / Pattern\n\n"
+    + STRUCTURE_BYTES
+    + b"\n\n## Limits\n\nConfirm repository identity first.\n"
+)
 
 
 def digest(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def digest_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
 
 
 def note_identity(
@@ -41,8 +57,25 @@ def note_identity(
     return FieldNoteIdentity(
         note_path=note_path,
         field_note_id=field_note_id,
-        note_sha256=note_sha256 or digest("exact note bytes"),
+        note_sha256=note_sha256 or digest_bytes(NOTE_BYTES),
         origin_run_id=origin_run_id,
+    )
+
+
+def structure_binding(
+    *,
+    note: FieldNoteIdentity | None = None,
+    note_bytes: bytes = NOTE_BYTES,
+    structure_id: str = "restart-state-identity-guard",
+) -> FieldNoteStructureBinding:
+    canonical_note = note or note_identity()
+    start = note_bytes.index(STRUCTURE_BYTES)
+    return bind_field_note_structure(
+        canonical_note,
+        note_bytes,
+        structure_id=structure_id,
+        start_byte=start,
+        end_byte=start + len(STRUCTURE_BYTES),
     )
 
 
@@ -50,8 +83,7 @@ def use_evidence(
     *,
     evidence_class: str = "RULE_TRACE",
     reusing_run_id: str = "run_reuse",
-    structure_id: str = "restart-state-identity-guard",
-    structure_sha256: str | None = None,
+    binding: FieldNoteStructureBinding | None = None,
     evidence_ref: str = "run:run_reuse/rule-trace:guard-1",
     evidence_sha256: str | None = None,
 ) -> FieldNoteUseEvidence:
@@ -59,14 +91,22 @@ def use_evidence(
         evidence_class=evidence_class,  # type: ignore[arg-type]
         evidence_origin="IMMEDIATE_COMPLETION_RECORD",
         reusing_run_id=reusing_run_id,
-        structure_id=structure_id,
-        structure_sha256=structure_sha256 or digest("specific structure"),
+        structure_binding=binding or structure_binding(),
         evidence_ref=evidence_ref,
         evidence_sha256=evidence_sha256 or digest("typed use evidence"),
         observer_id="observer_a3",
         observer_relation="INDEPENDENT",
         as_of=AS_OF,
     )
+
+
+def assess_field_note_reuse(
+    note: FieldNoteIdentity,
+    claim: FieldNoteReuseClaim | None,
+    *,
+    note_bytes: bytes = NOTE_BYTES,
+) -> FieldNoteReuseReceipt:
+    return assess_reuse_core(note, claim, note_bytes=note_bytes)
 
 
 def outcome_evaluation(
@@ -207,18 +247,105 @@ class FieldNotesReuseAdmissionTests(unittest.TestCase):
 
     def test_whole_note_without_specific_structure_is_insufficient(self) -> None:
         note = note_identity()
+        whole_note = FieldNoteStructureBinding(
+            note=note,
+            structure_id="whole Note",
+            note_size=len(NOTE_BYTES),
+            start_byte=0,
+            end_byte=len(NOTE_BYTES),
+            structure_sha256=note.note_sha256,
+        )
         receipt = assess_field_note_reuse(
             note,
             reuse_claim(
                 note,
-                evidence=use_evidence(
-                    structure_id="whole Note",
-                    structure_sha256=note.note_sha256,
-                ),
+                evidence=use_evidence(binding=whole_note),
             ),
         )
         self.assertEqual("CANDIDATE", receipt.state)
-        self.assertEqual("STRUCTURE_NOT_SPECIFIC", receipt.failure_reason)
+        self.assertEqual("STRUCTURE_BINDING_INVALID", receipt.failure_reason)
+
+    def test_exact_note_byte_range_binding_can_establish_reuse(self) -> None:
+        note = note_identity()
+        binding = structure_binding(note=note)
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(note, evidence=use_evidence(binding=binding)),
+        )
+        self.assertEqual("REUSED", receipt.state)
+        self.assertEqual(digest_bytes(STRUCTURE_BYTES), binding.structure_sha256)
+        self.assertEqual(note, binding.note)
+
+    def test_arbitrary_structure_id_and_digest_fail_closed(self) -> None:
+        note = note_identity()
+        start = NOTE_BYTES.index(STRUCTURE_BYTES)
+        arbitrary = FieldNoteStructureBinding(
+            note=note,
+            structure_id="arbitrary-external-claim",
+            note_size=len(NOTE_BYTES),
+            start_byte=start,
+            end_byte=start + len(STRUCTURE_BYTES),
+            structure_sha256=digest("arbitrary external bytes"),
+        )
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(note, evidence=use_evidence(binding=arbitrary)),
+        )
+        self.assertEqual("CANDIDATE", receipt.state)
+        self.assertEqual("STRUCTURE_BINDING_INVALID", receipt.failure_reason)
+
+    def test_structure_bound_to_different_note_fails_closed(self) -> None:
+        note = note_identity()
+        other_bytes = NOTE_BYTES.replace(b"repository", b"canonical")
+        other_note = note_identity(
+            field_note_id="fn_other_note",
+            note_sha256=digest_bytes(other_bytes),
+            note_path=(
+                ".decision-os/field-notes/"
+                "2026-08-03-other-note-bbbbbbbbbb.md"
+            ),
+        )
+        other_binding = structure_binding(
+            note=other_note,
+            note_bytes=other_bytes,
+        )
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(note, evidence=use_evidence(binding=other_binding)),
+        )
+        self.assertEqual("CANDIDATE", receipt.state)
+        self.assertEqual("STRUCTURE_BINDING_INVALID", receipt.failure_reason)
+
+    def test_changed_note_identity_invalidates_structure_binding(self) -> None:
+        note = note_identity()
+        binding = structure_binding(note=note)
+        changed = replace(note, field_note_id="fn_changed_identity")
+        receipt = assess_field_note_reuse(
+            changed,
+            reuse_claim(changed, evidence=use_evidence(binding=binding)),
+        )
+        self.assertEqual("CANDIDATE", receipt.state)
+        self.assertEqual("STRUCTURE_BINDING_INVALID", receipt.failure_reason)
+
+    def test_structure_verification_does_not_change_note_bytes(self) -> None:
+        note = note_identity()
+        before = bytes(NOTE_BYTES)
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(note, evidence=use_evidence()),
+        )
+        self.assertEqual("REUSED", receipt.state)
+        self.assertEqual(before, NOTE_BYTES)
+        self.assertEqual(note.note_sha256, digest_bytes(NOTE_BYTES))
+
+    def test_missing_exact_note_bytes_cannot_establish_reuse(self) -> None:
+        note = note_identity()
+        receipt = assess_reuse_core(
+            note,
+            reuse_claim(note, evidence=use_evidence()),
+        )
+        self.assertEqual("CANDIDATE", receipt.state)
+        self.assertEqual("STRUCTURE_BINDING_INVALID", receipt.failure_reason)
 
     def test_rule_trace_can_establish_reuse(self) -> None:
         note = note_identity()
@@ -264,8 +391,7 @@ class FieldNotesReuseAdmissionTests(unittest.TestCase):
                 evidence_class="RULE_TRACE",
                 evidence_origin="LATER_NARRATIVE",  # type: ignore[arg-type]
                 reusing_run_id="run_reuse",
-                structure_id="restart-state-identity-guard",
-                structure_sha256=digest("specific structure"),
+                structure_binding=structure_binding(),
                 evidence_ref="later:narrative",
                 evidence_sha256=digest("later narrative"),
                 observer_id="observer",
@@ -649,6 +775,100 @@ class FieldNotesReusePromotionBoundaryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "different Field Note"):
             summarize_field_note_maturity(note, (receipt,))
+
+
+class FieldNotesServingPolicyBoundaryTests(unittest.TestCase):
+    def reused_summary(self) -> FieldNoteMaturitySummary:
+        note = note_identity()
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(note, evidence=use_evidence()),
+        )
+        return summarize_field_note_maturity(note, (receipt,))
+
+    def test_reused_does_not_imply_default_or_mandatory_injection(self) -> None:
+        projection = project_field_note_a3_status(self.reused_summary())
+        self.assertIsInstance(projection, FieldNoteA3Projection)
+        self.assertEqual("REUSED", projection.evidence_maturity.state)
+        self.assertEqual("DELAY", projection.current_serving_policy.derivation)
+        self.assertIsNone(projection.current_serving_policy.automatic_injection)
+        self.assertFalse(
+            projection.current_serving_policy.automatic_derivation_supported
+        )
+
+    def test_conceptual_serving_reduction_cannot_change_maturity(self) -> None:
+        maturity = self.reused_summary()
+        before = maturity.as_dict()
+        projection = project_field_note_a3_status(
+            maturity,
+            serving_delay_reason=(
+                "A conceptual serving reduction awaits a future "
+                "Forward-only record."
+            ),
+        )
+        self.assertEqual("REUSED", projection.evidence_maturity.state)
+        self.assertEqual(before, maturity.as_dict())
+        self.assertIn(
+            "serving reduction",
+            projection.current_serving_policy.delay_reason,
+        )
+
+    def test_reuse_disposition_is_not_a_serving_policy_state(self) -> None:
+        note = note_identity()
+        receipt = assess_field_note_reuse(
+            note,
+            reuse_claim(
+                note,
+                evidence=use_evidence(),
+                outcome=outcome_evaluation("HELPFUL", causal=True),
+                next_disposition=disposition("KEEP"),
+            ),
+        )
+        maturity = summarize_field_note_maturity(note, (receipt,))
+        serialized = project_field_note_a3_status(maturity).as_dict()
+        serving = serialized["current_serving_policy"]
+        self.assertEqual("KEEP", receipt.next_action)
+        self.assertNotIn("next_action", serving)
+        self.assertNotIn("KEEP", serving.values())
+
+    def test_serving_policy_automatic_derivation_is_fail_closed(self) -> None:
+        policy = FieldNoteServingPolicyBoundary(note=note_identity())
+        with self.assertRaisesRegex(ValueError, "separate and delayed"):
+            replace(policy, derivation="DEFAULT")  # type: ignore[arg-type]
+        with self.assertRaisesRegex(ValueError, "separate and delayed"):
+            replace(
+                policy,
+                automatic_derivation_supported=True,  # type: ignore[arg-type]
+            )
+
+    def test_promotable_remains_unset_when_serving_is_delayed(self) -> None:
+        projection = project_field_note_a3_status(self.reused_summary())
+        self.assertEqual(
+            "UNSET",
+            projection.evidence_maturity.promotion.policy_status,
+        )
+        self.assertEqual("DELAY", projection.current_serving_policy.derivation)
+
+    def test_a2_receipt_cannot_establish_maturity_or_serving(self) -> None:
+        note = note_identity()
+        maturity = summarize_field_note_maturity(
+            note,
+            (),
+            (reconnect_receipt(note),),
+        )
+        projection = project_field_note_a3_status(maturity)
+        self.assertEqual("CANDIDATE", projection.evidence_maturity.state)
+        self.assertEqual(1, maturity.reconnect_receipts_ignored)
+        self.assertEqual("DELAY", projection.current_serving_policy.derivation)
+
+    def test_topmost_canonical_authority_outranks_advisory_note(self) -> None:
+        policy = FieldNoteServingPolicyBoundary(note=note_identity())
+        self.assertEqual(
+            ("TOPMOST_CANONICAL", "ADVISORY_FIELD_NOTE"),
+            policy.authority_precedence,
+        )
+        self.assertFalse(policy.complete_state_machine_implemented)
+        self.assertEqual("LATER_RECORDS_ONLY", policy.forward_only_extension)
 
 
 class FieldNotesReuseProtectedArtifactTests(unittest.TestCase):

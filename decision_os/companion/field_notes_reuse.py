@@ -40,8 +40,9 @@ ReuseFailureReason = Literal[
     "USE_EVIDENCE_MISSING",
     "NOTE_IDENTITY_MISMATCH",
     "ORIGIN_RUN_NOT_DIFFERENT",
-    "STRUCTURE_NOT_SPECIFIC",
+    "STRUCTURE_BINDING_INVALID",
 ]
+ServingPolicyDerivation = Literal["DELAY"]
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _GENERIC_STRUCTURE_IDS = frozenset(
@@ -89,6 +90,10 @@ def _sha256(value: Any, label: str) -> str:
     if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
         raise ValueError(f"{label} must be a lowercase SHA-256 digest.")
     return value
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
 
 
 def _relative_path(value: Any, label: str) -> str:
@@ -158,14 +163,122 @@ class FieldNoteIdentity:
 
 
 @dataclass(frozen=True)
+class FieldNoteStructureBinding:
+    """Deterministic byte-range anchor into one exact Field Note."""
+
+    note: FieldNoteIdentity
+    structure_id: str
+    note_size: int
+    start_byte: int
+    end_byte: int
+    structure_sha256: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "structure_id",
+            _bounded_text(self.structure_id, "Structure ID", maximum=256),
+        )
+        object.__setattr__(
+            self,
+            "structure_sha256",
+            _sha256(self.structure_sha256, "Structure digest"),
+        )
+        if (
+            type(self.note_size) is not int
+            or type(self.start_byte) is not int
+            or type(self.end_byte) is not int
+            or self.note_size <= 0
+            or self.start_byte < 0
+            or self.end_byte <= self.start_byte
+            or self.end_byte > self.note_size
+        ):
+            raise ValueError("Structure byte range is outside its bounded schema.")
+
+    @property
+    def binding_sha256(self) -> str:
+        payload = {
+            "note": self.note.as_dict(),
+            "structure_id": self.structure_id,
+            "note_size": self.note_size,
+            "start_byte": self.start_byte,
+            "end_byte": self.end_byte,
+            "structure_sha256": self.structure_sha256,
+        }
+        return _sha256_bytes(canonical_json(payload).encode("utf-8"))
+
+    def verifies(self, note: FieldNoteIdentity, note_bytes: bytes) -> bool:
+        if not isinstance(note_bytes, bytes):
+            return False
+        if (
+            self.note != note
+            or len(note_bytes) != self.note_size
+            or _sha256_bytes(note_bytes) != note.note_sha256
+            or self.structure_id.casefold() in _GENERIC_STRUCTURE_IDS
+            or (self.start_byte == 0 and self.end_byte == len(note_bytes))
+        ):
+            return False
+        structure_bytes = note_bytes[self.start_byte : self.end_byte]
+        if (
+            not structure_bytes.strip()
+            or _sha256_bytes(structure_bytes) != self.structure_sha256
+            or self.structure_sha256 == note.note_sha256
+        ):
+            return False
+        try:
+            note_bytes.decode("utf-8")
+            structure_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return False
+        return True
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "note": self.note.as_dict(),
+            "structure_id": self.structure_id,
+            "note_size": self.note_size,
+            "start_byte": self.start_byte,
+            "end_byte": self.end_byte,
+            "structure_sha256": self.structure_sha256,
+            "binding_sha256": self.binding_sha256,
+        }
+
+
+def bind_field_note_structure(
+    note: FieldNoteIdentity,
+    note_bytes: bytes,
+    *,
+    structure_id: str,
+    start_byte: int,
+    end_byte: int,
+) -> FieldNoteStructureBinding:
+    """Create an anchor only after verifying the complete exact Note bytes."""
+
+    if not isinstance(note_bytes, bytes) or _sha256_bytes(note_bytes) != (
+        note.note_sha256
+    ):
+        raise ValueError("Structure source bytes do not match the exact Field Note.")
+    binding = FieldNoteStructureBinding(
+        note=note,
+        structure_id=structure_id,
+        note_size=len(note_bytes),
+        start_byte=start_byte,
+        end_byte=end_byte,
+        structure_sha256=_sha256_bytes(note_bytes[start_byte:end_byte]),
+    )
+    if not binding.verifies(note, note_bytes):
+        raise ValueError("Structure binding is not a specific exact-Note range.")
+    return binding
+
+
+@dataclass(frozen=True)
 class FieldNoteUseEvidence:
     """Same-window typed evidence that one Note structure operated."""
 
     evidence_class: UseEvidenceClass
     evidence_origin: UseEvidenceOrigin
     reusing_run_id: str
-    structure_id: str
-    structure_sha256: str
+    structure_binding: FieldNoteStructureBinding
     evidence_ref: str
     evidence_sha256: str
     observer_id: str
@@ -191,16 +304,8 @@ class FieldNoteUseEvidence:
             "reusing_run_id",
             _bounded_text(self.reusing_run_id, "Reusing Run ID", maximum=256),
         )
-        object.__setattr__(
-            self,
-            "structure_id",
-            _bounded_text(self.structure_id, "Structure ID", maximum=256),
-        )
-        object.__setattr__(
-            self,
-            "structure_sha256",
-            _sha256(self.structure_sha256, "Structure digest"),
-        )
+        if not isinstance(self.structure_binding, FieldNoteStructureBinding):
+            raise ValueError("Use evidence lacks a typed structure binding.")
         object.__setattr__(
             self,
             "evidence_ref",
@@ -218,19 +323,20 @@ class FieldNoteUseEvidence:
         )
         object.__setattr__(self, "as_of", _as_of(self.as_of))
 
-    def is_specific_to(self, note: FieldNoteIdentity) -> bool:
-        return bool(
-            self.structure_id.casefold() not in _GENERIC_STRUCTURE_IDS
-            and self.structure_sha256 != note.note_sha256
-        )
+    @property
+    def structure_id(self) -> str:
+        return self.structure_binding.structure_id
 
-    def as_dict(self) -> dict[str, str]:
+    @property
+    def structure_sha256(self) -> str:
+        return self.structure_binding.structure_sha256
+
+    def as_dict(self) -> dict[str, Any]:
         return {
             "evidence_class": self.evidence_class,
             "evidence_origin": self.evidence_origin,
             "reusing_run_id": self.reusing_run_id,
-            "structure_id": self.structure_id,
-            "structure_sha256": self.structure_sha256,
+            "structure_binding": self.structure_binding.as_dict(),
             "evidence_ref": self.evidence_ref,
             "evidence_sha256": self.evidence_sha256,
             "observer_id": self.observer_id,
@@ -553,6 +659,96 @@ class FieldNoteMaturitySummary:
         }
 
 
+@dataclass(frozen=True)
+class FieldNoteServingPolicyBoundary:
+    """Fail-closed boundary for a future, separate Serving Policy.
+
+    Evidence invalidation, serving reduction, supersession, staleness,
+    contradiction, harm, and successor compression can only become later
+    Forward-only records.  This boundary implements none of those events.
+    """
+
+    note: FieldNoteIdentity
+    derivation: ServingPolicyDerivation = "DELAY"
+    automatic_derivation_supported: Literal[False] = False
+    automatic_injection: None = None
+    complete_state_machine_implemented: Literal[False] = False
+    forward_only_extension: Literal["LATER_RECORDS_ONLY"] = "LATER_RECORDS_ONLY"
+    authority_precedence: tuple[
+        Literal["TOPMOST_CANONICAL"],
+        Literal["ADVISORY_FIELD_NOTE"],
+    ] = ("TOPMOST_CANONICAL", "ADVISORY_FIELD_NOTE")
+    delay_reason: str = "Current Serving Policy is unsupported."
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.note, FieldNoteIdentity)
+            or self.derivation != "DELAY"
+            or self.automatic_derivation_supported is not False
+            or self.automatic_injection is not None
+            or self.complete_state_machine_implemented is not False
+            or self.forward_only_extension != "LATER_RECORDS_ONLY"
+            or self.authority_precedence
+            != ("TOPMOST_CANONICAL", "ADVISORY_FIELD_NOTE")
+        ):
+            raise ValueError("Serving Policy must remain separate and delayed.")
+        object.__setattr__(
+            self,
+            "delay_reason",
+            _bounded_text(self.delay_reason, "Serving Policy delay reason"),
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "note": self.note.as_dict(),
+            "derivation": self.derivation,
+            "automatic_derivation_supported": (
+                self.automatic_derivation_supported
+            ),
+            "automatic_injection": self.automatic_injection,
+            "complete_state_machine_implemented": (
+                self.complete_state_machine_implemented
+            ),
+            "forward_only_extension": self.forward_only_extension,
+            "authority_precedence": list(self.authority_precedence),
+            "delay_reason": self.delay_reason,
+        }
+
+
+@dataclass(frozen=True)
+class FieldNoteA3Projection:
+    """Read-only projection that keeps maturity and serving as separate axes."""
+
+    evidence_maturity: FieldNoteMaturitySummary
+    current_serving_policy: FieldNoteServingPolicyBoundary
+
+    def __post_init__(self) -> None:
+        if self.evidence_maturity.note != self.current_serving_policy.note:
+            raise ValueError("A3 projection axes identify different Field Notes.")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "evidence_maturity": self.evidence_maturity.as_dict(),
+            "current_serving_policy": self.current_serving_policy.as_dict(),
+        }
+
+
+def project_field_note_a3_status(
+    maturity: FieldNoteMaturitySummary,
+    *,
+    serving_delay_reason: str = "Current Serving Policy is unsupported.",
+) -> FieldNoteA3Projection:
+    """Project independent axes without deriving serving from maturity."""
+
+    return FieldNoteA3Projection(
+        evidence_maturity=maturity,
+        current_serving_policy=FieldNoteServingPolicyBoundary(
+            note=maturity.note,
+            delay_reason=serving_delay_reason,
+        ),
+    )
+
+
 def _candidate_receipt(
     note: FieldNoteIdentity,
     reusing_run_id: str,
@@ -651,6 +847,8 @@ def _normalized_disposition(
 def assess_field_note_reuse(
     note: FieldNoteIdentity,
     claim: FieldNoteReuseClaim | None,
+    *,
+    note_bytes: bytes | None = None,
 ) -> FieldNoteReuseReceipt:
     """Assess one claim without mutating the Field Note or repository."""
 
@@ -675,11 +873,14 @@ def assess_field_note_reuse(
             claim.reusing_run_id,
             "USE_EVIDENCE_MISSING",
         )
-    if not evidence.is_specific_to(note):
+    if note_bytes is None or not evidence.structure_binding.verifies(
+        note,
+        note_bytes,
+    ):
         return _candidate_receipt(
             note,
             claim.reusing_run_id,
-            "STRUCTURE_NOT_SPECIFIC",
+            "STRUCTURE_BINDING_INVALID",
         )
     evaluation = claim.outcome_evaluation or FieldNoteOutcomeEvaluation(
         outcome="UNKNOWN",
