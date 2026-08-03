@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -859,6 +860,346 @@ class FieldNotesControllerTests(unittest.TestCase):
 
 
 class FieldNotesStaticUiTests(unittest.TestCase):
+    def _run_action_harness(
+        self,
+        initial_state: dict[str, object],
+        scenario: str,
+    ) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "field_notes.js"
+        )
+        harness = r'''
+"use strict";
+
+const assert = require("assert");
+const fs = require("fs");
+const vm = require("vm");
+
+const javascriptPath = process.argv[2];
+const source = fs.readFileSync(javascriptPath, "utf8");
+
+class Element {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.id = "";
+    this.className = "";
+    this.hidden = false;
+    this.disabled = false;
+    this.type = "";
+    this.children = [];
+    this.parentNode = null;
+    this.listeners = new Map();
+    this.attributes = new Map();
+    this.ownText = "";
+  }
+
+  get firstChild() {
+    return this.children[0] || null;
+  }
+
+  get textContent() {
+    return this.ownText + this.children.map((child) => child.textContent).join("");
+  }
+
+  set textContent(value) {
+    this.ownText = value == null ? "" : String(value);
+    for (const child of this.children) child.parentNode = null;
+    this.children = [];
+  }
+
+  appendChild(child) {
+    child.parentNode = this;
+    this.children.push(child);
+    return child;
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    assert.notStrictEqual(index, -1, "Cannot remove a missing child.");
+    this.children.splice(index, 1);
+    child.parentNode = null;
+    return child;
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+
+  getAttribute(name) {
+    return this.attributes.has(name) ? this.attributes.get(name) : null;
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+  }
+
+  addEventListener(name, callback) {
+    const listeners = this.listeners.get(name) || [];
+    listeners.push(callback);
+    this.listeners.set(name, listeners);
+  }
+
+  dispatch(name) {
+    for (const callback of this.listeners.get(name) || []) {
+      callback({ target: this });
+    }
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
+
+  querySelectorAll(selector) {
+    const matches = [];
+    for (const child of this.children) {
+      if (selector === "button" && child.tagName === "BUTTON") {
+        matches.push(child);
+      } else if (
+        selector.startsWith(".") &&
+        child.className.split(/\s+/).includes(selector.slice(1))
+      ) {
+        matches.push(child);
+      }
+      matches.push(...child.querySelectorAll(selector));
+    }
+    return matches;
+  }
+}
+
+const document = {
+  body: new Element("body"),
+  createElement(tagName) {
+    return new Element(tagName);
+  },
+};
+const fetchCalls = [];
+const fetchQueue = [];
+async function fetchMock(path, options = {}) {
+  fetchCalls.push({ path, options });
+  assert(fetchQueue.length > 0, `Unexpected fetch: ${path}`);
+  return fetchQueue.shift()();
+}
+function response(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    async json() {
+      return body;
+    },
+  };
+}
+function deferred() {
+  let resolve;
+  const promise = new Promise((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+async function settle() {
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+function actionButton(root, label) {
+  const found = root
+    .querySelectorAll("button")
+    .find((candidate) => candidate.textContent === label);
+  assert(found, `Missing action button: ${label}`);
+  return found;
+}
+function postCount(path) {
+  return fetchCalls.filter(
+    (call) => call.path === path && call.options.method === "POST",
+  ).length;
+}
+
+async function main() {
+  const initialState = __INITIAL_STATE__;
+  fetchQueue.push(() => Promise.resolve(response(initialState)));
+  const window = {
+    setInterval() {
+      return 1;
+    },
+  };
+  const sandbox = {
+    Error,
+    JSON,
+    Promise,
+    String,
+    console,
+    document,
+    fetch: fetchMock,
+    window,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, { filename: javascriptPath });
+  await settle();
+  __SCENARIO__
+}
+
+main().catch((error) => {
+  console.error(error.stack || error);
+  process.exitCode = 1;
+});
+'''.replace("__INITIAL_STATE__", json.dumps(initial_state)).replace(
+            "__SCENARIO__", scenario
+        )
+        completed = subprocess.run(
+            [node, "-", str(javascript)],
+            input=harness,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=(
+                "Node Field Notes action harness failed:\n"
+                f"{completed.stdout}{completed.stderr}"
+            ),
+        )
+
+    @staticmethod
+    def _candidate_state() -> dict[str, object]:
+        return {
+            "csrf": "csrf-candidate",
+            "run": {
+                "field_note": {
+                    "state": "candidate",
+                    "title": "Approval byte binding",
+                    "value_level": 3,
+                    "reusable_structure": "Bind the exact bytes.",
+                }
+            },
+        }
+
+    @staticmethod
+    def _approval_state() -> dict[str, object]:
+        return {
+            "csrf": "csrf-approval",
+            "run": {
+                "field_note": {
+                    "state": "approval",
+                    "approval": {
+                        "action": "CREATE",
+                        "path": ".decision-os/field-notes/approval-byte-binding.md",
+                        "content_sha256": "a" * 64,
+                        "precondition": "MUST_NOT_EXIST",
+                        "approval_scope": "THIS ONE FILE ONLY",
+                        "content": "# Approval byte binding\n",
+                    },
+                }
+            },
+        }
+
+    def test_save_is_visible_single_flight_and_restores_or_renders(self) -> None:
+        approval_state = json.dumps(self._approval_state())
+        self._run_action_harness(
+            self._candidate_state(),
+            rf'''
+  const root = document.body.children[0];
+  const save = actionButton(root, "Save");
+  const skip = actionButton(root, "Skip");
+  const pending = deferred();
+  fetchQueue.push(() => pending.promise);
+
+  save.dispatch("click");
+  assert.strictEqual(save.textContent, "Preparing approval…");
+  assert.strictEqual(save.disabled, true);
+  assert.strictEqual(skip.disabled, true);
+  assert.strictEqual(root.getAttribute("aria-busy"), "true");
+  save.dispatch("click");
+  skip.dispatch("click");
+  assert.strictEqual(postCount("/api/field-notes/save"), 1);
+  assert.strictEqual(postCount("/api/field-notes/skip"), 0);
+
+  pending.resolve(response({{ error: "Save failed visibly." }}, 500));
+  await settle();
+  assert.strictEqual(save.textContent, "Save");
+  assert.strictEqual(skip.textContent, "Skip");
+  assert.strictEqual(save.disabled, false);
+  assert.strictEqual(skip.disabled, false);
+  assert.strictEqual(root.getAttribute("aria-busy"), null);
+  assert.strictEqual(
+    root.querySelector(".field-note-error").textContent,
+    "Save failed visibly.",
+  );
+
+  fetchQueue.push(() => Promise.resolve(response({approval_state})));
+  save.dispatch("click");
+  await settle();
+  assert.strictEqual(postCount("/api/field-notes/save"), 2);
+  assert.strictEqual(root.getAttribute("aria-busy"), null);
+  assert(root.textContent.includes("CREATE .decision-os/field-notes/approval-byte-binding.md"));
+  assert(actionButton(root, "Allow once"));
+''',
+        )
+
+    def test_allow_once_is_visible_single_flight_and_restores_or_saves(
+        self,
+    ) -> None:
+        saved_path = ".decision-os/field-notes/approval-byte-binding.md"
+        saved_state = json.dumps(
+            {
+                "csrf": "csrf-saved",
+                "run": {
+                    "field_note": {
+                        "state": "saved",
+                        "path": saved_path,
+                    }
+                },
+            }
+        )
+        self._run_action_harness(
+            self._approval_state(),
+            rf'''
+  const root = document.body.children[0];
+  const allowOnce = actionButton(root, "Allow once");
+  const deny = actionButton(root, "Deny");
+  const pending = deferred();
+  fetchQueue.push(() => pending.promise);
+
+  allowOnce.dispatch("click");
+  assert.strictEqual(allowOnce.textContent, "Saving Field Note…");
+  assert.strictEqual(allowOnce.disabled, true);
+  assert.strictEqual(deny.disabled, true);
+  assert.strictEqual(root.getAttribute("aria-busy"), "true");
+  allowOnce.dispatch("click");
+  deny.dispatch("click");
+  assert.strictEqual(postCount("/api/field-notes/approval"), 1);
+
+  pending.resolve(response({{ error: "Allow once failed visibly." }}, 500));
+  await settle();
+  assert.strictEqual(allowOnce.textContent, "Allow once");
+  assert.strictEqual(deny.textContent, "Deny");
+  assert.strictEqual(allowOnce.disabled, false);
+  assert.strictEqual(deny.disabled, false);
+  assert.strictEqual(root.getAttribute("aria-busy"), null);
+  assert.strictEqual(
+    root.querySelector(".field-note-error").textContent,
+    "Allow once failed visibly.",
+  );
+  assert.strictEqual(root.querySelector(".field-note-saved-path"), null);
+  assert(root.textContent.includes("THIS ONE FILE ONLY"));
+
+  fetchQueue.push(() => Promise.resolve(response({saved_state})));
+  allowOnce.dispatch("click");
+  await settle();
+  assert.strictEqual(postCount("/api/field-notes/approval"), 2);
+  assert.strictEqual(root.getAttribute("aria-busy"), null);
+  assert.strictEqual(root.children.length, 1);
+  assert.strictEqual(root.children[0].tagName, "CODE");
+  assert.strictEqual(root.children[0].className, "field-note-saved-path");
+  assert.strictEqual(root.children[0].textContent, {json.dumps(saved_path)});
+''',
+        )
+
     def test_approval_renders_the_exact_one_file_scope(self) -> None:
         javascript = (
             Path(__file__).resolve().parents[1]
