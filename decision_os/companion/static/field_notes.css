@@ -50,3 +50,32 @@
   display: block;
   overflow-wrap: anywhere;
 }
+
+.field-note-reconnect-receipt {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+}
+
+.field-note-reconnect-receipt:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.field-note-reconnect-values {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+}
+
+.field-note-reconnect-values dt {
+  font-weight: 700;
+}
+
+.field-note-reconnect-values dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}

@@ -9,6 +9,19 @@
   let csrf = "";
   let lastSignature = "";
   let actionPending = false;
+  const reconnectFields = [
+    "state",
+    "selected_field_note_path",
+    "selected_full_note_sha256",
+    "full_notes_injected",
+    "failure_reason",
+    "metadata_entries_seen",
+    "metadata_files_valid",
+    "metadata_bytes_read",
+    "full_note_bytes_read",
+    "ordinary_distinct_paths_consumed",
+    "run_id",
+  ];
 
   function clear() {
     while (root.firstChild) root.removeChild(root.firstChild);
@@ -78,22 +91,7 @@
     node.textContent = error instanceof Error ? error.message : String(error);
   }
 
-  function render(snapshot) {
-    csrf = snapshot.csrf || csrf;
-    const field = snapshot.run && snapshot.run.field_note;
-    const signature = JSON.stringify(field || null);
-    if (signature === lastSignature) return;
-    lastSignature = signature;
-    actionPending = false;
-    root.removeAttribute("aria-busy");
-    clear();
-
-    if (!field || field.state === "none" || field.state === "skipped") {
-      root.hidden = true;
-      return;
-    }
-    root.hidden = false;
-
+  function renderFieldNote(field) {
     if (field.state === "saved") {
       root.appendChild(text("code", field.path, "field-note-saved-path"));
       return;
@@ -153,6 +151,50 @@
       actions.appendChild(deny);
       root.appendChild(actions);
     }
+  }
+
+  function renderReconnectReceipt(receipt) {
+    const section = document.createElement("section");
+    section.className = "field-note-reconnect-receipt";
+    section.appendChild(text("h2", "Field Note reconnect receipt"));
+
+    const values = document.createElement("dl");
+    values.className = "field-note-reconnect-values";
+    for (const key of reconnectFields) {
+      values.appendChild(text("dt", key));
+      values.appendChild(
+        text("dd", receipt[key] == null ? "NONE" : String(receipt[key]))
+      );
+    }
+    section.appendChild(values);
+    root.appendChild(section);
+  }
+
+  function render(snapshot) {
+    csrf = snapshot.csrf || csrf;
+    const run = snapshot.run || null;
+    const field = run && run.field_note;
+    const reconnect = run && run.field_note_reconnect;
+    const signature = JSON.stringify({
+      field_note: field || null,
+      field_note_reconnect: reconnect || null,
+    });
+    if (signature === lastSignature) return;
+    lastSignature = signature;
+    actionPending = false;
+    root.removeAttribute("aria-busy");
+    clear();
+
+    const fieldVisible = Boolean(
+      field && field.state !== "none" && field.state !== "skipped"
+    );
+    if (!fieldVisible && !reconnect) {
+      root.hidden = true;
+      return;
+    }
+    root.hidden = false;
+    if (fieldVisible) renderFieldNote(field);
+    if (reconnect) renderReconnectReceipt(reconnect);
   }
 
   async function refresh() {
