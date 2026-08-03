@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -745,6 +747,392 @@ class FieldNotesReconnectAdapterTests(unittest.IsolatedAsyncioTestCase):
                 result.reconnect_receipt.state,
                 {"ACTIVATED", "REUSED", "PROMOTABLE"},
             )
+
+
+class FieldNotesReconnectStaticUiTests(unittest.TestCase):
+    @staticmethod
+    def _no_match_receipt() -> dict[str, object]:
+        return {
+            "run_id": "run_no_match",
+            "state": "NO_MATCH",
+            "failure_reason": None,
+            "metadata_entries_seen": 7,
+            "metadata_candidate_files_seen": 3,
+            "metadata_files_valid": 2,
+            "metadata_bytes_read": 321,
+            "selected_field_note_path": None,
+            "selected_field_note_id": None,
+            "selected_metadata_sha256": None,
+            "selected_full_note_sha256": None,
+            "full_note_bytes_read": 0,
+            "full_notes_injected": 0,
+            "ordinary_distinct_paths_consumed": 4,
+        }
+
+    @staticmethod
+    def _activation_unknown_receipt() -> dict[str, object]:
+        return {
+            "run_id": "run_activation_unknown",
+            "state": "ACTIVATION_UNKNOWN",
+            "failure_reason": None,
+            "metadata_entries_seen": 5,
+            "metadata_candidate_files_seen": 2,
+            "metadata_files_valid": 2,
+            "metadata_bytes_read": 456,
+            "selected_field_note_path": (
+                ".decision-os/field-notes/bounded-reconnect-memory.md"
+            ),
+            "selected_field_note_id": "fn_bounded",
+            "selected_metadata_sha256": "b" * 64,
+            "selected_full_note_sha256": "a" * 64,
+            "full_note_bytes_read": 789,
+            "full_notes_injected": 1,
+            "ordinary_distinct_paths_consumed": 3,
+        }
+
+    @staticmethod
+    def _state(
+        receipt: dict[str, object] | None,
+        *,
+        field_note: dict[str, object] | None = None,
+        repository_path: str = "/private/repository-not-for-receipt",
+    ) -> dict[str, object]:
+        return {
+            "csrf": "csrf-reconnect",
+            "repository": {"path": repository_path},
+            "run": {
+                "state": "complete" if receipt is not None else "idle",
+                "field_note": field_note or {"state": "none"},
+                "field_note_reconnect": receipt,
+            },
+        }
+
+    def _run_ui_harness(
+        self,
+        initial_state: dict[str, object],
+        scenario: str,
+    ) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        javascript = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+            / "field_notes.js"
+        )
+        harness = r'''
+"use strict";
+
+const assert = require("assert");
+const fs = require("fs");
+const vm = require("vm");
+
+const javascriptPath = process.argv[2];
+const source = fs.readFileSync(javascriptPath, "utf8");
+
+class Element {
+  constructor(tagName = "div") {
+    this.tagName = tagName.toUpperCase();
+    this.id = "";
+    this.className = "";
+    this.hidden = false;
+    this.disabled = false;
+    this.type = "";
+    this.children = [];
+    this.parentNode = null;
+    this.listeners = new Map();
+    this.attributes = new Map();
+    this.ownText = "";
+  }
+
+  get firstChild() {
+    return this.children[0] || null;
+  }
+
+  get textContent() {
+    return this.ownText + this.children.map((child) => child.textContent).join("");
+  }
+
+  set textContent(value) {
+    this.ownText = value == null ? "" : String(value);
+    for (const child of this.children) child.parentNode = null;
+    this.children = [];
+  }
+
+  appendChild(child) {
+    child.parentNode = this;
+    this.children.push(child);
+    return child;
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    assert.notStrictEqual(index, -1, "Cannot remove a missing child.");
+    this.children.splice(index, 1);
+    child.parentNode = null;
+    return child;
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+
+  getAttribute(name) {
+    return this.attributes.has(name) ? this.attributes.get(name) : null;
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+  }
+
+  addEventListener(name, callback) {
+    const listeners = this.listeners.get(name) || [];
+    listeners.push(callback);
+    this.listeners.set(name, listeners);
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
+
+  querySelectorAll(selector) {
+    const matches = [];
+    for (const child of this.children) {
+      if (selector === "button" && child.tagName === "BUTTON") {
+        matches.push(child);
+      } else if (
+        selector.startsWith(".") &&
+        child.className.split(/\s+/).includes(selector.slice(1))
+      ) {
+        matches.push(child);
+      } else if (child.tagName === selector.toUpperCase()) {
+        matches.push(child);
+      }
+      matches.push(...child.querySelectorAll(selector));
+    }
+    return matches;
+  }
+}
+
+const document = {
+  body: new Element("body"),
+  createElement(tagName) {
+    return new Element(tagName);
+  },
+};
+const fetchQueue = [];
+async function fetchMock(path, options = {}) {
+  assert.strictEqual(path, "/api/state");
+  assert.strictEqual(options.credentials, "same-origin");
+  assert(fetchQueue.length > 0, `Unexpected fetch: ${path}`);
+  return fetchQueue.shift()();
+}
+function response(body) {
+  return {
+    ok: true,
+    async json() {
+      return body;
+    },
+  };
+}
+async function settle() {
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+async function main() {
+  const initialState = __INITIAL_STATE__;
+  fetchQueue.push(() => Promise.resolve(response(initialState)));
+  let intervalCallback = null;
+  const window = {
+    setInterval(callback) {
+      intervalCallback = callback;
+      return 1;
+    },
+  };
+  const sandbox = {
+    Error,
+    JSON,
+    Promise,
+    String,
+    console,
+    document,
+    fetch: fetchMock,
+    window,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, { filename: javascriptPath });
+  await settle();
+
+  async function poll(nextState) {
+    assert(intervalCallback, "Polling callback was not registered.");
+    fetchQueue.push(() => Promise.resolve(response(nextState)));
+    await intervalCallback();
+    await settle();
+  }
+
+  __SCENARIO__
+}
+
+main().catch((error) => {
+  console.error(error.stack || error);
+  process.exitCode = 1;
+});
+'''.replace("__INITIAL_STATE__", json.dumps(initial_state)).replace(
+            "__SCENARIO__", scenario
+        )
+        completed = subprocess.run(
+            [node, "-", str(javascript)],
+            input=harness,
+            text=True,
+            capture_output=True,
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=(
+                "Node Field Note reconnect UI harness failed:\n"
+                f"{completed.stdout}{completed.stderr}"
+            ),
+        )
+
+    def test_null_receipt_is_hidden(self) -> None:
+        self._run_ui_harness(
+            self._state(None),
+            r'''
+  const root = document.body.children[0];
+  assert.strictEqual(root.hidden, true);
+  assert.strictEqual(root.querySelector(".field-note-reconnect-receipt"), null);
+''',
+        )
+
+    def test_no_match_renders_exact_typed_fields_and_none(self) -> None:
+        self._run_ui_harness(
+            self._state(self._no_match_receipt()),
+            r'''
+  const root = document.body.children[0];
+  const receipt = root.querySelector(".field-note-reconnect-receipt");
+  assert(receipt);
+  assert.strictEqual(root.hidden, false);
+  assert.strictEqual(receipt.querySelector("h2").textContent, "Field Note reconnect receipt");
+  assert.deepStrictEqual(
+    receipt.querySelectorAll("dt").map((node) => node.textContent),
+    [
+      "state",
+      "selected_field_note_path",
+      "selected_full_note_sha256",
+      "full_notes_injected",
+      "failure_reason",
+      "metadata_entries_seen",
+      "metadata_files_valid",
+      "metadata_bytes_read",
+      "full_note_bytes_read",
+      "ordinary_distinct_paths_consumed",
+      "run_id",
+    ],
+  );
+  assert.deepStrictEqual(
+    receipt.querySelectorAll("dd").map((node) => node.textContent),
+    ["NO_MATCH", "NONE", "NONE", "0", "NONE", "7", "2", "321", "0", "4", "run_no_match"],
+  );
+  assert.strictEqual(receipt.querySelectorAll("button").length, 0);
+  assert(!receipt.textContent.includes("fn_bounded"));
+''',
+        )
+
+    def test_activation_unknown_with_one_injected_note_renders_exactly(self) -> None:
+        self._run_ui_harness(
+            self._state(self._activation_unknown_receipt()),
+            r'''
+  const receipt = document.body.children[0].querySelector(".field-note-reconnect-receipt");
+  const keys = receipt.querySelectorAll("dt").map((node) => node.textContent);
+  const values = receipt.querySelectorAll("dd").map((node) => node.textContent);
+  const projection = Object.fromEntries(keys.map((key, index) => [key, values[index]]));
+  assert.strictEqual(projection.state, "ACTIVATION_UNKNOWN");
+  assert.strictEqual(projection.selected_field_note_path, ".decision-os/field-notes/bounded-reconnect-memory.md");
+  assert.strictEqual(projection.selected_full_note_sha256, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  assert.strictEqual(projection.full_notes_injected, "1");
+  assert.strictEqual(projection.failure_reason, "NONE");
+  assert.strictEqual(projection.run_id, "run_activation_unknown");
+  assert(!receipt.textContent.includes("/private/repository-not-for-receipt"));
+''',
+        )
+
+    def test_reconnect_only_change_rerenders_unchanged_candidate(self) -> None:
+        candidate = {
+            "state": "candidate",
+            "title": "Unchanged candidate",
+            "value_level": 1,
+            "reusable_structure": "Preserve candidate behavior.",
+        }
+        next_state = json.dumps(
+            self._state(
+                self._activation_unknown_receipt(),
+                field_note=candidate,
+            )
+        )
+        self._run_ui_harness(
+            self._state(self._no_match_receipt(), field_note=candidate),
+            rf'''
+  const root = document.body.children[0];
+  const before = root.querySelector(".field-note-reconnect-receipt");
+  assert(before.textContent.includes("NO_MATCH"));
+  await poll({next_state});
+  const after = root.querySelector(".field-note-reconnect-receipt");
+  assert.notStrictEqual(after, before);
+  assert(after.textContent.includes("ACTIVATION_UNKNOWN"));
+  assert(root.textContent.includes("Unchanged candidate"));
+  assert(root.querySelectorAll("button").some((button) => button.textContent === "Save"));
+  assert(root.querySelectorAll("button").some((button) => button.textContent === "Skip"));
+''',
+        )
+
+    def test_new_run_clears_old_receipt(self) -> None:
+        cleared = json.dumps(self._state(None))
+        self._run_ui_harness(
+            self._state(self._activation_unknown_receipt()),
+            rf'''
+  const root = document.body.children[0];
+  assert(root.querySelector(".field-note-reconnect-receipt"));
+  await poll({cleared});
+  assert.strictEqual(root.querySelector(".field-note-reconnect-receipt"), null);
+  assert.strictEqual(root.hidden, true);
+''',
+        )
+
+    def test_repository_selection_clears_old_receipt(self) -> None:
+        selected = json.dumps(
+            self._state(
+                None,
+                repository_path="/private/new-repository-not-for-receipt",
+            )
+        )
+        self._run_ui_harness(
+            self._state(self._no_match_receipt()),
+            rf'''
+  const root = document.body.children[0];
+  assert(root.querySelector(".field-note-reconnect-receipt"));
+  await poll({selected});
+  assert.strictEqual(root.querySelector(".field-note-reconnect-receipt"), null);
+  assert.strictEqual(root.hidden, true);
+  assert(!root.textContent.includes("/private/new-repository-not-for-receipt"));
+''',
+        )
+
+    def test_receipt_has_no_maturity_upgrade_wording_or_actions(self) -> None:
+        self._run_ui_harness(
+            self._state(self._activation_unknown_receipt()),
+            r'''
+  const receipt = document.body.children[0].querySelector(".field-note-reconnect-receipt");
+  for (const forbidden of ["ACTIVATED", "REUSED", "PROMOTABLE", "success", "useful", "savings"]) {
+    assert(!receipt.textContent.includes(forbidden));
+  }
+  assert.strictEqual(receipt.querySelectorAll("button").length, 0);
+''',
+        )
 
 
 class FieldNotesReconnectControllerTests(unittest.TestCase):
