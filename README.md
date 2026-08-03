@@ -1,4 +1,4 @@
-# Decision-OS V13 LoopKit
+# Decision-OS V13 LoopKit ♻️
 
 ![Release](https://img.shields.io/github/v/release/shin4141/decision-os-v13-loopkit?label=release)
 ![License](https://img.shields.io/github/license/shin4141/decision-os-v13-loopkit)
