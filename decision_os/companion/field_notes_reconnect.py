@@ -77,6 +77,7 @@ _FAILURE_REASONS = frozenset(
         "selected_full_read_failed",
         "selected_identity_changed",
         "selected_metadata_changed",
+        "selected_filename_slug_mismatch",
         "selected_note_invalid",
         "reserved_envelope_marker",
     }
@@ -587,6 +588,13 @@ def _normalized_tokens(value: str) -> tuple[str, ...]:
     return tuple(tokens)
 
 
+def _a1_slug(title: str) -> str:
+    words = re.findall(r"[A-Za-z0-9]+", title.casefold())[:5]
+    if len(words) == 1:
+        words.append("note")
+    return "-".join(words) if len(words) >= 2 else "field-note"
+
+
 def _contains_tokens(haystack: tuple[str, ...], needle: tuple[str, ...]) -> bool:
     if not needle or len(needle) > len(haystack):
         return False
@@ -706,6 +714,18 @@ def _validate_full_note(data: bytes, metadata: _MetadataCandidate) -> str | None
         validate_compiled_markdown(data)
     except ValueError:
         return "selected_note_invalid"
+    h1_lines = [
+        line for line in text.splitlines() if re.match(r"^#[ \t]+\S", line)
+    ]
+    if len(h1_lines) != 1:
+        return "selected_note_invalid"
+    title = re.sub(r"^#[ \t]+", "", h1_lines[0], count=1)
+    filename_match = _FILENAME_RE.fullmatch(metadata.filename)
+    if (
+        filename_match is None
+        or filename_match.group("slug") != _a1_slug(title)
+    ):
+        return "selected_filename_slug_mismatch"
     positions: list[tuple[int, str]] = []
     for _, heading in BODY_HEADINGS:
         marker = f"\n## {heading}\n"

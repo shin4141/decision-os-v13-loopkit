@@ -524,6 +524,43 @@ class FieldNotesReconnectSafetyTests(unittest.TestCase):
             self.assertEqual("selected_note_invalid", plan.receipt.failure_reason)
             self.assertIsNone(plan.envelope)
 
+    def test_selected_filename_slug_must_match_validated_h1_title(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = create_repository(Path(temporary))
+            draft = write_note(repository, field_note_id="fn_slug_identity")
+            original = repository / draft.relative_path
+            renamed = original.with_name(
+                original.name.replace(
+                    "bounded-reconnect-memory",
+                    "different-valid-slug",
+                    1,
+                )
+            )
+            original.rename(renamed)
+
+            plan = prepare_field_note_reconnect(
+                repository,
+                "alpha beta gamma delta",
+                "run_1",
+            )
+
+            self.assertEqual("SELECTED", plan.receipt.state)
+            self.assertEqual(
+                renamed.relative_to(repository).as_posix(),
+                plan.receipt.selected_field_note_path,
+            )
+            self.assertEqual(
+                draft.field_note_id,
+                plan.receipt.selected_field_note_id,
+            )
+            self.assertEqual(
+                "selected_filename_slug_mismatch",
+                plan.receipt.failure_reason,
+            )
+            self.assertEqual(len(draft.markdown), plan.receipt.full_note_bytes_read)
+            self.assertEqual(0, plan.receipt.full_notes_injected)
+            self.assertIsNone(plan.envelope)
+
     def test_reserved_envelope_marker_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository = create_repository(Path(temporary))
@@ -711,7 +748,7 @@ class FieldNotesReconnectAdapterTests(unittest.IsolatedAsyncioTestCase):
 
 
 class FieldNotesReconnectControllerTests(unittest.TestCase):
-    def test_companion_projects_typed_receipt_and_preserves_exact_task(self) -> None:
+    def test_companion_projects_typed_receipt_and_uses_canonical_task(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             repository = create_repository(root)
@@ -755,12 +792,13 @@ class FieldNotesReconnectControllerTests(unittest.TestCase):
             )
             controller.select_repository(repository)
             task = "  preserve these exact task bytes  "
+            canonical_task = "preserve these exact task bytes"
             controller.start_run(task)
             assert controller._worker is not None
             controller._worker.join(timeout=5)
             self.assertFalse(controller._worker.is_alive())
             snapshot = controller.snapshot()
-            self.assertEqual([task], seen_prompts)
+            self.assertEqual([canonical_task], seen_prompts)
             self.assertEqual(
                 "NO_MATCH",
                 snapshot["run"]["field_note_reconnect"]["state"],
