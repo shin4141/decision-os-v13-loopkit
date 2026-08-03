@@ -8,6 +8,7 @@
 
   let csrf = "";
   let lastSignature = "";
+  let actionPending = false;
 
   function clear() {
     while (root.firstChild) root.removeChild(root.firstChild);
@@ -45,6 +46,29 @@
     render(body);
   }
 
+  function primaryAction(path, payload, primary, secondary, pendingLabel) {
+    if (actionPending) return;
+    actionPending = true;
+    const originalLabel = primary.textContent;
+    primary.disabled = true;
+    secondary.disabled = true;
+    primary.textContent = pendingLabel;
+    root.setAttribute("aria-busy", "true");
+    post(path, payload).catch((error) => {
+      actionPending = false;
+      primary.disabled = false;
+      secondary.disabled = false;
+      primary.textContent = originalLabel;
+      root.removeAttribute("aria-busy");
+      showError(error);
+    });
+  }
+
+  function guardedPost(path, payload = {}) {
+    if (actionPending) return;
+    post(path, payload).catch(showError);
+  }
+
   function showError(error) {
     let node = root.querySelector(".field-note-error");
     if (!node) {
@@ -60,6 +84,8 @@
     const signature = JSON.stringify(field || null);
     if (signature === lastSignature) return;
     lastSignature = signature;
+    actionPending = false;
+    root.removeAttribute("aria-busy");
     clear();
 
     if (!field || field.state === "none" || field.state === "skipped") {
@@ -81,12 +107,20 @@
       root.appendChild(text("p", field.reusable_structure || ""));
       const actions = document.createElement("div");
       actions.className = "field-note-actions";
-      actions.appendChild(
-        button("Save", () => post("/api/field-notes/save").catch(showError))
+      const save = button("Save", () =>
+        primaryAction(
+          "/api/field-notes/save",
+          {},
+          save,
+          skip,
+          "Preparing approval…"
+        )
       );
-      actions.appendChild(
-        button("Skip", () => post("/api/field-notes/skip").catch(showError))
+      const skip = button("Skip", () =>
+        guardedPost("/api/field-notes/skip")
       );
+      actions.appendChild(save);
+      actions.appendChild(skip);
       root.appendChild(actions);
       if (field.error) {
         root.appendChild(text("p", field.error, "field-note-error"));
@@ -103,18 +137,20 @@
       root.appendChild(text("pre", approval.content, "field-note-content"));
       const actions = document.createElement("div");
       actions.className = "field-note-actions";
-      actions.appendChild(
-        button("Allow once", () =>
-          post("/api/field-notes/approval", { choice: "allow_once" }).catch(
-            showError
-          )
+      const allowOnce = button("Allow once", () =>
+        primaryAction(
+          "/api/field-notes/approval",
+          { choice: "allow_once" },
+          allowOnce,
+          deny,
+          "Saving Field Note…"
         )
       );
-      actions.appendChild(
-        button("Deny", () =>
-          post("/api/field-notes/approval", { choice: "deny" }).catch(showError)
-        )
+      const deny = button("Deny", () =>
+        guardedPost("/api/field-notes/approval", { choice: "deny" })
       );
+      actions.appendChild(allowOnce);
+      actions.appendChild(deny);
       root.appendChild(actions);
     }
   }
