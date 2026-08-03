@@ -8,7 +8,8 @@ from pathlib import Path
 import sys
 import webbrowser
 
-from .controller import CompanionController
+from .field_notes_controller import FieldNotesCompanionController
+from .field_notes_server import configure_field_notes_server
 from .server import CompanionServer
 
 
@@ -33,11 +34,12 @@ def main(argv: list[str] | None = None) -> int:
             / "macos"
             / "DecisionOSCompanion.applescript"
         )
-    controller = CompanionController(
+    controller = FieldNotesCompanionController(
         state_path=arguments.state_path,
         picker_script=picker,
     )
     server = CompanionServer(controller, static_root=package_root / "static")
+    configure_field_notes_server(server)
     if not arguments.no_browser:
         webbrowser.open(server.bootstrap_url, new=1, autoraise=True)
     try:
