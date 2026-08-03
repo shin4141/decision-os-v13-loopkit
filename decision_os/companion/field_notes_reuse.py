@@ -551,6 +551,10 @@ class FieldNoteReuseReceipt:
     outcome_observer_id: str | None
     outcome_observer_relation: ObserverRelation | None
     outcome_as_of: str | None
+    outcome_scope: str | None
+    causal_evidence_ref: str | None
+    causal_evidence_sha256: str | None
+    contribution_separated: bool | None
     human_intervention: HumanIntervention | None
     next_action: NextAction | None
     reevaluation_condition: str | None
@@ -567,6 +571,10 @@ class FieldNoteReuseReceipt:
                 self.failure_reason is None
                 or self.use_evidence is not None
                 or self.outcome is not None
+                or self.outcome_scope is not None
+                or self.causal_evidence_ref is not None
+                or self.causal_evidence_sha256 is not None
+                or self.contribution_separated is not None
                 or self.next_action is not None
                 or self.reuse_event_id is not None
             ):
@@ -580,12 +588,23 @@ class FieldNoteReuseReceipt:
             self.outcome_observer_id,
             self.outcome_observer_relation,
             self.outcome_as_of,
+            self.outcome_scope,
+            self.contribution_separated,
             self.human_intervention,
             self.next_action,
             self.reuse_event_id,
         )
         if self.failure_reason is not None or any(value is None for value in required):
             raise ValueError("Reused receipt lacks its typed evidence axes.")
+        if type(self.contribution_separated) is not bool:
+            raise ValueError("Reused receipt has an invalid attribution axis.")
+        causal = (self.causal_evidence_ref, self.causal_evidence_sha256)
+        if (causal[0] is None) != (causal[1] is None):
+            raise ValueError("Reused receipt has incomplete causal evidence.")
+        if causal[1] is not None:
+            _sha256(causal[1], "Causal-evidence digest")
+        if self.outcome in {"HELPFUL", "HARMFUL"} and causal[0] is None:
+            raise ValueError("Causal outcome lacks causal evidence.")
         _sha256(self.reuse_event_id, "Reuse event ID")
         if self.outcome == "UNKNOWN" and self.next_action != "HOLD":
             raise ValueError("UNKNOWN outcome must HOLD.")
@@ -611,6 +630,10 @@ class FieldNoteReuseReceipt:
             "outcome_observer_id": self.outcome_observer_id,
             "outcome_observer_relation": self.outcome_observer_relation,
             "outcome_as_of": self.outcome_as_of,
+            "outcome_scope": self.outcome_scope,
+            "causal_evidence_ref": self.causal_evidence_ref,
+            "causal_evidence_sha256": self.causal_evidence_sha256,
+            "contribution_separated": self.contribution_separated,
             "human_intervention": self.human_intervention,
             "next_action": self.next_action,
             "reevaluation_condition": self.reevaluation_condition,
@@ -770,6 +793,10 @@ def _candidate_receipt(
         outcome_observer_id=None,
         outcome_observer_relation=None,
         outcome_as_of=None,
+        outcome_scope=None,
+        causal_evidence_ref=None,
+        causal_evidence_sha256=None,
+        contribution_separated=None,
         human_intervention=None,
         next_action=None,
         reevaluation_condition=None,
@@ -920,6 +947,10 @@ def assess_field_note_reuse(
         outcome_observer_id=evaluation.observer_id,
         outcome_observer_relation=evaluation.observer_relation,
         outcome_as_of=evaluation.as_of,
+        outcome_scope=evaluation.scope,
+        causal_evidence_ref=evaluation.causal_evidence_ref,
+        causal_evidence_sha256=evaluation.causal_evidence_sha256,
+        contribution_separated=evaluation.contribution_separated,
         human_intervention=claim.human_intervention,
         next_action=action,
         reevaluation_condition=condition,
