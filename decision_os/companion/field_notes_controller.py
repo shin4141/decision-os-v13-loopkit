@@ -9,6 +9,7 @@ import io
 import os
 from pathlib import Path
 import stat
+import threading
 from typing import Any
 
 from decision_os.acceleration.codex_adapter import (
@@ -19,7 +20,11 @@ from decision_os.acceleration.codex_adapter import (
     CodexRunResult,
 )
 from decision_os.acceleration.engine import AccelerationEngine
-from decision_os.companion.controller import CompanionController, CompanionError
+from decision_os.companion.controller import (
+    CompanionController,
+    CompanionError,
+    RunConflictError,
+)
 from decision_os.companion.field_notes_adapter import (
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
@@ -29,6 +34,9 @@ from decision_os.companion.field_notes_model import (
     compile_draft,
     configured_model_class,
     validate_compiled_markdown,
+)
+from decision_os.companion.field_notes_reconnect import (
+    FieldNoteReconnectReceipt,
 )
 
 
@@ -87,6 +95,7 @@ class FieldNotesCompanionController(CompanionController):
     def _empty_run() -> dict[str, Any]:
         run = CompanionController._empty_run()
         run["field_note"] = {"state": "none"}
+        run["field_note_reconnect"] = None
         return run
 
     def _clear_field_note_locked(self) -> None:
@@ -95,10 +104,54 @@ class FieldNotesCompanionController(CompanionController):
         self._run["field_note"] = {"state": "none"}
 
     def start_run(self, task: str, *, task_mode: str = "manual") -> dict[str, Any]:
+        if not isinstance(task, str) or not task.strip():
+            raise CompanionError("Enter one bounded task before running.")
+        if len(task) > 20_000:
+            raise CompanionError("The bounded task exceeds the local size limit.")
+        if not isinstance(task_mode, str) or task_mode not in {
+            "manual",
+            "contract",
+        }:
+            raise CompanionError("Run task mode is invalid.")
         with self._condition:
+            repository = self._require_repository()
+            if (
+                self._run.get("run_type") == "intelligence_transplant"
+                and self._run.get("state") == "active"
+            ):
+                raise RunConflictError(
+                    "One Intelligence Transplant Run is already active."
+                )
             self._require_no_active_run()
+            if self._active_intelligence_transplant_operations:
+                raise RunConflictError(
+                    "An Intelligence Transplant action is already active."
+                )
             self._clear_field_note_locked()
-        return super().start_run(task, task_mode=task_mode)
+            before = self._safe_receipt(repository)
+            self._run = self._empty_run()
+            self._run["task_mode"] = task_mode
+            self._run["state"] = "running"
+            self._run["progress"] = ["Preparing the bounded task."]
+            self._run["outcomes"]["execution"] = {
+                "state": "running",
+                "label": "Codex is working",
+            }
+            self._run["outcomes"]["verification"] = {
+                "state": "pending",
+                "label": "Pending",
+                "reason": None,
+            }
+            self._run["receipt_before"] = before
+            self._approval_choice = None
+            self._worker = threading.Thread(
+                target=self._run_worker,
+                args=(repository, task),
+                name="decision-os-companion-run",
+                daemon=True,
+            )
+            self._worker.start()
+            return self._snapshot_locked()
 
     def new_run(self) -> dict[str, Any]:
         with self._condition:
@@ -151,9 +204,17 @@ class FieldNotesCompanionController(CompanionController):
         repository: Path,
         result: CodexRunResult,
     ) -> None:
-        super()._complete_run(repository, result)
         draft = self._eligible_draft(result)
+        reconnect_receipt = getattr(result, "reconnect_receipt", None)
+        reconnect_projection = (
+            reconnect_receipt.as_dict()
+            if isinstance(reconnect_receipt, FieldNoteReconnectReceipt)
+            and reconnect_receipt.run_id == result.run_id
+            else None
+        )
         with self._condition:
+            super()._complete_run(repository, result)
+            self._run["field_note_reconnect"] = reconnect_projection
             if draft is None:
                 self._clear_field_note_locked()
             else:
