@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
@@ -90,6 +91,8 @@ def reuse_receipt(
     contribution_separated: bool = True,
     intervention: str = "NONE",
     action: str | None = None,
+    use_as_of: str = USE_AS_OF,
+    outcome_as_of: str | None = None,
 ) -> object:
     run_id = reusing_run_id or f"run_reuse_{evidence_tag}"
     structure_bytes = STRUCTURE_A if structure == "A" else STRUCTURE_B
@@ -115,7 +118,7 @@ def reuse_receipt(
         evidence_sha256=digest(f"use evidence {evidence_tag}"),
         observer_id=use_observer_id,
         observer_relation=use_observer_relation,  # type: ignore[arg-type]
-        as_of=USE_AS_OF,
+        as_of=use_as_of,
     )
     causal = outcome in {"HELPFUL", "HARMFUL"}
     evaluation = FieldNoteOutcomeEvaluation(
@@ -123,7 +126,7 @@ def reuse_receipt(
         scope=outcome_scope,
         observer_id=outcome_observer_id,
         observer_relation=outcome_observer_relation,  # type: ignore[arg-type]
-        as_of=USE_AS_OF,
+        as_of=outcome_as_of if outcome_as_of is not None else use_as_of,
         causal_evidence_ref=(
             f"run:{run_id}/causal:{evidence_tag}" if causal else None
         ),
@@ -201,9 +204,10 @@ class MaturityReviewTestCase(unittest.TestCase):
         self.ledger = FieldNoteMaturityLedger(self.root, self.note)
         self.append_count = 0
 
-    def append(self, **kwargs):
+    def append(self, *, recorded_at: str | None = None, **kwargs):
         receipt = reuse_receipt(self.note, **kwargs)
-        recorded_at = f"2026-08-04T11:{self.append_count:02d}:00Z"
+        if recorded_at is None:
+            recorded_at = f"2026-08-04T11:{self.append_count:02d}:00Z"
         self.append_count += 1
         return self.ledger.append_receipt(
             receipt,
@@ -616,6 +620,123 @@ class FieldNotesMaturityReviewBoundaryTests(MaturityReviewTestCase):
         self.assertEqual("NOT_ESTABLISHED", boundary.current_usefulness)
         self.assertEqual("NOT_PERFORMED", boundary.promotion_decision)
         self.assertFalse(boundary.serving_policy_derived)
+
+
+class FieldNotesMaturityReviewTemporalTests(MaturityReviewTestCase):
+    def test_review_as_of_later_than_all_included_evidence_succeeds(self) -> None:
+        self.append(
+            recorded_at="2026-08-04T11:00:00Z",
+            use_as_of="2026-08-04T10:00:00Z",
+            outcome_as_of="2026-08-04T11:30:00Z",
+        )
+        packet = self.review(review_as_of="2026-08-04T12:00:00Z")
+        self.assertEqual(1, len(packet.ordered_event_reviews))
+
+    def test_review_as_of_equal_to_latest_evidence_succeeds(self) -> None:
+        self.append(
+            recorded_at="2026-08-04T11:00:00Z",
+            use_as_of="2026-08-04T10:00:00Z",
+            outcome_as_of="2026-08-04T12:00:00Z",
+        )
+        packet = self.review(review_as_of="2026-08-04T12:00:00Z")
+        self.assertEqual(
+            packet.review_as_of,
+            packet.ordered_event_reviews[0].outcome_as_of,
+        )
+
+    def test_review_as_of_earlier_than_recorded_at_fails_closed(self) -> None:
+        self.append(recorded_at="2026-08-04T12:00:01Z")
+        with self.assertRaisesRegex(
+            FieldNoteMaturityReviewValidationError,
+            "precedes included evidence",
+        ):
+            self.review(review_as_of="2026-08-04T12:00:00Z")
+
+    def test_review_as_of_earlier_than_use_evidence_fails_closed(self) -> None:
+        self.append(
+            use_as_of="2026-08-04T12:00:01Z",
+            outcome_as_of="2026-08-04T11:00:00Z",
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityReviewValidationError,
+            "precedes included evidence",
+        ):
+            self.review(review_as_of="2026-08-04T12:00:00Z")
+
+    def test_review_as_of_earlier_than_outcome_evidence_fails_closed(self) -> None:
+        self.append(outcome_as_of="2026-08-04T12:00:01Z")
+        with self.assertRaisesRegex(
+            FieldNoteMaturityReviewValidationError,
+            "precedes included evidence",
+        ):
+            self.review(review_as_of="2026-08-04T12:00:00Z")
+
+    def test_equivalent_timezone_offsets_compare_by_instant(self) -> None:
+        equivalent = "2026-08-04T12:00:00+09:00"
+        self.append(
+            recorded_at=equivalent,
+            use_as_of=equivalent,
+            outcome_as_of=equivalent,
+        )
+        packet = self.review(review_as_of="2026-08-04T03:00:00Z")
+        self.assertEqual(1, len(packet.ordered_event_reviews))
+
+    def test_malformed_event_review_timestamps_are_rejected(self) -> None:
+        self.append()
+        event = self.review().ordered_event_reviews[0]
+        for field in (
+            "recorded_at",
+            "use_evidence_as_of",
+            "outcome_as_of",
+        ):
+            with self.subTest(field=field), self.assertRaisesRegex(
+                FieldNoteMaturityReviewValidationError,
+                "RFC 3339",
+            ):
+                replace(event, **{field: "not-a-timestamp"})
+
+    def test_direct_packet_construction_rejects_future_evidence(self) -> None:
+        self.append()
+        packet = self.review(review_as_of="2026-08-04T12:00:00Z")
+        future_event = replace(
+            packet.ordered_event_reviews[0],
+            outcome_as_of="2026-08-04T12:00:01Z",
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityReviewValidationError,
+            "precedes included evidence",
+        ):
+            replace(packet, ordered_event_reviews=(future_event,))
+
+    def test_failed_temporal_review_leaves_all_input_bytes_unchanged(self) -> None:
+        self.append(recorded_at="2026-08-04T12:00:01Z")
+        paths = (
+            self.ledger.events_path,
+            self.ledger.head_path,
+            self.ledger.lock_path,
+        )
+        note_before = bytes(NOTE_BYTES)
+        ledger_before = {path: path.read_bytes() for path in paths}
+        with self.assertRaises(FieldNoteMaturityReviewValidationError):
+            self.review(review_as_of="2026-08-04T12:00:00Z")
+        self.assertEqual(note_before, NOTE_BYTES)
+        self.assertEqual(
+            ledger_before,
+            {path: path.read_bytes() for path in paths},
+        )
+
+    def test_repeated_valid_temporal_generation_remains_deterministic(self) -> None:
+        equivalent = "2026-08-04T12:00:00+09:00"
+        self.append(
+            recorded_at=equivalent,
+            use_as_of=equivalent,
+            outcome_as_of=equivalent,
+        )
+        first = self.review(review_as_of="2026-08-04T03:00:00Z")
+        second = self.review(review_as_of="2026-08-04T03:00:00Z")
+        self.assertEqual(first, second)
+        self.assertEqual(first.serialize(), second.serialize())
+        self.assertEqual(first.render_text(), second.render_text())
 
 
 class FieldNotesMaturityReviewIntegrityTests(MaturityReviewTestCase):

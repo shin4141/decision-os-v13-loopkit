@@ -44,26 +44,31 @@ class FieldNoteMaturityReviewValidationError(
     """The requested exact Note, A4 partition, or review As-of is invalid."""
 
 
-def _validate_review_as_of(value: Any) -> str:
+def _parse_as_of(value: Any, *, label: str) -> tuple[str, datetime]:
     if not isinstance(value, str):
         raise FieldNoteMaturityReviewValidationError(
-            "Maturity review As-of must be text."
+            f"{label} must be text."
         )
     normalized = value.strip()
     if not normalized or len(normalized) > 64 or "\x00" in normalized:
         raise FieldNoteMaturityReviewValidationError(
-            "Maturity review As-of is outside its bounded schema."
+            f"{label} is outside its bounded schema."
         )
     try:
         parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
     except ValueError as exc:
         raise FieldNoteMaturityReviewValidationError(
-            "Maturity review As-of must be an RFC 3339 timestamp."
+            f"{label} must be an RFC 3339 timestamp."
         ) from exc
     if parsed.tzinfo is None:
         raise FieldNoteMaturityReviewValidationError(
-            "Maturity review As-of must be timezone-aware."
+            f"{label} must be timezone-aware."
         )
+    return normalized, parsed
+
+
+def _validate_review_as_of(value: Any) -> str:
+    normalized, _ = _parse_as_of(value, label="Maturity review As-of")
     return normalized
 
 
@@ -211,6 +216,13 @@ class FieldNoteMaturityEventReview:
     def __post_init__(self) -> None:
         if type(self.sequence) is not int or self.sequence < 0:
             raise ValueError("Maturity event review sequence is invalid.")
+        for field, label in (
+            ("recorded_at", "Event recorded-at"),
+            ("use_evidence_as_of", "Use-evidence As-of"),
+            ("outcome_as_of", "Outcome-evidence As-of"),
+        ):
+            normalized, _ = _parse_as_of(getattr(self, field), label=label)
+            object.__setattr__(self, field, normalized)
         for value, label in (
             (self.event_id, "Reuse event identity"),
             (self.previous_event_sha256, "Previous event identity"),
@@ -327,10 +339,14 @@ class FieldNoteMaturityReviewPacket:
     def __post_init__(self) -> None:
         if self.schema != MATURITY_REVIEW_SCHEMA:
             raise ValueError("Maturity review schema is unsupported.")
+        review_as_of, review_instant = _parse_as_of(
+            self.review_as_of,
+            label="Maturity review As-of",
+        )
         object.__setattr__(
             self,
             "review_as_of",
-            _validate_review_as_of(self.review_as_of),
+            review_as_of,
         )
         if not isinstance(self.note_identity, FieldNoteIdentity):
             raise ValueError("Maturity review lacks an exact Note identity.")
@@ -338,6 +354,20 @@ class FieldNoteMaturityReviewPacket:
             canonical_json(self.note_identity.as_dict()).encode("utf-8")
         ).hexdigest()
         reviews = self.ordered_event_reviews
+        for item in reviews:
+            for evidence_as_of, label in (
+                (item.recorded_at, "Event recorded-at"),
+                (item.use_evidence_as_of, "Use-evidence As-of"),
+                (item.outcome_as_of, "Outcome-evidence As-of"),
+            ):
+                _, evidence_instant = _parse_as_of(
+                    evidence_as_of,
+                    label=label,
+                )
+                if evidence_instant > review_instant:
+                    raise FieldNoteMaturityReviewValidationError(
+                        "Maturity review As-of precedes included evidence."
+                    )
         event_ids = tuple(sorted(item.event_id for item in reviews))
         sequence = tuple(item.sequence for item in reviews)
         chain_is_valid = all(
