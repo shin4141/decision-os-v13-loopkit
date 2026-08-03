@@ -63,6 +63,41 @@ def _validate_recorded_at(value: Any) -> str:
     return value
 
 
+def _validate_delivery_context(
+    context: FieldNoteReconnectReceipt | None,
+    *,
+    note: FieldNoteIdentity,
+    note_byte_count: int,
+    reusing_run_id: str | None,
+) -> None:
+    if context is None:
+        return
+    if not isinstance(context, FieldNoteReconnectReceipt):
+        raise FieldNoteMaturityCommitValidationError(
+            "Maturity commit delivery context is not a typed A2 receipt."
+        )
+    if (
+        context.state not in {"INJECTED", "ACTIVATION_UNKNOWN"}
+        or context.full_notes_injected != 1
+    ):
+        raise FieldNoteMaturityCommitValidationError(
+            "Maturity commit A2 delivery context is not injected."
+        )
+    if (
+        context.selected_field_note_path != note.note_path
+        or context.selected_field_note_id != note.field_note_id
+        or context.selected_full_note_sha256 != note.note_sha256
+        or context.full_note_bytes_read != note_byte_count
+    ):
+        raise FieldNoteMaturityCommitValidationError(
+            "Maturity commit A2 delivery context does not match the exact Field Note."
+        )
+    if reusing_run_id is not None and context.run_id != reusing_run_id:
+        raise FieldNoteMaturityCommitValidationError(
+            "Maturity commit A2 delivery context belongs to a different reusing Run."
+        )
+
+
 @dataclass(frozen=True)
 class FieldNoteMaturityCommitRequest:
     """Exact Note, bounded A3 claim, and optional non-authoritative A2 context."""
@@ -93,13 +128,16 @@ class FieldNoteMaturityCommitRequest:
             raise FieldNoteMaturityCommitValidationError(
                 "Maturity commit reuse claim is not typed A3 evidence."
             )
-        if self.delivery_context is not None and not isinstance(
+        _validate_delivery_context(
             self.delivery_context,
-            FieldNoteReconnectReceipt,
-        ):
-            raise FieldNoteMaturityCommitValidationError(
-                "Maturity commit delivery context is not a typed A2 receipt."
-            )
+            note=self.note,
+            note_byte_count=len(self.note_bytes),
+            reusing_run_id=(
+                self.reuse_claim.reusing_run_id
+                if self.reuse_claim is not None
+                else None
+            ),
+        )
         object.__setattr__(
             self,
             "recorded_at",
@@ -143,6 +181,7 @@ class FieldNoteMaturityCommitResult:
             return
         if (
             self.assessment.state != "REUSED"
+            or self.assessment.use_evidence is None
             or self.append_result is None
             or self.durable_snapshot is None
             or self.append_result.appended != (self.status == "RECORDED")
@@ -150,6 +189,14 @@ class FieldNoteMaturityCommitResult:
             raise ValueError(
                 "Committed maturity result lacks confirmed A4 evidence."
             )
+        _validate_delivery_context(
+            self.delivery_context,
+            note=self.assessment.note,
+            note_byte_count=(
+                self.assessment.use_evidence.structure_binding.note_size
+            ),
+            reusing_run_id=self.assessment.reusing_run_id,
+        )
         matching = tuple(
             event
             for event in self.durable_snapshot.events

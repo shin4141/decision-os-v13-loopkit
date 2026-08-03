@@ -9,6 +9,7 @@ import unittest
 from decision_os.companion.field_notes_maturity_commit import (
     FieldNoteMaturityCommitConfirmationError,
     FieldNoteMaturityCommitRequest,
+    FieldNoteMaturityCommitResult,
     FieldNoteMaturityCommitValidationError,
     commit_field_note_maturity,
 )
@@ -182,21 +183,52 @@ def reuse_claim(
     )
 
 
-def reconnect_receipt(note: FieldNoteIdentity) -> FieldNoteReconnectReceipt:
+def reconnect_receipt(
+    note: FieldNoteIdentity,
+    *,
+    state: str = "ACTIVATION_UNKNOWN",
+    run_id: str = "run_reuse_1",
+    note_path: str | None = None,
+    field_note_id: str | None = None,
+    note_sha256: str | None = None,
+    full_note_bytes_read: int | None = None,
+) -> FieldNoteReconnectReceipt:
+    selected = state != "NO_MATCH"
+    injected = state in {"INJECTED", "ACTIVATION_UNKNOWN"}
     return FieldNoteReconnectReceipt(
-        run_id="run_reuse_1",
-        state="ACTIVATION_UNKNOWN",
+        run_id=run_id,
+        state=state,  # type: ignore[arg-type]
         failure_reason=None,
         metadata_entries_seen=1,
         metadata_candidate_files_seen=1,
         metadata_files_valid=1,
         metadata_bytes_read=700,
-        selected_field_note_path=note.note_path,
-        selected_field_note_id=note.field_note_id,
-        selected_metadata_sha256=digest("metadata"),
-        selected_full_note_sha256=note.note_sha256,
-        full_note_bytes_read=len(NOTE_BYTES),
-        full_notes_injected=1,
+        selected_field_note_path=(
+            (note.note_path if note_path is None else note_path)
+            if selected
+            else None
+        ),
+        selected_field_note_id=(
+            (note.field_note_id if field_note_id is None else field_note_id)
+            if selected
+            else None
+        ),
+        selected_metadata_sha256=(digest("metadata") if selected else None),
+        selected_full_note_sha256=(
+            (note.note_sha256 if note_sha256 is None else note_sha256)
+            if selected
+            else None
+        ),
+        full_note_bytes_read=(
+            (
+                len(NOTE_BYTES)
+                if full_note_bytes_read is None
+                else full_note_bytes_read
+            )
+            if selected
+            else 0
+        ),
+        full_notes_injected=1 if injected else 0,
         ordinary_distinct_paths_consumed=1,
     )
 
@@ -418,6 +450,166 @@ class FieldNotesMaturityCommitFlowTests(MaturityCommitTestCase):
             result.assessment.failure_reason,
         )
         self.assertFalse(self.root.exists())
+
+
+class FieldNotesMaturityCommitDeliveryProvenanceTests(MaturityCommitTestCase):
+    def test_matching_injected_a2_context_is_retained(self) -> None:
+        context = reconnect_receipt(self.note, state="INJECTED")
+        result = self.commit(delivery_context=context)
+        self.assertEqual(context, result.delivery_context)
+
+    def test_matching_activation_unknown_a2_context_is_retained(self) -> None:
+        context = reconnect_receipt(self.note, state="ACTIVATION_UNKNOWN")
+        result = self.commit(delivery_context=context)
+        self.assertEqual(context, result.delivery_context)
+
+    def test_absent_a2_context_remains_valid(self) -> None:
+        result = self.commit(delivery_context=None)
+        self.assertEqual("RECORDED", result.status)
+        self.assertIsNone(result.delivery_context)
+
+    def test_no_match_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(self.note, state="NO_MATCH")
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "not injected",
+        ):
+            self.request(delivery_context=context)
+
+    def test_selected_but_not_injected_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(self.note, state="SELECTED")
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "not injected",
+        ):
+            self.request(delivery_context=context)
+
+    def test_different_note_path_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(
+            self.note,
+            note_path=(
+                ".decision-os/field-notes/"
+                "2026-08-04-different-note-bbbbbbbbbb.md"
+            ),
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "exact Field Note",
+        ):
+            self.request(delivery_context=context)
+
+    def test_different_field_note_id_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(
+            self.note,
+            field_note_id="fn_a5_different",
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "exact Field Note",
+        ):
+            self.request(delivery_context=context)
+
+    def test_different_full_note_sha256_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(
+            self.note,
+            note_sha256=digest("different full Note"),
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "exact Field Note",
+        ):
+            self.request(delivery_context=context)
+
+    def test_different_full_note_byte_count_a2_context_is_rejected(self) -> None:
+        context = reconnect_receipt(
+            self.note,
+            full_note_bytes_read=len(NOTE_BYTES) + 1,
+        )
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "exact Field Note",
+        ):
+            self.request(delivery_context=context)
+
+    def test_different_a2_run_id_is_rejected_when_a3_claim_exists(self) -> None:
+        context = reconnect_receipt(self.note, run_id="run_reuse_different")
+        with self.assertRaisesRegex(
+            FieldNoteMaturityCommitValidationError,
+            "different reusing Run",
+        ):
+            self.request(delivery_context=context)
+
+    def test_rejected_a2_context_creates_no_a4_ledger_mutation(self) -> None:
+        context = reconnect_receipt(
+            self.note,
+            note_sha256=digest("cross-bound Note"),
+        )
+        with self.assertRaises(FieldNoteMaturityCommitValidationError):
+            self.request(delivery_context=context)
+        self.assertFalse(self.root.exists())
+
+    def test_valid_a2_context_does_not_change_a3_or_a4_axes(self) -> None:
+        without_root = Path(self.temporary.name) / "provenance-without-a2"
+        with_root = Path(self.temporary.name) / "provenance-with-a2"
+        without = commit_field_note_maturity(
+            FieldNoteMaturityLedger(without_root, self.note),
+            self.request(),
+        )
+        context = reconnect_receipt(self.note, state="INJECTED")
+        with_context = commit_field_note_maturity(
+            FieldNoteMaturityLedger(with_root, self.note),
+            self.request(delivery_context=context),
+        )
+        self.assertEqual(without.assessment, with_context.assessment)
+        self.assertEqual(
+            without.assessment.reuse_event_id,
+            with_context.assessment.reuse_event_id,
+        )
+        self.assertEqual(
+            without.append_result.event,
+            with_context.append_result.event,
+        )
+        self.assertEqual(
+            without.durable_snapshot.evidence_maturity,
+            with_context.durable_snapshot.evidence_maturity,
+        )
+        self.assertEqual(
+            len(without.durable_snapshot.events),
+            len(with_context.durable_snapshot.events),
+        )
+        self.assertEqual(
+            without.durable_snapshot.current_serving_policy,
+            with_context.durable_snapshot.current_serving_policy,
+        )
+        self.assertIsNone(
+            with_context.durable_snapshot.current_serving_policy
+            .automatic_injection
+        )
+        self.assertEqual(context, with_context.delivery_context)
+
+    def test_direct_committed_result_rejects_cross_bound_a2_context(self) -> None:
+        context = reconnect_receipt(self.note)
+        valid = self.commit(delivery_context=context)
+        cross_bound = (
+            replace(
+                context,
+                selected_field_note_path=(
+                    ".decision-os/field-notes/"
+                    "2026-08-04-direct-cross-bound-cccccccccc.md"
+                ),
+            ),
+            replace(context, run_id="run_reuse_different"),
+        )
+        for invalid_context in cross_bound:
+            with self.subTest(invalid_context=invalid_context):
+                with self.assertRaises(FieldNoteMaturityCommitValidationError):
+                    FieldNoteMaturityCommitResult(
+                        status=valid.status,
+                        assessment=valid.assessment,
+                        delivery_context=invalid_context,
+                        append_result=valid.append_result,
+                        durable_snapshot=valid.durable_snapshot,
+                    )
 
 
 class FieldNotesMaturityCommitEvidenceTests(MaturityCommitTestCase):
