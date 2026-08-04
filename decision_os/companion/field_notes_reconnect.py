@@ -211,6 +211,28 @@ class FieldNoteReconnectPlan:
 
 
 @dataclass(frozen=True)
+class FieldNoteExactRead:
+    """One exact-path Note read with no relevance scan or selection."""
+
+    relative_path: str
+    field_note_id: str
+    source_run_id: str
+    metadata_sha256: str
+    metadata_byte_count: int
+    note_sha256: str
+    note_bytes: bytes
+    envelope: str
+
+
+class FieldNoteExactReadError(RuntimeError):
+    """An exact-path Note could not be read through the safe local lane."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
 class _FileIdentity:
     device: int
     inode: int
@@ -861,6 +883,171 @@ def _empty_receipt(
         full_notes_injected=0,
         ordinary_distinct_paths_consumed=0,
     )
+
+
+def read_exact_field_note(
+    repository: Path,
+    relative_path: str,
+) -> FieldNoteExactRead:
+    """Read exactly one named Note without scanning or relevance scoring."""
+
+    repository_fd: int | None = None
+    decision_fd: int | None = None
+    notes_fd: int | None = None
+    try:
+        try:
+            segments = _path_segments(
+                relative_path,
+                allow_trailing_slash=False,
+            )
+        except (TypeError, ValueError) as exc:
+            raise FieldNoteExactReadError("exact_path_invalid") from exc
+        raw_segments = relative_path.split("/")
+        if (
+            segments[:2] != (".decision-os", "field-notes")
+            or len(segments) != 3
+            or len(raw_segments) != 3
+            or raw_segments[:2] != [".decision-os", "field-notes"]
+            or not raw_segments[2].endswith(".md")
+        ):
+            raise FieldNoteExactReadError("exact_path_invalid")
+        filename = raw_segments[2]
+
+        repository_fd = _open_directory(
+            repository,
+            dir_fd=None,
+            missing_ok=False,
+            reason="repository_root_unsafe",
+        )
+        assert repository_fd is not None
+        repository_identity = _identity(os.fstat(repository_fd))
+        decision_fd = _open_directory(
+            ".decision-os",
+            dir_fd=repository_fd,
+            missing_ok=True,
+            reason="decision_directory_unsafe",
+        )
+        if decision_fd is None:
+            raise FieldNoteExactReadError("exact_note_missing")
+        decision_identity = _identity(os.fstat(decision_fd))
+        notes_fd = _open_directory(
+            "field-notes",
+            dir_fd=decision_fd,
+            missing_ok=True,
+            reason="field_notes_directory_unsafe",
+        )
+        if notes_fd is None:
+            raise FieldNoteExactReadError("exact_note_missing")
+        notes_identity = _identity(os.fstat(notes_fd))
+
+        try:
+            entry_stat = os.stat(
+                filename,
+                dir_fd=notes_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            raise FieldNoteExactReadError("exact_note_missing") from None
+        except OSError:
+            raise FieldNoteExactReadError("exact_entry_unsafe") from None
+        if not stat.S_ISREG(entry_stat.st_mode):
+            raise FieldNoteExactReadError("exact_entry_unsafe")
+        expected = _identity(entry_stat)
+        try:
+            metadata_bytes, consumed, metadata_error = _read_metadata(
+                notes_fd,
+                filename,
+                expected,
+                MAX_METADATA_BYTES,
+            )
+        except _ScanStop as exc:
+            raise FieldNoteExactReadError(
+                "exact_changed_during_read"
+                if exc.reason == "candidate_entry_unsafe"
+                else "exact_note_invalid"
+            ) from exc
+        if metadata_error is not None or metadata_bytes is None:
+            raise FieldNoteExactReadError("exact_note_invalid")
+        try:
+            metadata = _validated_metadata(metadata_bytes, filename)
+        except (TypeError, ValueError) as exc:
+            raise FieldNoteExactReadError("exact_note_invalid") from exc
+        scope = metadata["scope"]
+        candidate = _MetadataCandidate(
+            relative_path=relative_path,
+            filename=filename,
+            identity=expected,
+            metadata_bytes=metadata_bytes,
+            metadata_sha256=hashlib.sha256(metadata_bytes).hexdigest(),
+            field_note_id=metadata["field_note_id"],
+            schema_version=metadata["schema_version"],
+            value_level=metadata["value_level"],
+            status=metadata["status"],
+            created_at=_parse_time(metadata["created_at"]),
+            trigger_terms=tuple(metadata["trigger_terms"]),
+            task_family=scope["task_family"],
+            path_prefixes=tuple(
+                _path_segments(value, allow_trailing_slash=True)
+                for value in scope["path_prefixes"]
+            ),
+            exclude_terms=tuple(scope["exclude_terms"]),
+        )
+        note, full_bytes, full_error = _read_full_note(notes_fd, candidate)
+        if full_error is not None or note is None:
+            if full_error in {
+                "selected_entry_changed",
+                "selected_full_read_failed",
+                "selected_identity_changed",
+                "selected_metadata_changed",
+            }:
+                raise FieldNoteExactReadError("exact_changed_during_read")
+            raise FieldNoteExactReadError("exact_note_invalid")
+        if full_bytes != len(note):
+            raise FieldNoteExactReadError("exact_changed_during_read")
+        if not (
+            _verify_directory_entry(
+                repository,
+                dir_fd=None,
+                descriptor=repository_fd,
+                expected=repository_identity,
+            )
+            and _verify_directory_entry(
+                ".decision-os",
+                dir_fd=repository_fd,
+                descriptor=decision_fd,
+                expected=decision_identity,
+            )
+            and _verify_directory_entry(
+                "field-notes",
+                dir_fd=decision_fd,
+                descriptor=notes_fd,
+                expected=notes_identity,
+            )
+        ):
+            raise FieldNoteExactReadError("exact_changed_during_read")
+        return FieldNoteExactRead(
+            relative_path=relative_path,
+            field_note_id=candidate.field_note_id,
+            source_run_id=metadata["source_run_id"],
+            metadata_sha256=candidate.metadata_sha256,
+            metadata_byte_count=consumed,
+            note_sha256=hashlib.sha256(note).hexdigest(),
+            note_bytes=note,
+            envelope=_envelope(candidate, note),
+        )
+    except FieldNoteExactReadError:
+        raise
+    except _ScanStop as exc:
+        raise FieldNoteExactReadError(exc.reason) from exc
+    except Exception as exc:
+        raise FieldNoteExactReadError("scan_failure") from exc
+    finally:
+        for descriptor in (notes_fd, decision_fd, repository_fd):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
 
 
 def prepare_field_note_reconnect(
