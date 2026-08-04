@@ -15,8 +15,12 @@ from unittest.mock import patch
 from decision_os.acceleration.codex_adapter import (
     ADAPTER_NAME,
     CODEX_CLI_VERSION,
+    CODEX_MODEL,
+    CODEX_REASONING_EFFORT,
+    CODEX_SERVICE_TIER,
     CodexReadEvidence,
     CodexRunResult,
+    CodexRuntimeIdentity,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.companion.field_notes_adapter import (
@@ -445,7 +449,16 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             trusted_source_model_class="stronger",
             trusted_target_model_class="lower-cost",
             creator_live_a1_capture_provider=lambda: (
-                FieldNoteCreatorLiveA1CaptureConfig("run-live-a1")
+                FieldNoteCreatorLiveA1CaptureConfig(
+                    "run-live-a1",
+                    CodexRuntimeIdentity(
+                        model=CODEX_MODEL,
+                        reasoning_effort=CODEX_REASONING_EFFORT,
+                        service_tier=CODEX_SERVICE_TIER,
+                        codex_cli_version=CODEX_CLI_VERSION,
+                        account_type="chatgpt",
+                    ),
+                )
             ),
         )
         result = await adapter.run(

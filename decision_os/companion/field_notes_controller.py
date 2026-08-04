@@ -16,7 +16,11 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_CLI_VERSION,
     CodexApproval,
     CodexLifecycleEvent,
+    CodexReadEvidence,
     CodexRunResult,
+    CodexRuntimeIdentity,
+    _READ_MAX_BYTES,
+    _READ_MAX_DISTINCT_PATHS,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.companion.controller import (
@@ -73,6 +77,37 @@ class _PendingSave:
     field_notes_directory_identity: tuple[int, int] | None
 
 
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveA1RunCompletion:
+    """Typed facts observed from one completed creator-live Run 1."""
+
+    run_id: str
+    task_sha256: str
+    actual_runtime_identity: CodexRuntimeIdentity
+    proposal_attempts: int
+    successful_read_count: int
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.run_id, str)
+            or not self.run_id.strip()
+            or len(self.task_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.task_sha256
+            )
+            or not isinstance(
+                self.actual_runtime_identity,
+                CodexRuntimeIdentity,
+            )
+            or self.proposal_attempts != 1
+            or type(self.successful_read_count) is not int
+            or self.successful_read_count < 0
+            or self.successful_read_count > _READ_MAX_DISTINCT_PATHS
+        ):
+            raise ValueError("Creator-live A1 Run completion is invalid.")
+
+
 class FieldNotesCompanionController(CompanionController):
     """Companion controller extended only with Field Notes Lite Capture."""
 
@@ -83,6 +118,9 @@ class FieldNotesCompanionController(CompanionController):
             FieldNoteCreatorLiveA1CaptureConfig | None
         ) = None
         self._creator_live_a1_completed_run_id: str | None = None
+        self._creator_live_a1_run_completion: (
+            FieldNoteCreatorLiveA1RunCompletion | None
+        ) = None
         self._creator_live_a1_failure_reason: str | None = None
         self._creator_live_a1_direct_write_identity: str | None = None
         trusted_source_model_class = configured_model_class(
@@ -131,15 +169,20 @@ class FieldNotesCompanionController(CompanionController):
         task: str,
         *,
         run_id: str,
+        expected_runtime_identity: CodexRuntimeIdentity,
     ) -> dict[str, Any]:
         """Start one read-only Run whose only capture path is the A1 tool."""
 
-        config = FieldNoteCreatorLiveA1CaptureConfig(run_id=run_id)
+        config = FieldNoteCreatorLiveA1CaptureConfig(
+            run_id=run_id,
+            expected_runtime_identity=expected_runtime_identity,
+        )
         with self._condition:
             self._require_no_active_run()
             self._clear_field_note_locked()
             self._creator_live_a1_capture_config = config
             self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
         try:
@@ -154,6 +197,7 @@ class FieldNotesCompanionController(CompanionController):
             self._clear_field_note_locked()
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
         return super().new_run()
@@ -164,6 +208,7 @@ class FieldNotesCompanionController(CompanionController):
             self._clear_field_note_locked()
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             return self._snapshot_locked()
@@ -203,6 +248,86 @@ class FieldNotesCompanionController(CompanionController):
             return None
         return draft
 
+    @staticmethod
+    def _creator_live_successful_read(
+        evidence: CodexReadEvidence,
+    ) -> bool:
+        return bool(
+            isinstance(evidence, CodexReadEvidence)
+            and evidence.status == "succeeded"
+            and isinstance(evidence.path, str)
+            and evidence.path
+            and type(evidence.byte_count) is int
+            and evidence.byte_count >= 0
+            and evidence.byte_count <= _READ_MAX_BYTES
+            and isinstance(evidence.sha256, str)
+            and len(evidence.sha256) == 64
+            and all(
+                character in "0123456789abcdef"
+                for character in evidence.sha256
+            )
+            and isinstance(evidence.repository_identity, str)
+            and bool(evidence.repository_identity)
+            and evidence.reason is None
+        )
+
+    @classmethod
+    def _eligible_creator_live_draft(
+        cls,
+        result: CodexRunResult,
+        *,
+        expected_runtime_identity: CodexRuntimeIdentity,
+    ) -> FieldNoteDraft | None:
+        draft = getattr(result, "field_note_proposal", None)
+        task_sha256 = getattr(
+            result,
+            "creator_live_a1_task_sha256",
+            None,
+        )
+        if not isinstance(draft, FieldNoteDraft):
+            return None
+        try:
+            validate_compiled_markdown(draft.markdown)
+        except ValueError:
+            return None
+        if (
+            getattr(result, "creator_live_a1_capture", False) is not True
+            or getattr(result, "creator_live_a1_failure_reason", None)
+            is not None
+            or getattr(result, "creator_live_a1_proposal_attempts", 0) != 1
+            or not isinstance(task_sha256, str)
+            or len(task_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in task_sha256
+            )
+            or result.runtime_identity != expected_runtime_identity
+            or draft.source_run_id != result.run_id
+            or hashlib.sha256(draft.markdown).hexdigest() != draft.sha256
+            or not result.normal_terminal
+            or result.turn_status != "completed"
+            or result.status
+            not in {"NORMAL_TERMINAL", "VERIFIED_SAVE", "VERIFIED_REUSE"}
+            or result.failure_diagnostic is not None
+            or result.file_actions
+            or result.checkpoint_outcomes
+            or len(result.read_evidence) > _READ_MAX_DISTINCT_PATHS
+            or len(
+                {
+                    evidence.path
+                    for evidence in result.read_evidence
+                }
+            ) != len(result.read_evidence)
+            or any(
+                not cls._creator_live_successful_read(evidence)
+                for evidence in result.read_evidence
+            )
+            or not draft.body_value("evidence").strip()
+            or not draft.body_value("remaining_unknowns").strip()
+        ):
+            return None
+        return draft
+
     def _complete_run(
         self,
         repository: Path,
@@ -214,16 +339,52 @@ class FieldNotesCompanionController(CompanionController):
             "creator_live_a1_failure_reason",
             None,
         )
-        if capture is not None and (
-            getattr(result, "creator_live_a1_capture", False) is not True
-            or result.run_id != capture.run_id
-        ):
-            capture_failure = "A1_CAPTURE_IDENTITY_MISMATCH"
-        draft = (
-            self._eligible_draft(result)
-            if capture_failure is None
-            else None
-        )
+        completion: FieldNoteCreatorLiveA1RunCompletion | None = None
+        if capture is not None:
+            if (
+                getattr(result, "creator_live_a1_capture", False) is not True
+                or result.run_id != capture.run_id
+            ):
+                capture_failure = "A1_CAPTURE_IDENTITY_MISMATCH"
+            elif capture_failure is None and result.runtime_identity is None:
+                capture_failure = "A1_ACTUAL_RUNTIME_IDENTITY_MISSING"
+            elif capture_failure is None and (
+                result.runtime_identity
+                != capture.expected_runtime_identity
+            ):
+                capture_failure = "A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH"
+            elif capture_failure is None and any(
+                evidence.status != "succeeded"
+                for evidence in result.read_evidence
+            ):
+                capture_failure = "A1_READ_EVIDENCE_FAILED"
+            draft = (
+                self._eligible_creator_live_draft(
+                    result,
+                    expected_runtime_identity=(
+                        capture.expected_runtime_identity
+                    ),
+                )
+                if capture_failure is None
+                else None
+            )
+            if draft is not None:
+                assert result.runtime_identity is not None
+                completion = FieldNoteCreatorLiveA1RunCompletion(
+                    run_id=result.run_id,
+                    task_sha256=getattr(
+                        result,
+                        "creator_live_a1_task_sha256",
+                    ),
+                    actual_runtime_identity=result.runtime_identity,
+                    proposal_attempts=getattr(
+                        result,
+                        "creator_live_a1_proposal_attempts",
+                    ),
+                    successful_read_count=len(result.read_evidence),
+                )
+        else:
+            draft = self._eligible_draft(result)
         reconnect_receipt = getattr(result, "reconnect_receipt", None)
         reconnect_projection = (
             reconnect_receipt.as_dict()
@@ -236,6 +397,7 @@ class FieldNotesCompanionController(CompanionController):
             if capture is not None:
                 self._creator_live_a1_completed_run_id = capture.run_id
                 self._creator_live_a1_capture_config = None
+            self._creator_live_a1_run_completion = completion
             self._creator_live_a1_failure_reason = capture_failure
             self._run["field_note_reconnect"] = reconnect_projection
             if draft is None:
@@ -291,6 +453,22 @@ class FieldNotesCompanionController(CompanionController):
                 raise FieldNoteError("A1_CAPTURE_IDENTITY_MISMATCH")
             return self._field_note_draft
 
+    def creator_live_a1_run_completion(
+        self,
+    ) -> FieldNoteCreatorLiveA1RunCompletion:
+        """Return the exact typed Run-1 completion consumed by the bridge."""
+
+        with self._condition:
+            completion = self._creator_live_a1_run_completion
+            if completion is None:
+                reason = self._creator_live_a1_failure_reason
+                if reason is not None:
+                    raise FieldNoteError(reason)
+                raise FieldNoteError(
+                    "Creator-live A1 Run completion is unavailable."
+                )
+            return completion
+
     def _fail_run(self, repository: Path, exc: Exception) -> None:
         super()._fail_run(repository, exc)
         with self._condition:
@@ -300,6 +478,7 @@ class FieldNotesCompanionController(CompanionController):
                 )
                 self._creator_live_a1_capture_config = None
                 self._creator_live_a1_failure_reason = "A1_RUN_FAILED"
+                self._creator_live_a1_run_completion = None
             self._clear_field_note_locked()
             self._condition.notify_all()
 

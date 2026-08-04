@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+import hashlib
 import json
 from typing import Any, Callable, Mapping
 
 from decision_os.acceleration import codex_adapter as codex
-from decision_os.acceleration.codex_adapter import CodexAdapter, CodexRunResult
+from decision_os.acceleration.codex_adapter import (
+    CodexAdapter,
+    CodexRunResult,
+    CodexRuntimeIdentity,
+)
 from decision_os.companion.field_notes_model import (
     FIELD_NOTE_TOOL_NAME,
     FIELD_NOTE_TOOL_SPEC,
@@ -66,9 +71,17 @@ class FieldNoteCreatorLiveA1CaptureConfig:
     """One predeclared Run identity for the bounded creator-live A1 lane."""
 
     run_id: str
+    expected_runtime_identity: CodexRuntimeIdentity
 
     def __post_init__(self) -> None:
-        if not isinstance(self.run_id, str) or not self.run_id.strip():
+        if (
+            not isinstance(self.run_id, str)
+            or not self.run_id.strip()
+            or not isinstance(
+                self.expected_runtime_identity,
+                CodexRuntimeIdentity,
+            )
+        ):
             raise ValueError("Creator-live A1 capture Run ID is invalid.")
 
 
@@ -87,6 +100,7 @@ class FieldNoteCodexRunResult(CodexRunResult):
     creator_live_a1_capture: bool = False
     creator_live_a1_failure_reason: str | None = None
     creator_live_a1_proposal_attempts: int = 0
+    creator_live_a1_task_sha256: str | None = None
 
 
 class FieldNotesCodexAdapter(CodexAdapter):
@@ -433,6 +447,18 @@ class FieldNotesCodexAdapter(CodexAdapter):
             or not all_proposals_completed
         ):
             return "A1_PROPOSAL_INVALID"
+        if any(
+            evidence.status != "succeeded"
+            for evidence in result.read_evidence
+        ):
+            return "A1_READ_EVIDENCE_FAILED"
+        if result.runtime_identity is None:
+            return "A1_ACTUAL_RUNTIME_IDENTITY_MISSING"
+        if (
+            result.runtime_identity
+            != self._creator_live_a1_capture.expected_runtime_identity
+        ):
+            return "A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH"
         if not result.normal_terminal or result.turn_status != "completed":
             return "A1_RUN_INCOMPLETE"
         return None
@@ -599,5 +625,10 @@ class FieldNotesCodexAdapter(CodexAdapter):
             creator_live_a1_failure_reason=capture_failure,
             creator_live_a1_proposal_attempts=len(
                 self._capture_proposal_call_ids
+            ),
+            creator_live_a1_task_sha256=(
+                hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+                if self._creator_live_a1_capture is not None
+                else None
             ),
         )

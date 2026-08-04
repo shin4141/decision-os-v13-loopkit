@@ -125,6 +125,10 @@ class _CaptureAdapter:
         self.owner.last_draft = draft
         if self.owner.mode.startswith("direct_"):
             action = self.owner.mode.removeprefix("direct_")
+            proposal_after_direct_request = None
+            if action.startswith("valid_"):
+                action = action.removeprefix("valid_")
+                proposal_after_direct_request = draft
             decision = self.approval_provider(
                 CodexApproval(
                     repository_name=self.owner.repository.name,
@@ -139,7 +143,7 @@ class _CaptureAdapter:
                 config.run_id,
                 normal_terminal=False,
                 status="DENIED",
-                proposal=None,
+                proposal=proposal_after_direct_request,
                 failure="A1_DIRECT_WRITE_REQUESTED",
                 actions=(
                     CodexFileAction(
@@ -214,6 +218,11 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         self.last_draft: FieldNoteDraft | None = None
         self.observed_task: str | None = None
         self.direct_decision: str | None = None
+        self.actual_runtime_identity: CodexRuntimeIdentity | None = (
+            self.run_1.runtime
+        )
+        self.read_evidence: tuple[CodexReadEvidence, ...] = ()
+        self.task_sha256_override: str | None = None
         self.controller = FieldNotesCompanionController(
             state_path=self.root / "state.json",
             picker_script=self.root / "picker.scpt",
@@ -223,8 +232,8 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         )
         self.controller.select_repository(self.repository)
 
-    @staticmethod
     def result(
+        self,
         run_id: str,
         *,
         normal_terminal: bool = True,
@@ -240,27 +249,20 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             status=status,
             error_type=None,
             turn_status="completed",
-            runtime_identity=None,
+            runtime_identity=self.actual_runtime_identity,
             checkpoint_outcomes=(),
             final_message="Completed.",
             file_actions=actions,
-            read_evidence=(
-                CodexReadEvidence(
-                    path="seed.txt",
-                    byte_count=5,
-                    sha256=hashlib.sha256(b"seed\n").hexdigest(),
-                    repository_identity=git_output(
-                        Path.cwd(), "rev-parse", "HEAD"
-                    )
-                    if (Path.cwd() / ".git").exists()
-                    else "fixture-head",
-                    status="succeeded",
-                ),
-            ),
+            read_evidence=self.read_evidence,
             field_note_proposal=proposal,
             creator_live_a1_capture=True,
             creator_live_a1_failure_reason=failure,
             creator_live_a1_proposal_attempts=attempts,
+            creator_live_a1_task_sha256=hashlib.sha256(
+                (self.observed_task or "").encode("utf-8")
+            ).hexdigest()
+            if self.task_sha256_override is None
+            else self.task_sha256_override,
         )
 
     def bridge(self) -> FieldNoteCreatorLiveA1CaptureBridge:
@@ -270,6 +272,7 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             repository=self.repository,
             source_repository=self.source_repository,
             timeout_seconds=5,
+            utc_now=lambda: "2026-08-06T01:02:00Z",
         )
 
     def test_exact_save_path_closes_one_durable_a1_checkpoint(self) -> None:
@@ -326,6 +329,134 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         self.assertEqual("A2_RECONNECT", readback.current_stage)
         self.assertEqual(1, readback.trace_event_count)
         self.assertIsNotNone(readback.a1_capture_commit)
+        completion = self.controller.creator_live_a1_run_completion()
+        self.assertEqual(self.run_1.runtime, completion.actual_runtime_identity)
+        self.assertEqual(0, completion.successful_read_count)
+        assert readback.a1_capture_commit is not None
+        self.assertEqual(
+            readback.a1_capture_commit.receipt_sha256,
+            event.evidence_sha256,
+        )
+        self.assertEqual(
+            hashlib.sha256(
+                self.observed_task.encode("utf-8")
+            ).hexdigest(),
+            readback.a1_capture_commit.task_sha256,
+        )
+
+    def test_one_exact_successful_read_is_optional_completion_evidence(self) -> None:
+        self.read_evidence = (
+            CodexReadEvidence(
+                path="seed.txt",
+                byte_count=5,
+                sha256=hashlib.sha256(b"seed\n").hexdigest(),
+                repository_identity=self.source_repository.repository_id,
+                status="succeeded",
+            ),
+        )
+        self.bridge().capture("Propose exactly once after one bounded read.")
+        completion = self.controller.creator_live_a1_run_completion()
+        self.assertEqual(1, completion.successful_read_count)
+
+    def test_failed_read_is_terminal_and_creates_no_note(self) -> None:
+        self.read_evidence = (
+            CodexReadEvidence(
+                path="missing.txt",
+                byte_count=None,
+                sha256=None,
+                repository_identity=self.source_repository.repository_id,
+                status="failed",
+                reason="read_path_not_found",
+            ),
+        )
+        with patch.object(self.controller, "field_note_save") as save:
+            with self.assertRaises(FieldNoteCreatorLiveA1CaptureBridgeError):
+                self.bridge().capture("Propose exactly once after a read.")
+        self.assertEqual(0, save.call_count)
+        readback = self.runtime.read_back()
+        self.assertEqual("A1_READ_EVIDENCE_FAILED", readback.failure_reason)
+        self.assertEqual(0, readback.trace_event_count)
+        assert self.last_draft is not None
+        self.assertFalse(
+            (self.repository / self.last_draft.relative_path).exists()
+        )
+
+    def test_successful_read_cannot_replace_missing_or_malformed_proposal(self) -> None:
+        for mode in ("missing", "malformed"):
+            with self.subTest(mode=mode):
+                self.setUp()
+                self.mode = mode
+                self.read_evidence = (
+                    CodexReadEvidence(
+                        path="seed.txt",
+                        byte_count=5,
+                        sha256=hashlib.sha256(b"seed\n").hexdigest(),
+                        repository_identity=(
+                            self.source_repository.repository_id
+                        ),
+                        status="succeeded",
+                    ),
+                )
+                with self.assertRaises(
+                    FieldNoteCreatorLiveA1CaptureBridgeError
+                ):
+                    self.bridge().capture("Propose exactly once and stop.")
+                self.assertEqual(0, self.runtime.read_back().trace_event_count)
+
+    def test_missing_and_each_changed_runtime_field_fail_before_save(self) -> None:
+        cases = {
+            "missing": None,
+            "model": replace(self.run_1.runtime, model="other-model"),
+            "reasoning_effort": replace(
+                self.run_1.runtime,
+                reasoning_effort="high",
+            ),
+            "service_tier": replace(
+                self.run_1.runtime,
+                service_tier="default",
+            ),
+            "codex_cli_version": replace(
+                self.run_1.runtime,
+                codex_cli_version="0.0.0",
+            ),
+            "account_type": replace(
+                self.run_1.runtime,
+                account_type="api",
+            ),
+        }
+        for label, actual in cases.items():
+            with self.subTest(field=label):
+                self.setUp()
+                self.actual_runtime_identity = actual
+                with patch.object(self.controller, "field_note_save") as save:
+                    with self.assertRaises(
+                        FieldNoteCreatorLiveA1CaptureBridgeError
+                    ):
+                        self.bridge().capture("Propose exactly once and stop.")
+                self.assertEqual(0, save.call_count)
+                readback = self.runtime.read_back()
+                self.assertEqual(
+                    "A1_ACTUAL_RUNTIME_IDENTITY_MISSING"
+                    if label == "missing"
+                    else "A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH",
+                    readback.failure_reason,
+                )
+                self.assertEqual(0, readback.trace_event_count)
+                assert self.last_draft is not None
+                self.assertFalse(
+                    (self.repository / self.last_draft.relative_path).exists()
+                )
+
+    def test_changed_task_identity_fails_before_save(self) -> None:
+        self.task_sha256_override = "f" * 64
+        with patch.object(self.controller, "field_note_save") as save:
+            with self.assertRaises(FieldNoteCreatorLiveA1CaptureBridgeError):
+                self.bridge().capture("Propose exactly once and stop.")
+        self.assertEqual(0, save.call_count)
+        self.assertEqual(
+            "A1_TASK_IDENTITY_MISMATCH",
+            self.runtime.read_back().failure_reason,
+        )
 
     def test_full_note_body_is_absent_from_journal_and_anchor(self) -> None:
         self.bridge().capture("Propose exactly once and stop.")
@@ -380,6 +511,16 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                 )
                 with self.assertRaises(FieldNoteCreatorLiveStageError):
                     self.runtime.open_run_2(self.run_1)
+
+    def test_direct_write_request_fails_even_with_valid_proposal(self) -> None:
+        self.mode = "direct_valid_Create"
+        with self.assertRaises(FieldNoteCreatorLiveA1CaptureBridgeError):
+            self.bridge().capture("Propose once and do not write.")
+        readback = self.runtime.read_back()
+        self.assertTrue(
+            readback.failure_reason.startswith("A1_DIRECT_WRITE_REQUESTED:")
+        )
+        self.assertEqual(0, readback.trace_event_count)
 
     def test_outside_root_origin_mismatch_and_existing_target_fail(self) -> None:
         for mode in ("outside_root", "origin_mismatch", "preexisting"):

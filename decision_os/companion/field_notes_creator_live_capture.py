@@ -15,6 +15,7 @@ from decision_os.acceleration.model import (
     git_output,
     repository_id,
 )
+from decision_os.acceleration.codex_adapter import CodexRuntimeIdentity
 from decision_os.companion.field_notes_controller import (
     FieldNoteError,
     FieldNotesCompanionController,
@@ -33,11 +34,20 @@ from decision_os.companion.field_notes_reuse import FieldNoteIdentity
 from decision_os.companion.field_notes_whole_flow import (
     FieldNoteSourceRepositoryIdentity,
     FieldNoteWholeFlowTraceEvent,
+    _a1_evidence_sha256,
 )
 
 
 class FieldNoteCreatorLiveA1CaptureBridgeError(RuntimeError):
     """The bounded A1 bridge failed and left the attempt terminal."""
+
+
+def _utc_now_rfc3339() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .isoformat(timespec="microseconds")
+        .replace("+00:00", "Z")
+    )
 
 
 class FieldNoteCreatorLiveA1CaptureBridge:
@@ -53,6 +63,7 @@ class FieldNoteCreatorLiveA1CaptureBridge:
         timeout_seconds: float = 900.0,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
+        utc_now: Callable[[], str] = _utc_now_rfc3339,
     ) -> None:
         if (
             not isinstance(runtime, FieldNoteCreatorLiveProofRuntime)
@@ -75,6 +86,7 @@ class FieldNoteCreatorLiveA1CaptureBridge:
         self.timeout_seconds = float(timeout_seconds)
         self.monotonic = monotonic
         self.sleep = sleep
+        self.utc_now = utc_now
         self._dispatched = False
 
     def _terminal(self, reason: str) -> None:
@@ -96,7 +108,7 @@ class FieldNoteCreatorLiveA1CaptureBridge:
         except (OSError, RepositoryIdentityError):
             return False
 
-    def _preflight(self) -> tuple[str, Path]:
+    def _preflight(self) -> tuple[str, Path, CodexRuntimeIdentity, str]:
         readback = self.runtime.read_back()
         if (
             not readback.durable_readback_verified
@@ -105,6 +117,7 @@ class FieldNoteCreatorLiveA1CaptureBridge:
             or readback.trace_event_count != 0
             or readback.run_2 is not None
             or readback.source_repository != self.source_repository
+            or readback.runtime != readback.run_1.runtime
         ):
             self._terminal("A1_ATTEMPT_NOT_OPEN")
         snapshot = self.controller.snapshot()
@@ -116,7 +129,12 @@ class FieldNoteCreatorLiveA1CaptureBridge:
             self._terminal("A1_REPOSITORY_IDENTITY_MISMATCH")
         if selected_root != root or not self._repository_identity_matches():
             self._terminal("A1_REPOSITORY_IDENTITY_MISMATCH")
-        return readback.run_1.run_id, root
+        return (
+            readback.run_1.run_id,
+            root,
+            readback.runtime,
+            readback.proof_attempt_id,
+        )
 
     def _wait_for_run(self) -> None:
         deadline = self.monotonic() + self.timeout_seconds
@@ -205,21 +223,32 @@ class FieldNoteCreatorLiveA1CaptureBridge:
 
         if self._dispatched:
             self._terminal("A1_RUN_ALREADY_DISPATCHED")
-        run_id, root = self._preflight()
+        run_id, root, expected_runtime, proof_attempt_id = self._preflight()
         self._dispatched = True
         try:
             self.controller.start_creator_live_a1_capture(
                 task,
                 run_id=run_id,
+                expected_runtime_identity=expected_runtime,
             )
             self._wait_for_run()
             draft = self.controller.creator_live_a1_capture_candidate()
+            completion = self.controller.creator_live_a1_run_completion()
             validate_compiled_markdown(draft.markdown)
+            task_sha256 = hashlib.sha256(
+                task.strip().encode("utf-8")
+            ).hexdigest()
             if (
                 draft.source_run_id != run_id
                 or hashlib.sha256(draft.markdown).hexdigest() != draft.sha256
             ):
                 self._terminal("A1_NOTE_IDENTITY_MISMATCH")
+            if completion.run_id != run_id:
+                self._terminal("A1_CAPTURE_IDENTITY_MISMATCH")
+            if completion.task_sha256 != task_sha256:
+                self._terminal("A1_TASK_IDENTITY_MISMATCH")
+            if completion.actual_runtime_identity != expected_runtime:
+                self._terminal("A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH")
             target = self._fixed_target(root, draft)
             self._require_unoccupied_target(target)
             if not self._repository_identity_matches():
@@ -265,22 +294,27 @@ class FieldNoteCreatorLiveA1CaptureBridge:
             )
             commit = FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
                 authority=_A1_CAPTURE_COMMIT_AUTHORITY,
-                proof_attempt_id=(
-                    self.runtime.read_back().proof_attempt_id
-                ),
+                proof_attempt_id=proof_attempt_id,
                 run_id=run_id,
+                task_sha256=task_sha256,
+                actual_runtime_identity=(
+                    completion.actual_runtime_identity
+                ),
                 source_repository=self.source_repository,
                 note=note,
                 note_byte_count=len(note_bytes),
-                save_as_of=(
-                    datetime.now(timezone.utc)
-                    .isoformat(timespec="microseconds")
-                    .replace("+00:00", "Z")
-                ),
+                draft_evidence_sha256=_a1_evidence_sha256(draft),
+                draft_created_at=draft.created_at,
+                save_as_of=self.utc_now(),
             )
             event = self.runtime.record_a1_capture(
                 draft,
                 capture_commit=commit,
+                expected_task_sha256=task_sha256,
+                actual_runtime_identity=(
+                    completion.actual_runtime_identity
+                ),
+                observed_at=self.utc_now(),
             )
             closed = self.runtime.read_back()
             if (

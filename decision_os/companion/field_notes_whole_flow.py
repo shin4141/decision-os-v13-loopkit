@@ -664,6 +664,8 @@ class FieldNoteWholeFlowProofReceipt:
     reused_structure_sha256: str | None
     reused_structure_binding_sha256: str | None
     a1_evidence_sha256: str | None
+    a1_draft_sha256: str | None
+    a1_capture_commit_sha256: str | None
     a2_receipt_sha256: str | None
     a3_reuse_event_id: str | None
     a3_receipt_sha256: str | None
@@ -737,6 +739,11 @@ class FieldNoteWholeFlowProofReceipt:
                 "Reused structure binding identity",
             ),
             (self.a1_evidence_sha256, "A1 evidence identity"),
+            (self.a1_draft_sha256, "A1 draft identity"),
+            (
+                self.a1_capture_commit_sha256,
+                "A1 capture-commit identity",
+            ),
             (self.a2_receipt_sha256, "A2 receipt identity"),
             (self.a3_reuse_event_id, "A3 reuse event identity"),
             (self.a3_receipt_sha256, "A3 complete receipt identity"),
@@ -878,7 +885,11 @@ class FieldNoteWholeFlowProofReceipt:
                 any(value is None for value in required)
                 or (
                     self.proof_mode == "CREATOR_LIVE"
-                    and self.a3_receipt_sha256 is None
+                    and (
+                        self.a3_receipt_sha256 is None
+                        or self.a1_draft_sha256 is None
+                        or self.a1_capture_commit_sha256 is None
+                    )
                 )
                 or self.a4_event_count != 1
                 or self.a4_chain_head_sha256 != self.a4_event_sha256
@@ -954,6 +965,42 @@ class FieldNoteWholeFlowProofReceipt:
         ):
             raise FieldNoteWholeFlowValidationError(
                 "CREATOR_LIVE PASS durable runtime identity is invalid."
+            )
+        commit = readback.a1_capture_commit
+        if (
+            commit is None
+            or not self.proof_trace
+            or self.a1_evidence_sha256 != commit.receipt_sha256
+            or self.a1_capture_commit_sha256 != commit.receipt_sha256
+            or self.a1_draft_sha256 != commit.draft_evidence_sha256
+            or commit.proof_attempt_id != self.proof_attempt_id
+            or commit.run_id != self.run_1.run_id
+            or commit.actual_runtime_identity != self.source_runtime
+            or commit.source_repository != self.source_repository
+            or commit.note != self.note
+            or commit.note_byte_count != self.note_byte_count
+            or self.proof_trace[0].evidence_sha256
+            != commit.receipt_sha256
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "CREATOR_LIVE PASS A1 capture commit is invalid."
+            )
+        _, run_time = _parse_time(self.run_1.started_at, "Run 1 start")
+        _, draft_time = _parse_time(
+            commit.draft_created_at,
+            "A1 draft creation time",
+        )
+        _, save_time = _parse_time(commit.save_as_of, "A1 save As-of")
+        _, observed_time = _parse_time(
+            self.proof_trace[0].observed_at,
+            "A1 checkpoint observation",
+        )
+        _, proof_time = _parse_time(self.proof_as_of, "Proof As-of")
+        if not (
+            run_time <= draft_time <= save_time <= observed_time <= proof_time
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "CREATOR_LIVE PASS A1 chronology is invalid."
             )
 
     def _validate_proof_trace_identity(self) -> None:
@@ -1109,6 +1156,10 @@ class FieldNoteWholeFlowProofReceipt:
             "claim_boundary": self.claim_boundary.as_dict(),
         }
         if self.proof_mode == "CREATOR_LIVE":
+            body["a1_draft_sha256"] = self.a1_draft_sha256
+            body["a1_capture_commit_sha256"] = (
+                self.a1_capture_commit_sha256
+            )
             body["a3_receipt_sha256"] = self.a3_receipt_sha256
             body["creator_live_readback"] = (
                 self.creator_live_readback.as_dict()
@@ -1439,6 +1490,13 @@ def _receipt(
         a3 is not None and a3.use_evidence is not None
     ) else None
     first_event = a4.events[0] if a4 is not None and a4.events else None
+    a1_capture_commit = (
+        bundle.creator_live_readback.a1_capture_commit
+        if bundle.attempt.proof_mode == "CREATOR_LIVE"
+        and bundle.creator_live_readback is not None
+        else None
+    )
+    a1_draft_sha256 = _a1_evidence_sha256(a1) if a1 else None
     return FieldNoteWholeFlowProofReceipt(
         schema=WHOLE_FLOW_SCHEMA,
         proof_attempt_id=bundle.attempt.proof_attempt_id,
@@ -1456,7 +1514,25 @@ def _receipt(
         reused_structure_binding_sha256=(
             binding.binding_sha256 if binding else None
         ),
-        a1_evidence_sha256=_a1_evidence_sha256(a1) if a1 else None,
+        a1_evidence_sha256=(
+            a1_capture_commit.receipt_sha256
+            if a1_capture_commit is not None
+            else (
+                a1_draft_sha256
+                if bundle.attempt.proof_mode == "FIXTURE"
+                else None
+            )
+        ),
+        a1_draft_sha256=(
+            a1_draft_sha256
+            if bundle.attempt.proof_mode == "CREATOR_LIVE"
+            else None
+        ),
+        a1_capture_commit_sha256=(
+            a1_capture_commit.receipt_sha256
+            if a1_capture_commit is not None
+            else None
+        ),
         a2_receipt_sha256=_a2_receipt_sha256(a2) if a2 else None,
         a3_reuse_event_id=a3.reuse_event_id if a3 else None,
         a3_receipt_sha256=(
@@ -1660,6 +1736,45 @@ def verify_field_note_whole_flow(
         or _sha256_bytes(a1.markdown) != a1.sha256
     ):
         return _fail(bundle, "A1_CAPTURE", "A1_NOTE_IDENTITY_MISMATCH")
+    if bundle.attempt.proof_mode == "CREATOR_LIVE":
+        assert bundle.creator_live_readback is not None
+        commit = bundle.creator_live_readback.a1_capture_commit
+        if (
+            commit is None
+            or commit.proof_attempt_id != bundle.attempt.proof_attempt_id
+            or commit.run_id != bundle.run_1.run_id
+            or commit.actual_runtime_identity != bundle.run_1.runtime
+            or commit.source_repository != bundle.source_repository
+            or commit.note != bundle.note
+            or commit.note_byte_count != len(bundle.note_bytes)
+            or commit.draft_evidence_sha256 != _a1_evidence_sha256(a1)
+            or commit.draft_created_at != a1.created_at
+            or not bundle.proof_trace
+            or bundle.proof_trace[0].evidence_sha256
+            != commit.receipt_sha256
+        ):
+            return _fail(
+                bundle,
+                "A1_CAPTURE",
+                "A1_CAPTURE_COMMIT_MISMATCH",
+            )
+        _, save_time = _parse_time(commit.save_as_of, "A1 save As-of")
+        _, observed_time = _parse_time(
+            bundle.proof_trace[0].observed_at,
+            "A1 checkpoint observation",
+        )
+        _, proof_time = _parse_time(
+            bundle.attempt.proof_as_of,
+            "Proof As-of",
+        )
+        if not (
+            run_1_time <= a1_time <= save_time <= observed_time <= proof_time
+        ):
+            return _fail(
+                bundle,
+                "A1_CAPTURE",
+                "A1_CAPTURE_CHRONOLOGY_INVALID",
+            )
     if a1_time < run_1_time or a1_time >= run_2_time:
         return _fail(bundle, "A1_CAPTURE", "A1_NOT_NEW_FOR_PROOF_ATTEMPT")
 
@@ -1804,8 +1919,18 @@ def verify_field_note_whole_flow(
     if proof_time < review_time:
         return _fail(bundle, "PROOF_AS_OF", "PROOF_AS_OF_PRECEDES_A6_REVIEW")
 
+    creator_a1_commit = (
+        bundle.creator_live_readback.a1_capture_commit
+        if bundle.attempt.proof_mode == "CREATOR_LIVE"
+        and bundle.creator_live_readback is not None
+        else None
+    )
     expected_evidence = (
-        _a1_evidence_sha256(a1),
+        (
+            creator_a1_commit.receipt_sha256
+            if creator_a1_commit is not None
+            else _a1_evidence_sha256(a1)
+        ),
         _a2_receipt_sha256(a2),
         (
             _a3_receipt_sha256(a3)
