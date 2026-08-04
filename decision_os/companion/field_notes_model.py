@@ -207,30 +207,14 @@ def field_note_tool_spec_for_trust(
     trusted_source_model_class: str,
     trusted_target_model_class: str,
 ) -> dict[str, Any]:
-    """Return one fresh model-facing proposal contract for active trust."""
+    """Return one fresh shipped Option A model-facing proposal contract."""
 
-    source_class = configured_model_class(trusted_source_model_class)
-    target_class = configured_model_class(trusted_target_model_class)
-    level_three = level_three_available(source_class, target_class)
+    configured_model_class(trusted_source_model_class)
+    configured_model_class(trusted_target_model_class)
     tool_spec = copy.deepcopy(FIELD_NOTE_TOOL_SPEC)
     input_schema = tool_spec["inputSchema"]
     properties = input_schema["properties"]
-    properties["value_level"]["enum"] = [1, 2, 3] if level_three else [1, 2]
-    if level_three:
-        input_schema["anyOf"] = [
-            {
-                "properties": {
-                    "value_level": {"enum": [1, 2]},
-                },
-            },
-            {
-                "properties": {
-                    "value_level": {"enum": [3]},
-                    "source_model_class": {"enum": ["stronger"]},
-                    "target_model_class": {"enum": ["lower-cost"]},
-                },
-            },
-        ]
+    properties["value_level"]["enum"] = [1, 2]
     return tool_spec
 
 
