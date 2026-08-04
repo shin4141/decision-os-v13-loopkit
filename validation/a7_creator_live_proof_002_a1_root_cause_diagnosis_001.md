@@ -313,10 +313,13 @@ also preserved non-proposal failure-family precedence. Current main
 
 ### Remaining repairable control
 
-No current-code repair is required by this diagnosis. The only implementation
-defect proven by surviving evidence is the missing lower-cause observability,
-and PR #82 already removed it. This task does not propose or implement another
-change.
+The original historical diagnosis, standing alone, required no additional
+current-code repair: the only defect proven by Proof 002's surviving evidence
+was the missing lower-cause observability removed by PR #82. The later
+adversarial reconciliation below independently proves one current A1 taxonomy
+defect. It does not change Outcome B or establish what happened in Proof 002,
+but it supersedes the earlier no-repair conclusion for the current-control
+assessment. Repair remains unauthorized in this PR.
 
 PR #82's code surface was bounded to A1 diagnostic capture and propagation in:
 
@@ -339,6 +342,351 @@ readback, diagnostic anchor sealing, and capture-bridge failure behavior passes
 
 Any new repair requires a separately reviewed defect and fresh authority after
 13-31 review. Diagnosis uncertainty is not itself authority to alter code.
+
+## Claude Adversarial Review Reconciliation
+
+### Scope and method
+
+Claude's `PASS WITH BOUNDED CONDITIONS` was structural and did not inspect the
+repository or PR. This reconciliation inspected the historical implementation
+at `a033b6a7c8968d17744d0f85342b54dbfb73fa85`, the current application code at
+`49a7026954405ba4ca2c9024b1cb34c5b7da0ff2`, and the protected Proof 002
+readback. It then used only the repository fake app-server transport,
+temporary repositories, deterministic envelopes, and local fault injection.
+No product/runtime model was invoked and no live attempt was made.
+
+The current focused suites passed 136/136 after the matrix and fault checks.
+The one-off harness lived outside the repository and is not a product change or
+PR artifact.
+
+The seven requested determinations are:
+
+| Item | Classification | Determination |
+|---|---|---|
+| 1. Attempt-count timing | **CONFIRMED** | A proposal identity is counted after params parsing and request-ID validation, but before full request-shape validation, gate invocation, and completion. Two production-format malformed deliveries select `A1_PROPOSAL_MISSING` despite retained malformed facts. |
+| 2. Same-identity multiple delivery | **CONFIRMED** | Changed identities are separated, but an exact request replay and an exact duplicate completion are deliberately idempotent and diagnostically indistinguishable from a single delivery. |
+| 3. Accepted-state absence | **EXCLUDED** | `gate success + completed item + accepted absent` is not reachable through the production gate implementation. |
+| 4. Diagnostic discrimination | **CONFIRMED** | All seven requested failures produce distinct final reasons, distinct `final_subcause` values, and distinct sealed diagnostics that survive exact readback. |
+| 5. Overlapping failures | **CONFIRMED** | `final_subcause` is precedence-selected while the tested coexisting facts remain retained. No required causal-order field was demonstrated. |
+| 6. Exception and teardown durability | **CONFIRMED** | Pre-result and propagation exceptions terminalize to bounded durable families; zero-byte terminal append and pre-persistence teardown leave a valid but observationally ambiguous OPEN state; anchor failure fails closed as a journal/anchor mismatch. |
+| 7. A2-A7 writer boundary | **CONFIRMED** | A1 and A2-A6 share terminal construction, journal append, anchor append, and readback. A7 has no checkpoint writer; it consumes the completed durable readback for admission. |
+
+These current-code determinations do not reconstruct missing Proof 002 facts.
+Whether any current-taxonomy replay or lifecycle detail occurred in Proof 002
+is **UNRESOLVABLE** from the protected artifacts. The historical Outcome B is
+unchanged.
+
+### 1. Attempt-count timing
+
+Current dispatch at `field_notes_adapter.py:940-950` recognizes the proposal
+route only when params is already an object and its `tool` is the exact Field
+Note tool. Within that route, `field_notes_adapter.py:545-673` performs these
+steps in this exact order:
+
+1. Read the outer request ID.
+2. Parse the already-object params with `_require_object()`.
+3. Parse `callId` and `arguments`.
+4. Validate the request-ID type at lines 559-567; an invalid request ID returns
+   before call-identity counting.
+5. Retain the request identity for a valid request ID.
+6. Add a non-empty string `callId` to the distinct call-ID set at lines
+   581-585. Missing, empty, or non-string `callId` is only marked malformed.
+7. Check request-ID binding and the complete request shape at lines 586-632.
+8. Invoke the gate at lines 655-660 only after shape acceptance.
+9. Observe and validate completion later at lines 876-936.
+10. After the underlying run returns, compute
+    `all_proposals_completed` and construct the diagnostic at lines 952-968.
+
+The responder contains a defensive non-object check at lines 547-555, but the
+production dispatch guard prevents a non-object params value from reaching
+that responder. It falls to the base dynamic-tool parser, which raises before
+current A1 proposal-diagnostic construction; the controller/capture path then
+terminalizes the pre-result family as `A1_RUN_FAILED`. It is not proof of a
+zero-count proposal diagnostic. The two zero-count cases below do traverse the
+production proposal route.
+
+`_proposal_final_subcause()` checks distinct call count zero before malformed
+shape at lines 691-699. Deterministic current-main inputs prove the consequence:
+
+| Input | Count | Retained facts | Final result | Classification |
+|---|---:|---|---|---|
+| Proposal request with the correct tool and arguments but no `callId` | 0 | `request_shape_valid=false`, `malformed_observed=true`, `protocol_identity_failure=true`, phase `dynamic_tool_call`, item start observed | `A1_PROPOSAL_MISSING`; diagnostic `15e7b3ecf1c02ac6aae909c09861798fa8ed1ed3dfa66242d82e106222b6b746` | **CONFIRMED** |
+| Otherwise valid proposal request whose outer request ID is boolean `true` | 0 | the same malformed/shape/protocol facts, item start observed | `A1_PROPOSAL_MISSING`; diagnostic `11ab482d5eecf508ed0af9aa4d0ce1948cb05ff29dc574dbc3a91bbe67dbfe93` | **CONFIRMED** |
+| Valid non-empty `callId`, then an unexpected params key | 1 | malformed and request-shape-invalid facts | `A1_PROPOSAL_REQUEST_SHAPE_INVALID` | **CONFIRMED** control |
+
+Therefore a production-reachable malformed proposal envelope can be
+misclassified as missing. The diagnostic facts expose the contradiction, but
+the final reason remains wrong. This is a current A1 taxonomy defect.
+
+The same high-level ordering existed historically: Proof 002's historical
+`A1_PROPOSAL_INVALID` required one distinct non-empty call identity after the
+historical zero-count check. The current defect therefore does not add
+zero-identity malformed requests to Proof 002's surviving family and does not
+change Outcome B.
+
+### 2. Same-identity multiple delivery
+
+Current state uses sets for distinct call IDs, request identities, argument
+identities, and completed item IDs. Saved responses are replayed for an exact
+request identity. The resulting behaviors are:
+
+| Delivery | Current behavior | Diagnostic separation | Classification |
+|---|---|---|---|
+| Exact request replay: same request ID, call ID, and arguments | Re-sends the saved response; gate runs once; accepted result remains valid | None from a singleton. The complete diagnostic and its SHA-256 equal the one-delivery baseline | **CONFIRMED** |
+| Same call ID with changed arguments | A replayed start and matching changed request latch `inconsistent_replay`; final is `A1_PROPOSAL_INCONSISTENT_REPLAY`. A changed request that no longer matches its started item is instead request-shape invalid | Both malformed variants are separated from exact replay; the coherent changed replay has `inconsistent_replay=true` | **CONFIRMED** |
+| Repeated request ID with a changed call ID | The second distinct call ID is counted; request binding mismatch is latched | Final is `A1_PROPOSAL_DUPLICATE`; diagnostic also retains `proposal_call_count=2`, `request_identity_mismatch=true`, `response_identity_mismatch=true`, and protocol failure | **CONFIRMED** |
+| Exact duplicate completion delivery | The completed-item set remains unchanged and the run succeeds. A changed duplicate completion instead latches status, response, or protocol failure | Exact delivery has no separation from a singleton; changed delivery is separated. The exact duplicate's complete diagnostic and SHA-256 equal the one-completion baseline | **CONFIRMED** |
+
+Thus the taxonomy separates both changed-identity cases. It intentionally does
+not retain delivery multiplicity for exact idempotent request replay or exact
+duplicate completion. That is a remaining forensic observability gap, but the
+tests demonstrate no control failure or incorrect terminal decision from it.
+Whether an exact replay or duplicate completion happened in Proof 002 is
+**UNRESOLVABLE**, not evidence for a historical cause.
+
+### 3. Accepted-state absence
+
+`FieldNoteProposalGate.propose()` at current `field_notes_model.py:474-505`
+sets `self.accepted = compile_draft(...)` before returning
+`(True, "proposal_accepted")`. Every caught schema exception first resets
+`accepted` to `None` and returns failure. The adapter response success is the
+gate boolean, and completion expectation is derived from that saved response.
+
+Consequently this conjunction is **EXCLUDED** in production current code:
+
+```text
+gate_response_success = true
++ proposal item validly completed
++ accepted_proposal_present = false
+```
+
+The historical implementation had the same invariant. An invariant-breaking
+gate stub can reach `A1_PROPOSAL_ACCEPTED_STATE_MISSING`, but it is not evidence
+of production reachability and is not promoted into the Proof 002 candidate
+family.
+
+### Offline discrimination results
+
+The seven required cases were each run independently on current main. All used
+one non-empty call ID and one request identity. The fields common to every
+diagnostic were:
+
+```text
+schema: decision-os.field-note-a1-proposal-diagnostic.v0.1
+proposal_call_count: 1
+call_identity_sha256:
+  359100513a0d50c2b2dffed714e0d9898959c67dd5416e7398f355dc4bf216a3
+request_identity_sha256:
+  f0be939e8378151881dbf396d4956a72ecbae787ecad90158c83d02ce4442685
+item_start_observed: true
+request_identity_mismatch: false
+direct_write_identity: null
+```
+
+The valid-arguments identity was
+`c725a7448f5e3d7e6e15c85390f183e07cd3f06a9b5716a09ff5a59776e7b854`;
+the schema-rejected arguments identity was
+`27833264cba5330ab9f1a28d2279e23563a1c380df07c9c2dc970cc4c05368e3`.
+Together with the common fields above, this table records every retained
+diagnostic field:
+
+| Case | Shape / malformed | Gate invoked; code; success; accepted | Completion; observed / expected; all completed | Response mismatch / inconsistent replay | Protocol failure / phase | Final reason and `final_subcause` | Diagnostic SHA-256 |
+|---|---|---|---|---|---|---|---|
+| Request shape invalid | `false / true` | `false; null; null; false` | `true; completed / failed; false` | `false / false` | `true / dynamic_tool_call` | `A1_PROPOSAL_REQUEST_SHAPE_INVALID` | `90da806ccfcd059bd75fee4bdb38ec074425dd331b8b75fdcf2a5d7b167b6d87` |
+| Schema rejected | `true / false` | `true; proposal_schema_invalid; false; false` | `true; failed / failed; true` | `false / false` | `false / null` | `A1_PROPOSAL_SCHEMA_REJECTED` | `d7f05aae6e060d21f9648be3c74e3bb04ab25f7db50201c43562696d6c5dfb59` |
+| Item not completed | `true / false` | `true; proposal_accepted; true; true` | `false; null / null; false` | `false / false` | `false / null` | `A1_PROPOSAL_ITEM_NOT_COMPLETED` | `935c1386c172ad3d3c099e633bad71a06066a029b878b5ce8d9875f2b8c5d39f` |
+| Item status mismatch | `true / false` | `true; proposal_accepted; true; true` | `true; failed / completed; false` | `false / false` | `true / dynamic_tool_call` | `A1_PROPOSAL_ITEM_STATUS_MISMATCH` | `c05ffd2e2b13c3c0b7c016de257a99c9fc4b778b4e9420ddd80d4d1369d35c00` |
+| Response identity mismatch | `true / false` | `true; proposal_accepted; true; true` | `true; completed / completed; false` | `true / false` | `true / dynamic_tool_call` | `A1_PROPOSAL_RESPONSE_IDENTITY_MISMATCH` | `a23d347cdd37f865d713165a33a821b4eaeafbbafb007a560dd763e5bdb0aac9` |
+| Inconsistent replay | `false / true` | `true; proposal_accepted; true; true` | `true; failed / completed; true` | `false / true` | `true / dynamic_tool_call` | `A1_PROPOSAL_INCONSISTENT_REPLAY` | `b8106aad25a0c9f73777f3a23a30178577c00454b807ab1279177a8b126b863e` |
+| Protocol identity failure | `true / false` | `true; proposal_accepted; true; true` | `true; completed / null; false` | `false / false` | `true / dynamic_tool_call` | `A1_PROPOSAL_PROTOCOL_IDENTITY_FAILURE` | `db17355b5dcb0ba1079286291c24c130e509063008fdafaebb66f72919964a2f` |
+
+For every row, terminal persistence and typed readback produced:
+
+```text
+state: FAILED
+failure_boundary: A1_CAPTURE
+failure_reason: exact final_subcause above
+journal_record_count: 2
+anchor_record_count: 2
+trace_event_count: 0
+durable_readback_verified: true
+read-back diagnostic: byte-canonical object equality with the adapter diagnostic
+```
+
+No two required cases have the same final reason, `final_subcause`, diagnostic
+SHA-256, or full diagnostic object. Indistinguishability among the seven cases
+is therefore **EXCLUDED** on current main.
+
+### 5. Overlapping failures
+
+Two deterministic overlaps were injected:
+
+| Simultaneously true facts | Selected `final_subcause` | Retained non-selected facts | Durable result |
+|---|---|---|---|
+| Gate schema rejection plus completion status `completed` when `failed` was expected | `A1_PROPOSAL_ITEM_STATUS_MISMATCH` | `gate_response_code=proposal_schema_invalid`, gate failure, accepted absent, observed/expected statuses, protocol failure | Exact diagnostic survives in a two-record failed journal and two-record anchor |
+| Same-call changed-argument replay plus request-shape failure | `A1_PROPOSAL_INCONSISTENT_REPLAY` | `request_shape_valid=false`, malformed, accepted gate result, item statuses, protocol failure | Exact diagnostic survives in a two-record failed journal and two-record anchor |
+
+All relevant tested facts remain retained. `final_subcause` is a precedence
+selection, not a claim that the other facts did not occur. In the first input,
+the retained schema gate result identifies the first meaningful rejection even
+though status mismatch has higher final precedence. In the second input, the
+known changed replay explains the later shape failure. The aggregate diagnostic
+does not timestamp events, but these tests did not produce two opposite causal
+orders with an identical diagnostic and different needed decisions. Causal
+ordering would be forensically useful, not required by the demonstrated
+control behavior; no ordering field is proposed.
+
+### 6. Exception and teardown durability
+
+Fault injection produced the following exact durable states:
+
+| Injection | Raised surface | Durable state after removing the fault | Observational result | Classification |
+|---|---|---|---|---|
+| Adapter exception before a Run result or proposal diagnostic exists | Bridge error `A1_RUN_FAILED` | `FAILED / A1_CAPTURE / A1_RUN_FAILED`; journal 2, anchor 2, durable true, no diagnostic | Exact run-failure family retained; lower exception detail is intentionally absent | **CONFIRMED** |
+| Controller diagnostic accessor raises during capture propagation | Bridge error `A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE` | `FAILED / A1_CAPTURE / A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE`; journal 2, anchor 2, durable true, no diagnostic | Exact bounded propagation family retained | **CONFIRMED** |
+| First `os.write` of A1 terminal append raises before writing bytes | Raw injected `OSError` | Prior valid `OPEN / A1_CAPTURE`; physical and projected journal 1, anchor 1, durable true, no terminal reason or diagnostic | Observationally ambiguous after teardown: no durable distinction between not-yet-terminal and failed-to-persist terminal | **CONFIRMED** |
+| First `os.write` of A2 terminal append raises before writing bytes | Raw injected `OSError` | Prior valid `OPEN / A2_RECONNECT`; physical and projected journal 3, anchor 3, one A1 trace event, durable true | Same ambiguity at a non-A1 stage, proving shared writer behavior | **CONFIRMED** |
+| A1 journal terminal record and diagnostic fsync, then anchor write raises | Raw injected `OSError` | Physical journal 2 with diagnostic, physical anchor 1; typed readback `FAILED / RUNTIME_ENFORCEMENT / CREATOR_LIVE_DURABLE_JOURNAL_ANCHOR_MISMATCH`, durable false and fail-closed projected counts 0 | Integrity failure is unambiguous; the unanchored intended terminal semantic is not admissible | **CONFIRMED** |
+| Proposal completes and controller retains `A1_PROPOSAL_SCHEMA_REJECTED`, then teardown is injected before `record_stage_failure` persists | Injected teardown error | Prior valid `OPEN / A1_CAPTURE`; physical and projected journal 1, anchor 1, durable true, no diagnostic | After process loss, the attempted failure is observationally indistinguishable from an attempt that never terminalized | **CONFIRMED** |
+
+The zero-byte append and pre-persistence teardown windows are real
+observability limits. The anchor-write case correctly fails closed rather than
+trusting journal bytes that lack a matching anchor generation. These tests do
+not demonstrate that the shared append algorithm corrupts an already admitted
+state, nor do they establish a bounded way to persist a terminal fact when the
+same persistence medium refuses the write. They therefore do not, by
+themselves, authorize a shared A2-A7 writer repair.
+
+### 7. A1-only and shared-writer boundary
+
+Current `_STAGES` contains A1 through A6. The exact boundary is:
+
+| Facility | A1 | A2-A6 | A7 |
+|---|---:|---:|---:|
+| Proposal diagnostic construction and precedence | Yes | No | No |
+| Controller/capture diagnostic propagation | Yes | No | No |
+| Terminal `ATTEMPT_FAILED` construction through `_terminal_failure()` | Yes | Yes | No A7 stage writer |
+| Journal append and fsync through `_append()` | Yes | Yes | No direct A7 append |
+| Anchor append and fsync through `_append()` | Yes | Yes | No direct A7 append |
+| Typed durable readback | Yes | Yes | Yes, as admission input |
+
+`_terminal_failure()` constructs the shared terminal payload at current
+`field_notes_creator_live.py:1899-1950`; `_append()` performs the common journal
+then anchor writes at lines 1813-1897; `_emit()` uses the same append path for
+A1-A6 and writes `TRACE_COMPLETED` after A6 at lines 1972-2022. A7 admission is
+the `matches_admission()` check over a complete, durable readback at lines
+1100-1131. It does not own another checkpoint append.
+
+The A2 fault injection reached a genuine `A2_RECONNECT` state with one retained
+A1 trace event before exercising the same zero-byte terminal append. This
+confirms the shared writer failure mode. It does not show an A2-A7 semantic or
+contract defect. No A2-A7 code change is requested.
+
+### Confirmed concerns
+
+- malformed proposal deliveries can be final-classified as missing because
+  call count zero precedes retained request-shape facts;
+- exact request replay and exact duplicate completion are not separately
+  counted for forensics;
+- overlapping failure facts are aggregate-retained while one final subcause is
+  precedence-selected; and
+- terminal append and teardown-before-persistence can leave the prior valid
+  OPEN record as the only durable truth.
+
+### Excluded concerns
+
+- production gate success with completed item and missing accepted state;
+- collision or loss of discrimination among the seven requested current-main
+  proposal failure cases;
+- loss of coexisting facts in either injected overlap;
+- need for a causal-order field based on the tested overlaps; and
+- need to change A2-A7 semantics because of the A1 attempt-count defect.
+
+### Remaining observability gaps
+
+1. The diagnostic cannot distinguish a singleton from an exact idempotent
+   request replay or exact duplicate completion.
+2. Aggregate overlap fields carry no event timestamps. The current tests do
+   not establish a decision ambiguity that requires adding order fields.
+3. A process loss before the first terminal journal byte is written leaves only
+   the earlier OPEN state. This is shared by A1-A6 terminal recording.
+4. An anchor-write failure makes the unanchored journal tail inadmissible; the
+   typed readback retains the integrity-failure family, not the intended lower
+   terminal cause.
+5. None of these current observations fills Proof 002's missing historical
+   diagnostic. Its exact lower cause remains **UNRESOLVABLE** within Outcome B.
+
+### Concrete current defect and bounded repair recommendation
+
+One current implementation defect is **CONFIRMED** independently of Proof 002:
+a proposal request that is observably malformed before acquiring a valid call
+identity can be labeled `A1_PROPOSAL_MISSING`, even though
+`request_shape_valid=false`, `malformed_observed=true`, and proposal-phase
+protocol failure are retained.
+
+A current-code repair is actually required for accurate A1 taxonomy, but it is
+not authorized in PR #84. The bounded future repair proposal is:
+
+```text
+Defect:
+  Zero distinct valid call IDs has unconditional precedence over an observed
+  malformed proposal request.
+
+Affected production file:
+  decision_os/companion/field_notes_adapter.py
+
+Affected test file:
+  tests/test_field_notes_lite.py
+
+Required tests:
+  - no proposal request remains A1_PROPOSAL_MISSING;
+  - missing/empty/non-string callId on an observed proposal request becomes
+    A1_PROPOSAL_REQUEST_SHAPE_INVALID with the existing retained cofacts;
+  - invalid outer request identity on an otherwise recognizable proposal
+    request becomes A1_PROPOSAL_REQUEST_SHAPE_INVALID;
+  - valid shape, schema rejection, duplicate distinct IDs, inconsistent replay,
+    completion mismatch, protocol failure, and durable roundtrip remain exact;
+  - non-proposal failure precedence remains unchanged.
+
+Expected behavior:
+  "missing" means no recognizable proposal request was delivered. An observed
+  malformed proposal request is classified by its retained malformed/shape
+  facts even when no valid call identity can be counted.
+
+Rollback:
+  Revert only the future A1 precedence predicate and its focused tests if any
+  existing failure-family invariant regresses. No artifact migration is needed
+  because the existing diagnostic schema already retains the required facts.
+
+A2-A7 proof of no change:
+  The predicate and facts live entirely in the A1 adapter. Controller, capture
+  bridge, shared terminal writer, journal schema, anchor schema, typed readback,
+  A2-A6 checkpoints, TRACE_COMPLETED, and A7 admission need no change.
+```
+
+The shared zero-write and teardown gaps are recorded as failure-mode limits,
+not folded into this bounded repair. A separate shared-writer change would
+require an independently demonstrated contract defect and separate authority.
+
+### Exact reconciliation claim boundary
+
+- Original result remains **B — CAUSE FAMILY NARROWED**.
+- Proof 002 remains `FAILED / A1_CAPTURE / A1_PROPOSAL_INVALID`.
+- The current malformed-as-missing defect is proven on current code; it is not
+  claimed as Proof 002's historical cause.
+- PR #82 removed the historical missing-diagnostic defect, but it did not remove
+  the newly confirmed attempt-count precedence defect.
+- The seven requested current failure families are mutually discriminated and
+  durably round-trip under successful persistence.
+- Exact benign replay and duplicate completion delivery counts are not retained.
+- Terminal write refusal and teardown before persistence can leave only an OPEN
+  durable state; anchor failure instead fails closed as an integrity mismatch.
+- A current repair is required only for the A1 taxonomy defect and is **NOT
+  AUTHORIZED** until 13-31 independently reviews this diagnosis.
+- No implementation, Note, Run 2, live attempt, model invocation, journal
+  mutation, anchor mutation, or evidence rewrite occurred in this
+  reconciliation.
+- Third live attempt remains **BLOCK / NOT AUTHORIZED**.
 
 ## Claim Boundary
 
@@ -377,8 +725,9 @@ V13 Next Loop Gate:
 HOLD
 
 Reason:
-The bounded diagnosis is complete at Outcome B, but no repair or third attempt
-is authorized before independent 13-31 review.
+The bounded historical diagnosis remains complete at Outcome B. Adversarial
+reconciliation proves one current A1 taxonomy defect, but no repair or third
+attempt is authorized before independent 13-31 review.
 
 Next Authorized Action:
 13-31 independently reviews this diagnosis artifact.
@@ -395,6 +744,7 @@ Decision Owner:
 Shin
 
 Completion Line:
-One diagnosis artifact records the verified evidence, historical failure map,
-deterministic reproduction, bounded Outcome B, and no-current-repair result.
+One diagnosis artifact records the verified historical evidence and Outcome B,
+the current deterministic adversarial reconciliation, and one bounded but
+unauthorized A1 repair requirement.
 ```
