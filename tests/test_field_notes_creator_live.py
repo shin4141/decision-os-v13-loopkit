@@ -9,6 +9,9 @@ from unittest.mock import patch
 
 from decision_os.companion import field_notes_creator_live as creator_live
 from decision_os.companion import field_notes_whole_flow as whole_flow
+from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
+)
 from decision_os.companion.field_notes_creator_live import (
     FieldNoteCreatorLiveA1CaptureCommitReceipt,
     FieldNoteCreatorLiveAttemptExistsError,
@@ -50,6 +53,37 @@ OBSERVED_AT = (
 )
 RUN_1_TASK = "Complete the bounded creator-live Run 1 task."
 RUN_1_TASK_SHA256 = hashlib.sha256(RUN_1_TASK.encode("utf-8")).hexdigest()
+
+
+def proposal_diagnostic(
+    **changes,
+) -> FieldNoteA1ProposalDiagnostic:
+    values = {
+        "proposal_call_count": 1,
+        "call_identity_sha256": "1" * 64,
+        "request_identity_sha256": "2" * 64,
+        "arguments_identity_sha256": "3" * 64,
+        "request_shape_valid": True,
+        "malformed_observed": True,
+        "gate_invoked": True,
+        "gate_response_code": "proposal_schema_invalid",
+        "gate_response_success": False,
+        "accepted_proposal_present": False,
+        "item_start_observed": True,
+        "item_completion_observed": True,
+        "item_observed_status": "failed",
+        "item_expected_status": "failed",
+        "all_proposals_completed": True,
+        "request_identity_mismatch": False,
+        "response_identity_mismatch": False,
+        "inconsistent_replay": False,
+        "protocol_identity_failure": False,
+        "protocol_failure_phase": None,
+        "direct_write_identity": None,
+        "final_subcause": "A1_PROPOSAL_SCHEMA_REJECTED",
+    }
+    values.update(changes)
+    return FieldNoteA1ProposalDiagnostic(**values)
 
 
 class CreatorLiveTestCase(unittest.TestCase):
@@ -609,6 +643,34 @@ class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
         with self.assertRaises(FieldNoteCreatorLiveStageError):
             self.record_a1(loaded)
 
+    def test_legacy_terminal_record_projects_diagnostic_unavailable(self) -> None:
+        runtime_path = self.open_runtime("legacy-failure")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A1_CAPTURE",
+                "A1_PROPOSAL_INVALID",
+            )
+        loaded = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        )
+        readback = loaded.read_back()
+        self.assertTrue(readback.durable_readback_verified)
+        self.assertEqual("A1_PROPOSAL_INVALID", readback.failure_reason)
+        self.assertIsNone(readback.a1_proposal_diagnostic)
+
+    def test_typed_proposal_failure_cannot_open_run_2(self) -> None:
+        runtime_path = self.open_runtime("diagnostic-terminal")
+        diagnostic = proposal_diagnostic()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A1_CAPTURE",
+                diagnostic.final_subcause,
+                proposal_diagnostic=diagnostic,
+            )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(self.bundle.run_2)
+        self.assertEqual(0, runtime_path.read_back().trace_event_count)
+
     def test_second_attempt_is_not_started_automatically(self) -> None:
         runtime_path = self.open_runtime()
         with self.assertRaises(FieldNoteCreatorLiveAttemptExistsError):
@@ -970,6 +1032,64 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         runtime_path = self.open_runtime("drop-failure")
         with self.assertRaises(FieldNoteCreatorLiveStageError):
             runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        self.remove_journal_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_proposal_diagnostic_is_journaled_anchor_sealed_and_read_back(self) -> None:
+        runtime_path = self.open_runtime("diagnostic-sealed")
+        diagnostic = proposal_diagnostic()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A1_CAPTURE",
+                diagnostic.final_subcause,
+                proposal_diagnostic=diagnostic,
+            )
+        readback = runtime_path.read_back()
+        self.assertTrue(readback.durable_readback_verified)
+        self.assertEqual(diagnostic, readback.a1_proposal_diagnostic)
+        self.assertEqual(
+            readback.journal_record_count,
+            readback.anchor_record_count,
+        )
+        journal = runtime_path.journal_path.read_text(encoding="utf-8")
+        anchor = runtime_path.anchor_path.read_text(encoding="utf-8")
+        self.assertIn(diagnostic.diagnostic_sha256, journal)
+        self.assertIn(readback.journal_sha256, anchor)
+        self.assertNotIn("reusable_structure", journal)
+        self.assertNotIn("proposal Markdown", journal)
+        self.assertNotIn("raw model output", journal)
+
+    def test_proposal_diagnostic_record_mutation_fails_closed(self) -> None:
+        runtime_path = self.open_runtime("diagnostic-mutation")
+        diagnostic = proposal_diagnostic()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A1_CAPTURE",
+                diagnostic.final_subcause,
+                proposal_diagnostic=diagnostic,
+            )
+        raw = runtime_path.journal_path.read_bytes()
+        marker = diagnostic.diagnostic_sha256.encode("ascii")
+        offset = raw.index(marker)
+        replacement = b"f" if marker[:1] != b"f" else b"e"
+        runtime_path.journal_path.write_bytes(
+            raw[:offset] + replacement + raw[offset + 1 :]
+        )
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_proposal_diagnostic_tail_deletion_fails_closed(self) -> None:
+        runtime_path = self.open_runtime("diagnostic-tail")
+        diagnostic = proposal_diagnostic()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A1_CAPTURE",
+                diagnostic.final_subcause,
+                proposal_diagnostic=diagnostic,
+            )
         self.remove_journal_tail(runtime_path)
         readback = runtime_path.read_back()
         self.assertEqual("FAILED", readback.state)

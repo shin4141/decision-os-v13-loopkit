@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 import hashlib
 import io
@@ -28,6 +28,7 @@ from decision_os.companion.controller import (
     CompanionError,
 )
 from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
     FieldNoteCreatorLiveA1CaptureConfig,
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
@@ -123,6 +124,9 @@ class FieldNotesCompanionController(CompanionController):
         ) = None
         self._creator_live_a1_failure_reason: str | None = None
         self._creator_live_a1_direct_write_identity: str | None = None
+        self._creator_live_a1_proposal_diagnostic: (
+            FieldNoteA1ProposalDiagnostic | None
+        ) = None
         trusted_source_model_class = configured_model_class(
             kwargs.pop("trusted_source_model_class", "UNKNOWN")
         )
@@ -185,6 +189,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
+            self._creator_live_a1_proposal_diagnostic = None
         try:
             return super().start_run(task, task_mode="manual")
         except Exception:
@@ -200,6 +205,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
+            self._creator_live_a1_proposal_diagnostic = None
         return super().new_run()
 
     def select_repository(self, candidate: str | Path) -> dict[str, Any]:
@@ -211,6 +217,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_run_completion = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
+            self._creator_live_a1_proposal_diagnostic = None
             return self._snapshot_locked()
 
     @staticmethod
@@ -340,7 +347,35 @@ class FieldNotesCompanionController(CompanionController):
             None,
         )
         completion: FieldNoteCreatorLiveA1RunCompletion | None = None
+        proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None
         if capture is not None:
+            raw_diagnostic = getattr(
+                result,
+                "creator_live_a1_proposal_diagnostic",
+                None,
+            )
+            if isinstance(raw_diagnostic, FieldNoteA1ProposalDiagnostic):
+                try:
+                    proposal_diagnostic = (
+                        FieldNoteA1ProposalDiagnostic.from_dict(
+                            raw_diagnostic.as_dict()
+                        )
+                    )
+                except ValueError:
+                    proposal_diagnostic = None
+            if proposal_diagnostic is None:
+                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+            elif (
+                proposal_diagnostic.final_subcause is not None
+                and capture_failure != proposal_diagnostic.final_subcause
+            ):
+                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+            elif (
+                proposal_diagnostic.final_subcause is None
+                and isinstance(capture_failure, str)
+                and capture_failure.startswith("A1_PROPOSAL_")
+            ):
+                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
             if (
                 getattr(result, "creator_live_a1_capture", False) is not True
                 or result.run_id != capture.run_id
@@ -358,6 +393,24 @@ class FieldNotesCompanionController(CompanionController):
                 for evidence in result.read_evidence
             ):
                 capture_failure = "A1_READ_EVIDENCE_FAILED"
+            if (
+                proposal_diagnostic is not None
+                and proposal_diagnostic.final_subcause
+                == "A1_DIRECT_WRITE_REQUESTED"
+                and self._creator_live_a1_direct_write_identity is not None
+            ):
+                proposal_diagnostic = (
+                    proposal_diagnostic.with_direct_write_identity(
+                        self._creator_live_a1_direct_write_identity
+                    )
+                )
+                if isinstance(result, FieldNoteCodexRunResult):
+                    result = replace(
+                        result,
+                        creator_live_a1_proposal_diagnostic=(
+                            proposal_diagnostic
+                        ),
+                    )
             draft = (
                 self._eligible_creator_live_draft(
                     result,
@@ -399,6 +452,7 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_capture_config = None
             self._creator_live_a1_run_completion = completion
             self._creator_live_a1_failure_reason = capture_failure
+            self._creator_live_a1_proposal_diagnostic = proposal_diagnostic
             self._run["field_note_reconnect"] = reconnect_projection
             if draft is None:
                 self._clear_field_note_locked()
@@ -469,6 +523,32 @@ class FieldNotesCompanionController(CompanionController):
                 )
             return completion
 
+    def creator_live_a1_proposal_diagnostic(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> FieldNoteA1ProposalDiagnostic:
+        """Return the digest-verified diagnostic for the exact completed Run."""
+
+        with self._condition:
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or self._creator_live_a1_completed_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A1_CAPTURE_IDENTITY_MISMATCH")
+            diagnostic = self._creator_live_a1_proposal_diagnostic
+            if diagnostic is None:
+                raise FieldNoteError("A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE")
+            try:
+                return FieldNoteA1ProposalDiagnostic.from_dict(
+                    diagnostic.as_dict()
+                )
+            except ValueError as exc:
+                raise FieldNoteError(
+                    "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+                ) from exc
+
     def _fail_run(self, repository: Path, exc: Exception) -> None:
         super()._fail_run(repository, exc)
         with self._condition:
@@ -479,6 +559,7 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_capture_config = None
                 self._creator_live_a1_failure_reason = "A1_RUN_FAILED"
                 self._creator_live_a1_run_completion = None
+                self._creator_live_a1_proposal_diagnostic = None
             self._clear_field_note_locked()
             self._condition.notify_all()
 

@@ -16,6 +16,9 @@ from decision_os.acceleration.model import (
     repository_id,
 )
 from decision_os.acceleration.codex_adapter import CodexRuntimeIdentity
+from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
+)
 from decision_os.companion.field_notes_controller import (
     FieldNoteError,
     FieldNotesCompanionController,
@@ -89,10 +92,18 @@ class FieldNoteCreatorLiveA1CaptureBridge:
         self.utc_now = utc_now
         self._dispatched = False
 
-    def _terminal(self, reason: str) -> None:
+    def _terminal(
+        self,
+        reason: str,
+        proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None,
+    ) -> None:
         bounded = reason if len(reason) <= 256 else reason[:256]
         try:
-            self.runtime.record_stage_failure("A1_CAPTURE", bounded)
+            self.runtime.record_stage_failure(
+                "A1_CAPTURE",
+                bounded,
+                proposal_diagnostic=proposal_diagnostic,
+            )
         except FieldNoteCreatorLiveStageError as exc:
             raise FieldNoteCreatorLiveA1CaptureBridgeError(bounded) from exc
         raise FieldNoteCreatorLiveA1CaptureBridgeError(bounded)
@@ -232,6 +243,28 @@ class FieldNoteCreatorLiveA1CaptureBridge:
                 expected_runtime_identity=expected_runtime,
             )
             self._wait_for_run()
+            try:
+                proposal_diagnostic = (
+                    self.controller.creator_live_a1_proposal_diagnostic(
+                        expected_run_id=run_id
+                    )
+                )
+            except FieldNoteError as exc:
+                self._terminal(self._capture_failure_reason(exc))
+            proposal_diagnostic = FieldNoteA1ProposalDiagnostic.from_dict(
+                proposal_diagnostic.as_dict()
+            )
+            if proposal_diagnostic.final_subcause is not None:
+                reason = proposal_diagnostic.final_subcause
+                if (
+                    reason == "A1_DIRECT_WRITE_REQUESTED"
+                    and proposal_diagnostic.direct_write_identity is not None
+                ):
+                    reason = (
+                        f"{reason}:"
+                        f"{proposal_diagnostic.direct_write_identity}"
+                    )
+                self._terminal(reason, proposal_diagnostic)
             draft = self.controller.creator_live_a1_capture_candidate()
             completion = self.controller.creator_live_a1_run_completion()
             validate_compiled_markdown(draft.markdown)

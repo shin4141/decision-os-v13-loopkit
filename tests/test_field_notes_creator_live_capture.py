@@ -15,7 +15,10 @@ from decision_os.acceleration.codex_adapter import (
     CodexRuntimeIdentity,
 )
 from decision_os.acceleration.model import git_output, repository_id
-from decision_os.companion.field_notes_adapter import FieldNoteCodexRunResult
+from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
+    FieldNoteCodexRunResult,
+)
 from decision_os.companion.field_notes_controller import (
     FieldNotesCompanionController,
 )
@@ -174,7 +177,7 @@ class _CaptureAdapter:
                 config.run_id,
                 normal_terminal=False,
                 proposal=None,
-                failure="A1_PROPOSAL_INVALID",
+                failure="A1_PROPOSAL_SCHEMA_REJECTED",
             )
         return self.owner.result(config.run_id, proposal=draft)
 
@@ -243,6 +246,70 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         attempts: int = 1,
         actions: tuple[CodexFileAction, ...] = (),
     ) -> FieldNoteCodexRunResult:
+        proposal_failure = failure if failure in {
+            "A1_PROPOSAL_MISSING",
+            "A1_PROPOSAL_DUPLICATE",
+            "A1_PROPOSAL_SCHEMA_REJECTED",
+            "A1_DIRECT_WRITE_REQUESTED",
+        } else None
+        has_proposal = proposal is not None
+        gate_invoked = has_proposal or failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+        diagnostic = FieldNoteA1ProposalDiagnostic(
+            proposal_call_count=(
+                0 if failure == "A1_PROPOSAL_MISSING" else attempts
+            ),
+            call_identity_sha256=(
+                None if failure == "A1_PROPOSAL_MISSING" else "1" * 64
+            ),
+            request_identity_sha256=(
+                None if failure == "A1_PROPOSAL_MISSING" else "2" * 64
+            ),
+            arguments_identity_sha256=(
+                None if failure == "A1_PROPOSAL_MISSING" else "3" * 64
+            ),
+            request_shape_valid=(
+                None if failure == "A1_PROPOSAL_MISSING" else True
+            ),
+            malformed_observed=(
+                failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+            ),
+            gate_invoked=gate_invoked,
+            gate_response_code=(
+                "proposal_schema_invalid"
+                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                else "proposal_accepted" if gate_invoked else None
+            ),
+            gate_response_success=(
+                False
+                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                else True if gate_invoked else None
+            ),
+            accepted_proposal_present=has_proposal,
+            item_start_observed=(failure != "A1_PROPOSAL_MISSING"),
+            item_completion_observed=(failure != "A1_PROPOSAL_MISSING"),
+            item_observed_status=(
+                None
+                if failure == "A1_PROPOSAL_MISSING"
+                else "failed"
+                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                else "completed"
+            ),
+            item_expected_status=(
+                None
+                if failure == "A1_PROPOSAL_MISSING"
+                else "failed"
+                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                else "completed"
+            ),
+            all_proposals_completed=True,
+            request_identity_mismatch=False,
+            response_identity_mismatch=False,
+            inconsistent_replay=False,
+            protocol_identity_failure=False,
+            protocol_failure_phase=None,
+            direct_write_identity=None,
+            final_subcause=proposal_failure,
+        )
         return FieldNoteCodexRunResult(
             run_id=run_id,
             normal_terminal=normal_terminal,
@@ -263,6 +330,7 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             ).hexdigest()
             if self.task_sha256_override is None
             else self.task_sha256_override,
+            creator_live_a1_proposal_diagnostic=diagnostic,
         )
 
     def bridge(self) -> FieldNoteCreatorLiveA1CaptureBridge:
@@ -488,6 +556,18 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                 self.assertEqual("FAILED", readback.state)
                 self.assertEqual("A1_CAPTURE", readback.failure_boundary)
                 self.assertEqual(0, readback.trace_event_count)
+                self.assertIsNotNone(readback.a1_proposal_diagnostic)
+                assert readback.a1_proposal_diagnostic is not None
+                self.assertEqual(
+                    readback.failure_reason,
+                    readback.a1_proposal_diagnostic.final_subcause,
+                )
+                assert self.last_draft is not None
+                self.assertFalse(
+                    (
+                        self.repository / self.last_draft.relative_path
+                    ).exists()
+                )
 
     def test_direct_create_update_delete_are_denied_and_terminal(self) -> None:
         for action in ("Create", "Update", "Delete"):
@@ -505,6 +585,12 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                     readback.failure_reason.startswith(
                         "A1_DIRECT_WRITE_REQUESTED:"
                     )
+                )
+                self.assertIsNotNone(readback.a1_proposal_diagnostic)
+                assert readback.a1_proposal_diagnostic is not None
+                self.assertEqual(
+                    readback.a1_proposal_diagnostic.direct_write_identity,
+                    readback.failure_reason.rsplit(":", 1)[-1],
                 )
                 self.assertFalse(
                     (self.repository / "field_notes" / "direct.md").exists()
