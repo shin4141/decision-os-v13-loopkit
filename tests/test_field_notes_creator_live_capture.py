@@ -187,7 +187,10 @@ class _CaptureAdapter:
                 proposal=None,
                 failure="A1_PROPOSAL_SCHEMA_REJECTED",
             )
-        return self.owner.result(config.run_id, proposal=draft)
+        return self.owner.result(
+            self.owner.result_run_id_override or config.run_id,
+            proposal=draft,
+        )
 
 
 class CreatorLiveCaptureBridgeTests(unittest.TestCase):
@@ -235,6 +238,8 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         self.read_evidence: tuple[CodexReadEvidence, ...] = ()
         self.task_sha256_override: str | None = None
         self.omit_proposal_diagnostic = False
+        self.diagnostic_final_subcause_override: str | None = None
+        self.result_run_id_override: str | None = None
         self.controller = FieldNotesCompanionController(
             state_path=self.root / "state.json",
             picker_script=self.root / "picker.scpt",
@@ -317,7 +322,11 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             protocol_identity_failure=False,
             protocol_failure_phase=None,
             direct_write_identity=None,
-            final_subcause=proposal_failure,
+            final_subcause=(
+                self.diagnostic_final_subcause_override
+                if self.diagnostic_final_subcause_override is not None
+                else proposal_failure
+            ),
         )
         return FieldNoteCodexRunResult(
             run_id=run_id,
@@ -526,6 +535,85 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             "A1_PROPOSAL_SCHEMA_REJECTED",
             readback.a1_proposal_diagnostic.final_subcause,
         )
+
+    def test_non_proposal_failures_precede_valid_diagnostic_subcause(
+        self,
+    ) -> None:
+        cases = (
+            "A1_READ_EVIDENCE_FAILED",
+            "A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH",
+            "A1_CAPTURE_IDENTITY_MISMATCH",
+        )
+        for expected_reason in cases:
+            with self.subTest(expected_reason=expected_reason):
+                self.setUp()
+                self.diagnostic_final_subcause_override = (
+                    "A1_PROPOSAL_SCHEMA_REJECTED"
+                )
+                if expected_reason == "A1_READ_EVIDENCE_FAILED":
+                    self.read_evidence = (
+                        CodexReadEvidence(
+                            path="missing.txt",
+                            byte_count=None,
+                            sha256=None,
+                            repository_identity=(
+                                self.source_repository.repository_id
+                            ),
+                            status="failed",
+                            reason="read_path_not_found",
+                        ),
+                    )
+                elif expected_reason == (
+                    "A1_ACTUAL_RUNTIME_IDENTITY_MISMATCH"
+                ):
+                    self.actual_runtime_identity = replace(
+                        self.run_1.runtime,
+                        model="different-runtime-model",
+                    )
+                else:
+                    self.result_run_id_override = "different-run-id"
+
+                with patch.object(
+                    self.controller,
+                    "field_note_save",
+                ) as save:
+                    with self.assertRaises(
+                        FieldNoteCreatorLiveA1CaptureBridgeError
+                    ):
+                        self.bridge().capture(
+                            "Propose once after the bounded mutation."
+                        )
+
+                self.assertEqual(0, save.call_count)
+                self.assertEqual(
+                    expected_reason,
+                    self.controller.creator_live_a1_failure_reason(
+                        expected_run_id=self.run_1.run_id
+                    ),
+                )
+                diagnostic = (
+                    self.controller.creator_live_a1_proposal_diagnostic(
+                        expected_run_id=self.run_1.run_id
+                    )
+                )
+                self.assertEqual(
+                    "A1_PROPOSAL_SCHEMA_REJECTED",
+                    diagnostic.final_subcause,
+                )
+                readback = self.runtime.read_back()
+                self.assertEqual("FAILED", readback.state)
+                self.assertEqual("A1_CAPTURE", readback.failure_boundary)
+                self.assertEqual(expected_reason, readback.failure_reason)
+                self.assertIsNone(readback.a1_proposal_diagnostic)
+                self.assertEqual(0, readback.trace_event_count)
+                assert self.last_draft is not None
+                self.assertFalse(
+                    (
+                        self.repository / self.last_draft.relative_path
+                    ).exists()
+                )
+                with self.assertRaises(FieldNoteCreatorLiveStageError):
+                    self.runtime.open_run_2(self.run_1)
 
     def test_successful_read_cannot_replace_missing_or_malformed_proposal(self) -> None:
         for mode in ("missing", "malformed"):

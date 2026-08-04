@@ -382,20 +382,28 @@ class FieldNotesCompanionController(CompanionController):
                     proposal_diagnostic = None
             proposal_failure = bool(
                 isinstance(capture_failure, str)
-                and (
-                    capture_failure.startswith("A1_PROPOSAL_")
-                    or capture_failure == "A1_DIRECT_WRITE_REQUESTED"
-                )
+                and capture_failure.startswith("A1_PROPOSAL_")
+            )
+            direct_write_failure = (
+                capture_failure == "A1_DIRECT_WRITE_REQUESTED"
             )
             if proposal_diagnostic is None:
-                if capture_failure is None or proposal_failure:
+                if (
+                    capture_failure is None
+                    or proposal_failure
+                    or direct_write_failure
+                ):
                     capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
             elif proposal_diagnostic.final_subcause is not None:
-                if capture_failure is None or not proposal_failure:
+                if capture_failure is None or proposal_failure:
                     capture_failure = proposal_diagnostic.final_subcause
-                elif capture_failure != proposal_diagnostic.final_subcause:
+                elif (
+                    direct_write_failure
+                    and proposal_diagnostic.final_subcause
+                    != "A1_DIRECT_WRITE_REQUESTED"
+                ):
                     capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
-            elif proposal_failure:
+            elif proposal_failure or direct_write_failure:
                 capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
             if (
                 proposal_diagnostic is not None

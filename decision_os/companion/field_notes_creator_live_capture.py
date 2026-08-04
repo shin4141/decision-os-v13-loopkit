@@ -261,6 +261,11 @@ class FieldNoteCreatorLiveA1CaptureBridge:
                 )
             except FieldNoteError as exc:
                 self._terminal(self._capture_failure_reason(exc))
+            if (
+                failure_reason is not None
+                and not self._is_proposal_failure(failure_reason)
+            ):
+                self._terminal(failure_reason)
             try:
                 proposal_diagnostic = (
                     self.controller.creator_live_a1_proposal_diagnostic(
@@ -268,11 +273,6 @@ class FieldNoteCreatorLiveA1CaptureBridge:
                     )
                 )
             except FieldNoteError as exc:
-                if (
-                    failure_reason is not None
-                    and not self._is_proposal_failure(failure_reason)
-                ):
-                    self._terminal(failure_reason)
                 self._terminal(self._capture_failure_reason(exc))
             proposal_diagnostic = FieldNoteA1ProposalDiagnostic.from_dict(
                 proposal_diagnostic.as_dict()
