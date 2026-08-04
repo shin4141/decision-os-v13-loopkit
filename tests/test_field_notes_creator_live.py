@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -10,6 +11,7 @@ from decision_os.companion import field_notes_creator_live as creator_live
 from decision_os.companion import field_notes_whole_flow as whole_flow
 from decision_os.companion.field_notes_creator_live import (
     FieldNoteCreatorLiveAttemptExistsError,
+    FieldNoteCreatorLiveDurabilityError,
     FieldNoteCreatorLiveProofRuntime,
     FieldNoteCreatorLiveStageError,
     FieldNoteCreatorLiveTraceReadback,
@@ -356,7 +358,7 @@ class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
             (
                 whole_flow._a1_evidence_sha256(evidence.a1_capture),
                 whole_flow._a2_receipt_sha256(evidence.a2_reconnect),
-                evidence.a3_assessment.reuse_event_id,
+                whole_flow._a3_receipt_sha256(evidence.a3_assessment),
                 evidence.a4_snapshot.events[0].event_sha256,
                 whole_flow._a5_confirmation_sha256(evidence.a5_commit),
                 whole_flow._a6_packet_sha256(evidence.a6_review),
@@ -435,26 +437,125 @@ class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
             runtime_path.read_back().failure_reason,
         )
 
-    def runtime_through_a3(self, label: str):
-        runtime_path = self.ready_for_a2(label)
-        assert self.bundle.a2_reconnect is not None
-        assert self.bundle.a3_assessment is not None
+    def runtime_through_a3(self, label: str, *, bundle=None):
+        evidence = bundle or self.bundle
+        runtime_path = self.ready_for_a2(label, bundle=evidence)
+        assert evidence.a2_reconnect is not None
+        assert evidence.a3_assessment is not None
         with patch.object(
             creator_live,
             "_utc_now_rfc3339",
             side_effect=OBSERVED_AT[1:3],
         ):
             runtime_path.record_a2_reconnect(
-                self.bundle.a2_reconnect,
-                note=self.bundle.note,
-                note_bytes=self.bundle.note_bytes,
+                evidence.a2_reconnect,
+                note=evidence.note,
+                note_bytes=evidence.note_bytes,
             )
             runtime_path.record_a3_reuse(
-                self.bundle.a3_assessment,
-                note=self.bundle.note,
-                note_bytes=self.bundle.note_bytes,
+                evidence.a3_assessment,
+                note=evidence.note,
+                note_bytes=evidence.note_bytes,
             )
         return runtime_path
+
+    def mutated_a4_snapshot(self, bundle, **changes):
+        assert bundle.a3_assessment is not None
+        assert bundle.a4_snapshot is not None
+        receipt = replace(bundle.a3_assessment)
+        for field, value in changes.items():
+            object.__setattr__(receipt, field, value)
+        event = replace(bundle.a4_snapshot.events[0])
+        object.__setattr__(event, "receipt", receipt)
+        object.__setattr__(
+            event,
+            "receipt_sha256",
+            whole_flow._event_receipt_sha256(event),
+        )
+        object.__setattr__(event, "event_sha256", whole_flow._event_sha256(event))
+        snapshot = replace(bundle.a4_snapshot)
+        object.__setattr__(snapshot, "events", (event,))
+        object.__setattr__(snapshot, "chain_head_sha256", event.event_sha256)
+        return snapshot
+
+    def assert_a3_mutation_stops_at_a4(
+        self,
+        label: str,
+        bundle,
+        **changes,
+    ) -> None:
+        runtime_path = self.runtime_through_a3(label, bundle=bundle)
+        changed = self.mutated_a4_snapshot(bundle, **changes)
+        assert bundle.a3_assessment is not None
+        self.assertEqual(
+            bundle.a3_assessment.reuse_event_id,
+            changed.events[0].receipt.reuse_event_id,
+        )
+        self.assertNotEqual(
+            whole_flow._a3_receipt_sha256(bundle.a3_assessment),
+            changed.events[0].receipt_sha256,
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a4_durability(changed)
+        self.assertEqual("FAILED", runtime_path.read_back().state)
+        assert bundle.a5_commit is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a5_confirmation(bundle.a5_commit)
+        assert bundle.a6_review is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a6_review(bundle.a6_review)
+
+    def test_complete_a3_receipt_axes_cannot_be_substituted(self) -> None:
+        mutations = {
+            "claimed-outcome": {"claimed_outcome": "HARMFUL"},
+            "effective-outcome": {"outcome": "HARMFUL"},
+            "outcome-scope": {"outcome_scope": "A changed bounded scope."},
+            "causal-evidence": {"causal_evidence_sha256": "f" * 64},
+            "outcome-observer": {"outcome_observer_id": "other_observer"},
+            "outcome-confirmation": {
+                "outcome_confirmation": "SAME_RUN_CLAIM"
+            },
+            "contribution": {"contribution_separated": False},
+            "intervention": {"human_intervention": "MATERIAL"},
+            "disposition": {"next_action": "STOP"},
+        }
+        for label, changes in mutations.items():
+            with self.subTest(axis=label):
+                self.assert_a3_mutation_stops_at_a4(
+                    f"a3-mutation-{label}",
+                    self.bundle,
+                    **changes,
+                )
+
+    def test_stop_scope_substitution_cannot_continue(self) -> None:
+        bundle, _ = build_bundle(self.root / "stop-source", outcome="HARMFUL")
+        self.assert_a3_mutation_stops_at_a4(
+            "stop-scope-mutation",
+            bundle,
+            stop_scope="A substituted STOP scope.",
+        )
+
+    def test_revise_lineage_substitution_cannot_continue(self) -> None:
+        bundle, _ = build_bundle(
+            self.root / "revise-source",
+            outcome="NOT_HELPFUL",
+            action="REVISE",
+        )
+        assert bundle.a3_assessment is not None
+        assert bundle.a3_assessment.revision is not None
+        successor = replace(
+            bundle.a3_assessment.revision.successor,
+            field_note_id="fn_a7_substituted_successor",
+        )
+        revision = replace(
+            bundle.a3_assessment.revision,
+            successor=successor,
+        )
+        self.assert_a3_mutation_stops_at_a4(
+            "revision-lineage-mutation",
+            bundle,
+            revision=revision,
+        )
 
     def test_a4_tampered_durability_is_rejected(self) -> None:
         runtime_path = self.runtime_through_a3("a4")
@@ -529,15 +630,157 @@ class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
 
 
 class CreatorLiveDurabilityTests(CreatorLiveTestCase):
+    def runtime_through_a2(
+        self,
+        label: str,
+    ) -> FieldNoteCreatorLiveProofRuntime:
+        runtime_path = self.ready_for_a2(label)
+        assert self.bundle.a2_reconnect is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=OBSERVED_AT[1],
+        ):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        return runtime_path
+
+    def remove_journal_tail(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        count: int = 1,
+    ) -> None:
+        lines = runtime_path.journal_path.read_bytes().splitlines(keepends=True)
+        runtime_path.journal_path.write_bytes(b"".join(lines[:-count]))
+
+    def remove_anchor_tail(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        count: int = 1,
+    ) -> None:
+        lines = runtime_path.anchor_path.read_bytes().splitlines(keepends=True)
+        runtime_path.anchor_path.write_bytes(b"".join(lines[:-count]))
+
     def test_trace_persistence_is_append_only(self) -> None:
         runtime_path = self.open_runtime()
         initial = runtime_path.journal_path.read_bytes()
+        initial_anchor = runtime_path.anchor_path.read_bytes()
         self.record_a1(runtime_path)
         after_a1 = runtime_path.journal_path.read_bytes()
+        after_a1_anchor = runtime_path.anchor_path.read_bytes()
         self.open_run_2(runtime_path)
         after_run_2 = runtime_path.journal_path.read_bytes()
+        after_run_2_anchor = runtime_path.anchor_path.read_bytes()
         self.assertTrue(after_a1.startswith(initial))
         self.assertTrue(after_run_2.startswith(after_a1))
+        self.assertTrue(after_a1_anchor.startswith(initial_anchor))
+        self.assertTrue(after_run_2_anchor.startswith(after_a1_anchor))
+
+    def test_deleting_last_complete_checkpoint_fails_closed(self) -> None:
+        runtime_path = self.runtime_through_a2("drop-checkpoint")
+        self.remove_journal_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual(
+            "CREATOR_LIVE_DURABLE_JOURNAL_ANCHOR_MISMATCH",
+            readback.failure_reason,
+        )
+
+    def test_deleting_complete_failure_record_fails_closed(self) -> None:
+        runtime_path = self.open_runtime("drop-failure")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        self.remove_journal_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_deleting_complete_trace_completion_fails_closed(self) -> None:
+        runtime_path, _ = self.complete_runtime("drop-completion")
+        self.remove_journal_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual("EVIDENCE_DELETION", readback.repair_action)
+
+    def test_deleting_multiple_complete_tail_records_fails_closed(self) -> None:
+        runtime_path, _ = self.complete_runtime("drop-multiple")
+        self.remove_journal_tail(runtime_path, 3)
+        self.assertEqual("FAILED", runtime_path.read_back().state)
+
+    def test_journal_ahead_of_anchor_fails_closed(self) -> None:
+        runtime_path = self.runtime_through_a2("journal-ahead")
+        self.remove_anchor_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual(
+            "CREATOR_LIVE_DURABLE_JOURNAL_ANCHOR_MISMATCH",
+            readback.failure_reason,
+        )
+
+    def test_anchor_ahead_of_journal_fails_closed(self) -> None:
+        runtime_path = self.runtime_through_a2("anchor-ahead")
+        self.remove_journal_tail(runtime_path)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_anchor_tampering_fails_closed(self) -> None:
+        runtime_path = self.runtime_through_a2("anchor-tamper")
+        raw = runtime_path.anchor_path.read_bytes()
+        marker = b'"journal_sha256":"'
+        start = raw.rindex(marker) + len(marker)
+        replacement = b"f" if raw[start : start + 1] != b"f" else b"e"
+        runtime_path.anchor_path.write_bytes(
+            raw[:start] + replacement + raw[start + 1 :]
+        )
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual("EVENT_ID_CHANGE", readback.repair_action)
+
+    def test_anchor_truncation_fails_closed(self) -> None:
+        runtime_path = self.runtime_through_a2("anchor-truncate")
+        raw = runtime_path.anchor_path.read_bytes()
+        runtime_path.anchor_path.write_bytes(raw[:-1])
+        readback = runtime_path.read_back()
+        self.assertEqual(
+            "CREATOR_LIVE_DURABLE_ANCHOR_TRUNCATED",
+            readback.failure_reason,
+        )
+
+    def test_truncated_prefix_cannot_be_appended_to(self) -> None:
+        runtime_path = self.runtime_through_a2("blocked-prefix")
+        self.remove_journal_tail(runtime_path)
+        journal_before = runtime_path.journal_path.read_bytes()
+        anchor_before = runtime_path.anchor_path.read_bytes()
+        assert self.bundle.a2_reconnect is not None
+        with self.assertRaises(FieldNoteCreatorLiveDurabilityError):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual(journal_before, runtime_path.journal_path.read_bytes())
+        self.assertEqual(anchor_before, runtime_path.anchor_path.read_bytes())
+
+    def test_removed_failure_cannot_reopen_attempt(self) -> None:
+        runtime_path = self.open_runtime("failure-reopen")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        self.remove_journal_tail(runtime_path)
+        with self.assertRaises(FieldNoteCreatorLiveDurabilityError):
+            self.record_a1(runtime_path)
+        self.assertEqual("FAILED", runtime_path.read_back().state)
+
+    def test_removed_completion_cannot_resume_attempt(self) -> None:
+        runtime_path, _ = self.complete_runtime("completion-resume")
+        self.remove_journal_tail(runtime_path)
+        assert self.bundle.a6_review is not None
+        with self.assertRaises(FieldNoteCreatorLiveDurabilityError):
+            runtime_path.record_a6_review(self.bundle.a6_review)
+        self.assertEqual("FAILED", runtime_path.read_back().state)
 
     def test_durable_exact_readback_reaches_trace_complete(self) -> None:
         runtime_path, _ = self.complete_runtime()
@@ -545,6 +788,19 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         self.assertEqual("TRACE_COMPLETE", readback.state)
         self.assertTrue(readback.durable_readback_verified)
         self.assertEqual(6, readback.trace_event_count)
+        self.assertEqual(readback.journal_record_count, readback.anchor_record_count)
+        self.assertEqual(
+            len(runtime_path.journal_path.read_bytes()),
+            readback.journal_byte_length,
+        )
+        self.assertEqual(
+            hashlib.sha256(runtime_path.journal_path.read_bytes()).hexdigest(),
+            readback.journal_sha256,
+        )
+        self.assertEqual(
+            hashlib.sha256(runtime_path.anchor_path.read_bytes()).hexdigest(),
+            readback.anchor_sha256,
+        )
         self.assertEqual(
             readback.events[-1].trace_sha256,
             readback.trace_chain_head_sha256,
@@ -637,8 +893,12 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         second, _ = self.complete_runtime("second")
         first_bytes = first.journal_path.read_bytes()
         second_bytes = second.journal_path.read_bytes()
+        first_anchor_bytes = first.anchor_path.read_bytes()
+        second_anchor_bytes = second.anchor_path.read_bytes()
         self.assertEqual(first_bytes, second_bytes)
+        self.assertEqual(first_anchor_bytes, second_anchor_bytes)
         self.assertLess(len(first_bytes), 100_000)
+        self.assertLess(len(first_anchor_bytes), 100_000)
         self.assertEqual(first.read_back(), second.read_back())
 
     def test_trace_storage_excludes_full_note_contents(self) -> None:
@@ -680,8 +940,44 @@ class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
         receipt = verify_field_note_whole_flow(live)
         self.assertEqual("PASS", receipt.state)
         self.assertEqual("CREATOR_LIVE", receipt.proof_mode)
+        self.assertEqual(live.attempt, runtime_path.read_back().attempt)
+        self.assertEqual(live.attempt, receipt.attempt)
         self.assertEqual("TYPED_TRACE_VERIFIED", receipt.human_repair_result)
         self.assertIsNotNone(receipt.creator_live_readback)
+
+    def assert_attempt_substitution_fails(self, **changes) -> None:
+        runtime_path, _ = self.complete_runtime(
+            "attempt-" + "-".join(sorted(changes))
+        )
+        readback = runtime_path.read_back()
+        live = self.live_bundle(readback)
+        changed = replace(live, attempt=replace(live.attempt, **changes))
+        receipt = verify_field_note_whole_flow(changed)
+        self.assertEqual("FAIL", receipt.state)
+        self.assertEqual(
+            "CREATOR_LIVE_RUNTIME_IDENTITY_MISMATCH",
+            receipt.failure_reason,
+        )
+
+    def test_changed_creator_identity_cannot_enter_a7(self) -> None:
+        self.assert_attempt_substitution_fails(creator_id="Other Creator")
+
+    def test_changed_proof_as_of_cannot_enter_a7(self) -> None:
+        self.assert_attempt_substitution_fails(
+            proof_as_of="2026-08-05T12:01:00Z"
+        )
+
+    def test_changed_attempt_id_cannot_enter_a7(self) -> None:
+        self.assert_attempt_substitution_fails(proof_attempt_id="other_attempt")
+
+    def test_changed_proof_mode_cannot_attach_live_readback(self) -> None:
+        runtime_path, _ = self.complete_runtime("attempt-mode")
+        live = self.live_bundle(runtime_path.read_back())
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            replace(
+                live,
+                attempt=replace(live.attempt, proof_mode="FIXTURE"),
+            )
 
     def test_creator_live_manifest_is_readback_and_trace_bound(self) -> None:
         runtime_path, _ = self.complete_runtime()

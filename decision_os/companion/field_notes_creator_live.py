@@ -51,6 +51,7 @@ from decision_os.companion.field_notes_whole_flow import (
     _RUNTIME_PROVENANCE_AUTHORITY,
     _a1_evidence_sha256,
     _a2_receipt_sha256,
+    _a3_receipt_sha256,
     _a5_confirmation_sha256,
     _a6_packet_sha256,
     _canonical_sha256,
@@ -72,8 +73,13 @@ CREATOR_LIVE_RECORD_SCHEMA = (
 CREATOR_LIVE_READBACK_SCHEMA = (
     "decision-os.field-note-creator-live-proof-readback.v0.1"
 )
+CREATOR_LIVE_ANCHOR_SCHEMA = (
+    "decision-os.field-note-creator-live-proof-anchor.v0.1"
+)
 CREATOR_LIVE_JOURNAL_FILENAME = "creator-live-proof-v0.1.jsonl"
+CREATOR_LIVE_ANCHOR_FILENAME = "creator-live-proof-v0.1.anchor.jsonl"
 JOURNAL_GENESIS_SHA256 = "0" * 64
+ANCHOR_GENESIS_SHA256 = "0" * 64
 
 CreatorLiveAttemptState = Literal[
     "OPEN",
@@ -306,6 +312,71 @@ class _JournalRecord:
         return (canonical_json(self.as_dict()) + "\n").encode("utf-8")
 
 
+@dataclass(frozen=True)
+class _AnchorRecord:
+    generation: int
+    proof_attempt_id: str
+    journal_record_count: int
+    journal_byte_length: int
+    journal_record_chain_head_sha256: str
+    journal_sha256: str
+    previous_anchor_sha256: str
+    anchor_sha256: str
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        generation: int,
+        proof_attempt_id: str,
+        journal_raw: bytes,
+        journal_records: tuple[_JournalRecord, ...],
+        previous_anchor_sha256: str,
+    ) -> _AnchorRecord:
+        body = {
+            "schema": CREATOR_LIVE_ANCHOR_SCHEMA,
+            "generation": generation,
+            "proof_attempt_id": proof_attempt_id,
+            "journal_record_count": len(journal_records),
+            "journal_byte_length": len(journal_raw),
+            "journal_record_chain_head_sha256": (
+                journal_records[-1].record_sha256
+            ),
+            "journal_sha256": hashlib.sha256(journal_raw).hexdigest(),
+            "previous_anchor_sha256": previous_anchor_sha256,
+        }
+        return cls(
+            generation=generation,
+            proof_attempt_id=proof_attempt_id,
+            journal_record_count=len(journal_records),
+            journal_byte_length=len(journal_raw),
+            journal_record_chain_head_sha256=(
+                journal_records[-1].record_sha256
+            ),
+            journal_sha256=hashlib.sha256(journal_raw).hexdigest(),
+            previous_anchor_sha256=previous_anchor_sha256,
+            anchor_sha256=_canonical_sha256(body),
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": CREATOR_LIVE_ANCHOR_SCHEMA,
+            "generation": self.generation,
+            "proof_attempt_id": self.proof_attempt_id,
+            "journal_record_count": self.journal_record_count,
+            "journal_byte_length": self.journal_byte_length,
+            "journal_record_chain_head_sha256": (
+                self.journal_record_chain_head_sha256
+            ),
+            "journal_sha256": self.journal_sha256,
+            "previous_anchor_sha256": self.previous_anchor_sha256,
+            "anchor_sha256": self.anchor_sha256,
+        }
+
+    def serialize_line(self) -> bytes:
+        return (canonical_json(self.as_dict()) + "\n").encode("utf-8")
+
+
 def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
     if not raw or not raw.endswith(b"\n"):
         raise _JournalIntegrityError(
@@ -388,6 +459,122 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
         records.append(record)
         previous = expected_sha
     return tuple(records)
+
+
+def _parse_anchors(raw: bytes) -> tuple[_AnchorRecord, ...]:
+    if not raw or not raw.endswith(b"\n"):
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_DURABLE_ANCHOR_TRUNCATED",
+            repair_action="EVIDENCE_DELETION",
+        )
+    anchors: list[_AnchorRecord] = []
+    previous = ANCHOR_GENESIS_SHA256
+    for generation, line in enumerate(raw.splitlines()):
+        try:
+            text = line.decode("utf-8")
+            value = json.loads(text)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_DURABLE_ANCHOR_TAMPERED",
+                repair_action="RECEIPT_REWRITE",
+            ) from exc
+        required = {
+            "schema",
+            "generation",
+            "proof_attempt_id",
+            "journal_record_count",
+            "journal_byte_length",
+            "journal_record_chain_head_sha256",
+            "journal_sha256",
+            "previous_anchor_sha256",
+            "anchor_sha256",
+        }
+        if (
+            not isinstance(value, dict)
+            or set(value) != required
+            or canonical_json(value) != text
+        ):
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_DURABLE_ANCHOR_TAMPERED",
+                repair_action="RECEIPT_REWRITE",
+            )
+        body = {key: value[key] for key in required - {"anchor_sha256"}}
+        expected_sha = _canonical_sha256(body)
+        if (
+            value["schema"] != CREATOR_LIVE_ANCHOR_SCHEMA
+            or value["generation"] != generation
+            or value["previous_anchor_sha256"] != previous
+            or value["anchor_sha256"] != expected_sha
+            or not isinstance(value["proof_attempt_id"], str)
+            or not value["proof_attempt_id"]
+            or type(value["journal_record_count"]) is not int
+            or value["journal_record_count"] <= 0
+            or type(value["journal_byte_length"]) is not int
+            or value["journal_byte_length"] <= 0
+        ):
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_DURABLE_ANCHOR_CHAIN_INVALID",
+                repair_action="EVENT_ID_CHANGE",
+            )
+        for key in (
+            "journal_record_chain_head_sha256",
+            "journal_sha256",
+            "previous_anchor_sha256",
+            "anchor_sha256",
+        ):
+            digest = value[key]
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_DURABLE_ANCHOR_CHAIN_INVALID",
+                    repair_action="EVENT_ID_CHANGE",
+                )
+        anchor = _AnchorRecord(
+            generation=generation,
+            proof_attempt_id=value["proof_attempt_id"],
+            journal_record_count=value["journal_record_count"],
+            journal_byte_length=value["journal_byte_length"],
+            journal_record_chain_head_sha256=(
+                value["journal_record_chain_head_sha256"]
+            ),
+            journal_sha256=value["journal_sha256"],
+            previous_anchor_sha256=previous,
+            anchor_sha256=expected_sha,
+        )
+        anchors.append(anchor)
+        previous = expected_sha
+    return tuple(anchors)
+
+
+def _verify_journal_anchor(
+    journal_raw: bytes,
+    records: tuple[_JournalRecord, ...],
+    anchors: tuple[_AnchorRecord, ...],
+    *,
+    proof_attempt_id: str,
+) -> None:
+    if not anchors or any(
+        anchor.proof_attempt_id != proof_attempt_id for anchor in anchors
+    ):
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_DURABLE_ANCHOR_IDENTITY_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        )
+    anchor = anchors[-1]
+    if (
+        anchor.journal_record_count != len(records)
+        or anchor.journal_byte_length != len(journal_raw)
+        or anchor.journal_record_chain_head_sha256
+        != records[-1].record_sha256
+        or anchor.journal_sha256 != hashlib.sha256(journal_raw).hexdigest()
+    ):
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_DURABLE_JOURNAL_ANCHOR_MISMATCH",
+            repair_action="EVIDENCE_DELETION",
+        )
 
 
 def _note_from_dict(value: Any) -> FieldNoteIdentity:
@@ -507,8 +694,7 @@ class FieldNoteCreatorLiveTraceReadback:
     schema: Literal[
         "decision-os.field-note-creator-live-proof-readback.v0.1"
     ]
-    proof_attempt_id: str
-    creator_id: str
+    attempt: FieldNoteWholeFlowAttempt
     source_repository: FieldNoteSourceRepositoryIdentity
     runtime: CodexRuntimeIdentity
     runtime_provenance: FieldNoteCreatorLiveRuntimeProvenance
@@ -516,6 +702,7 @@ class FieldNoteCreatorLiveTraceReadback:
     run_2: FieldNoteWholeFlowRunIdentity | None
     captured_note: FieldNoteIdentity | None
     captured_note_byte_count: int | None
+    a3_reuse_event_id: str | None
     current_stage: TraceStage | None
     trace_event_count: int
     trace_chain_head_sha256: str
@@ -526,8 +713,12 @@ class FieldNoteCreatorLiveTraceReadback:
     repair_action: RepairAction
     one_attempt_no_retry: Literal[True]
     journal_record_count: int
+    journal_byte_length: int
     journal_chain_head_sha256: str
     journal_sha256: str
+    anchor_record_count: int
+    anchor_chain_head_sha256: str
+    anchor_sha256: str
     durable_readback_verified: bool
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -548,6 +739,7 @@ class FieldNoteCreatorLiveTraceReadback:
         run_2: FieldNoteWholeFlowRunIdentity | None,
         captured_note: FieldNoteIdentity | None,
         captured_note_byte_count: int | None,
+        a3_reuse_event_id: str | None,
         current_stage: TraceStage | None,
         events: tuple[FieldNoteWholeFlowTraceEvent, ...],
         state: CreatorLiveAttemptState,
@@ -555,8 +747,12 @@ class FieldNoteCreatorLiveTraceReadback:
         failure_reason: str | None,
         repair_action: RepairAction,
         journal_record_count: int,
+        journal_byte_length: int,
         journal_chain_head_sha256: str,
         journal_sha256: str,
+        anchor_record_count: int,
+        anchor_chain_head_sha256: str,
+        anchor_sha256: str,
         durable_readback_verified: bool,
     ) -> FieldNoteCreatorLiveTraceReadback:
         if authority is not _READBACK_AUTHORITY:
@@ -566,8 +762,7 @@ class FieldNoteCreatorLiveTraceReadback:
         value = object.__new__(cls)
         fields = {
             "schema": CREATOR_LIVE_READBACK_SCHEMA,
-            "proof_attempt_id": attempt.proof_attempt_id,
-            "creator_id": attempt.creator_id,
+            "attempt": attempt,
             "source_repository": source_repository,
             "runtime": runtime,
             "runtime_provenance": runtime_provenance,
@@ -575,6 +770,7 @@ class FieldNoteCreatorLiveTraceReadback:
             "run_2": run_2,
             "captured_note": captured_note,
             "captured_note_byte_count": captured_note_byte_count,
+            "a3_reuse_event_id": a3_reuse_event_id,
             "current_stage": current_stage,
             "trace_event_count": len(events),
             "trace_chain_head_sha256": (
@@ -587,19 +783,30 @@ class FieldNoteCreatorLiveTraceReadback:
             "repair_action": repair_action,
             "one_attempt_no_retry": True,
             "journal_record_count": journal_record_count,
+            "journal_byte_length": journal_byte_length,
             "journal_chain_head_sha256": journal_chain_head_sha256,
             "journal_sha256": journal_sha256,
+            "anchor_record_count": anchor_record_count,
+            "anchor_chain_head_sha256": anchor_chain_head_sha256,
+            "anchor_sha256": anchor_sha256,
             "durable_readback_verified": durable_readback_verified,
         }
         for field, item in fields.items():
             object.__setattr__(value, field, item)
         return value
 
+    @property
+    def proof_attempt_id(self) -> str:
+        return self.attempt.proof_attempt_id
+
+    @property
+    def creator_id(self) -> str:
+        return self.attempt.creator_id
+
     def _body(self) -> dict[str, Any]:
         return {
             "schema": self.schema,
-            "proof_attempt_id": self.proof_attempt_id,
-            "creator_id": self.creator_id,
+            "attempt": self.attempt.as_dict(),
             "source_repository": self.source_repository.as_dict(),
             "runtime": _runtime_as_dict(self.runtime),
             "runtime_provenance": self.runtime_provenance.as_dict(),
@@ -609,6 +816,7 @@ class FieldNoteCreatorLiveTraceReadback:
                 self.captured_note.as_dict() if self.captured_note else None
             ),
             "captured_note_byte_count": self.captured_note_byte_count,
+            "a3_reuse_event_id": self.a3_reuse_event_id,
             "current_stage": self.current_stage,
             "trace_event_count": self.trace_event_count,
             "trace_chain_head_sha256": self.trace_chain_head_sha256,
@@ -619,8 +827,12 @@ class FieldNoteCreatorLiveTraceReadback:
             "repair_action": self.repair_action,
             "one_attempt_no_retry": self.one_attempt_no_retry,
             "journal_record_count": self.journal_record_count,
+            "journal_byte_length": self.journal_byte_length,
             "journal_chain_head_sha256": self.journal_chain_head_sha256,
             "journal_sha256": self.journal_sha256,
+            "anchor_record_count": self.anchor_record_count,
+            "anchor_chain_head_sha256": self.anchor_chain_head_sha256,
+            "anchor_sha256": self.anchor_sha256,
             "durable_readback_verified": self.durable_readback_verified,
         }
 
@@ -634,7 +846,7 @@ class FieldNoteCreatorLiveTraceReadback:
     def matches_admission(
         self,
         *,
-        proof_attempt_id: str,
+        attempt: FieldNoteWholeFlowAttempt,
         source_repository: FieldNoteSourceRepositoryIdentity,
         runtime: CodexRuntimeIdentity,
         run_1: FieldNoteWholeFlowRunIdentity,
@@ -647,14 +859,17 @@ class FieldNoteCreatorLiveTraceReadback:
             and self.failure_boundary is None
             and self.failure_reason is None
             and self.repair_action == "NONE"
-            and self.proof_attempt_id == proof_attempt_id
+            and self.attempt == attempt
             and self.source_repository == source_repository
             and self.runtime == runtime
             and self.run_1 == run_1
             and self.run_2 == run_2
+            and self.a3_reuse_event_id is not None
             and self.events == proof_trace
             and self.trace_event_count == len(_STAGES)
             and self.trace_chain_head_sha256 == proof_trace[-1].trace_sha256
+            and self.anchor_record_count == self.journal_record_count
+            and self.journal_byte_length > 0
             and all(
                 event.runtime_provenance == self.runtime_provenance
                 for event in proof_trace
@@ -726,14 +941,23 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
 
 
 def _project_records(
-    raw: bytes,
+    journal_raw: bytes,
     records: tuple[_JournalRecord, ...],
+    anchor_raw: bytes,
+    anchors: tuple[_AnchorRecord, ...],
     static: _StaticIdentity,
 ) -> FieldNoteCreatorLiveTraceReadback:
+    _verify_journal_anchor(
+        journal_raw,
+        records,
+        anchors,
+        proof_attempt_id=static.attempt.proof_attempt_id,
+    )
     run_2: FieldNoteWholeFlowRunIdentity | None = None
     events: list[FieldNoteWholeFlowTraceEvent] = []
     captured_note: FieldNoteIdentity | None = None
     captured_note_byte_count: int | None = None
+    a3_reuse_event_id: str | None = None
     state: CreatorLiveAttemptState = "OPEN"
     failure_boundary: WholeFlowBoundary | None = None
     failure_reason: str | None = None
@@ -835,6 +1059,30 @@ def _project_records(
                         repair_action="RECEIPT_REWRITE",
                     )
                 captured_note_byte_count = count
+            elif index == 2:
+                if set(binding) != {
+                    "evidence_type",
+                    "evidence_sha256",
+                    "reuse_event_id",
+                } or binding["evidence_type"] != "FieldNoteReuseReceipt":
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A3_BINDING_INVALID",
+                        repair_action="RECEIPT_REWRITE",
+                    )
+                reuse_event_id = binding["reuse_event_id"]
+                if (
+                    not isinstance(reuse_event_id, str)
+                    or len(reuse_event_id) != 64
+                    or any(
+                        character not in "0123456789abcdef"
+                        for character in reuse_event_id
+                    )
+                ):
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A3_BINDING_INVALID",
+                        repair_action="RECEIPT_REWRITE",
+                    )
+                a3_reuse_event_id = reuse_event_id
             elif set(binding) != {"evidence_type", "evidence_sha256"}:
                 raise _JournalIntegrityError(
                     "CREATOR_LIVE_STAGE_BINDING_INVALID",
@@ -897,6 +1145,7 @@ def _project_records(
             } or (
                 len(events) != len(_STAGES)
                 or run_2 is None
+                or a3_reuse_event_id is None
                 or payload["trace_event_count"] != len(_STAGES)
                 or payload["trace_chain_head_sha256"] != previous_trace
                 or payload["runtime_provenance_id"]
@@ -929,6 +1178,7 @@ def _project_records(
         run_2=run_2,
         captured_note=captured_note,
         captured_note_byte_count=captured_note_byte_count,
+        a3_reuse_event_id=a3_reuse_event_id,
         current_stage=current_stage,
         events=tuple(events),
         state=state,
@@ -936,15 +1186,20 @@ def _project_records(
         failure_reason=failure_reason,
         repair_action=repair_action,
         journal_record_count=len(records),
+        journal_byte_length=len(journal_raw),
         journal_chain_head_sha256=records[-1].record_sha256,
-        journal_sha256=hashlib.sha256(raw).hexdigest(),
+        journal_sha256=hashlib.sha256(journal_raw).hexdigest(),
+        anchor_record_count=len(anchors),
+        anchor_chain_head_sha256=anchors[-1].anchor_sha256,
+        anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=True,
     )
 
 
 def _failed_readback(
     *,
-    raw: bytes,
+    journal_raw: bytes,
+    anchor_raw: bytes,
     static: _StaticIdentity,
     reason: str,
     repair_action: RepairAction,
@@ -959,6 +1214,7 @@ def _failed_readback(
         run_2=None,
         captured_note=None,
         captured_note_byte_count=None,
+        a3_reuse_event_id=None,
         current_stage=None,
         events=(),
         state="FAILED",
@@ -966,8 +1222,12 @@ def _failed_readback(
         failure_reason=reason,
         repair_action=repair_action,
         journal_record_count=0,
+        journal_byte_length=len(journal_raw),
         journal_chain_head_sha256=JOURNAL_GENESIS_SHA256,
-        journal_sha256=hashlib.sha256(raw).hexdigest(),
+        journal_sha256=hashlib.sha256(journal_raw).hexdigest(),
+        anchor_record_count=0,
+        anchor_chain_head_sha256=ANCHOR_GENESIS_SHA256,
+        anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=False,
     )
 
@@ -988,12 +1248,17 @@ class FieldNoteCreatorLiveProofRuntime:
     ) -> None:
         self._storage_root = storage_root
         self._journal_path = storage_root / CREATOR_LIVE_JOURNAL_FILENAME
+        self._anchor_path = storage_root / CREATOR_LIVE_ANCHOR_FILENAME
         self._static = static
         self._lock = threading.Lock()
 
     @property
     def journal_path(self) -> Path:
         return self._journal_path
+
+    @property
+    def anchor_path(self) -> Path:
+        return self._anchor_path
 
     @classmethod
     def open_attempt(
@@ -1084,12 +1349,45 @@ class FieldNoteCreatorLiveProofRuntime:
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+        anchor = _AnchorRecord.create(
+            generation=0,
+            proof_attempt_id=attempt.proof_attempt_id,
+            journal_raw=line,
+            journal_records=(record,),
+            previous_anchor_sha256=ANCHOR_GENESIS_SHA256,
+        )
+        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME
+        try:
+            anchor_descriptor = os.open(
+                anchor_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+            )
+        except FileExistsError as exc:
+            raise FieldNoteCreatorLiveAttemptExistsError(
+                "Creator-live one-attempt anchor already exists."
+            ) from exc
+        try:
+            anchor_line = anchor.serialize_line()
+            anchor_written = os.write(anchor_descriptor, anchor_line)
+            if anchor_written != len(anchor_line):
+                raise FieldNoteCreatorLiveDurabilityError(
+                    "Creator-live attempt anchor write was incomplete."
+                )
+            os.fsync(anchor_descriptor)
+        finally:
+            os.close(anchor_descriptor)
         directory = os.open(root, os.O_RDONLY)
         try:
             os.fsync(directory)
         finally:
             os.close(directory)
-        return cls(storage_root=root, static=static)
+        runtime_path = cls(storage_root=root, static=static)
+        if not runtime_path.read_back().durable_readback_verified:
+            raise FieldNoteCreatorLiveDurabilityError(
+                "Creator-live attempt did not survive exact durable read-back."
+            )
+        return runtime_path
 
     @classmethod
     def load_attempt(
@@ -1098,9 +1396,18 @@ class FieldNoteCreatorLiveProofRuntime:
     ) -> FieldNoteCreatorLiveProofRuntime:
         root = Path(storage_root)
         path = root / CREATOR_LIVE_JOURNAL_FILENAME
-        raw = path.read_bytes()
-        records = _parse_records(raw)
+        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME
+        journal_raw = path.read_bytes()
+        anchor_raw = anchor_path.read_bytes()
+        records = _parse_records(journal_raw)
         static = _static_identity(records)
+        anchors = _parse_anchors(anchor_raw)
+        _verify_journal_anchor(
+            journal_raw,
+            records,
+            anchors,
+            proof_attempt_id=static.attempt.proof_attempt_id,
+        )
         return cls(storage_root=root, static=static)
 
     def _read_raw_locked(self, descriptor: int) -> bytes:
@@ -1114,25 +1421,49 @@ class FieldNoteCreatorLiveProofRuntime:
 
     def read_back(self) -> FieldNoteCreatorLiveTraceReadback:
         with self._lock:
-            descriptor = os.open(self._journal_path, os.O_RDONLY)
+            journal_descriptor = os.open(self._journal_path, os.O_RDONLY)
             try:
-                fcntl.flock(descriptor, fcntl.LOCK_SH)
-                raw = self._read_raw_locked(descriptor)
+                try:
+                    anchor_descriptor = os.open(self._anchor_path, os.O_RDONLY)
+                except OSError:
+                    return _failed_readback(
+                        journal_raw=self._read_raw_locked(journal_descriptor),
+                        anchor_raw=b"",
+                        static=self._static,
+                        reason="CREATOR_LIVE_DURABLE_ANCHOR_MISSING",
+                        repair_action="EVIDENCE_DELETION",
+                    )
+                try:
+                    fcntl.flock(journal_descriptor, fcntl.LOCK_SH)
+                    fcntl.flock(anchor_descriptor, fcntl.LOCK_SH)
+                    journal_raw = self._read_raw_locked(journal_descriptor)
+                    anchor_raw = self._read_raw_locked(anchor_descriptor)
+                finally:
+                    fcntl.flock(anchor_descriptor, fcntl.LOCK_UN)
+                    os.close(anchor_descriptor)
             finally:
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-                os.close(descriptor)
+                fcntl.flock(journal_descriptor, fcntl.LOCK_UN)
+                os.close(journal_descriptor)
         try:
-            records = _parse_records(raw)
+            records = _parse_records(journal_raw)
+            anchors = _parse_anchors(anchor_raw)
             static = _static_identity(records)
             if static != self._static:
                 raise _JournalIntegrityError(
                     "CREATOR_LIVE_STATIC_IDENTITY_CHANGED",
                     repair_action="RECEIPT_REWRITE",
                 )
-            return _project_records(raw, records, static)
+            return _project_records(
+                journal_raw,
+                records,
+                anchor_raw,
+                anchors,
+                static,
+            )
         except _JournalIntegrityError as exc:
             return _failed_readback(
-                raw=raw,
+                journal_raw=journal_raw,
+                anchor_raw=anchor_raw,
                 static=self._static,
                 reason=exc.reason,
                 repair_action=exc.repair_action,
@@ -1144,14 +1475,38 @@ class FieldNoteCreatorLiveProofRuntime:
         payload: dict[str, Any],
     ) -> FieldNoteCreatorLiveTraceReadback:
         with self._lock:
-            descriptor = os.open(self._journal_path, os.O_RDWR | os.O_APPEND)
+            journal_descriptor: int | None = None
             try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX)
-                raw = self._read_raw_locked(descriptor)
+                journal_descriptor = os.open(
+                    self._journal_path,
+                    os.O_RDWR | os.O_APPEND,
+                )
+                anchor_descriptor = os.open(
+                    self._anchor_path,
+                    os.O_RDWR | os.O_APPEND,
+                )
+            except OSError as exc:
+                if journal_descriptor is not None:
+                    os.close(journal_descriptor)
+                raise FieldNoteCreatorLiveDurabilityError(
+                    "Creator-live durable journal or anchor is missing."
+                ) from exc
+            try:
+                fcntl.flock(journal_descriptor, fcntl.LOCK_EX)
+                fcntl.flock(anchor_descriptor, fcntl.LOCK_EX)
+                journal_raw = self._read_raw_locked(journal_descriptor)
+                anchor_raw = self._read_raw_locked(anchor_descriptor)
                 try:
-                    records = _parse_records(raw)
+                    records = _parse_records(journal_raw)
+                    anchors = _parse_anchors(anchor_raw)
                     static = _static_identity(records)
-                    readback = _project_records(raw, records, static)
+                    readback = _project_records(
+                        journal_raw,
+                        records,
+                        anchor_raw,
+                        anchors,
+                        static,
+                    )
                 except _JournalIntegrityError as exc:
                     raise FieldNoteCreatorLiveDurabilityError(
                         exc.reason
@@ -1171,15 +1526,33 @@ class FieldNoteCreatorLiveProofRuntime:
                     previous_record_sha256=records[-1].record_sha256,
                 )
                 line = record.serialize_line()
-                written = os.write(descriptor, line)
+                written = os.write(journal_descriptor, line)
                 if written != len(line):
                     raise FieldNoteCreatorLiveDurabilityError(
                         "Creator-live journal append was incomplete."
                     )
-                os.fsync(descriptor)
+                os.fsync(journal_descriptor)
+                next_journal_raw = journal_raw + line
+                next_records = records + (record,)
+                anchor = _AnchorRecord.create(
+                    generation=len(anchors),
+                    proof_attempt_id=self._static.attempt.proof_attempt_id,
+                    journal_raw=next_journal_raw,
+                    journal_records=next_records,
+                    previous_anchor_sha256=anchors[-1].anchor_sha256,
+                )
+                anchor_line = anchor.serialize_line()
+                anchor_written = os.write(anchor_descriptor, anchor_line)
+                if anchor_written != len(anchor_line):
+                    raise FieldNoteCreatorLiveDurabilityError(
+                        "Creator-live durable anchor append was incomplete."
+                    )
+                os.fsync(anchor_descriptor)
             finally:
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-                os.close(descriptor)
+                fcntl.flock(anchor_descriptor, fcntl.LOCK_UN)
+                fcntl.flock(journal_descriptor, fcntl.LOCK_UN)
+                os.close(anchor_descriptor)
+                os.close(journal_descriptor)
         return self.read_back()
 
     def _terminal_failure(
@@ -1460,12 +1833,14 @@ class FieldNoteCreatorLiveProofRuntime:
         if receipt.promotion != PromotionPolicyBoundary():
             self._terminal_failure("A3_REUSE", "A3_PROMOTABLE_POLICY_WIDENED")
         assert receipt.reuse_event_id is not None
+        receipt_sha256 = _a3_receipt_sha256(receipt)
         return self._emit(
             "A3_REUSE",
-            evidence_sha256=receipt.reuse_event_id,
+            evidence_sha256=receipt_sha256,
             binding={
                 "evidence_type": "FieldNoteReuseReceipt",
-                "evidence_sha256": receipt.reuse_event_id,
+                "evidence_sha256": receipt_sha256,
+                "reuse_event_id": receipt.reuse_event_id,
             },
         )
 
@@ -1482,14 +1857,19 @@ class FieldNoteCreatorLiveProofRuntime:
                 "A4_EVENT_COUNT_NOT_EXACTLY_ONE",
             )
         event = snapshot.events[0]
-        a3_identity = readback.events[2].evidence_sha256
+        a3_receipt_identity = readback.events[2].evidence_sha256
+        a3_reuse_event_id = readback.a3_reuse_event_id
         if (
             snapshot.note != readback.captured_note
+            or a3_reuse_event_id is None
             or event.sequence != 0
             or event.previous_event_sha256 != GENESIS_EVENT_SHA256
-            or event.event_id != a3_identity
-            or event.receipt.reuse_event_id != a3_identity
-            or event.receipt_sha256 != _event_receipt_sha256(event)
+            or event.event_id != event.receipt.reuse_event_id
+            or event.receipt.reuse_event_id != a3_reuse_event_id
+            or event.receipt.reuse_event_id
+            != _expected_reuse_event_id(event.receipt)
+            or event.receipt_sha256 != a3_receipt_identity
+            or _event_receipt_sha256(event) != a3_receipt_identity
             or event.event_sha256 != _event_sha256(event)
             or snapshot.chain_head_sha256 != event.event_sha256
             or snapshot.evidence_maturity.state != "REUSED"
@@ -1526,13 +1906,19 @@ class FieldNoteCreatorLiveProofRuntime:
                 "A5_APPEND_NOT_CONFIRMED",
             )
         a2_identity = readback.events[1].evidence_sha256
-        a3_identity = readback.events[2].evidence_sha256
+        a3_receipt_identity = readback.events[2].evidence_sha256
         a4_identity = readback.events[3].evidence_sha256
         if (
-            result.assessment.reuse_event_id != a3_identity
+            readback.a3_reuse_event_id is None
+            or result.assessment.reuse_event_id
+            != readback.a3_reuse_event_id
+            or _a3_receipt_sha256(result.assessment)
+            != a3_receipt_identity
             or result.delivery_context is None
             or _a2_receipt_sha256(result.delivery_context) != a2_identity
             or result.append_result.event.event_sha256 != a4_identity
+            or result.append_result.event.receipt_sha256
+            != a3_receipt_identity
             or len(result.durable_snapshot.events) != 1
             or result.durable_snapshot.events[0].event_sha256 != a4_identity
         ):
@@ -1558,12 +1944,13 @@ class FieldNoteCreatorLiveProofRuntime:
         readback = self._require_stage("A6_REVIEW")
         if not isinstance(packet, FieldNoteMaturityReviewPacket):
             self._terminal_failure("A6_REVIEW", "A6_EVIDENCE_INVALID")
-        a3_identity = readback.events[2].evidence_sha256
         a4_identity = readback.events[3].evidence_sha256
         if (
             packet.note_identity != readback.captured_note
+            or readback.a3_reuse_event_id is None
             or len(packet.ordered_event_reviews) != 1
-            or packet.ordered_event_reviews[0].event_id != a3_identity
+            or packet.ordered_event_reviews[0].event_id
+            != readback.a3_reuse_event_id
             or packet.ordered_event_reviews[0].event_sha256 != a4_identity
             or packet.ledger_identity.chain_head_sha256 != a4_identity
             or packet.evidence_maturity.state != "REUSED"

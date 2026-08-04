@@ -666,6 +666,7 @@ class FieldNoteWholeFlowProofReceipt:
     a1_evidence_sha256: str | None
     a2_receipt_sha256: str | None
     a3_reuse_event_id: str | None
+    a3_receipt_sha256: str | None
     a4_partition_sha256: str | None
     a4_event_sha256: str | None
     a4_event_count: int | None
@@ -738,6 +739,7 @@ class FieldNoteWholeFlowProofReceipt:
             (self.a1_evidence_sha256, "A1 evidence identity"),
             (self.a2_receipt_sha256, "A2 receipt identity"),
             (self.a3_reuse_event_id, "A3 reuse event identity"),
+            (self.a3_receipt_sha256, "A3 complete receipt identity"),
             (self.a4_partition_sha256, "A4 partition identity"),
             (self.a4_event_sha256, "A4 event identity"),
             (self.a4_chain_head_sha256, "A4 chain-head identity"),
@@ -874,6 +876,10 @@ class FieldNoteWholeFlowProofReceipt:
             )
             if (
                 any(value is None for value in required)
+                or (
+                    self.proof_mode == "CREATOR_LIVE"
+                    and self.a3_receipt_sha256 is None
+                )
                 or self.a4_event_count != 1
                 or self.a4_chain_head_sha256 != self.a4_event_sha256
                 or self.a5_status not in {"RECORDED", "ALREADY_RECORDED"}
@@ -939,7 +945,7 @@ class FieldNoteWholeFlowProofReceipt:
                 "CREATOR_LIVE PASS lacks durable runtime read-back."
             )
         if not readback.matches_admission(
-            proof_attempt_id=self.proof_attempt_id,
+            attempt=self.attempt,
             source_repository=self.source_repository,
             runtime=self.source_runtime,
             run_1=self.run_1,
@@ -979,7 +985,11 @@ class FieldNoteWholeFlowProofReceipt:
         expected_evidence = (
             self.a1_evidence_sha256,
             self.a2_receipt_sha256,
-            self.a3_reuse_event_id,
+            (
+                self.a3_receipt_sha256
+                if self.proof_mode == "CREATOR_LIVE"
+                else self.a3_reuse_event_id
+            ),
             self.a4_event_sha256,
             self.a5_confirmation_sha256,
             self.a6_packet_sha256,
@@ -1028,6 +1038,17 @@ class FieldNoteWholeFlowProofReceipt:
                 )
             previous = event.trace_sha256
             previous_time = event_time
+
+    @property
+    def attempt(self) -> FieldNoteWholeFlowAttempt:
+        """Return the exact typed attempt identity preserved by this receipt."""
+
+        return FieldNoteWholeFlowAttempt(
+            proof_attempt_id=self.proof_attempt_id,
+            proof_mode=self.proof_mode,
+            creator_id=self.creator_id,
+            proof_as_of=self.proof_as_of,
+        )
 
     def _body(self) -> dict[str, Any]:
         body = {
@@ -1088,6 +1109,7 @@ class FieldNoteWholeFlowProofReceipt:
             "claim_boundary": self.claim_boundary.as_dict(),
         }
         if self.proof_mode == "CREATOR_LIVE":
+            body["a3_receipt_sha256"] = self.a3_receipt_sha256
             body["creator_live_readback"] = (
                 self.creator_live_readback.as_dict()
                 if self.creator_live_readback is not None
@@ -1346,6 +1368,10 @@ def _a2_receipt_sha256(receipt: FieldNoteReconnectReceipt) -> str:
     return _canonical_sha256(receipt.as_dict())
 
 
+def _a3_receipt_sha256(receipt: FieldNoteReuseReceipt) -> str:
+    return _canonical_sha256(receipt.as_dict())
+
+
 def _a5_confirmation_sha256(result: FieldNoteMaturityCommitResult) -> str:
     return _canonical_sha256(result.as_dict())
 
@@ -1433,6 +1459,11 @@ def _receipt(
         a1_evidence_sha256=_a1_evidence_sha256(a1) if a1 else None,
         a2_receipt_sha256=_a2_receipt_sha256(a2) if a2 else None,
         a3_reuse_event_id=a3.reuse_event_id if a3 else None,
+        a3_receipt_sha256=(
+            _a3_receipt_sha256(a3)
+            if a3 is not None and bundle.attempt.proof_mode == "CREATOR_LIVE"
+            else None
+        ),
         a4_partition_sha256=(
             first_event.note_partition_sha256 if first_event else None
         ),
@@ -1540,7 +1571,7 @@ def verify_field_note_whole_flow(
                 "CREATOR_LIVE_TRACE_INCOMPLETE",
             )
         if not readback.matches_admission(
-            proof_attempt_id=bundle.attempt.proof_attempt_id,
+            attempt=bundle.attempt,
             source_repository=bundle.source_repository,
             runtime=bundle.run_1.runtime,
             run_1=bundle.run_1,
@@ -1776,7 +1807,11 @@ def verify_field_note_whole_flow(
     expected_evidence = (
         _a1_evidence_sha256(a1),
         _a2_receipt_sha256(a2),
-        a3.reuse_event_id,
+        (
+            _a3_receipt_sha256(a3)
+            if bundle.attempt.proof_mode == "CREATOR_LIVE"
+            else a3.reuse_event_id
+        ),
         event.event_sha256,
         _a5_confirmation_sha256(a5),
         _a6_packet_sha256(a6),
