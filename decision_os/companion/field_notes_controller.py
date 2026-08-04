@@ -349,33 +349,6 @@ class FieldNotesCompanionController(CompanionController):
         completion: FieldNoteCreatorLiveA1RunCompletion | None = None
         proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None
         if capture is not None:
-            raw_diagnostic = getattr(
-                result,
-                "creator_live_a1_proposal_diagnostic",
-                None,
-            )
-            if isinstance(raw_diagnostic, FieldNoteA1ProposalDiagnostic):
-                try:
-                    proposal_diagnostic = (
-                        FieldNoteA1ProposalDiagnostic.from_dict(
-                            raw_diagnostic.as_dict()
-                        )
-                    )
-                except ValueError:
-                    proposal_diagnostic = None
-            if proposal_diagnostic is None:
-                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
-            elif (
-                proposal_diagnostic.final_subcause is not None
-                and capture_failure != proposal_diagnostic.final_subcause
-            ):
-                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
-            elif (
-                proposal_diagnostic.final_subcause is None
-                and isinstance(capture_failure, str)
-                and capture_failure.startswith("A1_PROPOSAL_")
-            ):
-                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
             if (
                 getattr(result, "creator_live_a1_capture", False) is not True
                 or result.run_id != capture.run_id
@@ -393,6 +366,37 @@ class FieldNotesCompanionController(CompanionController):
                 for evidence in result.read_evidence
             ):
                 capture_failure = "A1_READ_EVIDENCE_FAILED"
+            raw_diagnostic = getattr(
+                result,
+                "creator_live_a1_proposal_diagnostic",
+                None,
+            )
+            if isinstance(raw_diagnostic, FieldNoteA1ProposalDiagnostic):
+                try:
+                    proposal_diagnostic = (
+                        FieldNoteA1ProposalDiagnostic.from_dict(
+                            raw_diagnostic.as_dict()
+                        )
+                    )
+                except ValueError:
+                    proposal_diagnostic = None
+            proposal_failure = bool(
+                isinstance(capture_failure, str)
+                and (
+                    capture_failure.startswith("A1_PROPOSAL_")
+                    or capture_failure == "A1_DIRECT_WRITE_REQUESTED"
+                )
+            )
+            if proposal_diagnostic is None:
+                if capture_failure is None or proposal_failure:
+                    capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+            elif proposal_diagnostic.final_subcause is not None:
+                if capture_failure is None or not proposal_failure:
+                    capture_failure = proposal_diagnostic.final_subcause
+                elif capture_failure != proposal_diagnostic.final_subcause:
+                    capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+            elif proposal_failure:
+                capture_failure = "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
             if (
                 proposal_diagnostic is not None
                 and proposal_diagnostic.final_subcause
@@ -549,9 +553,27 @@ class FieldNotesCompanionController(CompanionController):
                     "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
                 ) from exc
 
-    def _fail_run(self, repository: Path, exc: Exception) -> None:
-        super()._fail_run(repository, exc)
+    def creator_live_a1_failure_reason(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> str | None:
+        """Return the exact established failure family for one completed Run."""
+
         with self._condition:
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or self._creator_live_a1_completed_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A1_CAPTURE_IDENTITY_MISMATCH")
+            if self._run.get("state") == "running":
+                raise FieldNoteError("Creator-live A1 capture is still running.")
+            return self._creator_live_a1_failure_reason
+
+    def _fail_run(self, repository: Path, exc: Exception) -> None:
+        with self._condition:
+            super()._fail_run(repository, exc)
             if self._creator_live_a1_capture_config is not None:
                 self._creator_live_a1_completed_run_id = (
                     self._creator_live_a1_capture_config.run_id

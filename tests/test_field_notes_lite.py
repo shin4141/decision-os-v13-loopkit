@@ -18,6 +18,7 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_MODEL,
     CODEX_REASONING_EFFORT,
     CODEX_SERVICE_TIER,
+    CodexAdapterFailure,
     CodexReadEvidence,
     CodexRunResult,
     CodexRuntimeIdentity,
@@ -505,6 +506,47 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             "Use the typed file-change tool for exactly one file mutation",
             self._creator_live_developer_instructions,
         )
+
+    async def test_creator_live_transport_start_failure_has_no_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = create_repository(Path(temporary))
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+
+            def fail_transport_start(_executable: str):
+                raise CodexAdapterFailure(
+                    "transport failed before proposal lifecycle"
+                )
+
+            adapter = FieldNotesCodexAdapter(
+                engine,
+                input_func=lambda: None,
+                stdout=io.StringIO(),
+                transport_factory=fail_transport_start,
+                trusted_source_model_class="stronger",
+                trusted_target_model_class="lower-cost",
+                creator_live_a1_capture_provider=lambda: (
+                    FieldNoteCreatorLiveA1CaptureConfig(
+                        "run-live-a1-transport-failure",
+                        CodexRuntimeIdentity(
+                            model=CODEX_MODEL,
+                            reasoning_effort=CODEX_REASONING_EFFORT,
+                            service_tier=CODEX_SERVICE_TIER,
+                            codex_cli_version=CODEX_CLI_VERSION,
+                            account_type="chatgpt",
+                        ),
+                    )
+                ),
+            )
+
+            with self.assertRaises(CodexAdapterFailure):
+                await adapter.run("Fail before the proposal lifecycle.")
+
+            self.assertEqual(set(), adapter._capture_proposal_call_ids)
+            self.assertIsNone(adapter._field_note_gate.accepted)
 
     async def test_creator_live_mode_rejects_missing_raw_output(self) -> None:
         for raw in (

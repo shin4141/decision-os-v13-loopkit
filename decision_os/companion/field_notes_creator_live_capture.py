@@ -229,6 +229,16 @@ class FieldNoteCreatorLiveA1CaptureBridge:
             return value
         return "A1_CAPTURE_FAILED"
 
+    @staticmethod
+    def _is_proposal_failure(reason: str | None) -> bool:
+        return bool(
+            isinstance(reason, str)
+            and (
+                reason.startswith("A1_PROPOSAL_")
+                or reason == "A1_DIRECT_WRITE_REQUESTED"
+            )
+        )
+
     def capture(self, task: str) -> FieldNoteWholeFlowTraceEvent:
         """Dispatch one Run 1, save its exact proposal, then emit one A1."""
 
@@ -244,12 +254,25 @@ class FieldNoteCreatorLiveA1CaptureBridge:
             )
             self._wait_for_run()
             try:
+                failure_reason = (
+                    self.controller.creator_live_a1_failure_reason(
+                        expected_run_id=run_id
+                    )
+                )
+            except FieldNoteError as exc:
+                self._terminal(self._capture_failure_reason(exc))
+            try:
                 proposal_diagnostic = (
                     self.controller.creator_live_a1_proposal_diagnostic(
                         expected_run_id=run_id
                     )
                 )
             except FieldNoteError as exc:
+                if (
+                    failure_reason is not None
+                    and not self._is_proposal_failure(failure_reason)
+                ):
+                    self._terminal(failure_reason)
                 self._terminal(self._capture_failure_reason(exc))
             proposal_diagnostic = FieldNoteA1ProposalDiagnostic.from_dict(
                 proposal_diagnostic.as_dict()
@@ -265,6 +288,8 @@ class FieldNoteCreatorLiveA1CaptureBridge:
                         f"{proposal_diagnostic.direct_write_identity}"
                     )
                 self._terminal(reason, proposal_diagnostic)
+            if failure_reason is not None:
+                self._terminal(failure_reason)
             draft = self.controller.creator_live_a1_capture_candidate()
             completion = self.controller.creator_live_a1_run_completion()
             validate_compiled_markdown(draft.markdown)
