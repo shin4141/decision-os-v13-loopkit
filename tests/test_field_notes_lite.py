@@ -37,8 +37,11 @@ from decision_os.companion.field_notes_controller import (
 from decision_os.companion.field_notes_model import (
     FIELD_NOTE_SCHEMA_VERSION,
     FIELD_NOTE_TOOL_NAME,
+    FIELD_NOTE_TOOL_SPEC,
     FieldNoteProposalGate,
     compile_draft,
+    field_note_tool_spec_for_trust,
+    level_three_available,
 )
 from tests.test_acceleration_codex_adapter import (
     FakeTransportFactory,
@@ -166,6 +169,62 @@ def completed_proposal(
 
 
 class FieldNotesModelTests(unittest.TestCase):
+    def test_derived_schema_hides_level_three_without_active_trust(self) -> None:
+        self.assertFalse(level_three_available("UNKNOWN", "UNKNOWN"))
+        tool_spec = field_note_tool_spec_for_trust("UNKNOWN", "UNKNOWN")
+        input_schema = tool_spec["inputSchema"]
+        self.assertEqual(
+            [1, 2],
+            input_schema["properties"]["value_level"]["enum"],
+        )
+
+    def test_derived_schema_hides_level_three_with_active_gate_trust(self) -> None:
+        self.assertTrue(level_three_available("stronger", "lower-cost"))
+        tool_spec = field_note_tool_spec_for_trust("stronger", "lower-cost")
+        input_schema = tool_spec["inputSchema"]
+        self.assertEqual(
+            [1, 2],
+            input_schema["properties"]["value_level"]["enum"],
+        )
+
+    def test_derived_schema_avoids_unsupported_root_keywords(self) -> None:
+        prohibited = {"oneOf", "anyOf", "allOf", "enum", "const", "not"}
+        for source_class, target_class in (
+            ("UNKNOWN", "UNKNOWN"),
+            ("stronger", "lower-cost"),
+        ):
+            with self.subTest(source=source_class, target=target_class):
+                input_schema = field_note_tool_spec_for_trust(
+                    source_class,
+                    target_class,
+                )["inputSchema"]
+                self.assertEqual(set(), prohibited.intersection(input_schema))
+
+    def test_derived_tool_specs_are_fresh_and_do_not_mutate_base(self) -> None:
+        base_snapshot = json.loads(json.dumps(FIELD_NOTE_TOOL_SPEC))
+        first = field_note_tool_spec_for_trust("UNKNOWN", "UNKNOWN")
+        second = field_note_tool_spec_for_trust("UNKNOWN", "UNKNOWN")
+        self.assertIsNot(first, second)
+        self.assertIsNot(first["inputSchema"], second["inputSchema"])
+        first["inputSchema"]["properties"]["value_level"]["enum"].append(3)
+        self.assertEqual(
+            [1, 2],
+            second["inputSchema"]["properties"]["value_level"]["enum"],
+        )
+        self.assertEqual(base_snapshot, FIELD_NOTE_TOOL_SPEC)
+        self.assertEqual(
+            [1, 2, 3],
+            FIELD_NOTE_TOOL_SPEC["inputSchema"]["properties"]["value_level"][
+                "enum"
+            ],
+        )
+        self.assertEqual(
+            set(),
+            {"oneOf", "anyOf", "allOf", "enum", "const", "not"}.intersection(
+                FIELD_NOTE_TOOL_SPEC["inputSchema"]
+            ),
+        )
+
     def test_compile_is_byte_deterministic_and_canonical(self) -> None:
         draft = compile_draft(
             proposal(),
@@ -253,11 +312,19 @@ class FieldNotesModelTests(unittest.TestCase):
         self,
     ) -> None:
         gate = FieldNoteProposalGate("run_001")
-        self.assertEqual(
-            gate.propose(proposal()),
-            (False, "proposal_schema_invalid"),
-        )
+        with patch(
+            "decision_os.companion.field_notes_model.compile_draft"
+        ) as compiler:
+            self.assertEqual(
+                gate.propose(proposal()),
+                (False, "level_3_trust_not_configured"),
+            )
+        compiler.assert_not_called()
         self.assertIsNone(gate.accepted)
+        self.assertEqual(
+            (False, "proposal_attempt_already_consumed"),
+            gate.propose(proposal()),
+        )
 
     def test_level_three_proposal_and_trusted_classes_must_match(
         self,
@@ -269,11 +336,19 @@ class FieldNotesModelTests(unittest.TestCase):
         )
         mismatched = proposal()
         mismatched["source_model_class"] = "UNKNOWN"
-        self.assertEqual(
-            gate.propose(mismatched),
-            (False, "proposal_schema_invalid"),
-        )
+        with patch(
+            "decision_os.companion.field_notes_model.compile_draft"
+        ) as compiler:
+            self.assertEqual(
+                gate.propose(mismatched),
+                (False, "level_3_trust_class_mismatch"),
+            )
+        compiler.assert_not_called()
         self.assertIsNone(gate.accepted)
+        self.assertEqual(
+            (False, "proposal_attempt_already_consumed"),
+            gate.propose(proposal()),
+        )
 
     def test_trusted_stronger_to_lower_cost_level_three_is_accepted(
         self,
@@ -376,6 +451,8 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         request_id_override: str | int | bool | None = None,
         completion_thread_id: str | None = None,
         mismatched_completion_content: bool = False,
+        trusted_source_model_class: str = "stronger",
+        trusted_target_model_class: str = "lower-cost",
     ) -> FieldNoteCodexRunResult:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -453,8 +530,8 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             input_func=lambda: None,
             stdout=io.StringIO(),
             transport_factory=factory,
-            trusted_source_model_class="stronger",
-            trusted_target_model_class="lower-cost",
+            trusted_source_model_class=trusted_source_model_class,
+            trusted_target_model_class=trusted_target_model_class,
             creator_live_a1_capture_provider=lambda: (
                 FieldNoteCreatorLiveA1CaptureConfig(
                     "run-live-a1",
@@ -477,11 +554,130 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             if message.get("method") == "thread/start"
         ]
         self.assertEqual(1, len(starts))
+        dynamic_tools = starts[0]["params"]["dynamicTools"]
+        field_note_tools = [
+            tool
+            for tool in dynamic_tools
+            if tool.get("name") == FIELD_NOTE_TOOL_NAME
+        ]
+        self.assertEqual(1, len(field_note_tools))
         self._creator_live_repository = repository
+        self._creator_live_adapter = adapter
+        self._creator_live_tool_spec = field_note_tools[0]
         self._creator_live_developer_instructions = starts[0]["params"][
             "developerInstructions"
         ]
         return result
+
+    async def test_thread_start_schema_uses_same_trust_as_gate(self) -> None:
+        level_two = proposal()
+        level_two["value_level"] = 2
+        unknown_result = await self._creator_live_result(
+            calls=(("proposal-call-unknown", level_two),),
+            observed_status="completed",
+            trusted_source_model_class="UNKNOWN",
+            trusted_target_model_class="UNKNOWN",
+        )
+        self.assertTrue(unknown_result.normal_terminal)
+        self.assertEqual(
+            [1, 2],
+            self._creator_live_tool_spec["inputSchema"]["properties"][
+                "value_level"
+            ]["enum"],
+        )
+        self.assertEqual(
+            "UNKNOWN",
+            self._creator_live_adapter._field_note_gate.trusted_source_model_class,
+        )
+        self.assertEqual(
+            "UNKNOWN",
+            self._creator_live_adapter._field_note_gate.trusted_target_model_class,
+        )
+
+        configured_result = await self._creator_live_result(
+            calls=(("proposal-call-configured", proposal()),),
+            trusted_source_model_class="stronger",
+            trusted_target_model_class="lower-cost",
+        )
+        self.assertTrue(configured_result.normal_terminal)
+        self.assertEqual(
+            [1, 2],
+            self._creator_live_tool_spec["inputSchema"]["properties"][
+                "value_level"
+            ]["enum"],
+        )
+        self.assertEqual(
+            set(),
+            {
+                "oneOf",
+                "anyOf",
+                "allOf",
+                "enum",
+                "const",
+                "not",
+            }.intersection(self._creator_live_tool_spec["inputSchema"]),
+        )
+        self.assertEqual(
+            "stronger",
+            self._creator_live_adapter._field_note_gate.trusted_source_model_class,
+        )
+        self.assertEqual(
+            "lower-cost",
+            self._creator_live_adapter._field_note_gate.trusted_target_model_class,
+        )
+
+    async def test_creator_live_trust_codes_are_generic_gate_rejections(
+        self,
+    ) -> None:
+        mismatched = proposal()
+        mismatched["source_model_class"] = "UNKNOWN"
+        cases = (
+            (
+                "not-configured",
+                proposal(),
+                "UNKNOWN",
+                "UNKNOWN",
+                "level_3_trust_not_configured",
+                "failed",
+            ),
+            (
+                "class-mismatch",
+                mismatched,
+                "stronger",
+                "lower-cost",
+                "level_3_trust_class_mismatch",
+                None,
+            ),
+        )
+        for label, arguments, source, target, code, observed_status in cases:
+            with self.subTest(case=label):
+                result = await self._creator_live_result(
+                    calls=((f"proposal-call-{label}", arguments),),
+                    observed_status=observed_status,
+                    trusted_source_model_class=source,
+                    trusted_target_model_class=target,
+                )
+                self.assertFalse(result.normal_terminal)
+                self.assertEqual(
+                    "A1_PROPOSAL_GATE_REJECTED",
+                    result.creator_live_a1_failure_reason,
+                )
+                self.assertIsNone(result.field_note_proposal)
+                diagnostic = result.creator_live_a1_proposal_diagnostic
+                assert diagnostic is not None
+                self.assertEqual(code, diagnostic.gate_response_code)
+                self.assertFalse(diagnostic.gate_response_success)
+                self.assertEqual(
+                    "A1_PROPOSAL_GATE_REJECTED",
+                    diagnostic.final_subcause,
+                )
+                self.assertFalse(
+                    (
+                        self._creator_live_repository
+                        / ".decision-os"
+                        / "field-notes"
+                    ).exists()
+                )
 
     async def test_creator_live_mode_requires_one_valid_proposal(self) -> None:
         result = await self._creator_live_result(

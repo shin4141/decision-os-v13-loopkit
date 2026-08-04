@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -189,6 +190,32 @@ def configured_model_class(value: Any) -> str:
     if not isinstance(value, str) or value not in MODEL_CLASSES:
         raise ValueError("Trusted model class is invalid.")
     return value
+
+
+def level_three_available(
+    trusted_source_model_class: str,
+    trusted_target_model_class: str,
+) -> bool:
+    """Return whether the active trusted pair admits Level 3 proposals."""
+
+    source_class = configured_model_class(trusted_source_model_class)
+    target_class = configured_model_class(trusted_target_model_class)
+    return source_class == "stronger" and target_class == "lower-cost"
+
+
+def field_note_tool_spec_for_trust(
+    trusted_source_model_class: str,
+    trusted_target_model_class: str,
+) -> dict[str, Any]:
+    """Return one fresh shipped Option A model-facing proposal contract."""
+
+    configured_model_class(trusted_source_model_class)
+    configured_model_class(trusted_target_model_class)
+    tool_spec = copy.deepcopy(FIELD_NOTE_TOOL_SPEC)
+    input_schema = tool_spec["inputSchema"]
+    properties = input_schema["properties"]
+    properties["value_level"]["enum"] = [1, 2]
+    return tool_spec
 
 
 def _structured_text(value: Any, maximum: int, *, title: bool) -> str:
@@ -481,13 +508,19 @@ class FieldNoteProposalGate:
             if source_class not in MODEL_CLASSES or target_class not in MODEL_CLASSES:
                 raise ValueError("Proposal model class is invalid.")
             value_level = arguments.get("value_level")
-            if value_level == 3 and (
-                self.trusted_source_model_class != "stronger"
-                or self.trusted_target_model_class != "lower-cost"
-                or source_class != self.trusted_source_model_class
-                or target_class != self.trusted_target_model_class
-            ):
-                raise ValueError("Level 3 trusted model classes do not match.")
+            if value_level == 3:
+                if not level_three_available(
+                    self.trusted_source_model_class,
+                    self.trusted_target_model_class,
+                ):
+                    self.accepted = None
+                    return False, "level_3_trust_not_configured"
+                if (
+                    source_class != self.trusted_source_model_class
+                    or target_class != self.trusted_target_model_class
+                ):
+                    self.accepted = None
+                    return False, "level_3_trust_class_mismatch"
             trusted_arguments = dict(arguments)
             trusted_arguments["source_model_class"] = (
                 self.trusted_source_model_class

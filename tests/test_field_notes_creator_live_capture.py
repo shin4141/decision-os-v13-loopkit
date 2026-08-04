@@ -195,6 +195,16 @@ class _CaptureAdapter:
                 proposal=None,
                 failure="A1_PROPOSAL_SCHEMA_REJECTED",
             )
+        if self.owner.mode in {
+            "trust_not_configured",
+            "trust_class_mismatch",
+        }:
+            return self.owner.result(
+                config.run_id,
+                normal_terminal=False,
+                proposal=None,
+                failure="A1_PROPOSAL_GATE_REJECTED",
+            )
         return self.owner.result(
             self.owner.result_run_id_override or config.run_id,
             proposal=draft,
@@ -275,10 +285,16 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             "A1_PROPOSAL_MISSING",
             "A1_PROPOSAL_DUPLICATE",
             "A1_PROPOSAL_SCHEMA_REJECTED",
+            "A1_PROPOSAL_GATE_REJECTED",
             "A1_DIRECT_WRITE_REQUESTED",
         } else None
         has_proposal = proposal is not None
-        gate_invoked = has_proposal or failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+        gate_rejected = failure == "A1_PROPOSAL_GATE_REJECTED"
+        gate_invoked = (
+            has_proposal
+            or failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+            or gate_rejected
+        )
         diagnostic = FieldNoteA1ProposalDiagnostic(
             proposal_call_count=(
                 0 if failure == "A1_PROPOSAL_MISSING" else attempts
@@ -302,11 +318,18 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             gate_response_code=(
                 "proposal_schema_invalid"
                 if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                else "level_3_trust_not_configured"
+                if self.mode == "trust_not_configured"
+                else "level_3_trust_class_mismatch"
+                if self.mode == "trust_class_mismatch"
                 else "proposal_accepted" if gate_invoked else None
             ),
             gate_response_success=(
                 False
-                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                if (
+                    failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                    or gate_rejected
+                )
                 else True if gate_invoked else None
             ),
             accepted_proposal_present=has_proposal,
@@ -316,14 +339,20 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                 None
                 if failure == "A1_PROPOSAL_MISSING"
                 else "failed"
-                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                if (
+                    failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                    or gate_rejected
+                )
                 else "completed"
             ),
             item_expected_status=(
                 None
                 if failure == "A1_PROPOSAL_MISSING"
                 else "failed"
-                if failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                if (
+                    failure == "A1_PROPOSAL_SCHEMA_REJECTED"
+                    or gate_rejected
+                )
                 else "completed"
             ),
             all_proposals_completed=True,
@@ -548,6 +577,86 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             "A1_PROPOSAL_SCHEMA_REJECTED",
             readback.a1_proposal_diagnostic.final_subcause,
         )
+
+    def test_trust_gate_codes_are_exact_and_durable(self) -> None:
+        cases = (
+            (
+                "trust_not_configured",
+                "level_3_trust_not_configured",
+            ),
+            (
+                "trust_class_mismatch",
+                "level_3_trust_class_mismatch",
+            ),
+        )
+        for mode, gate_code in cases:
+            with self.subTest(mode=mode):
+                self.setUp()
+                self.mode = mode
+                with patch.object(self.controller, "field_note_save") as save:
+                    with self.assertRaises(
+                        FieldNoteCreatorLiveA1CaptureBridgeError
+                    ):
+                        self.bridge().capture("Propose exactly once and stop.")
+                self.assertEqual(0, save.call_count)
+
+                controller_diagnostic = (
+                    self.controller.creator_live_a1_proposal_diagnostic(
+                        expected_run_id=self.run_1.run_id
+                    )
+                )
+                self.assertEqual(
+                    "A1_PROPOSAL_GATE_REJECTED",
+                    self.controller.creator_live_a1_failure_reason(
+                        expected_run_id=self.run_1.run_id
+                    ),
+                )
+                self.assertEqual(
+                    gate_code,
+                    controller_diagnostic.gate_response_code,
+                )
+                self.assertFalse(controller_diagnostic.gate_response_success)
+                self.assertEqual(
+                    "A1_PROPOSAL_GATE_REJECTED",
+                    controller_diagnostic.final_subcause,
+                )
+
+                readback = self.runtime.read_back()
+                self.assertEqual("FAILED", readback.state)
+                self.assertEqual("A1_CAPTURE", readback.failure_boundary)
+                self.assertEqual(
+                    "A1_PROPOSAL_GATE_REJECTED",
+                    readback.failure_reason,
+                )
+                self.assertEqual(
+                    controller_diagnostic,
+                    readback.a1_proposal_diagnostic,
+                )
+                self.assertTrue(readback.durable_readback_verified)
+                self.assertEqual(
+                    readback.journal_record_count,
+                    readback.anchor_record_count,
+                )
+                journal = self.runtime.journal_path.read_text(encoding="utf-8")
+                anchor = self.runtime.anchor_path.read_text(encoding="utf-8")
+                self.assertIn("A1_PROPOSAL_GATE_REJECTED", journal)
+                self.assertIn(gate_code, journal)
+                self.assertIn(
+                    controller_diagnostic.diagnostic_sha256,
+                    journal,
+                )
+                self.assertIn(readback.journal_sha256, anchor)
+                self.assertEqual(0, readback.trace_event_count)
+                self.assertIsNone(readback.run_2)
+                self.assertFalse(
+                    (
+                        self.repository
+                        / ".decision-os"
+                        / "field-notes"
+                    ).exists()
+                )
+                with self.assertRaises(FieldNoteCreatorLiveStageError):
+                    self.runtime.open_run_2(self.run_1)
 
     def test_zero_identity_shape_failure_is_durable_and_cannot_continue(
         self,
