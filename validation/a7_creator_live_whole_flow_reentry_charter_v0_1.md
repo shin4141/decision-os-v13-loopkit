@@ -13,8 +13,12 @@ Execution Charter only
 Fixed repository:
 shin4141/decision-os-v13-loopkit
 
-Fixed main:
+Implementation baseline:
 03a39f82f832f1655d1f25fc8ae982d606c7729d
+
+Execution repository HEAD:
+Exact PR #86 merge commit, resolved only after merge and recorded during P0
+before any model invocation
 
 Decision Owner:
 Shin
@@ -148,12 +152,20 @@ Repository qualification establishes only that the source tree is eligible for
 later runtime qualification. It requires read-only confirmation of:
 
 - repository `shin4141/decision-os-v13-loopkit`;
-- exact main `03a39f82f832f1655d1f25fc8ae982d606c7729d`;
-- a clean tracked worktree and index;
-- PR #82 diagnostic retention in the exact source state;
-- PR #85 malformed-versus-missing taxonomy behavior in the exact source state;
+- implementation baseline
+  `03a39f82f832f1655d1f25fc8ae982d606c7729d`, the exact code state containing
+  the merged PR #85 A1 taxonomy repair;
+- execution repository HEAD equal to the exact PR #86 merge commit, resolved
+  only after merge, recorded during P0, and fixed before execution;
+- a clean tracked worktree and index at that execution repository HEAD;
+- PR #82 diagnostic retention in the implementation baseline;
+- PR #85 malformed-versus-missing taxonomy behavior in the implementation
+  baseline;
 - focused A1 diagnostic and creator-live qualification tests passing; and
 - no unauthorized local code modification.
+
+No later repository commit may be used without a new bounded requalification or
+Charter delta.
 
 Passing repository tests does not qualify an installed runtime and does not
 authorize a live run.
@@ -163,13 +175,20 @@ authorize a live run.
 Installation and runtime qualification is a separate read-only identity check.
 It requires confirmation of:
 
-- the exact installed Companion build identity and its binding to the
-  authorized repository state;
+- the exact installed Companion build identity and proof that its product code
+  tree matches the authorized implementation baseline/code tree actually used
+  by the runtime;
 - the exact intended product model and runtime identity;
 - the protected Proof 001 and Proof 002 artifacts remaining unchanged against
   their authoritative byte identities;
 - no existing open creator-live proof attempt; and
 - no unauthorized installed-code, configuration, or runtime modification.
+
+Repository HEAD and implementation/build baseline are separate identities. The
+execution repository HEAD is the exact merge commit containing this Charter;
+the implementation/build baseline identifies the product code containing the
+PR #85 behavior. Documentation-only Charter bytes do not need to be packaged
+into the Companion product runtime build.
 
 This Charter does not authorize installing, rebuilding, changing, or restarting
 Companion to satisfy these conditions. A mismatch is a stop, not permission to
@@ -196,8 +215,11 @@ every repository and runtime qualification condition above, including these
 fixed boundaries:
 
 ```text
-Repository main:
+Implementation baseline:
 03a39f82f832f1655d1f25fc8ae982d606c7729d
+
+Execution repository HEAD:
+exact PR #86 merge commit, resolved after merge and fixed before execution
 
 Historical proofs:
 Proof 001 unchanged and permanently closed
@@ -210,10 +232,13 @@ Unauthorized local code or runtime modification:
 none
 ```
 
-The exact installed build identity and exact intended model/runtime identity
-must be recorded from the authorized environment; labels, assumptions, or
-repository test results are insufficient substitutes. Any mismatch or missing
-identity produces `BLOCK` before model invocation.
+P0 must record the resolved PR #86 merge commit before any model invocation. No
+later repository commit may be substituted without a new bounded
+requalification or Charter delta. The exact installed build identity and exact
+intended model/runtime identity must be recorded from the authorized
+environment; labels, assumptions, or repository test results are insufficient
+substitutes. Any mismatch or missing identity produces `BLOCK` before model
+invocation.
 
 ## Strictly Sequential Stage Sequence
 
@@ -223,9 +248,10 @@ parallelized, inferred from task success, or opened after a stop condition.
 
 ### P0 — Preflight
 
-Verify and record all fixed identities, repository qualification, installation
-and runtime qualification, artifact protections, absence of an open attempt,
-and separate live authorization.
+Verify and record the exact implementation baseline, the exact PR #86 merge
+commit as execution repository HEAD, installation and runtime qualification,
+artifact protections, absence of an open attempt, and separate live
+authorization. Complete this record before any model invocation.
 
 Failure result:
 
@@ -237,8 +263,9 @@ No model invocation.
 ### P1 — Fresh Attempt Opening
 
 After P0 passes, create exactly one fresh proof-attempt identity and exactly one
-fresh Run 1 identity. Bind both to the qualified repository, installed build,
-model/runtime identity, Charter, and zero-retry rule.
+fresh Run 1 identity. Bind both to the qualified execution repository HEAD,
+implementation/build baseline, installed build, model/runtime identity,
+Charter, and zero-retry rule.
 
 Failure result: terminalize where possible, stop, and create no replacement.
 
