@@ -372,6 +372,8 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         include_completion: bool = True,
         observed_status: str | None = None,
         request_extra: dict[str, object] | None = None,
+        omit_request_call_id: bool = False,
+        request_id_override: str | int | bool | None = None,
         completion_thread_id: str | None = None,
         mismatched_completion_content: bool = False,
     ) -> FieldNoteCodexRunResult:
@@ -390,11 +392,17 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
                 thread_id=thread_id,
                 turn_id=turn_id,
                 call_id=call_id,
-                request_id=f"proposal-request-{index}",
+                request_id=(
+                    f"proposal-request-{index}"
+                    if request_id_override is None
+                    else request_id_override
+                ),
                 arguments=arguments,
             )
             if request_extra:
                 request["params"].update(request_extra)  # type: ignore[union-attr]
+            if omit_request_call_id:
+                request["params"].pop("callId")  # type: ignore[union-attr]
             messages.extend(
                 [
                     started_proposal(
@@ -469,6 +477,7 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             if message.get("method") == "thread/start"
         ]
         self.assertEqual(1, len(starts))
+        self._creator_live_repository = repository
         self._creator_live_developer_instructions = starts[0]["params"][
             "developerInstructions"
         ]
@@ -561,6 +570,61 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
                     result.creator_live_a1_failure_reason,
                 )
                 self.assertIsNone(result.field_note_proposal)
+                diagnostic = result.creator_live_a1_proposal_diagnostic
+                assert diagnostic is not None
+                self.assertEqual(0, diagnostic.proposal_call_count)
+                self.assertIsNone(diagnostic.request_shape_valid)
+                self.assertFalse(diagnostic.malformed_observed)
+                self.assertEqual(
+                    "A1_PROPOSAL_MISSING",
+                    diagnostic.final_subcause,
+                )
+
+    async def test_creator_live_zero_identity_malformed_request_is_shape_invalid(
+        self,
+    ) -> None:
+        cases = (
+            ("missing", None, True, None),
+            ("empty", {"callId": ""}, False, None),
+            ("non-string", {"callId": 7}, False, None),
+            ("invalid-request-id", None, False, True),
+        )
+        for label, request_extra, omit_call_id, request_id in cases:
+            with self.subTest(case=label):
+                result = await self._creator_live_result(
+                    calls=(("proposal-call", proposal()),),
+                    request_extra=request_extra,
+                    omit_request_call_id=omit_call_id,
+                    request_id_override=request_id,
+                )
+                diagnostic = result.creator_live_a1_proposal_diagnostic
+                assert diagnostic is not None
+                self.assertFalse(result.normal_terminal)
+                self.assertEqual(
+                    "A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+                    result.creator_live_a1_failure_reason,
+                )
+                self.assertEqual(0, diagnostic.proposal_call_count)
+                self.assertIsNone(diagnostic.call_identity_sha256)
+                self.assertFalse(diagnostic.request_shape_valid)
+                self.assertTrue(diagnostic.malformed_observed)
+                self.assertTrue(diagnostic.protocol_identity_failure)
+                self.assertEqual(
+                    "dynamic_tool_call",
+                    diagnostic.protocol_failure_phase,
+                )
+                self.assertEqual(
+                    "A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+                    diagnostic.final_subcause,
+                )
+                self.assertIsNone(result.field_note_proposal)
+                self.assertFalse(
+                    (
+                        self._creator_live_repository
+                        / ".decision-os"
+                        / "field-notes"
+                    ).exists()
+                )
 
     async def test_creator_live_mode_rejects_duplicate_proposal(self) -> None:
         result = await self._creator_live_result(
@@ -573,6 +637,13 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             "A1_PROPOSAL_DUPLICATE",
             result.creator_live_a1_failure_reason,
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(2, diagnostic.proposal_call_count)
+        self.assertEqual(
+            "A1_PROPOSAL_DUPLICATE",
+            diagnostic.final_subcause,
         )
         self.assertIsNone(result.field_note_proposal)
 
