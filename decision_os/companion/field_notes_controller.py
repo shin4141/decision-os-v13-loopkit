@@ -24,11 +24,13 @@ from decision_os.companion.controller import (
     CompanionError,
 )
 from decision_os.companion.field_notes_adapter import (
+    FieldNoteCreatorLiveA1CaptureConfig,
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
 )
 from decision_os.companion.field_notes_model import (
     FieldNoteDraft,
+    canonical_json,
     compile_draft,
     configured_model_class,
     validate_compiled_markdown,
@@ -49,6 +51,7 @@ def _field_notes_adapter_factory(
     *,
     trusted_source_model_class: str = "UNKNOWN",
     trusted_target_model_class: str = "UNKNOWN",
+    creator_live_a1_capture_provider: Any = None,
 ) -> FieldNotesCodexAdapter:
     return FieldNotesCodexAdapter(
         engine,
@@ -58,6 +61,7 @@ def _field_notes_adapter_factory(
         lifecycle_sink=lifecycle_sink,
         trusted_source_model_class=trusted_source_model_class,
         trusted_target_model_class=trusted_target_model_class,
+        creator_live_a1_capture_provider=creator_live_a1_capture_provider,
     )
 
 
@@ -75,6 +79,12 @@ class FieldNotesCompanionController(CompanionController):
     def __init__(self, **kwargs: Any) -> None:
         self._field_note_draft: FieldNoteDraft | None = None
         self._field_note_pending: _PendingSave | None = None
+        self._creator_live_a1_capture_config: (
+            FieldNoteCreatorLiveA1CaptureConfig | None
+        ) = None
+        self._creator_live_a1_completed_run_id: str | None = None
+        self._creator_live_a1_failure_reason: str | None = None
+        self._creator_live_a1_direct_write_identity: str | None = None
         trusted_source_model_class = configured_model_class(
             kwargs.pop("trusted_source_model_class", "UNKNOWN")
         )
@@ -86,8 +96,17 @@ class FieldNotesCompanionController(CompanionController):
                 _field_notes_adapter_factory,
                 trusted_source_model_class=trusted_source_model_class,
                 trusted_target_model_class=trusted_target_model_class,
+                creator_live_a1_capture_provider=(
+                    self._active_creator_live_a1_capture
+                ),
             )
         super().__init__(**kwargs)
+
+    def _active_creator_live_a1_capture(
+        self,
+    ) -> FieldNoteCreatorLiveA1CaptureConfig | None:
+        with self._condition:
+            return self._creator_live_a1_capture_config
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
@@ -107,15 +126,46 @@ class FieldNotesCompanionController(CompanionController):
             self._clear_field_note_locked()
         return super().start_run(task, task_mode=task_mode)
 
+    def start_creator_live_a1_capture(
+        self,
+        task: str,
+        *,
+        run_id: str,
+    ) -> dict[str, Any]:
+        """Start one read-only Run whose only capture path is the A1 tool."""
+
+        config = FieldNoteCreatorLiveA1CaptureConfig(run_id=run_id)
+        with self._condition:
+            self._require_no_active_run()
+            self._clear_field_note_locked()
+            self._creator_live_a1_capture_config = config
+            self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_failure_reason = None
+            self._creator_live_a1_direct_write_identity = None
+        try:
+            return super().start_run(task, task_mode="manual")
+        except Exception:
+            with self._condition:
+                self._creator_live_a1_capture_config = None
+            raise
+
     def new_run(self) -> dict[str, Any]:
         with self._condition:
             self._clear_field_note_locked()
+            self._creator_live_a1_capture_config = None
+            self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_failure_reason = None
+            self._creator_live_a1_direct_write_identity = None
         return super().new_run()
 
     def select_repository(self, candidate: str | Path) -> dict[str, Any]:
         super().select_repository(candidate)
         with self._condition:
             self._clear_field_note_locked()
+            self._creator_live_a1_capture_config = None
+            self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_failure_reason = None
+            self._creator_live_a1_direct_write_identity = None
             return self._snapshot_locked()
 
     @staticmethod
@@ -158,7 +208,22 @@ class FieldNotesCompanionController(CompanionController):
         repository: Path,
         result: CodexRunResult,
     ) -> None:
-        draft = self._eligible_draft(result)
+        capture = self._creator_live_a1_capture_config
+        capture_failure = getattr(
+            result,
+            "creator_live_a1_failure_reason",
+            None,
+        )
+        if capture is not None and (
+            getattr(result, "creator_live_a1_capture", False) is not True
+            or result.run_id != capture.run_id
+        ):
+            capture_failure = "A1_CAPTURE_IDENTITY_MISMATCH"
+        draft = (
+            self._eligible_draft(result)
+            if capture_failure is None
+            else None
+        )
         reconnect_receipt = getattr(result, "reconnect_receipt", None)
         reconnect_projection = (
             reconnect_receipt.as_dict()
@@ -168,6 +233,10 @@ class FieldNotesCompanionController(CompanionController):
         )
         with self._condition:
             super()._complete_run(repository, result)
+            if capture is not None:
+                self._creator_live_a1_completed_run_id = capture.run_id
+                self._creator_live_a1_capture_config = None
+            self._creator_live_a1_failure_reason = capture_failure
             self._run["field_note_reconnect"] = reconnect_projection
             if draft is None:
                 self._clear_field_note_locked()
@@ -177,9 +246,60 @@ class FieldNotesCompanionController(CompanionController):
                 self._run["field_note"] = draft.public_candidate()
             self._condition.notify_all()
 
+    def _approval_provider(self, approval: CodexApproval) -> str | None:
+        with self._condition:
+            capture_active = self._creator_live_a1_capture_config is not None
+        if not capture_active:
+            return super()._approval_provider(approval)
+        if not isinstance(approval, CodexApproval):
+            raise FieldNoteError("Malformed creator-live file request.")
+        diagnostic = {
+            "action": str(approval.action),
+            "path": str(approval.normalized_scope),
+            "repository": str(approval.repository_name),
+        }
+        identity = hashlib.sha256(
+            canonical_json(diagnostic).encode("utf-8")
+        ).hexdigest()
+        with self._condition:
+            self._creator_live_a1_direct_write_identity = identity
+        return "3"
+
+    def creator_live_a1_capture_candidate(self) -> FieldNoteDraft:
+        """Return the exact eligible capture candidate without exposing a body."""
+
+        with self._condition:
+            run_id = self._creator_live_a1_completed_run_id
+            if run_id is None:
+                raise FieldNoteError("No creator-live A1 capture is active.")
+            if self._run.get("state") == "running":
+                raise FieldNoteError("Creator-live A1 capture is still running.")
+            if self._creator_live_a1_failure_reason is not None:
+                suffix = (
+                    f":{self._creator_live_a1_direct_write_identity}"
+                    if self._creator_live_a1_failure_reason
+                    == "A1_DIRECT_WRITE_REQUESTED"
+                    and self._creator_live_a1_direct_write_identity is not None
+                    else ""
+                )
+                raise FieldNoteError(
+                    f"{self._creator_live_a1_failure_reason}{suffix}"
+                )
+            if self._field_note_draft is None:
+                raise FieldNoteError("A1_PROPOSAL_INVALID")
+            if self._field_note_draft.source_run_id != run_id:
+                raise FieldNoteError("A1_CAPTURE_IDENTITY_MISMATCH")
+            return self._field_note_draft
+
     def _fail_run(self, repository: Path, exc: Exception) -> None:
         super()._fail_run(repository, exc)
         with self._condition:
+            if self._creator_live_a1_capture_config is not None:
+                self._creator_live_a1_completed_run_id = (
+                    self._creator_live_a1_capture_config.run_id
+                )
+                self._creator_live_a1_capture_config = None
+                self._creator_live_a1_failure_reason = "A1_RUN_FAILED"
             self._clear_field_note_locked()
             self._condition.notify_all()
 

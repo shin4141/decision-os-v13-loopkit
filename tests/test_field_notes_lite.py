@@ -20,6 +20,7 @@ from decision_os.acceleration.codex_adapter import (
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.companion.field_notes_adapter import (
+    FieldNoteCreatorLiveA1CaptureConfig,
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
 )
@@ -357,6 +358,191 @@ class FieldNotesModelTests(unittest.TestCase):
 
 
 class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
+    async def _creator_live_result(
+        self,
+        *,
+        calls: tuple[tuple[str, dict[str, object]], ...] = (),
+        final_message: str = "Completed.",
+    ) -> FieldNoteCodexRunResult:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        repository = create_repository(Path(temporary.name))
+        thread_id = "thread-creator-live-a1"
+        turn_id = "turn-creator-live-a1"
+        messages = handshake_messages(
+            repository,
+            thread_id=thread_id,
+            turn_id=turn_id,
+        )
+        for index, (call_id, arguments) in enumerate(calls):
+            messages.extend(
+                [
+                    started_proposal(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        arguments=arguments,
+                    ),
+                    proposal_request(
+                        thread_id=thread_id,
+                        turn_id=turn_id,
+                        call_id=call_id,
+                        request_id=f"proposal-request-{index}",
+                        arguments=arguments,
+                    ),
+                    {
+                        **completed_proposal(
+                            thread_id=thread_id,
+                            turn_id=turn_id,
+                            call_id=call_id,
+                            arguments=arguments,
+                        ),
+                        "params": {
+                            **completed_proposal(
+                                thread_id=thread_id,
+                                turn_id=turn_id,
+                                call_id=call_id,
+                                arguments=arguments,
+                            )["params"],
+                            "item": {
+                                **completed_proposal(
+                                    thread_id=thread_id,
+                                    turn_id=turn_id,
+                                    call_id=call_id,
+                                    arguments=arguments,
+                                )["params"]["item"],
+                                "status": (
+                                    "completed"
+                                    if index == 0 and arguments == proposal()
+                                    else "failed"
+                                ),
+                            },
+                        },
+                    },
+                ]
+            )
+        messages.extend(
+            [
+                completed_agent_message(
+                    thread_id=thread_id,
+                    turn_id=turn_id,
+                    text=final_message,
+                ),
+                completed_turn(thread_id=thread_id, turn_id=turn_id),
+            ]
+        )
+        factory = FakeTransportFactory([messages])
+        engine = AccelerationEngine(
+            repository,
+            adapter=ADAPTER_NAME,
+            adapter_version=CODEX_CLI_VERSION,
+        )
+        adapter = FieldNotesCodexAdapter(
+            engine,
+            input_func=lambda: None,
+            stdout=io.StringIO(),
+            transport_factory=factory,
+            trusted_source_model_class="stronger",
+            trusted_target_model_class="lower-cost",
+            creator_live_a1_capture_provider=lambda: (
+                FieldNoteCreatorLiveA1CaptureConfig("run-live-a1")
+            ),
+        )
+        result = await adapter.run(
+            "Reason, propose once, and make no mutation."
+        )
+        starts = [
+            message
+            for message in factory.transports[0].sent
+            if message.get("method") == "thread/start"
+        ]
+        self.assertEqual(1, len(starts))
+        self._creator_live_developer_instructions = starts[0]["params"][
+            "developerInstructions"
+        ]
+        return result
+
+    async def test_creator_live_mode_requires_one_valid_proposal(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),)
+        )
+        self.assertTrue(result.normal_terminal)
+        self.assertTrue(result.creator_live_a1_capture)
+        self.assertEqual("run-live-a1", result.run_id)
+        self.assertEqual(1, result.creator_live_a1_proposal_attempts)
+        self.assertIsNone(result.creator_live_a1_failure_reason)
+        self.assertIsNotNone(result.field_note_proposal)
+        self.assertIn(
+            "must call propose_field_note_candidate exactly once",
+            self._creator_live_developer_instructions,
+        )
+        self.assertIn(
+            "Do not create, update, modify, delete, patch",
+            self._creator_live_developer_instructions,
+        )
+        self.assertNotIn(
+            "Use the typed file-change tool for exactly one file mutation",
+            self._creator_live_developer_instructions,
+        )
+
+    async def test_creator_live_mode_rejects_missing_raw_output(self) -> None:
+        for raw in (
+            "# Raw Field Note\n\nNot a typed proposal.",
+            json.dumps(proposal(), sort_keys=True),
+        ):
+            with self.subTest(raw=raw[:1]):
+                result = await self._creator_live_result(final_message=raw)
+                self.assertFalse(result.normal_terminal)
+                self.assertEqual(
+                    "A1_PROPOSAL_MISSING",
+                    result.creator_live_a1_failure_reason,
+                )
+                self.assertIsNone(result.field_note_proposal)
+
+    async def test_creator_live_mode_rejects_duplicate_proposal(self) -> None:
+        result = await self._creator_live_result(
+            calls=(
+                ("proposal-call-1", proposal()),
+                ("proposal-call-2", proposal()),
+            )
+        )
+        self.assertFalse(result.normal_terminal)
+        self.assertEqual(
+            "A1_PROPOSAL_DUPLICATE",
+            result.creator_live_a1_failure_reason,
+        )
+        self.assertIsNone(result.field_note_proposal)
+
+    async def test_creator_live_mode_rejects_malformed_proposal(self) -> None:
+        malformed = proposal()
+        malformed["value_level"] = 99
+        result = await self._creator_live_result(
+            calls=(("proposal-call", malformed),)
+        )
+        self.assertFalse(result.normal_terminal)
+        self.assertEqual(
+            "A1_PROPOSAL_INVALID",
+            result.creator_live_a1_failure_reason,
+        )
+        self.assertIsNone(result.field_note_proposal)
+
+    async def test_creator_live_mode_rejects_inconsistent_replay(self) -> None:
+        changed = proposal()
+        changed["title"] = "Changed replay identity"
+        result = await self._creator_live_result(
+            calls=(
+                ("proposal-call", proposal()),
+                ("proposal-call", changed),
+            )
+        )
+        self.assertFalse(result.normal_terminal)
+        self.assertEqual(
+            "A1_PROPOSAL_INVALID",
+            result.creator_live_a1_failure_reason,
+        )
+        self.assertEqual(1, result.creator_live_a1_proposal_attempts)
+        self.assertIsNone(result.field_note_proposal)
+
     async def test_exact_proposal_request_replay_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository = create_repository(Path(temporary))

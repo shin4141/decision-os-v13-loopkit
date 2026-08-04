@@ -10,6 +10,7 @@ from unittest.mock import patch
 from decision_os.companion import field_notes_creator_live as creator_live
 from decision_os.companion import field_notes_whole_flow as whole_flow
 from decision_os.companion.field_notes_creator_live import (
+    FieldNoteCreatorLiveA1CaptureCommitReceipt,
     FieldNoteCreatorLiveAttemptExistsError,
     FieldNoteCreatorLiveDurabilityError,
     FieldNoteCreatorLiveProofRuntime,
@@ -82,12 +83,41 @@ class CreatorLiveTestCase(unittest.TestCase):
     ) -> None:
         evidence = bundle or self.bundle
         assert evidence.a1_capture is not None
+        capture_commit = self.capture_commit(
+            runtime_path,
+            evidence.a1_capture,
+        )
         with patch.object(
             creator_live,
             "_utc_now_rfc3339",
             return_value=observed_at,
         ):
-            runtime_path.record_a1_capture(evidence.a1_capture)
+            runtime_path.record_a1_capture(
+                evidence.a1_capture,
+                capture_commit=capture_commit,
+            )
+
+    @staticmethod
+    def capture_commit(
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        draft,
+    ) -> FieldNoteCreatorLiveA1CaptureCommitReceipt:
+        readback = runtime_path.read_back()
+        note = FieldNoteIdentity(
+            note_path=draft.relative_path,
+            field_note_id=draft.field_note_id,
+            note_sha256=draft.sha256,
+            origin_run_id=draft.source_run_id,
+        )
+        return FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+            authority=creator_live._A1_CAPTURE_COMMIT_AUTHORITY,
+            proof_attempt_id=readback.proof_attempt_id,
+            run_id=readback.run_1.run_id,
+            source_repository=readback.source_repository,
+            note=note,
+            note_byte_count=len(draft.markdown),
+            save_as_of=draft.created_at,
+        )
 
     def open_run_2(
         self,
@@ -127,7 +157,13 @@ class CreatorLiveTestCase(unittest.TestCase):
             "_utc_now_rfc3339",
             side_effect=OBSERVED_AT,
         ):
-            runtime_path.record_a1_capture(evidence.a1_capture)
+            runtime_path.record_a1_capture(
+                evidence.a1_capture,
+                capture_commit=self.capture_commit(
+                    runtime_path,
+                    evidence.a1_capture,
+                ),
+            )
             runtime_path.open_run_2(evidence.run_2)
             runtime_path.record_a2_reconnect(
                 evidence.a2_reconnect,
@@ -200,6 +236,50 @@ class CreatorLiveProvenanceTests(CreatorLiveTestCase):
 
 
 class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
+    def test_draft_alone_cannot_emit_a1_checkpoint(self) -> None:
+        runtime_path = self.open_runtime()
+        assert self.bundle.a1_capture is not None
+        with self.assertRaises(TypeError):
+            runtime_path.record_a1_capture(  # type: ignore[call-arg]
+                self.bundle.a1_capture
+            )
+        readback = runtime_path.read_back()
+        self.assertEqual("OPEN", readback.state)
+        self.assertEqual(0, readback.trace_event_count)
+
+    def test_changed_capture_sha_or_byte_count_fails_terminal(self) -> None:
+        assert self.bundle.a1_capture is not None
+        for label, note_sha256, byte_delta in (
+            ("wrong-sha", "0" * 64, 0),
+            ("wrong-count", self.bundle.a1_capture.sha256, 1),
+        ):
+            with self.subTest(label=label):
+                runtime_path = self.open_runtime(label)
+                draft = self.bundle.a1_capture
+                commit = self.capture_commit(runtime_path, draft)
+                changed_note = replace(
+                    commit.note,
+                    note_sha256=note_sha256,
+                )
+                changed = FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+                    authority=creator_live._A1_CAPTURE_COMMIT_AUTHORITY,
+                    proof_attempt_id=commit.proof_attempt_id,
+                    run_id=commit.run_id,
+                    source_repository=commit.source_repository,
+                    note=changed_note,
+                    note_byte_count=commit.note_byte_count + byte_delta,
+                    save_as_of=commit.save_as_of,
+                )
+                with self.assertRaises(FieldNoteCreatorLiveStageError):
+                    runtime_path.record_a1_capture(
+                        draft,
+                        capture_commit=changed,
+                    )
+                self.assertEqual(
+                    "A1_CAPTURE_COMMIT_MISMATCH",
+                    runtime_path.read_back().failure_reason,
+                )
+
     def test_attempt_opens_with_exact_repository_and_runtime(self) -> None:
         readback = self.open_runtime().read_back()
         self.assertEqual("OPEN", readback.state)
@@ -302,7 +382,13 @@ class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
         self.record_a1(runtime_path)
         assert self.bundle.a1_capture is not None
         with self.assertRaises(FieldNoteCreatorLiveStageError):
-            runtime_path.record_a1_capture(self.bundle.a1_capture)
+            runtime_path.record_a1_capture(
+                self.bundle.a1_capture,
+                capture_commit=self.capture_commit(
+                    runtime_path,
+                    self.bundle.a1_capture,
+                ),
+            )
         self.assertEqual("RETRY_REPLACEMENT", runtime_path.read_back().repair_action)
 
     def test_failed_stage_cannot_later_emit_success(self) -> None:

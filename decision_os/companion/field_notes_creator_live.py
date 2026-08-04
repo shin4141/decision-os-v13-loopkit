@@ -78,6 +78,9 @@ CREATOR_LIVE_ANCHOR_SCHEMA = (
 )
 CREATOR_LIVE_JOURNAL_FILENAME = "creator-live-proof-v0.1.jsonl"
 CREATOR_LIVE_ANCHOR_FILENAME = "creator-live-proof-v0.1.anchor.jsonl"
+A1_CAPTURE_COMMIT_SCHEMA = (
+    "decision-os.field-note-creator-live-a1-capture-commit.v0.1"
+)
 JOURNAL_GENESIS_SHA256 = "0" * 64
 ANCHOR_GENESIS_SHA256 = "0" * 64
 
@@ -104,6 +107,7 @@ _STAGES: tuple[TraceStage, ...] = (
     "A6_REVIEW",
 )
 _READBACK_AUTHORITY = object()
+_A1_CAPTURE_COMMIT_AUTHORITY = object()
 
 
 class FieldNoteCreatorLiveError(RuntimeError):
@@ -127,6 +131,100 @@ class FieldNoteCreatorLiveDurabilityError(FieldNoteCreatorLiveError):
 
 class FieldNoteCreatorLiveAttemptExistsError(FieldNoteCreatorLiveError):
     """The one-attempt journal already exists and cannot be replaced."""
+
+
+@dataclass(frozen=True, init=False)
+class FieldNoteCreatorLiveA1CaptureCommitReceipt:
+    """Identity-only proof that the controller saved and read back one Note."""
+
+    schema: Literal[
+        "decision-os.field-note-creator-live-a1-capture-commit.v0.1"
+    ]
+    proof_attempt_id: str
+    run_id: str
+    source_repository: FieldNoteSourceRepositoryIdentity
+    note: FieldNoteIdentity
+    note_byte_count: int
+    save_as_of: str
+    controller_state: Literal["saved"]
+    read_back_verified: Literal[True]
+    receipt_sha256: str
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        raise FieldNoteCreatorLiveValidationError(
+            "A1 capture commit receipts are issued only after exact read-back."
+        )
+
+    @classmethod
+    def _issue(
+        cls,
+        *,
+        authority: object,
+        proof_attempt_id: str,
+        run_id: str,
+        source_repository: FieldNoteSourceRepositoryIdentity,
+        note: FieldNoteIdentity,
+        note_byte_count: int,
+        save_as_of: str,
+    ) -> FieldNoteCreatorLiveA1CaptureCommitReceipt:
+        if authority is not _A1_CAPTURE_COMMIT_AUTHORITY:
+            raise FieldNoteCreatorLiveValidationError(
+                "A1 capture commit authority is invalid."
+            )
+        if (
+            not isinstance(proof_attempt_id, str)
+            or not proof_attempt_id.strip()
+            or not isinstance(run_id, str)
+            or not run_id.strip()
+            or not isinstance(
+                source_repository,
+                FieldNoteSourceRepositoryIdentity,
+            )
+            or not isinstance(note, FieldNoteIdentity)
+            or type(note_byte_count) is not int
+            or note_byte_count <= 0
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "A1 capture commit identity is invalid."
+            )
+        normalized_save_as_of, _ = _parse_time(
+            save_as_of,
+            "A1 capture save As-of",
+        )
+        body = {
+            "schema": A1_CAPTURE_COMMIT_SCHEMA,
+            "proof_attempt_id": proof_attempt_id.strip(),
+            "run_id": run_id.strip(),
+            "source_repository": source_repository.as_dict(),
+            "note": note.as_dict(),
+            "note_byte_count": note_byte_count,
+            "save_as_of": normalized_save_as_of,
+            "controller_state": "saved",
+            "read_back_verified": True,
+        }
+        value = object.__new__(cls)
+        for field, item in {
+            **body,
+            "source_repository": source_repository,
+            "note": note,
+            "receipt_sha256": _canonical_sha256(body),
+        }.items():
+            object.__setattr__(value, field, item)
+        return value
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "proof_attempt_id": self.proof_attempt_id,
+            "run_id": self.run_id,
+            "source_repository": self.source_repository.as_dict(),
+            "note": self.note.as_dict(),
+            "note_byte_count": self.note_byte_count,
+            "save_as_of": self.save_as_of,
+            "controller_state": self.controller_state,
+            "read_back_verified": self.read_back_verified,
+            "receipt_sha256": self.receipt_sha256,
+        }
 
 
 class _JournalIntegrityError(ValueError):
@@ -597,6 +695,51 @@ def _note_from_dict(value: Any) -> FieldNoteIdentity:
         ) from exc
 
 
+def _a1_capture_commit_from_dict(
+    value: Any,
+) -> FieldNoteCreatorLiveA1CaptureCommitReceipt:
+    required = {
+        "schema",
+        "proof_attempt_id",
+        "run_id",
+        "source_repository",
+        "note",
+        "note_byte_count",
+        "save_as_of",
+        "controller_state",
+        "read_back_verified",
+        "receipt_sha256",
+    }
+    if not isinstance(value, dict) or set(value) != required:
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_A1_CAPTURE_COMMIT_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        )
+    try:
+        receipt = FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+            authority=_A1_CAPTURE_COMMIT_AUTHORITY,
+            proof_attempt_id=value["proof_attempt_id"],
+            run_id=value["run_id"],
+            source_repository=_repository_from_dict(
+                value["source_repository"]
+            ),
+            note=_note_from_dict(value["note"]),
+            note_byte_count=value["note_byte_count"],
+            save_as_of=value["save_as_of"],
+        )
+    except (TypeError, ValueError) as exc:
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_A1_CAPTURE_COMMIT_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        ) from exc
+    if receipt.as_dict() != value:
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_A1_CAPTURE_COMMIT_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        )
+    return receipt
+
+
 def _provenance_from_dict(
     value: Any,
     *,
@@ -702,6 +845,7 @@ class FieldNoteCreatorLiveTraceReadback:
     run_2: FieldNoteWholeFlowRunIdentity | None
     captured_note: FieldNoteIdentity | None
     captured_note_byte_count: int | None
+    a1_capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt | None
     a3_reuse_event_id: str | None
     current_stage: TraceStage | None
     trace_event_count: int
@@ -739,6 +883,9 @@ class FieldNoteCreatorLiveTraceReadback:
         run_2: FieldNoteWholeFlowRunIdentity | None,
         captured_note: FieldNoteIdentity | None,
         captured_note_byte_count: int | None,
+        a1_capture_commit: (
+            FieldNoteCreatorLiveA1CaptureCommitReceipt | None
+        ),
         a3_reuse_event_id: str | None,
         current_stage: TraceStage | None,
         events: tuple[FieldNoteWholeFlowTraceEvent, ...],
@@ -770,6 +917,7 @@ class FieldNoteCreatorLiveTraceReadback:
             "run_2": run_2,
             "captured_note": captured_note,
             "captured_note_byte_count": captured_note_byte_count,
+            "a1_capture_commit": a1_capture_commit,
             "a3_reuse_event_id": a3_reuse_event_id,
             "current_stage": current_stage,
             "trace_event_count": len(events),
@@ -816,6 +964,11 @@ class FieldNoteCreatorLiveTraceReadback:
                 self.captured_note.as_dict() if self.captured_note else None
             ),
             "captured_note_byte_count": self.captured_note_byte_count,
+            "a1_capture_commit": (
+                self.a1_capture_commit.as_dict()
+                if self.a1_capture_commit
+                else None
+            ),
             "a3_reuse_event_id": self.a3_reuse_event_id,
             "current_stage": self.current_stage,
             "trace_event_count": self.trace_event_count,
@@ -957,6 +1110,7 @@ def _project_records(
     events: list[FieldNoteWholeFlowTraceEvent] = []
     captured_note: FieldNoteIdentity | None = None
     captured_note_byte_count: int | None = None
+    a1_capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt | None = None
     a3_reuse_event_id: str | None = None
     state: CreatorLiveAttemptState = "OPEN"
     failure_boundary: WholeFlowBoundary | None = None
@@ -1046,7 +1200,11 @@ def _project_records(
                     "evidence_sha256",
                     "note",
                     "note_byte_count",
-                } or binding["evidence_type"] != "FieldNoteDraft":
+                    "capture_commit",
+                    "capture_commit_sha256",
+                } or binding["evidence_type"] != (
+                    "FieldNoteCreatorLiveA1CaptureCommitReceipt"
+                ):
                     raise _JournalIntegrityError(
                         "CREATOR_LIVE_A1_BINDING_INVALID",
                         repair_action="RECEIPT_REWRITE",
@@ -1059,6 +1217,24 @@ def _project_records(
                         repair_action="RECEIPT_REWRITE",
                     )
                 captured_note_byte_count = count
+                a1_capture_commit = _a1_capture_commit_from_dict(
+                    binding["capture_commit"]
+                )
+                if (
+                    binding["capture_commit_sha256"]
+                    != a1_capture_commit.receipt_sha256
+                    or a1_capture_commit.note != captured_note
+                    or a1_capture_commit.note_byte_count != count
+                    or a1_capture_commit.proof_attempt_id
+                    != static.attempt.proof_attempt_id
+                    or a1_capture_commit.run_id != static.run_1.run_id
+                    or a1_capture_commit.source_repository
+                    != static.repository
+                ):
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A1_CAPTURE_COMMIT_MISMATCH",
+                        repair_action="RECEIPT_REWRITE",
+                    )
             elif index == 2:
                 if set(binding) != {
                     "evidence_type",
@@ -1178,6 +1354,7 @@ def _project_records(
         run_2=run_2,
         captured_note=captured_note,
         captured_note_byte_count=captured_note_byte_count,
+        a1_capture_commit=a1_capture_commit,
         a3_reuse_event_id=a3_reuse_event_id,
         current_stage=current_stage,
         events=tuple(events),
@@ -1214,6 +1391,7 @@ def _failed_readback(
         run_2=None,
         captured_note=None,
         captured_note_byte_count=None,
+        a1_capture_commit=None,
         a3_reuse_event_id=None,
         current_stage=None,
         events=(),
@@ -1705,7 +1883,12 @@ class FieldNoteCreatorLiveProofRuntime:
             )
         return self._append("RUN_2_OPENED", {"run_2": run_2.as_dict()})
 
-    def record_a1_capture(self, draft: FieldNoteDraft) -> FieldNoteWholeFlowTraceEvent:
+    def record_a1_capture(
+        self,
+        draft: FieldNoteDraft,
+        *,
+        capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt,
+    ) -> FieldNoteWholeFlowTraceEvent:
         self._require_stage("A1_CAPTURE")
         if not isinstance(draft, FieldNoteDraft):
             self._terminal_failure("A1_CAPTURE", "A1_CAPTURE_INVALID")
@@ -1724,15 +1907,37 @@ class FieldNoteCreatorLiveProofRuntime:
             note_sha256=draft.sha256,
             origin_run_id=draft.source_run_id,
         )
+        if (
+            not isinstance(
+                capture_commit,
+                FieldNoteCreatorLiveA1CaptureCommitReceipt,
+            )
+            or capture_commit.proof_attempt_id
+            != self._static.attempt.proof_attempt_id
+            or capture_commit.run_id != self._static.run_1.run_id
+            or capture_commit.source_repository != self._static.repository
+            or capture_commit.note != note
+            or capture_commit.note_byte_count != len(draft.markdown)
+            or capture_commit.controller_state != "saved"
+            or capture_commit.read_back_verified is not True
+        ):
+            self._terminal_failure(
+                "A1_CAPTURE",
+                "A1_CAPTURE_COMMIT_MISMATCH",
+            )
         evidence_sha256 = _a1_evidence_sha256(draft)
         return self._emit(
             "A1_CAPTURE",
             evidence_sha256=evidence_sha256,
             binding={
-                "evidence_type": "FieldNoteDraft",
+                "evidence_type": (
+                    "FieldNoteCreatorLiveA1CaptureCommitReceipt"
+                ),
                 "evidence_sha256": evidence_sha256,
                 "note": note.as_dict(),
                 "note_byte_count": len(draft.markdown),
+                "capture_commit": capture_commit.as_dict(),
+                "capture_commit_sha256": capture_commit.receipt_sha256,
             },
         )
 

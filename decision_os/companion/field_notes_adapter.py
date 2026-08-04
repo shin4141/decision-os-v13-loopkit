@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 import json
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from decision_os.acceleration import codex_adapter as codex
 from decision_os.acceleration.codex_adapter import CodexAdapter, CodexRunResult
@@ -31,6 +31,46 @@ _FIELD_NOTE_PROPOSAL_INSTRUCTIONS = (
     "call it twice."
 )
 
+_CREATOR_LIVE_A1_CAPTURE_INSTRUCTIONS = (
+    "This is a bounded creator-live A1 capture Run. Perform only the "
+    "requested bounded reasoning task in read-only mode. Do not use shell "
+    "commands. Use read_repository_text_file only for bounded repository "
+    "evidence needed by the task. You must call "
+    "propose_field_note_candidate exactly once with the reusable insight. "
+    "The proposal tool is the only capture path. Do not create, update, "
+    "modify, delete, patch, or otherwise write any repository file. Do not emit "
+    "the candidate as raw Markdown or JSON. Stop normally after the one "
+    "proposal call and the bounded read-only task."
+)
+
+_DIRECT_MUTATION_REASONS = frozenset(
+    {
+        "additional_file_action_item",
+        "duplicate_file_action_item_after_completion",
+        "modify_requires_repository_read",
+        "read_preimage_changed_before_approval",
+        "read_write_path_mismatch",
+        "unapproved_file_completion",
+        "unsupported_dynamic_tool",
+        "unsupported_file_change_shape",
+        "unsupported_request_method:other",
+        "unsupported_request_method:commandExecution",
+        "unsupported_item_type:commandExecution",
+        "unsupported_item_type:mcpToolCall",
+    }
+)
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveA1CaptureConfig:
+    """One predeclared Run identity for the bounded creator-live A1 lane."""
+
+    run_id: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.run_id, str) or not self.run_id.strip():
+            raise ValueError("Creator-live A1 capture Run ID is invalid.")
+
 
 @dataclass(frozen=True)
 class _ProposalResponse:
@@ -44,6 +84,9 @@ class _ProposalResponse:
 class FieldNoteCodexRunResult(CodexRunResult):
     field_note_proposal: FieldNoteDraft | None = None
     reconnect_receipt: FieldNoteReconnectReceipt | None = None
+    creator_live_a1_capture: bool = False
+    creator_live_a1_failure_reason: str | None = None
+    creator_live_a1_proposal_attempts: int = 0
 
 
 class FieldNotesCodexAdapter(CodexAdapter):
@@ -54,6 +97,9 @@ class FieldNotesCodexAdapter(CodexAdapter):
         *args: Any,
         trusted_source_model_class: str = "UNKNOWN",
         trusted_target_model_class: str = "UNKNOWN",
+        creator_live_a1_capture_provider: Callable[
+            [], FieldNoteCreatorLiveA1CaptureConfig | None
+        ] | None = None,
         **kwargs: Any,
     ) -> None:
         self._reconnect_prompt: str | None = None
@@ -64,10 +110,24 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self.trusted_target_model_class = configured_model_class(
             trusted_target_model_class
         )
+        self._creator_live_a1_capture_provider = (
+            creator_live_a1_capture_provider or (lambda: None)
+        )
         super().__init__(*args, **kwargs)
 
     def _reset_run(self) -> None:
         super()._reset_run()
+        capture = self._creator_live_a1_capture_provider()
+        if capture is not None and not isinstance(
+            capture,
+            FieldNoteCreatorLiveA1CaptureConfig,
+        ):
+            raise codex.CodexAdapterFailure(
+                "Creator-live A1 capture configuration is invalid."
+            )
+        self._creator_live_a1_capture = capture
+        if capture is not None:
+            self._run_id = capture.run_id
         self._field_note_gate = FieldNoteProposalGate(
             self._run_id,
             trusted_source_model_class=self.trusted_source_model_class,
@@ -77,8 +137,13 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._proposal_request_ids: dict[str | int, str | None] = {}
         self._resolved_proposal_requests: set[str | int] = set()
         self._completed_proposal_items: set[str] = set()
+        self._capture_proposal_call_ids: set[str] = set()
+        self._capture_proposal_malformed = False
         prompt = self._reconnect_prompt
-        if isinstance(prompt, str):
+        if (
+            isinstance(prompt, str)
+            and self._creator_live_a1_capture is None
+        ):
             self._reconnect_plan = prepare_field_note_reconnect(
                 self.engine.store.repository,
                 prompt,
@@ -88,7 +153,14 @@ class FieldNotesCodexAdapter(CodexAdapter):
             self._reconnect_plan = None
 
     def _developer_instructions(self) -> str:
-        existing = codex._DEVELOPER_INSTRUCTIONS + _FIELD_NOTE_PROPOSAL_INSTRUCTIONS
+        existing = (
+            _CREATOR_LIVE_A1_CAPTURE_INSTRUCTIONS
+            if self._creator_live_a1_capture is not None
+            else (
+                codex._DEVELOPER_INSTRUCTIONS
+                + _FIELD_NOTE_PROPOSAL_INSTRUCTIONS
+            )
+        )
         plan = self._reconnect_plan
         if plan is None or plan.envelope is None:
             return existing
@@ -260,6 +332,11 @@ class FieldNotesCodexAdapter(CodexAdapter):
             return
         safe_call_id = call_id if isinstance(call_id, str) else "invalid-proposal"
         safe_arguments = arguments if isinstance(arguments, dict) else {}
+        if self._creator_live_a1_capture is not None:
+            if isinstance(call_id, str) and call_id:
+                self._capture_proposal_call_ids.add(call_id)
+            else:
+                self._capture_proposal_malformed = True
         if request_id in self._proposal_request_ids:
             if self._proposal_request_ids[request_id] != call_id:
                 self._failed_proposal_response(
@@ -294,6 +371,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
             and item.get("arguments") == arguments
         )
         if not valid_shape:
+            if self._creator_live_a1_capture is not None:
+                self._capture_proposal_malformed = True
             self._failed_proposal_response(
                 request_id=request_id,
                 call_id=safe_call_id,
@@ -332,6 +411,31 @@ class FieldNotesCodexAdapter(CodexAdapter):
         )
         self._proposal_responses[safe_call_id] = response
         self._send_proposal_response(request_id, response)
+
+    def _creator_live_a1_failure(
+        self,
+        result: CodexRunResult,
+        *,
+        all_proposals_completed: bool,
+    ) -> str | None:
+        if self._creator_live_a1_capture is None:
+            return None
+        if result.file_actions or result.unsupported_reason in _DIRECT_MUTATION_REASONS:
+            return "A1_DIRECT_WRITE_REQUESTED"
+        attempts = len(self._capture_proposal_call_ids)
+        if attempts == 0:
+            return "A1_PROPOSAL_MISSING"
+        if attempts != 1:
+            return "A1_PROPOSAL_DUPLICATE"
+        if (
+            self._capture_proposal_malformed
+            or self._field_note_gate.accepted is None
+            or not all_proposals_completed
+        ):
+            return "A1_PROPOSAL_INVALID"
+        if not result.normal_terminal or result.turn_status != "completed":
+            return "A1_RUN_INCOMPLETE"
+        return None
 
     def _cache_item(self, params: dict[str, Any]) -> None:
         item = params.get("item")
@@ -434,12 +538,24 @@ class FieldNotesCodexAdapter(CodexAdapter):
         all_proposals_completed = set(self._proposal_responses).issubset(
             self._completed_proposal_items
         )
+        capture_failure = self._creator_live_a1_failure(
+            result,
+            all_proposals_completed=all_proposals_completed,
+        )
         proposal = (
             self._field_note_gate.accepted
-            if result.normal_terminal and all_proposals_completed
+            if (
+                result.normal_terminal
+                and all_proposals_completed
+                and capture_failure is None
+            )
             else None
         )
-        normal_terminal = result.normal_terminal and all_proposals_completed
+        normal_terminal = (
+            result.normal_terminal
+            and all_proposals_completed
+            and capture_failure is None
+        )
         if self._reconnect_plan is not None:
             self._reconnect_plan = self._reconnect_plan.finalized(
                 normal_terminal=normal_terminal,
@@ -455,12 +571,16 @@ class FieldNotesCodexAdapter(CodexAdapter):
             normal_terminal=normal_terminal,
             status=(
                 result.status
-                if all_proposals_completed
+                if (
+                    all_proposals_completed
+                    and capture_failure is None
+                )
+                or result.unsupported_reason is not None
                 else "ABNORMAL_TERMINAL"
             ),
             error_type=(
                 result.error_type
-                if all_proposals_completed
+                if all_proposals_completed and capture_failure is None
                 else "FieldNoteProposalCompletionError"
             ),
             turn_status=result.turn_status,
@@ -473,4 +593,11 @@ class FieldNotesCodexAdapter(CodexAdapter):
             failure_diagnostic=result.failure_diagnostic,
             field_note_proposal=proposal,
             reconnect_receipt=reconnect_receipt,
+            creator_live_a1_capture=(
+                self._creator_live_a1_capture is not None
+            ),
+            creator_live_a1_failure_reason=capture_failure,
+            creator_live_a1_proposal_attempts=len(
+                self._capture_proposal_call_ids
+            ),
         )
