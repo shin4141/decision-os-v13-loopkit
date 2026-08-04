@@ -13,6 +13,9 @@ import threading
 from typing import Any, Literal
 
 from decision_os.acceleration.codex_adapter import CodexRuntimeIdentity
+from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
+)
 from decision_os.companion.field_notes_maturity_commit import (
     FieldNoteMaturityCommitResult,
 )
@@ -131,6 +134,23 @@ class FieldNoteCreatorLiveDurabilityError(FieldNoteCreatorLiveError):
 
 class FieldNoteCreatorLiveAttemptExistsError(FieldNoteCreatorLiveError):
     """The one-attempt journal already exists and cannot be replaced."""
+
+
+def _proposal_diagnostic_reason_matches(
+    diagnostic: FieldNoteA1ProposalDiagnostic,
+    reason: str,
+) -> bool:
+    subcause = diagnostic.final_subcause
+    if subcause is None:
+        return False
+    if subcause == "A1_DIRECT_WRITE_REQUESTED":
+        suffix = (
+            f":{diagnostic.direct_write_identity}"
+            if diagnostic.direct_write_identity is not None
+            else ""
+        )
+        return reason == f"{subcause}{suffix}"
+    return reason == subcause
 
 
 @dataclass(frozen=True, init=False)
@@ -919,6 +939,7 @@ class FieldNoteCreatorLiveTraceReadback:
     captured_note: FieldNoteIdentity | None
     captured_note_byte_count: int | None
     a1_capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt | None
+    a1_proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None
     a3_reuse_event_id: str | None
     current_stage: TraceStage | None
     trace_event_count: int
@@ -959,6 +980,7 @@ class FieldNoteCreatorLiveTraceReadback:
         a1_capture_commit: (
             FieldNoteCreatorLiveA1CaptureCommitReceipt | None
         ),
+        a1_proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None,
         a3_reuse_event_id: str | None,
         current_stage: TraceStage | None,
         events: tuple[FieldNoteWholeFlowTraceEvent, ...],
@@ -991,6 +1013,7 @@ class FieldNoteCreatorLiveTraceReadback:
             "captured_note": captured_note,
             "captured_note_byte_count": captured_note_byte_count,
             "a1_capture_commit": a1_capture_commit,
+            "a1_proposal_diagnostic": a1_proposal_diagnostic,
             "a3_reuse_event_id": a3_reuse_event_id,
             "current_stage": current_stage,
             "trace_event_count": len(events),
@@ -1040,6 +1063,11 @@ class FieldNoteCreatorLiveTraceReadback:
             "a1_capture_commit": (
                 self.a1_capture_commit.as_dict()
                 if self.a1_capture_commit
+                else None
+            ),
+            "a1_proposal_diagnostic": (
+                self.a1_proposal_diagnostic.as_dict()
+                if self.a1_proposal_diagnostic
                 else None
             ),
             "a3_reuse_event_id": self.a3_reuse_event_id,
@@ -1184,6 +1212,7 @@ def _project_records(
     captured_note: FieldNoteIdentity | None = None
     captured_note_byte_count: int | None = None
     a1_capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt | None = None
+    a1_proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None
     a3_reuse_event_id: str | None = None
     state: CreatorLiveAttemptState = "OPEN"
     failure_boundary: WholeFlowBoundary | None = None
@@ -1357,10 +1386,20 @@ def _project_records(
             previous_trace = event.trace_sha256
             continue
         if record.kind == "ATTEMPT_FAILED":
-            if set(payload) != {
+            legacy_fields = {
                 "failure_boundary",
                 "failure_reason",
                 "repair_action",
+            }
+            diagnostic_fields = legacy_fields | {
+                "proof_attempt_id",
+                "run_id",
+                "proposal_diagnostic",
+                "proposal_diagnostic_sha256",
+            }
+            if set(payload) not in {
+                frozenset(legacy_fields),
+                frozenset(diagnostic_fields),
             }:
                 raise _JournalIntegrityError(
                     "CREATOR_LIVE_FAILURE_RECORD_INVALID",
@@ -1400,6 +1439,39 @@ def _project_records(
             failure_boundary = boundary
             failure_reason = _bounded_reason(payload["failure_reason"])
             repair_action = action
+            if set(payload) == diagnostic_fields:
+                if (
+                    boundary != "A1_CAPTURE"
+                    or payload["proof_attempt_id"]
+                    != static.attempt.proof_attempt_id
+                    or payload["run_id"] != static.run_1.run_id
+                ):
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A1_DIAGNOSTIC_BINDING_INVALID",
+                        repair_action="RECEIPT_REWRITE",
+                    )
+                try:
+                    diagnostic = FieldNoteA1ProposalDiagnostic.from_dict(
+                        payload["proposal_diagnostic"]
+                    )
+                except ValueError as exc:
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A1_DIAGNOSTIC_INVALID",
+                        repair_action="RECEIPT_REWRITE",
+                    ) from exc
+                if (
+                    payload["proposal_diagnostic_sha256"]
+                    != diagnostic.diagnostic_sha256
+                    or not _proposal_diagnostic_reason_matches(
+                        diagnostic,
+                        failure_reason,
+                    )
+                ):
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A1_DIAGNOSTIC_IDENTITY_INVALID",
+                        repair_action="RECEIPT_REWRITE",
+                    )
+                a1_proposal_diagnostic = diagnostic
             continue
         if record.kind == "TRACE_COMPLETED":
             if set(payload) != {
@@ -1444,6 +1516,7 @@ def _project_records(
         captured_note=captured_note,
         captured_note_byte_count=captured_note_byte_count,
         a1_capture_commit=a1_capture_commit,
+        a1_proposal_diagnostic=a1_proposal_diagnostic,
         a3_reuse_event_id=a3_reuse_event_id,
         current_stage=current_stage,
         events=tuple(events),
@@ -1481,6 +1554,7 @@ def _failed_readback(
         captured_note=None,
         captured_note_byte_count=None,
         a1_capture_commit=None,
+        a1_proposal_diagnostic=None,
         a3_reuse_event_id=None,
         current_stage=None,
         events=(),
@@ -1828,21 +1902,52 @@ class FieldNoteCreatorLiveProofRuntime:
         reason: str,
         *,
         repair_action: RepairAction = "NONE",
+        proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None,
     ) -> None:
         bounded = _bounded_reason(reason)
+        if proposal_diagnostic is not None:
+            try:
+                proposal_diagnostic = FieldNoteA1ProposalDiagnostic.from_dict(
+                    proposal_diagnostic.as_dict()
+                )
+            except ValueError as exc:
+                raise FieldNoteCreatorLiveValidationError(
+                    "Creator-live A1 proposal diagnostic is invalid."
+                ) from exc
+            if (
+                boundary != "A1_CAPTURE"
+                or not _proposal_diagnostic_reason_matches(
+                    proposal_diagnostic,
+                    bounded,
+                )
+            ):
+                raise FieldNoteCreatorLiveValidationError(
+                    "Creator-live A1 proposal diagnostic is cross-bound."
+                )
         readback = self.read_back()
         if readback.state in {"FAILED", "TRACE_COMPLETE"}:
             raise FieldNoteCreatorLiveStageError(
                 "Creator-live attempt is terminal and cannot be reset."
             )
-        self._append(
-            "ATTEMPT_FAILED",
-            {
-                "failure_boundary": boundary,
-                "failure_reason": bounded,
-                "repair_action": repair_action,
-            },
-        )
+        payload: dict[str, Any] = {
+            "failure_boundary": boundary,
+            "failure_reason": bounded,
+            "repair_action": repair_action,
+        }
+        if proposal_diagnostic is not None:
+            payload.update(
+                {
+                    "proof_attempt_id": (
+                        self._static.attempt.proof_attempt_id
+                    ),
+                    "run_id": self._static.run_1.run_id,
+                    "proposal_diagnostic": proposal_diagnostic.as_dict(),
+                    "proposal_diagnostic_sha256": (
+                        proposal_diagnostic.diagnostic_sha256
+                    ),
+                }
+            )
+        self._append("ATTEMPT_FAILED", payload)
         raise FieldNoteCreatorLiveStageError(bounded)
 
     def _require_stage(self, stage: TraceStage) -> FieldNoteCreatorLiveTraceReadback:
@@ -2301,8 +2406,14 @@ class FieldNoteCreatorLiveProofRuntime:
         self,
         boundary: WholeFlowBoundary,
         reason: str,
+        *,
+        proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None,
     ) -> None:
-        self._terminal_failure(boundary, reason)
+        self._terminal_failure(
+            boundary,
+            reason,
+            proposal_diagnostic=proposal_diagnostic,
+        )
 
     def record_repair(
         self,

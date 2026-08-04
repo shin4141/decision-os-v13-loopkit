@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 import hashlib
 import json
 from typing import Any, Callable, Mapping
@@ -19,6 +19,7 @@ from decision_os.companion.field_notes_model import (
     FIELD_NOTE_TOOL_SPEC,
     FieldNoteDraft,
     FieldNoteProposalGate,
+    canonical_json,
     configured_model_class,
 )
 from decision_os.companion.field_notes_reconnect import (
@@ -65,6 +66,201 @@ _DIRECT_MUTATION_REASONS = frozenset(
     }
 )
 
+_A1_PROPOSAL_DIAGNOSTIC_SCHEMA = (
+    "decision-os.field-note-a1-proposal-diagnostic.v0.1"
+)
+_A1_PROPOSAL_SUBCAUSES = frozenset(
+    {
+        "A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+        "A1_PROPOSAL_SCHEMA_REJECTED",
+        "A1_PROPOSAL_GATE_REJECTED",
+        "A1_PROPOSAL_ITEM_NOT_COMPLETED",
+        "A1_PROPOSAL_ITEM_STATUS_MISMATCH",
+        "A1_PROPOSAL_RESPONSE_IDENTITY_MISMATCH",
+        "A1_PROPOSAL_INCONSISTENT_REPLAY",
+        "A1_PROPOSAL_PROTOCOL_IDENTITY_FAILURE",
+        "A1_PROPOSAL_ACCEPTED_STATE_MISSING",
+        "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE",
+        "A1_PROPOSAL_MISSING",
+        "A1_PROPOSAL_DUPLICATE",
+        "A1_DIRECT_WRITE_REQUESTED",
+    }
+)
+
+
+def _optional_sha256(value: str | None, label: str) -> None:
+    if value is not None and (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{label} is invalid.")
+
+
+@dataclass(frozen=True)
+class FieldNoteA1ProposalDiagnostic:
+    """Payload-free lifecycle facts for one future creator-live A1 proposal."""
+
+    proposal_call_count: int
+    call_identity_sha256: str | None
+    request_identity_sha256: str | None
+    arguments_identity_sha256: str | None
+    request_shape_valid: bool | None
+    malformed_observed: bool
+    gate_invoked: bool
+    gate_response_code: str | None
+    gate_response_success: bool | None
+    accepted_proposal_present: bool
+    item_start_observed: bool
+    item_completion_observed: bool
+    item_observed_status: str | None
+    item_expected_status: str | None
+    all_proposals_completed: bool
+    request_identity_mismatch: bool
+    response_identity_mismatch: bool
+    inconsistent_replay: bool
+    protocol_identity_failure: bool
+    protocol_failure_phase: str | None
+    direct_write_identity: str | None
+    final_subcause: str | None
+    schema: str = field(
+        default=_A1_PROPOSAL_DIAGNOSTIC_SCHEMA,
+        init=False,
+    )
+    diagnostic_sha256: str = field(default="", init=False)
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.proposal_call_count) is not int
+            or self.proposal_call_count < 0
+            or self.schema != _A1_PROPOSAL_DIAGNOSTIC_SCHEMA
+            or (
+                self.request_shape_valid is not None
+                and type(self.request_shape_valid) is not bool
+            )
+            or (
+                self.gate_response_success is not None
+                and type(self.gate_response_success) is not bool
+            )
+            or any(
+                type(value) is not bool
+                for value in (
+                    self.malformed_observed,
+                    self.gate_invoked,
+                    self.accepted_proposal_present,
+                    self.item_start_observed,
+                    self.item_completion_observed,
+                    self.all_proposals_completed,
+                    self.request_identity_mismatch,
+                    self.response_identity_mismatch,
+                    self.inconsistent_replay,
+                    self.protocol_identity_failure,
+                )
+            )
+            or any(
+                value is not None
+                and (
+                    not isinstance(value, str)
+                    or not value
+                    or len(value) > 128
+                )
+                for value in (
+                    self.gate_response_code,
+                    self.item_observed_status,
+                    self.item_expected_status,
+                    self.protocol_failure_phase,
+                )
+            )
+            or self.final_subcause not in _A1_PROPOSAL_SUBCAUSES | {None}
+            or (
+                self.protocol_identity_failure
+                != (self.protocol_failure_phase is not None)
+            )
+            or (not self.gate_invoked and self.gate_response_code is not None)
+            or (not self.gate_invoked and self.gate_response_success is not None)
+        ):
+            raise ValueError("A1 proposal diagnostic is invalid.")
+        _optional_sha256(self.call_identity_sha256, "Proposal call identity")
+        _optional_sha256(
+            self.request_identity_sha256,
+            "Proposal request identity",
+        )
+        _optional_sha256(
+            self.arguments_identity_sha256,
+            "Proposal arguments identity",
+        )
+        _optional_sha256(
+            self.direct_write_identity,
+            "Direct-write identity",
+        )
+        object.__setattr__(
+            self,
+            "diagnostic_sha256",
+            hashlib.sha256(
+                canonical_json(self._body()).encode("utf-8")
+            ).hexdigest(),
+        )
+
+    def _body(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "proposal_call_count": self.proposal_call_count,
+            "call_identity_sha256": self.call_identity_sha256,
+            "request_identity_sha256": self.request_identity_sha256,
+            "arguments_identity_sha256": self.arguments_identity_sha256,
+            "request_shape_valid": self.request_shape_valid,
+            "malformed_observed": self.malformed_observed,
+            "gate_invoked": self.gate_invoked,
+            "gate_response_code": self.gate_response_code,
+            "gate_response_success": self.gate_response_success,
+            "accepted_proposal_present": self.accepted_proposal_present,
+            "item_start_observed": self.item_start_observed,
+            "item_completion_observed": self.item_completion_observed,
+            "item_observed_status": self.item_observed_status,
+            "item_expected_status": self.item_expected_status,
+            "all_proposals_completed": self.all_proposals_completed,
+            "request_identity_mismatch": self.request_identity_mismatch,
+            "response_identity_mismatch": self.response_identity_mismatch,
+            "inconsistent_replay": self.inconsistent_replay,
+            "protocol_identity_failure": self.protocol_identity_failure,
+            "protocol_failure_phase": self.protocol_failure_phase,
+            "direct_write_identity": self.direct_write_identity,
+            "final_subcause": self.final_subcause,
+        }
+
+    def as_dict(self) -> dict[str, Any]:
+        return {**self._body(), "diagnostic_sha256": self.diagnostic_sha256}
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteA1ProposalDiagnostic:
+        if not isinstance(value, dict):
+            raise ValueError("A1 proposal diagnostic must be an object.")
+        expected = set(cls.__dataclass_fields__)  # type: ignore[attr-defined]
+        if set(value) != expected:
+            raise ValueError("A1 proposal diagnostic fields are invalid.")
+        digest = value.get("diagnostic_sha256")
+        try:
+            diagnostic = cls(
+                **{
+                    key: item
+                    for key, item in value.items()
+                    if key not in {"schema", "diagnostic_sha256"}
+                }
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("A1 proposal diagnostic is invalid.") from exc
+        if value.get("schema") != diagnostic.schema or (
+            digest != diagnostic.diagnostic_sha256
+        ):
+            raise ValueError("A1 proposal diagnostic digest is invalid.")
+        return diagnostic
+
+    def with_direct_write_identity(
+        self,
+        identity: str,
+    ) -> FieldNoteA1ProposalDiagnostic:
+        return replace(self, direct_write_identity=identity)
+
 
 @dataclass(frozen=True)
 class FieldNoteCreatorLiveA1CaptureConfig:
@@ -101,6 +297,9 @@ class FieldNoteCodexRunResult(CodexRunResult):
     creator_live_a1_failure_reason: str | None = None
     creator_live_a1_proposal_attempts: int = 0
     creator_live_a1_task_sha256: str | None = None
+    creator_live_a1_proposal_diagnostic: (
+        FieldNoteA1ProposalDiagnostic | None
+    ) = None
 
 
 class FieldNotesCodexAdapter(CodexAdapter):
@@ -152,7 +351,20 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._resolved_proposal_requests: set[str | int] = set()
         self._completed_proposal_items: set[str] = set()
         self._capture_proposal_call_ids: set[str] = set()
+        self._capture_request_identities: set[str] = set()
+        self._capture_argument_identities: set[str] = set()
         self._capture_proposal_malformed = False
+        self._capture_request_shape_valid: bool | None = None
+        self._capture_gate_invoked = False
+        self._capture_gate_response_code: str | None = None
+        self._capture_gate_response_success: bool | None = None
+        self._capture_item_start_observed = False
+        self._capture_item_completion_observed = False
+        self._capture_item_observed_status: str | None = None
+        self._capture_item_expected_status: str | None = None
+        self._capture_request_identity_mismatch = False
+        self._capture_response_identity_mismatch = False
+        self._capture_inconsistent_replay = False
         prompt = self._reconnect_prompt
         if (
             isinstance(prompt, str)
@@ -332,6 +544,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
 
     def _respond_field_note_tool_call(self, message: dict[str, Any]) -> None:
         request_id = message.get("id")
+        if (
+            self._creator_live_a1_capture is not None
+            and not isinstance(message.get("params"), dict)
+        ):
+            self._capture_proposal_malformed = True
+            self._capture_request_shape_valid = False
         params = self._require_object(
             message.get("params"),
             "Field Note proposal parameters",
@@ -342,8 +560,22 @@ class FieldNotesCodexAdapter(CodexAdapter):
             not isinstance(request_id, (str, int))
             or isinstance(request_id, bool)
         ):
+            if self._creator_live_a1_capture is not None:
+                self._capture_proposal_malformed = True
+                self._capture_request_shape_valid = False
             self._mark_identity_failure()
             return
+        if self._creator_live_a1_capture is not None:
+            self._capture_request_identities.add(
+                hashlib.sha256(
+                    canonical_json(
+                        {
+                            "type": type(request_id).__name__,
+                            "value": request_id,
+                        }
+                    ).encode("utf-8")
+                ).hexdigest()
+            )
         safe_call_id = call_id if isinstance(call_id, str) else "invalid-proposal"
         safe_arguments = arguments if isinstance(arguments, dict) else {}
         if self._creator_live_a1_capture is not None:
@@ -353,6 +585,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 self._capture_proposal_malformed = True
         if request_id in self._proposal_request_ids:
             if self._proposal_request_ids[request_id] != call_id:
+                if self._creator_live_a1_capture is not None:
+                    self._capture_request_identity_mismatch = True
                 self._failed_proposal_response(
                     request_id=request_id,
                     call_id=safe_call_id,
@@ -387,6 +621,7 @@ class FieldNotesCodexAdapter(CodexAdapter):
         if not valid_shape:
             if self._creator_live_a1_capture is not None:
                 self._capture_proposal_malformed = True
+                self._capture_request_shape_valid = False
             self._failed_proposal_response(
                 request_id=request_id,
                 call_id=safe_call_id,
@@ -398,9 +633,15 @@ class FieldNotesCodexAdapter(CodexAdapter):
         assert isinstance(call_id, str)
         assert isinstance(arguments, dict)
         arguments_identity = self._arguments_identity(arguments)
+        if self._creator_live_a1_capture is not None:
+            if self._capture_request_shape_valid is None:
+                self._capture_request_shape_valid = True
+            self._capture_argument_identities.add(arguments_identity)
         existing = self._proposal_responses.get(call_id)
         if existing is not None:
             if existing.arguments_identity != arguments_identity:
+                if self._creator_live_a1_capture is not None:
+                    self._capture_inconsistent_replay = True
                 self._failed_proposal_response(
                     request_id=request_id,
                     call_id=call_id,
@@ -411,7 +652,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 return
             self._send_proposal_response(request_id, existing)
             return
+        if self._creator_live_a1_capture is not None:
+            self._capture_gate_invoked = True
         accepted, code = self._field_note_gate.propose(arguments)
+        if self._creator_live_a1_capture is not None:
+            self._capture_gate_response_code = code
+            self._capture_gate_response_success = accepted
         response = _ProposalResponse(
             call_id=safe_call_id,
             arguments_identity=arguments_identity,
@@ -426,6 +672,135 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._proposal_responses[safe_call_id] = response
         self._send_proposal_response(request_id, response)
 
+    @staticmethod
+    def _identity_set_sha256(values: set[str]) -> str | None:
+        if not values:
+            return None
+        return hashlib.sha256(
+            canonical_json(sorted(values)).encode("utf-8")
+        ).hexdigest()
+
+    def _proposal_final_subcause(
+        self,
+        result: CodexRunResult,
+        *,
+        all_proposals_completed: bool,
+    ) -> str | None:
+        if result.file_actions or result.unsupported_reason in _DIRECT_MUTATION_REASONS:
+            return "A1_DIRECT_WRITE_REQUESTED"
+        attempts = len(self._capture_proposal_call_ids)
+        if attempts == 0:
+            return "A1_PROPOSAL_MISSING"
+        if attempts != 1:
+            return "A1_PROPOSAL_DUPLICATE"
+        if self._capture_inconsistent_replay:
+            return "A1_PROPOSAL_INCONSISTENT_REPLAY"
+        if self._capture_request_shape_valid is False:
+            return "A1_PROPOSAL_REQUEST_SHAPE_INVALID"
+        if (
+            self._capture_item_completion_observed
+            and self._capture_item_observed_status is not None
+            and self._capture_item_expected_status is not None
+            and (
+                self._capture_item_observed_status
+                != self._capture_item_expected_status
+            )
+        ):
+            return "A1_PROPOSAL_ITEM_STATUS_MISMATCH"
+        if (
+            self._capture_request_identity_mismatch
+            or self._capture_response_identity_mismatch
+        ):
+            return "A1_PROPOSAL_RESPONSE_IDENTITY_MISMATCH"
+        if (
+            self._capture_gate_invoked
+            and self._capture_gate_response_code == "proposal_schema_invalid"
+        ):
+            return "A1_PROPOSAL_SCHEMA_REJECTED"
+        if (
+            self._capture_gate_invoked
+            and self._capture_gate_response_success is False
+        ):
+            return "A1_PROPOSAL_GATE_REJECTED"
+        if (
+            self._capture_gate_response_success is True
+            and self._field_note_gate.accepted is None
+        ):
+            return "A1_PROPOSAL_ACCEPTED_STATE_MISSING"
+        if not all_proposals_completed:
+            if not self._capture_item_completion_observed:
+                return "A1_PROPOSAL_ITEM_NOT_COMPLETED"
+            if (
+                self._identity_failure
+                and self._failure_phase == "dynamic_tool_call"
+            ):
+                return "A1_PROPOSAL_PROTOCOL_IDENTITY_FAILURE"
+            return "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+        if (
+            self._identity_failure
+            and self._failure_phase == "dynamic_tool_call"
+        ):
+            return "A1_PROPOSAL_PROTOCOL_IDENTITY_FAILURE"
+        if self._capture_proposal_malformed:
+            return "A1_PROPOSAL_DIAGNOSTIC_UNAVAILABLE"
+        if self._field_note_gate.accepted is None:
+            return "A1_PROPOSAL_ACCEPTED_STATE_MISSING"
+        return None
+
+    def _creator_live_a1_proposal_diagnostic(
+        self,
+        result: CodexRunResult,
+        *,
+        all_proposals_completed: bool,
+    ) -> FieldNoteA1ProposalDiagnostic | None:
+        if self._creator_live_a1_capture is None:
+            return None
+        subcause = self._proposal_final_subcause(
+            result,
+            all_proposals_completed=all_proposals_completed,
+        )
+        return FieldNoteA1ProposalDiagnostic(
+            proposal_call_count=len(self._capture_proposal_call_ids),
+            call_identity_sha256=self._identity_set_sha256(
+                {
+                    hashlib.sha256(value.encode("utf-8")).hexdigest()
+                    for value in self._capture_proposal_call_ids
+                }
+            ),
+            request_identity_sha256=self._identity_set_sha256(
+                self._capture_request_identities
+            ),
+            arguments_identity_sha256=self._identity_set_sha256(
+                self._capture_argument_identities
+            ),
+            request_shape_valid=self._capture_request_shape_valid,
+            malformed_observed=self._capture_proposal_malformed,
+            gate_invoked=self._capture_gate_invoked,
+            gate_response_code=self._capture_gate_response_code,
+            gate_response_success=self._capture_gate_response_success,
+            accepted_proposal_present=self._field_note_gate.accepted is not None,
+            item_start_observed=self._capture_item_start_observed,
+            item_completion_observed=(
+                self._capture_item_completion_observed
+            ),
+            item_observed_status=self._capture_item_observed_status,
+            item_expected_status=self._capture_item_expected_status,
+            all_proposals_completed=all_proposals_completed,
+            request_identity_mismatch=(
+                self._capture_request_identity_mismatch
+            ),
+            response_identity_mismatch=(
+                self._capture_response_identity_mismatch
+            ),
+            inconsistent_replay=self._capture_inconsistent_replay,
+            protocol_identity_failure=self._identity_failure,
+            protocol_failure_phase=(
+                self._failure_phase if self._identity_failure else None
+            ),
+            direct_write_identity=None,
+            final_subcause=subcause,
+        )
+
     def _creator_live_a1_failure(
         self,
         result: CodexRunResult,
@@ -434,19 +809,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
     ) -> str | None:
         if self._creator_live_a1_capture is None:
             return None
-        if result.file_actions or result.unsupported_reason in _DIRECT_MUTATION_REASONS:
-            return "A1_DIRECT_WRITE_REQUESTED"
-        attempts = len(self._capture_proposal_call_ids)
-        if attempts == 0:
-            return "A1_PROPOSAL_MISSING"
-        if attempts != 1:
-            return "A1_PROPOSAL_DUPLICATE"
-        if (
-            self._capture_proposal_malformed
-            or self._field_note_gate.accepted is None
-            or not all_proposals_completed
-        ):
-            return "A1_PROPOSAL_INVALID"
+        proposal_failure = self._proposal_final_subcause(
+            result,
+            all_proposals_completed=all_proposals_completed,
+        )
+        if proposal_failure is not None:
+            return proposal_failure
         if any(
             evidence.status != "succeeded"
             for evidence in result.read_evidence
@@ -470,6 +838,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
             and item.get("type") == "dynamicToolCall"
             and item.get("tool") == FIELD_NOTE_TOOL_NAME
         ):
+            if self._creator_live_a1_capture is not None:
+                self._capture_item_start_observed = True
             if not self._ids_match(params):
                 self._mark_identity_failure()
                 return
@@ -482,11 +852,23 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 or item.get("status") != "inProgress"
                 or not isinstance(arguments, dict)
             ):
+                if self._creator_live_a1_capture is not None:
+                    self._capture_proposal_malformed = True
                 self._mark_identity_failure()
                 return
             if item_id in self._items and self._items[item_id] != item:
+                if self._creator_live_a1_capture is not None:
+                    existing = self._items[item_id]
+                    if existing.get("arguments") != arguments:
+                        self._capture_inconsistent_replay = True
+                    else:
+                        self._capture_response_identity_mismatch = True
                 self._mark_identity_failure()
                 return
+            if self._creator_live_a1_capture is not None:
+                self._capture_argument_identities.add(
+                    self._arguments_identity(arguments)
+                )
             self._items[item_id] = item
             return
         super()._cache_item(params)
@@ -498,6 +880,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
             and item.get("type") == "dynamicToolCall"
             and item.get("tool") == FIELD_NOTE_TOOL_NAME
         ):
+            if self._creator_live_a1_capture is not None:
+                self._capture_item_completion_observed = True
+                status = item.get("status")
+                self._capture_item_observed_status = (
+                    status if isinstance(status, str) and status else None
+                )
             if not self._ids_match(params):
                 self._mark_identity_failure()
                 return
@@ -518,6 +906,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
             expected_status = (
                 "completed" if response is not None and response.success else "failed"
             )
+            if self._creator_live_a1_capture is not None:
+                self._capture_item_expected_status = expected_status
             if (
                 response is None
                 or started is None
@@ -537,6 +927,10 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 )
                 or not resolved
             ):
+                if self._creator_live_a1_capture is not None and (
+                    item.get("status") == expected_status
+                ):
+                    self._capture_response_identity_mismatch = True
                 self._mark_identity_failure()
                 return
             self._completed_proposal_items.add(item_id)
@@ -563,6 +957,10 @@ class FieldNotesCodexAdapter(CodexAdapter):
             self._reconnect_prompt = None
         all_proposals_completed = set(self._proposal_responses).issubset(
             self._completed_proposal_items
+        )
+        proposal_diagnostic = self._creator_live_a1_proposal_diagnostic(
+            result,
+            all_proposals_completed=all_proposals_completed,
         )
         capture_failure = self._creator_live_a1_failure(
             result,
@@ -631,4 +1029,5 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 if self._creator_live_a1_capture is not None
                 else None
             ),
+            creator_live_a1_proposal_diagnostic=proposal_diagnostic,
         )

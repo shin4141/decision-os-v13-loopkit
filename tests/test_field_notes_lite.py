@@ -18,12 +18,14 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_MODEL,
     CODEX_REASONING_EFFORT,
     CODEX_SERVICE_TIER,
+    CodexAdapterFailure,
     CodexReadEvidence,
     CodexRunResult,
     CodexRuntimeIdentity,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.companion.field_notes_adapter import (
+    FieldNoteA1ProposalDiagnostic,
     FieldNoteCreatorLiveA1CaptureConfig,
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
@@ -367,6 +369,11 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         *,
         calls: tuple[tuple[str, dict[str, object]], ...] = (),
         final_message: str = "Completed.",
+        include_completion: bool = True,
+        observed_status: str | None = None,
+        request_extra: dict[str, object] | None = None,
+        completion_thread_id: str | None = None,
+        mismatched_completion_content: bool = False,
     ) -> FieldNoteCodexRunResult:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -379,6 +386,15 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             turn_id=turn_id,
         )
         for index, (call_id, arguments) in enumerate(calls):
+            request = proposal_request(
+                thread_id=thread_id,
+                turn_id=turn_id,
+                call_id=call_id,
+                request_id=f"proposal-request-{index}",
+                arguments=arguments,
+            )
+            if request_extra:
+                request["params"].update(request_extra)  # type: ignore[union-attr]
             messages.extend(
                 [
                     started_proposal(
@@ -387,44 +403,27 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
                         call_id=call_id,
                         arguments=arguments,
                     ),
-                    proposal_request(
-                        thread_id=thread_id,
-                        turn_id=turn_id,
-                        call_id=call_id,
-                        request_id=f"proposal-request-{index}",
-                        arguments=arguments,
-                    ),
-                    {
-                        **completed_proposal(
-                            thread_id=thread_id,
-                            turn_id=turn_id,
-                            call_id=call_id,
-                            arguments=arguments,
-                        ),
-                        "params": {
-                            **completed_proposal(
-                                thread_id=thread_id,
-                                turn_id=turn_id,
-                                call_id=call_id,
-                                arguments=arguments,
-                            )["params"],
-                            "item": {
-                                **completed_proposal(
-                                    thread_id=thread_id,
-                                    turn_id=turn_id,
-                                    call_id=call_id,
-                                    arguments=arguments,
-                                )["params"]["item"],
-                                "status": (
-                                    "completed"
-                                    if index == 0 and arguments == proposal()
-                                    else "failed"
-                                ),
-                            },
-                        },
-                    },
+                    request,
                 ]
             )
+            if include_completion:
+                completion = completed_proposal(
+                    thread_id=completion_thread_id or thread_id,
+                    turn_id=turn_id,
+                    call_id=call_id,
+                    arguments=arguments,
+                )
+                completion_item = completion["params"]["item"]  # type: ignore[index]
+                completion_item["status"] = (  # type: ignore[index]
+                    observed_status
+                    if observed_status is not None
+                    else "completed"
+                    if index == 0 and arguments == proposal()
+                    else "failed"
+                )
+                if mismatched_completion_content:
+                    completion_item["contentItems"] = []  # type: ignore[index]
+                messages.append(completion)
         messages.extend(
             [
                 completed_agent_message(
@@ -485,6 +484,16 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, result.creator_live_a1_proposal_attempts)
         self.assertIsNone(result.creator_live_a1_failure_reason)
         self.assertIsNotNone(result.field_note_proposal)
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        self.assertIsInstance(diagnostic, FieldNoteA1ProposalDiagnostic)
+        assert diagnostic is not None
+        self.assertIsNone(diagnostic.final_subcause)
+        self.assertTrue(diagnostic.all_proposals_completed)
+        self.assertEqual("proposal_accepted", diagnostic.gate_response_code)
+        self.assertEqual(
+            diagnostic,
+            FieldNoteA1ProposalDiagnostic.from_dict(diagnostic.as_dict()),
+        )
         self.assertIn(
             "must call propose_field_note_candidate exactly once",
             self._creator_live_developer_instructions,
@@ -497,6 +506,47 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
             "Use the typed file-change tool for exactly one file mutation",
             self._creator_live_developer_instructions,
         )
+
+    async def test_creator_live_transport_start_failure_has_no_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = create_repository(Path(temporary))
+            engine = AccelerationEngine(
+                repository,
+                adapter=ADAPTER_NAME,
+                adapter_version=CODEX_CLI_VERSION,
+            )
+
+            def fail_transport_start(_executable: str):
+                raise CodexAdapterFailure(
+                    "transport failed before proposal lifecycle"
+                )
+
+            adapter = FieldNotesCodexAdapter(
+                engine,
+                input_func=lambda: None,
+                stdout=io.StringIO(),
+                transport_factory=fail_transport_start,
+                trusted_source_model_class="stronger",
+                trusted_target_model_class="lower-cost",
+                creator_live_a1_capture_provider=lambda: (
+                    FieldNoteCreatorLiveA1CaptureConfig(
+                        "run-live-a1-transport-failure",
+                        CodexRuntimeIdentity(
+                            model=CODEX_MODEL,
+                            reasoning_effort=CODEX_REASONING_EFFORT,
+                            service_tier=CODEX_SERVICE_TIER,
+                            codex_cli_version=CODEX_CLI_VERSION,
+                            account_type="chatgpt",
+                        ),
+                    )
+                ),
+            )
+
+            with self.assertRaises(CodexAdapterFailure):
+                await adapter.run("Fail before the proposal lifecycle.")
+
+            self.assertEqual(set(), adapter._capture_proposal_call_ids)
+            self.assertIsNone(adapter._field_note_gate.accepted)
 
     async def test_creator_live_mode_rejects_missing_raw_output(self) -> None:
         for raw in (
@@ -534,7 +584,7 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse(result.normal_terminal)
         self.assertEqual(
-            "A1_PROPOSAL_INVALID",
+            "A1_PROPOSAL_SCHEMA_REJECTED",
             result.creator_live_a1_failure_reason,
         )
         self.assertIsNone(result.field_note_proposal)
@@ -550,11 +600,137 @@ class FieldNotesAdapterTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse(result.normal_terminal)
         self.assertEqual(
-            "A1_PROPOSAL_INVALID",
+            "A1_PROPOSAL_INCONSISTENT_REPLAY",
             result.creator_live_a1_failure_reason,
         )
         self.assertEqual(1, result.creator_live_a1_proposal_attempts)
         self.assertIsNone(result.field_note_proposal)
+
+    async def test_creator_live_request_shape_failure_is_retained(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),),
+            request_extra={"unexpected": "value"},
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+            result.creator_live_a1_failure_reason,
+        )
+        self.assertFalse(diagnostic.request_shape_valid)
+        self.assertTrue(diagnostic.malformed_observed)
+
+    async def test_creator_live_gate_rejection_is_retained(self) -> None:
+        with patch.object(
+            FieldNoteProposalGate,
+            "propose",
+            return_value=(False, "proposal_policy_rejected"),
+        ):
+            result = await self._creator_live_result(
+                calls=(("proposal-call", proposal()),),
+                observed_status="failed",
+            )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_GATE_REJECTED",
+            diagnostic.final_subcause,
+        )
+        self.assertEqual(
+            "proposal_policy_rejected",
+            diagnostic.gate_response_code,
+        )
+
+    async def test_creator_live_accepted_item_not_completed_is_retained(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),),
+            include_completion=False,
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_ITEM_NOT_COMPLETED",
+            diagnostic.final_subcause,
+        )
+        self.assertFalse(diagnostic.item_completion_observed)
+        self.assertFalse(diagnostic.all_proposals_completed)
+
+    async def test_creator_live_item_status_mismatch_is_retained(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),),
+            observed_status="failed",
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_ITEM_STATUS_MISMATCH",
+            diagnostic.final_subcause,
+        )
+        self.assertEqual("failed", diagnostic.item_observed_status)
+        self.assertEqual("completed", diagnostic.item_expected_status)
+
+    async def test_creator_live_response_identity_mismatch_is_retained(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),),
+            mismatched_completion_content=True,
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_RESPONSE_IDENTITY_MISMATCH",
+            diagnostic.final_subcause,
+        )
+        self.assertTrue(diagnostic.response_identity_mismatch)
+
+    async def test_creator_live_protocol_failure_retains_exact_phase(self) -> None:
+        result = await self._creator_live_result(
+            calls=(("proposal-call", proposal()),),
+            completion_thread_id="different-thread",
+        )
+        diagnostic = result.creator_live_a1_proposal_diagnostic
+        assert diagnostic is not None
+        self.assertEqual(
+            "A1_PROPOSAL_PROTOCOL_IDENTITY_FAILURE",
+            diagnostic.final_subcause,
+        )
+        self.assertTrue(diagnostic.protocol_identity_failure)
+        self.assertEqual("dynamic_tool_call", diagnostic.protocol_failure_phase)
+
+    def test_proposal_diagnostic_digest_and_payload_non_retention(self) -> None:
+        diagnostic = FieldNoteA1ProposalDiagnostic(
+            proposal_call_count=1,
+            call_identity_sha256="1" * 64,
+            request_identity_sha256="2" * 64,
+            arguments_identity_sha256="3" * 64,
+            request_shape_valid=True,
+            malformed_observed=False,
+            gate_invoked=True,
+            gate_response_code="proposal_schema_invalid",
+            gate_response_success=False,
+            accepted_proposal_present=False,
+            item_start_observed=True,
+            item_completion_observed=True,
+            item_observed_status="failed",
+            item_expected_status="failed",
+            all_proposals_completed=True,
+            request_identity_mismatch=False,
+            response_identity_mismatch=False,
+            inconsistent_replay=False,
+            protocol_identity_failure=False,
+            protocol_failure_phase=None,
+            direct_write_identity=None,
+            final_subcause="A1_PROPOSAL_SCHEMA_REJECTED",
+        )
+        changed = replace(diagnostic, malformed_observed=True)
+        self.assertNotEqual(
+            diagnostic.diagnostic_sha256,
+            changed.diagnostic_sha256,
+        )
+        encoded = json.dumps(diagnostic.as_dict(), sort_keys=True)
+        self.assertNotIn("Approval byte binding", encoded)
+        self.assertNotIn("reusable_structure", encoded)
+        self.assertNotIn("Completed.", encoded)
+        self.assertNotIn("arguments", diagnostic.as_dict())
 
     async def test_exact_proposal_request_replay_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
