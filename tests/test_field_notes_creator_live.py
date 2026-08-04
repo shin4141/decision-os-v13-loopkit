@@ -1,0 +1,764 @@
+from __future__ import annotations
+
+from dataclasses import replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import unittest
+from unittest.mock import patch
+
+from decision_os.companion import field_notes_creator_live as creator_live
+from decision_os.companion import field_notes_whole_flow as whole_flow
+from decision_os.companion.field_notes_creator_live import (
+    FieldNoteCreatorLiveAttemptExistsError,
+    FieldNoteCreatorLiveProofRuntime,
+    FieldNoteCreatorLiveStageError,
+    FieldNoteCreatorLiveTraceReadback,
+    FieldNoteCreatorLiveValidationError,
+)
+from decision_os.companion.field_notes_reuse import (
+    FieldNoteIdentity,
+    assess_field_note_reuse,
+)
+from decision_os.companion.field_notes_whole_flow import (
+    FieldNoteCreatorLiveRuntimeProvenance,
+    FieldNoteWholeFlowTraceEvent,
+    FieldNoteWholeFlowValidationError,
+    build_portable_candidate_warehouse_manifest,
+    verify_field_note_whole_flow,
+)
+from tests.test_field_notes_whole_flow import (
+    ARTIFACT_SECRET,
+    PRIVATE_NOTE_TEXT,
+    build_bundle,
+    runtime,
+    source_repository,
+)
+
+
+OBSERVED_AT = (
+    "2026-08-05T10:02:00Z",
+    "2026-08-05T11:05:00Z",
+    "2026-08-05T11:21:00Z",
+    "2026-08-05T11:31:00Z",
+    "2026-08-05T11:32:00Z",
+    "2026-08-05T11:41:00Z",
+)
+
+
+class CreatorLiveTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.bundle, self.ledger = build_bundle(self.root / "evidence")
+        self.live_attempt = replace(
+            self.bundle.attempt,
+            proof_mode="CREATOR_LIVE",
+        )
+
+    def open_runtime(
+        self,
+        label: str = "attempt",
+        *,
+        bundle=None,
+    ) -> FieldNoteCreatorLiveProofRuntime:
+        evidence = bundle or self.bundle
+        attempt = replace(evidence.attempt, proof_mode="CREATOR_LIVE")
+        return FieldNoteCreatorLiveProofRuntime.open_attempt(
+            self.root / label,
+            attempt=attempt,
+            source_repository=evidence.source_repository,
+            run_1=evidence.run_1,
+        )
+
+    def record_a1(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        *,
+        observed_at: str = OBSERVED_AT[0],
+        bundle=None,
+    ) -> None:
+        evidence = bundle or self.bundle
+        assert evidence.a1_capture is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=observed_at,
+        ):
+            runtime_path.record_a1_capture(evidence.a1_capture)
+
+    def open_run_2(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        *,
+        bundle=None,
+    ) -> None:
+        runtime_path.open_run_2((bundle or self.bundle).run_2)
+
+    def ready_for_a2(
+        self,
+        label: str = "attempt",
+        *,
+        bundle=None,
+    ) -> FieldNoteCreatorLiveProofRuntime:
+        runtime_path = self.open_runtime(label, bundle=bundle)
+        self.record_a1(runtime_path, bundle=bundle)
+        self.open_run_2(runtime_path, bundle=bundle)
+        return runtime_path
+
+    def complete_runtime(
+        self,
+        label: str = "complete",
+        *,
+        bundle=None,
+    ) -> tuple[FieldNoteCreatorLiveProofRuntime, object]:
+        evidence = bundle or self.bundle
+        runtime_path = self.open_runtime(label, bundle=evidence)
+        assert evidence.a1_capture is not None
+        assert evidence.a2_reconnect is not None
+        assert evidence.a3_assessment is not None
+        assert evidence.a4_snapshot is not None
+        assert evidence.a5_commit is not None
+        assert evidence.a6_review is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=OBSERVED_AT,
+        ):
+            runtime_path.record_a1_capture(evidence.a1_capture)
+            runtime_path.open_run_2(evidence.run_2)
+            runtime_path.record_a2_reconnect(
+                evidence.a2_reconnect,
+                note=evidence.note,
+                note_bytes=evidence.note_bytes,
+            )
+            runtime_path.record_a3_reuse(
+                evidence.a3_assessment,
+                note=evidence.note,
+                note_bytes=evidence.note_bytes,
+            )
+            runtime_path.record_a4_durability(evidence.a4_snapshot)
+            runtime_path.record_a5_confirmation(evidence.a5_commit)
+            runtime_path.record_a6_review(evidence.a6_review)
+        return runtime_path, evidence
+
+    def live_bundle(self, readback, *, bundle=None):
+        evidence = bundle or self.bundle
+        return replace(
+            evidence,
+            attempt=replace(evidence.attempt, proof_mode="CREATOR_LIVE"),
+            proof_trace=readback.events,
+            creator_live_readback=readback,
+        )
+
+
+class CreatorLiveProvenanceTests(CreatorLiveTestCase):
+    def test_fixture_pass_remains_unchanged(self) -> None:
+        receipt = verify_field_note_whole_flow(self.bundle)
+        self.assertEqual("PASS", receipt.state)
+        self.assertEqual("FIXTURE", receipt.proof_mode)
+        self.assertIsNone(receipt.creator_live_readback)
+
+    def test_hand_built_trace_cannot_satisfy_creator_live(self) -> None:
+        live = replace(self.bundle, attempt=self.live_attempt)
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("NOT_READY", receipt.state)
+        self.assertEqual(
+            "CREATOR_LIVE_RUNTIME_EVIDENCE_MISSING",
+            receipt.failure_reason,
+        )
+
+    def test_runtime_provenance_cannot_be_directly_constructed(self) -> None:
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            FieldNoteCreatorLiveRuntimeProvenance()
+
+    def test_string_cannot_mint_runtime_provenance(self) -> None:
+        fixture = self.bundle.proof_trace[0]
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            replace(
+                fixture,
+                proof_attempt_id=self.live_attempt.proof_attempt_id,
+                runtime=self.bundle.run_1.runtime,
+                source_repository=self.bundle.source_repository,
+                runtime_provenance="COMPANION_RUNTIME",  # type: ignore[arg-type]
+            )
+
+    def test_readback_cannot_be_directly_constructed(self) -> None:
+        with self.assertRaises(FieldNoteCreatorLiveValidationError):
+            FieldNoteCreatorLiveTraceReadback()
+
+    def test_runtime_provenance_states_exact_trust_boundary(self) -> None:
+        runtime_path = self.open_runtime()
+        provenance = runtime_path.read_back().runtime_provenance
+        self.assertEqual(
+            "IN_PROCESS_RUNTIME_CAPABILITY_WITH_DURABLE_READ_BACK",
+            provenance.trust_boundary,
+        )
+        self.assertNotIn("signature", provenance.runtime_provenance_id)
+
+
+class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
+    def test_attempt_opens_with_exact_repository_and_runtime(self) -> None:
+        readback = self.open_runtime().read_back()
+        self.assertEqual("OPEN", readback.state)
+        self.assertEqual(self.live_attempt.proof_attempt_id, readback.proof_attempt_id)
+        self.assertEqual(self.bundle.source_repository, readback.source_repository)
+        self.assertEqual(self.bundle.run_1.runtime, readback.runtime)
+        self.assertEqual(self.bundle.run_1, readback.run_1)
+        self.assertIsNone(readback.run_2)
+        self.assertEqual("A1_CAPTURE", readback.current_stage)
+        self.assertTrue(readback.one_attempt_no_retry)
+
+    def test_run_1_and_run_2_must_be_distinct(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        same_run = replace(
+            self.bundle.run_2,
+            run_id=self.bundle.run_1.run_id,
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(same_run)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual("RETRY_REPLACEMENT", readback.repair_action)
+
+    def test_run_2_cannot_open_before_a1_closure(self) -> None:
+        runtime_path = self.open_runtime()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(self.bundle.run_2)
+        self.assertEqual("FAILED", runtime_path.read_back().state)
+
+    def test_runtime_identity_cannot_change_between_runs(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        changed = replace(
+            self.bundle.run_2,
+            runtime=runtime(model="other-model"),
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(changed)
+        self.assertEqual(
+            "MODEL_RUNTIME_MISMATCH",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_repository_identity_cannot_change_between_runs(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        changed = replace(
+            self.bundle.run_2,
+            repository=source_repository(suffix="c"),
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(changed)
+        self.assertEqual(
+            "SOURCE_REPOSITORY_MISMATCH",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_cross_attempt_run_2_is_rejected(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        changed = replace(
+            self.bundle.run_2,
+            proof_attempt_id="other_attempt",
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.open_run_2(changed)
+        self.assertEqual(
+            "RUN_ATTEMPT_MISMATCH",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_stage_cannot_be_skipped(self) -> None:
+        runtime_path = self.open_runtime()
+        assert self.bundle.a3_assessment is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a3_reuse(
+                self.bundle.a3_assessment,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual("FAILED", runtime_path.read_back().state)
+
+    def test_stage_cannot_be_reordered(self) -> None:
+        runtime_path = self.ready_for_a2()
+        assert self.bundle.a3_assessment is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a3_reuse(
+                self.bundle.a3_assessment,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual(
+            "CREATOR_LIVE_STAGE_ORDER_INVALID",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_stage_cannot_be_emitted_twice(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        assert self.bundle.a1_capture is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a1_capture(self.bundle.a1_capture)
+        self.assertEqual("RETRY_REPLACEMENT", runtime_path.read_back().repair_action)
+
+    def test_failed_stage_cannot_later_emit_success(self) -> None:
+        runtime_path = self.ready_for_a2()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure(
+                "A2_RECONNECT",
+                "A2_OPERATION_FAILED",
+            )
+        assert self.bundle.a2_reconnect is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual(1, runtime_path.read_back().trace_event_count)
+
+    def test_failed_attempt_cannot_be_reset_to_open(self) -> None:
+        runtime_path = self.open_runtime()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        loaded = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        )
+        self.assertEqual("FAILED", loaded.read_back().state)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            self.record_a1(loaded)
+
+    def test_second_attempt_is_not_started_automatically(self) -> None:
+        runtime_path = self.open_runtime()
+        with self.assertRaises(FieldNoteCreatorLiveAttemptExistsError):
+            FieldNoteCreatorLiveProofRuntime.open_attempt(
+                runtime_path.journal_path.parent,
+                attempt=self.live_attempt,
+                source_repository=self.bundle.source_repository,
+                run_1=self.bundle.run_1,
+            )
+        self.assertEqual("OPEN", runtime_path.read_back().state)
+
+
+class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
+    def test_each_checkpoint_binds_exact_typed_stage_evidence(self) -> None:
+        runtime_path, evidence = self.complete_runtime()
+        readback = runtime_path.read_back()
+        assert evidence.a1_capture is not None
+        assert evidence.a2_reconnect is not None
+        assert evidence.a3_assessment is not None
+        assert evidence.a4_snapshot is not None
+        assert evidence.a5_commit is not None
+        assert evidence.a6_review is not None
+        self.assertEqual(
+            (
+                whole_flow._a1_evidence_sha256(evidence.a1_capture),
+                whole_flow._a2_receipt_sha256(evidence.a2_reconnect),
+                evidence.a3_assessment.reuse_event_id,
+                evidence.a4_snapshot.events[0].event_sha256,
+                whole_flow._a5_confirmation_sha256(evidence.a5_commit),
+                whole_flow._a6_packet_sha256(evidence.a6_review),
+            ),
+            tuple(event.evidence_sha256 for event in readback.events),
+        )
+
+    def test_cross_run_a2_evidence_is_rejected(self) -> None:
+        runtime_path = self.ready_for_a2()
+        assert self.bundle.a2_reconnect is not None
+        changed = replace(self.bundle.a2_reconnect, run_id="other_run")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a2_reconnect(
+                changed,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual("A2_RUN_MISMATCH", runtime_path.read_back().failure_reason)
+
+    def test_changed_note_bytes_are_rejected(self) -> None:
+        runtime_path = self.ready_for_a2()
+        assert self.bundle.a2_reconnect is not None
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes + b"changed",
+            )
+        self.assertEqual("NOTE_EDIT", runtime_path.read_back().repair_action)
+
+    def test_a2_exact_note_mismatch_is_rejected(self) -> None:
+        runtime_path = self.ready_for_a2()
+        assert self.bundle.a2_reconnect is not None
+        changed = replace(
+            self.bundle.a2_reconnect,
+            selected_field_note_id="other_note",
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a2_reconnect(
+                changed,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual(
+            "A2_EXACT_NOTE_MISMATCH",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_a3_non_reused_evidence_is_rejected(self) -> None:
+        runtime_path = self.ready_for_a2()
+        assert self.bundle.a2_reconnect is not None
+        assert self.bundle.a3_assessment is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=OBSERVED_AT[1],
+        ):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        candidate = assess_field_note_reuse(
+            self.bundle.note,
+            None,
+            note_bytes=self.bundle.note_bytes,
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a3_reuse(
+                candidate,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        self.assertEqual(
+            "A3_NOT_DEMONSTRABLY_REUSED",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def runtime_through_a3(self, label: str):
+        runtime_path = self.ready_for_a2(label)
+        assert self.bundle.a2_reconnect is not None
+        assert self.bundle.a3_assessment is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=OBSERVED_AT[1:3],
+        ):
+            runtime_path.record_a2_reconnect(
+                self.bundle.a2_reconnect,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+            runtime_path.record_a3_reuse(
+                self.bundle.a3_assessment,
+                note=self.bundle.note,
+                note_bytes=self.bundle.note_bytes,
+            )
+        return runtime_path
+
+    def test_a4_tampered_durability_is_rejected(self) -> None:
+        runtime_path = self.runtime_through_a3("a4")
+        assert self.bundle.a4_snapshot is not None
+        event = replace(
+            self.bundle.a4_snapshot.events[0],
+            event_sha256="f" * 64,
+        )
+        changed = replace(
+            self.bundle.a4_snapshot,
+            events=(event,),
+            chain_head_sha256="f" * 64,
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a4_durability(changed)
+        self.assertEqual("LEDGER_REWRITE", runtime_path.read_back().repair_action)
+
+    def runtime_through_a4(self, label: str):
+        runtime_path = self.runtime_through_a3(label)
+        assert self.bundle.a4_snapshot is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=OBSERVED_AT[3],
+        ):
+            runtime_path.record_a4_durability(self.bundle.a4_snapshot)
+        return runtime_path
+
+    def test_a5_unconfirmed_readback_is_rejected(self) -> None:
+        runtime_path = self.runtime_through_a4("a5")
+        assert self.bundle.a5_commit is not None
+        changed = type(self.bundle.a5_commit)(
+            status="NOT_REUSED",
+            assessment=assess_field_note_reuse(
+                self.bundle.a5_commit.assessment.note,
+                None,
+            ),
+            delivery_context=None,
+            append_result=None,
+            durable_snapshot=None,
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a5_confirmation(changed)
+        self.assertEqual(
+            "A5_APPEND_NOT_CONFIRMED",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def runtime_through_a5(self, label: str):
+        runtime_path = self.runtime_through_a4(label)
+        assert self.bundle.a5_commit is not None
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=OBSERVED_AT[4],
+        ):
+            runtime_path.record_a5_confirmation(self.bundle.a5_commit)
+        return runtime_path
+
+    def test_a6_mismatched_packet_is_rejected(self) -> None:
+        runtime_path = self.runtime_through_a5("a6")
+        assert self.bundle.a6_review is not None
+        other = replace(self.bundle.note, field_note_id="other_note")
+        changed = replace(self.bundle.a6_review)
+        object.__setattr__(changed, "note_identity", other)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a6_review(changed)
+        self.assertEqual(
+            "A6_EXACT_PACKET_MISMATCH",
+            runtime_path.read_back().failure_reason,
+        )
+
+
+class CreatorLiveDurabilityTests(CreatorLiveTestCase):
+    def test_trace_persistence_is_append_only(self) -> None:
+        runtime_path = self.open_runtime()
+        initial = runtime_path.journal_path.read_bytes()
+        self.record_a1(runtime_path)
+        after_a1 = runtime_path.journal_path.read_bytes()
+        self.open_run_2(runtime_path)
+        after_run_2 = runtime_path.journal_path.read_bytes()
+        self.assertTrue(after_a1.startswith(initial))
+        self.assertTrue(after_run_2.startswith(after_a1))
+
+    def test_durable_exact_readback_reaches_trace_complete(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        readback = runtime_path.read_back()
+        self.assertEqual("TRACE_COMPLETE", readback.state)
+        self.assertTrue(readback.durable_readback_verified)
+        self.assertEqual(6, readback.trace_event_count)
+        self.assertEqual(
+            readback.events[-1].trace_sha256,
+            readback.trace_chain_head_sha256,
+        )
+        loaded = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        )
+        self.assertEqual(readback, loaded.read_back())
+
+    def test_trace_tampering_fails_closed(self) -> None:
+        runtime_path = self.ready_for_a2()
+        raw = runtime_path.journal_path.read_bytes()
+        marker = b'"evidence_sha256":"'
+        start = raw.index(marker) + len(marker)
+        replacement = b"f" if raw[start : start + 1] != b"f" else b"e"
+        changed = raw[:start] + replacement + raw[start + 1 :]
+        runtime_path.journal_path.write_bytes(changed)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_trace_truncation_fails_closed(self) -> None:
+        runtime_path = self.ready_for_a2()
+        raw = runtime_path.journal_path.read_bytes()
+        runtime_path.journal_path.write_bytes(raw[:-1])
+        readback = runtime_path.read_back()
+        self.assertEqual(
+            "CREATOR_LIVE_DURABLE_TRACE_TRUNCATED",
+            readback.failure_reason,
+        )
+        self.assertEqual("EVIDENCE_DELETION", readback.repair_action)
+
+    def test_trace_duplication_fails_closed(self) -> None:
+        runtime_path = self.ready_for_a2()
+        raw = runtime_path.journal_path.read_bytes()
+        last = raw.splitlines(keepends=True)[-1]
+        runtime_path.journal_path.write_bytes(raw + last)
+        readback = runtime_path.read_back()
+        self.assertEqual(
+            "CREATOR_LIVE_DURABLE_TRACE_DUPLICATED",
+            readback.failure_reason,
+        )
+        self.assertEqual("RETRY_REPLACEMENT", readback.repair_action)
+
+    def test_chain_head_mismatch_fails_closed(self) -> None:
+        runtime_path = self.ready_for_a2()
+        raw = runtime_path.journal_path.read_bytes()
+        marker = b'"previous_record_sha256":"'
+        first = raw.index(marker) + len(marker)
+        second = raw.index(marker, first) + len(marker)
+        changed = raw[:second] + b"f" + raw[second + 1:]
+        runtime_path.journal_path.write_bytes(changed)
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+
+    def test_in_memory_six_events_without_readback_cannot_pass(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        readback = runtime_path.read_back()
+        live = replace(
+            self.bundle,
+            attempt=self.live_attempt,
+            proof_trace=readback.events,
+            creator_live_readback=None,
+        )
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("NOT_READY", receipt.state)
+
+    def test_repair_marker_causes_fail(self) -> None:
+        runtime_path = self.open_runtime()
+        self.record_a1(runtime_path)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_repair(
+                "HUMAN_REPAIR",
+                "NOTE_EDIT_AFTER_CAPTURE",
+                repair_action="NOTE_EDIT",
+            )
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual("NOTE_EDIT", readback.repair_action)
+
+    def test_retry_replacement_causes_fail(self) -> None:
+        runtime_path = self.open_runtime()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_retry_replacement("RUN_REPLACEMENT_ATTEMPTED")
+        self.assertEqual("RETRY_REPLACEMENT", runtime_path.read_back().repair_action)
+
+    def test_proof_artifacts_are_deterministic_and_bounded(self) -> None:
+        first, _ = self.complete_runtime("first")
+        second, _ = self.complete_runtime("second")
+        first_bytes = first.journal_path.read_bytes()
+        second_bytes = second.journal_path.read_bytes()
+        self.assertEqual(first_bytes, second_bytes)
+        self.assertLess(len(first_bytes), 100_000)
+        self.assertEqual(first.read_back(), second.read_back())
+
+    def test_trace_storage_excludes_full_note_contents(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        text = runtime_path.journal_path.read_text(encoding="utf-8")
+        self.assertNotIn(PRIVATE_NOTE_TEXT, text)
+        self.assertNotIn(self.bundle.note_bytes.decode("utf-8"), text)
+
+    def test_trace_storage_excludes_output_artifact_contents(self) -> None:
+        bundle, _ = build_bundle(
+            self.root / "output-evidence",
+            evidence_class="OUTPUT_ARTIFACT",
+        )
+        runtime_path, _ = self.complete_runtime("output", bundle=bundle)
+        text = runtime_path.journal_path.read_text(encoding="utf-8")
+        self.assertNotIn(ARTIFACT_SECRET, text)
+
+
+class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
+    def test_open_attempt_is_not_ready_not_fail(self) -> None:
+        runtime_path = self.open_runtime()
+        live = self.live_bundle(runtime_path.read_back())
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("NOT_READY", receipt.state)
+        self.assertEqual("CREATOR_LIVE_TRACE_INCOMPLETE", receipt.failure_reason)
+
+    def test_failed_attempt_enters_a7_as_fail(self) -> None:
+        runtime_path = self.open_runtime()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        live = self.live_bundle(runtime_path.read_back())
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("FAIL", receipt.state)
+        self.assertEqual("A1_FAILED", receipt.failure_reason)
+
+    def test_trace_complete_creator_live_evidence_can_enter_a7(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        live = self.live_bundle(runtime_path.read_back())
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("PASS", receipt.state)
+        self.assertEqual("CREATOR_LIVE", receipt.proof_mode)
+        self.assertEqual("TYPED_TRACE_VERIFIED", receipt.human_repair_result)
+        self.assertIsNotNone(receipt.creator_live_readback)
+
+    def test_creator_live_manifest_is_readback_and_trace_bound(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        live = self.live_bundle(runtime_path.read_back())
+        manifest = build_portable_candidate_warehouse_manifest(live)
+        body = manifest.as_dict()
+        self.assertEqual("CREATOR_LIVE", body["coverage_evidence_mode"])
+        self.assertTrue(body["creator_live_coverage_verified"])
+        self.assertEqual(
+            runtime_path.read_back().trace_chain_head_sha256,
+            body["proof_trace"]["chain_head_sha256"],
+        )
+
+    def test_cross_bound_readback_cannot_admit_other_attempt(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        readback = runtime_path.read_back()
+        other_attempt = replace(
+            self.live_attempt,
+            proof_attempt_id="other_attempt",
+        )
+        other_run_1 = replace(
+            self.bundle.run_1,
+            proof_attempt_id="other_attempt",
+        )
+        other_run_2 = replace(
+            self.bundle.run_2,
+            proof_attempt_id="other_attempt",
+        )
+        live = replace(
+            self.bundle,
+            attempt=other_attempt,
+            run_1=other_run_1,
+            run_2=other_run_2,
+            proof_trace=readback.events,
+            creator_live_readback=readback,
+        )
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("FAIL", receipt.state)
+        self.assertEqual(
+            "CREATOR_LIVE_RUNTIME_IDENTITY_MISMATCH",
+            receipt.failure_reason,
+        )
+
+    def test_unknown_outcome_remains_supported(self) -> None:
+        bundle, _ = build_bundle(self.root / "unknown", outcome="UNKNOWN")
+        runtime_path, _ = self.complete_runtime("unknown-live", bundle=bundle)
+        live = self.live_bundle(runtime_path.read_back(), bundle=bundle)
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("PASS", receipt.state)
+        self.assertEqual("UNKNOWN", receipt.effective_outcome)
+        self.assertEqual("HOLD", receipt.next_disposition)
+
+    def test_negative_outcome_remains_supported(self) -> None:
+        bundle, _ = build_bundle(self.root / "harmful", outcome="HARMFUL")
+        runtime_path, _ = self.complete_runtime("harmful-live", bundle=bundle)
+        live = self.live_bundle(runtime_path.read_back(), bundle=bundle)
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("PASS", receipt.state)
+        self.assertEqual("HARMFUL", receipt.effective_outcome)
+        self.assertEqual("STOP", receipt.next_disposition)
+
+    def test_promotable_remains_unset(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        receipt = verify_field_note_whole_flow(
+            self.live_bundle(runtime_path.read_back())
+        )
+        self.assertEqual("UNSET", receipt.claim_boundary.promotable_policy)
+
+    def test_serving_policy_remains_delayed_and_separate(self) -> None:
+        runtime_path, _ = self.complete_runtime()
+        live = self.live_bundle(runtime_path.read_back())
+        receipt = verify_field_note_whole_flow(live)
+        manifest = build_portable_candidate_warehouse_manifest(live)
+        self.assertEqual("DELAY", receipt.claim_boundary.serving_policy)
+        self.assertEqual("DELAY", manifest.as_dict()["serving_policy"])
+        self.assertIsNone(manifest.as_dict()["automatic_injection"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -549,7 +549,7 @@ class FieldNoteWholeFlowProofSealingTests(WholeFlowTestCase):
         self.assertEqual("NOT_READY", receipt.state)
         self.assertEqual("RUNTIME_ENFORCEMENT", receipt.failed_boundary)
         self.assertEqual(
-            "CREATOR_LIVE_RUNTIME_ENFORCEMENT_NOT_IMPLEMENTED",
+            "CREATOR_LIVE_RUNTIME_EVIDENCE_MISSING",
             receipt.failure_reason,
         )
 
