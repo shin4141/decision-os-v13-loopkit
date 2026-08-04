@@ -16,11 +16,11 @@ from decision_os.acceleration.codex_adapter import (
 )
 from decision_os.companion.field_notes_model import (
     FIELD_NOTE_TOOL_NAME,
-    FIELD_NOTE_TOOL_SPEC,
     FieldNoteDraft,
     FieldNoteProposalGate,
     canonical_json,
     configured_model_class,
+    field_note_tool_spec_for_trust,
 )
 from decision_os.companion.field_notes_reconnect import (
     FieldNoteReconnectPlan,
@@ -420,7 +420,10 @@ class FieldNotesCodexAdapter(CodexAdapter):
                     "developerInstructions": developer_instructions,
                     "dynamicTools": [
                         copy.deepcopy(codex._READ_TOOL_SPEC),
-                        copy.deepcopy(FIELD_NOTE_TOOL_SPEC),
+                        field_note_tool_spec_for_trust(
+                            self.trusted_source_model_class,
+                            self.trusted_target_model_class,
+                        ),
                     ],
                     "ephemeral": True,
                     "model": self.expected_model,
