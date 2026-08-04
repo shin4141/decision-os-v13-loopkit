@@ -43,6 +43,10 @@ from decision_os.companion.field_notes_model import (
 from decision_os.companion.field_notes_reconnect import (
     FieldNoteReconnectReceipt,
 )
+from decision_os.companion.field_notes_creator_live_reconnect import (
+    FieldNoteCreatorLiveA2ReconnectError,
+    FieldNoteCreatorLiveA2ReconnectTarget,
+)
 
 
 class FieldNoteError(CompanionError):
@@ -57,6 +61,7 @@ def _field_notes_adapter_factory(
     trusted_source_model_class: str = "UNKNOWN",
     trusted_target_model_class: str = "UNKNOWN",
     creator_live_a1_capture_provider: Any = None,
+    creator_live_a2_reconnect_provider: Any = None,
 ) -> FieldNotesCodexAdapter:
     return FieldNotesCodexAdapter(
         engine,
@@ -67,6 +72,9 @@ def _field_notes_adapter_factory(
         trusted_source_model_class=trusted_source_model_class,
         trusted_target_model_class=trusted_target_model_class,
         creator_live_a1_capture_provider=creator_live_a1_capture_provider,
+        creator_live_a2_reconnect_provider=(
+            creator_live_a2_reconnect_provider
+        ),
     )
 
 
@@ -109,6 +117,35 @@ class FieldNoteCreatorLiveA1RunCompletion:
             raise ValueError("Creator-live A1 Run completion is invalid.")
 
 
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveA2RunCompletion:
+    """Typed exact reconnect evidence observed from one completed Run 2."""
+
+    run_id: str
+    actual_runtime_identity: CodexRuntimeIdentity
+    reconnect_receipt: FieldNoteReconnectReceipt
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.run_id, str)
+            or not self.run_id.strip()
+            or not isinstance(
+                self.actual_runtime_identity,
+                CodexRuntimeIdentity,
+            )
+            or not isinstance(
+                self.reconnect_receipt,
+                FieldNoteReconnectReceipt,
+            )
+            or self.reconnect_receipt.run_id != self.run_id
+            or self.reconnect_receipt.state
+            not in {"INJECTED", "ACTIVATION_UNKNOWN"}
+            or self.reconnect_receipt.failure_reason is not None
+            or self.reconnect_receipt.full_notes_injected != 1
+        ):
+            raise ValueError("Creator-live A2 Run completion is invalid.")
+
+
 class FieldNotesCompanionController(CompanionController):
     """Companion controller extended only with Field Notes Lite Capture."""
 
@@ -127,6 +164,14 @@ class FieldNotesCompanionController(CompanionController):
         self._creator_live_a1_proposal_diagnostic: (
             FieldNoteA1ProposalDiagnostic | None
         ) = None
+        self._creator_live_a2_reconnect_target: (
+            FieldNoteCreatorLiveA2ReconnectTarget | None
+        ) = None
+        self._creator_live_a2_completed_run_id: str | None = None
+        self._creator_live_a2_run_completion: (
+            FieldNoteCreatorLiveA2RunCompletion | None
+        ) = None
+        self._creator_live_a2_failure_reason: str | None = None
         trusted_source_model_class = configured_model_class(
             kwargs.pop("trusted_source_model_class", "UNKNOWN")
         )
@@ -141,6 +186,9 @@ class FieldNotesCompanionController(CompanionController):
                 creator_live_a1_capture_provider=(
                     self._active_creator_live_a1_capture
                 ),
+                creator_live_a2_reconnect_provider=(
+                    self._active_creator_live_a2_reconnect
+                ),
             )
         super().__init__(**kwargs)
 
@@ -149,6 +197,12 @@ class FieldNotesCompanionController(CompanionController):
     ) -> FieldNoteCreatorLiveA1CaptureConfig | None:
         with self._condition:
             return self._creator_live_a1_capture_config
+
+    def _active_creator_live_a2_reconnect(
+        self,
+    ) -> FieldNoteCreatorLiveA2ReconnectTarget | None:
+        with self._condition:
+            return self._creator_live_a2_reconnect_target
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
@@ -162,10 +216,17 @@ class FieldNotesCompanionController(CompanionController):
         self._field_note_pending = None
         self._run["field_note"] = {"state": "none"}
 
+    def _clear_creator_live_a2_locked(self) -> None:
+        self._creator_live_a2_reconnect_target = None
+        self._creator_live_a2_completed_run_id = None
+        self._creator_live_a2_run_completion = None
+        self._creator_live_a2_failure_reason = None
+
     def start_run(self, task: str, *, task_mode: str = "manual") -> dict[str, Any]:
         with self._condition:
             self._require_no_active_run()
             self._clear_field_note_locked()
+            self._clear_creator_live_a2_locked()
         return super().start_run(task, task_mode=task_mode)
 
     def start_creator_live_a1_capture(
@@ -184,6 +245,9 @@ class FieldNotesCompanionController(CompanionController):
         with self._condition:
             self._require_no_active_run()
             self._clear_field_note_locked()
+            if self._creator_live_a2_reconnect_target is not None:
+                raise FieldNoteError("Creator-live A2 reconnect is active.")
+            self._clear_creator_live_a2_locked()
             self._creator_live_a1_capture_config = config
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
@@ -197,6 +261,32 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_capture_config = None
             raise
 
+    def start_creator_live_a2_reconnect(
+        self,
+        task: str,
+        *,
+        target: FieldNoteCreatorLiveA2ReconnectTarget,
+    ) -> dict[str, Any]:
+        """Start one Run 2 whose reconnect input is one durable exact target."""
+
+        if not isinstance(target, FieldNoteCreatorLiveA2ReconnectTarget):
+            raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+        with self._condition:
+            self._require_no_active_run()
+            if self._creator_live_a1_capture_config is not None:
+                raise FieldNoteCreatorLiveA2ReconnectError(
+                    "A2_TARGET_INVALID"
+                )
+            self._clear_field_note_locked()
+            self._clear_creator_live_a2_locked()
+            self._creator_live_a2_reconnect_target = target
+        try:
+            return super().start_run(task, task_mode="manual")
+        except Exception:
+            with self._condition:
+                self._creator_live_a2_reconnect_target = None
+            raise
+
     def new_run(self) -> dict[str, Any]:
         with self._condition:
             self._clear_field_note_locked()
@@ -206,6 +296,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
+            self._clear_creator_live_a2_locked()
         return super().new_run()
 
     def select_repository(self, candidate: str | Path) -> dict[str, Any]:
@@ -218,6 +309,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
+            self._clear_creator_live_a2_locked()
             return self._snapshot_locked()
 
     @staticmethod
@@ -341,12 +433,15 @@ class FieldNotesCompanionController(CompanionController):
         result: CodexRunResult,
     ) -> None:
         capture = self._creator_live_a1_capture_config
+        reconnect_target = self._creator_live_a2_reconnect_target
         capture_failure = getattr(
             result,
             "creator_live_a1_failure_reason",
             None,
         )
         completion: FieldNoteCreatorLiveA1RunCompletion | None = None
+        reconnect_completion: FieldNoteCreatorLiveA2RunCompletion | None = None
+        reconnect_failure: str | None = None
         proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None
         if capture is not None:
             if (
@@ -448,6 +543,52 @@ class FieldNotesCompanionController(CompanionController):
                     ),
                     successful_read_count=len(result.read_evidence),
                 )
+        elif reconnect_target is not None:
+            draft = None
+            reconnect_receipt = getattr(result, "reconnect_receipt", None)
+            if result.run_id != reconnect_target.run_2_id:
+                reconnect_failure = "A2_TARGET_RUN_2_MISMATCH"
+            elif result.runtime_identity != (
+                reconnect_target.expected_runtime_identity
+            ):
+                reconnect_failure = "A2_TARGET_INVALID"
+            elif not isinstance(
+                reconnect_receipt,
+                FieldNoteReconnectReceipt,
+            ):
+                reconnect_failure = "A2_TARGET_INVALID"
+            elif reconnect_receipt.run_id != reconnect_target.run_2_id:
+                reconnect_failure = "A2_TARGET_RUN_2_MISMATCH"
+            elif reconnect_receipt.selected_field_note_path != (
+                reconnect_target.note_relative_path
+            ):
+                reconnect_failure = "A2_TARGET_PATH_INVALID"
+            elif reconnect_receipt.selected_field_note_id != (
+                reconnect_target.field_note_id
+            ):
+                reconnect_failure = "A2_TARGET_NOTE_ID_MISMATCH"
+            elif reconnect_receipt.selected_full_note_sha256 != (
+                reconnect_target.note_sha256
+            ):
+                reconnect_failure = "A2_TARGET_SHA256_MISMATCH"
+            elif reconnect_receipt.full_note_bytes_read != (
+                reconnect_target.note_byte_count
+            ):
+                reconnect_failure = "A2_TARGET_BYTE_COUNT_MISMATCH"
+            elif (
+                reconnect_receipt.state
+                not in {"INJECTED", "ACTIVATION_UNKNOWN"}
+                or reconnect_receipt.full_notes_injected != 1
+                or reconnect_receipt.failure_reason is not None
+            ):
+                reconnect_failure = "A2_TARGET_INVALID"
+            else:
+                assert result.runtime_identity is not None
+                reconnect_completion = FieldNoteCreatorLiveA2RunCompletion(
+                    run_id=result.run_id,
+                    actual_runtime_identity=result.runtime_identity,
+                    reconnect_receipt=reconnect_receipt,
+                )
         else:
             draft = self._eligible_draft(result)
         reconnect_receipt = getattr(result, "reconnect_receipt", None)
@@ -462,6 +603,13 @@ class FieldNotesCompanionController(CompanionController):
             if capture is not None:
                 self._creator_live_a1_completed_run_id = capture.run_id
                 self._creator_live_a1_capture_config = None
+            if reconnect_target is not None:
+                self._creator_live_a2_completed_run_id = (
+                    reconnect_target.run_2_id
+                )
+                self._creator_live_a2_reconnect_target = None
+                self._creator_live_a2_run_completion = reconnect_completion
+                self._creator_live_a2_failure_reason = reconnect_failure
             self._creator_live_a1_run_completion = completion
             self._creator_live_a1_failure_reason = capture_failure
             self._creator_live_a1_proposal_diagnostic = proposal_diagnostic
@@ -579,6 +727,48 @@ class FieldNotesCompanionController(CompanionController):
                 raise FieldNoteError("Creator-live A1 capture is still running.")
             return self._creator_live_a1_failure_reason
 
+    def creator_live_a2_run_completion(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> FieldNoteCreatorLiveA2RunCompletion:
+        """Return exact injected reconnect evidence for one completed Run 2."""
+
+        with self._condition:
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or self._creator_live_a2_completed_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A2_TARGET_RUN_2_MISMATCH")
+            if self._run.get("state") == "running":
+                raise FieldNoteError("Creator-live A2 reconnect is still running.")
+            completion = self._creator_live_a2_run_completion
+            if completion is None:
+                raise FieldNoteError(
+                    self._creator_live_a2_failure_reason
+                    or "A2_TARGET_INVALID"
+                )
+            return completion
+
+    def creator_live_a2_failure_reason(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> str | None:
+        """Return the exact fail-closed preparation reason for one Run 2."""
+
+        with self._condition:
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or self._creator_live_a2_completed_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A2_TARGET_RUN_2_MISMATCH")
+            if self._run.get("state") == "running":
+                raise FieldNoteError("Creator-live A2 reconnect is still running.")
+            return self._creator_live_a2_failure_reason
+
     def _fail_run(self, repository: Path, exc: Exception) -> None:
         with self._condition:
             super()._fail_run(repository, exc)
@@ -590,6 +780,20 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_failure_reason = "A1_RUN_FAILED"
                 self._creator_live_a1_run_completion = None
                 self._creator_live_a1_proposal_diagnostic = None
+            if self._creator_live_a2_reconnect_target is not None:
+                self._creator_live_a2_completed_run_id = (
+                    self._creator_live_a2_reconnect_target.run_2_id
+                )
+                self._creator_live_a2_reconnect_target = None
+                self._creator_live_a2_failure_reason = (
+                    exc.code
+                    if isinstance(
+                        exc,
+                        FieldNoteCreatorLiveA2ReconnectError,
+                    )
+                    else "A2_TARGET_INVALID"
+                )
+                self._creator_live_a2_run_completion = None
             self._clear_field_note_locked()
             self._condition.notify_all()
 

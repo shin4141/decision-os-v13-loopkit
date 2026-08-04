@@ -27,6 +27,11 @@ from decision_os.companion.field_notes_reconnect import (
     FieldNoteReconnectReceipt,
     prepare_field_note_reconnect,
 )
+from decision_os.companion.field_notes_creator_live_reconnect import (
+    FieldNoteCreatorLiveA2ReconnectError,
+    FieldNoteCreatorLiveA2ReconnectTarget,
+    prepare_creator_live_a2_reconnect,
+)
 
 
 _FIELD_NOTE_PROPOSAL_INSTRUCTIONS = (
@@ -313,6 +318,9 @@ class FieldNotesCodexAdapter(CodexAdapter):
         creator_live_a1_capture_provider: Callable[
             [], FieldNoteCreatorLiveA1CaptureConfig | None
         ] | None = None,
+        creator_live_a2_reconnect_provider: Callable[
+            [], FieldNoteCreatorLiveA2ReconnectTarget | None
+        ] | None = None,
         **kwargs: Any,
     ) -> None:
         self._reconnect_prompt: str | None = None
@@ -326,11 +334,15 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._creator_live_a1_capture_provider = (
             creator_live_a1_capture_provider or (lambda: None)
         )
+        self._creator_live_a2_reconnect_provider = (
+            creator_live_a2_reconnect_provider or (lambda: None)
+        )
         super().__init__(*args, **kwargs)
 
     def _reset_run(self) -> None:
         super()._reset_run()
         capture = self._creator_live_a1_capture_provider()
+        reconnect_target = self._creator_live_a2_reconnect_provider()
         if capture is not None and not isinstance(
             capture,
             FieldNoteCreatorLiveA1CaptureConfig,
@@ -338,9 +350,28 @@ class FieldNotesCodexAdapter(CodexAdapter):
             raise codex.CodexAdapterFailure(
                 "Creator-live A1 capture configuration is invalid."
             )
+        if reconnect_target is not None and not isinstance(
+            reconnect_target,
+            FieldNoteCreatorLiveA2ReconnectTarget,
+        ):
+            raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+        if capture is not None and reconnect_target is not None:
+            raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
         self._creator_live_a1_capture = capture
+        self._creator_live_a2_reconnect_target = reconnect_target
         if capture is not None:
             self._run_id = capture.run_id
+        elif reconnect_target is not None:
+            expected_runtime = CodexRuntimeIdentity(
+                model=self.expected_model,
+                reasoning_effort=self.expected_reasoning_effort,
+                service_tier=self.expected_service_tier,
+                codex_cli_version=self.expected_cli_version,
+                account_type="chatgpt",
+            )
+            if reconnect_target.expected_runtime_identity != expected_runtime:
+                raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+            self._run_id = reconnect_target.run_2_id
         self._field_note_gate = FieldNoteProposalGate(
             self._run_id,
             trusted_source_model_class=self.trusted_source_model_class,
@@ -366,10 +397,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._capture_response_identity_mismatch = False
         self._capture_inconsistent_replay = False
         prompt = self._reconnect_prompt
-        if (
-            isinstance(prompt, str)
-            and self._creator_live_a1_capture is None
-        ):
+        if reconnect_target is not None:
+            self._reconnect_plan = prepare_creator_live_a2_reconnect(
+                self.engine.store.repository,
+                reconnect_target,
+            ).plan
+        elif isinstance(prompt, str) and self._creator_live_a1_capture is None:
             self._reconnect_plan = prepare_field_note_reconnect(
                 self.engine.store.repository,
                 prompt,
