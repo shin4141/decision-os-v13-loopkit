@@ -10,6 +10,7 @@ from unittest.mock import patch
 from decision_os.companion import field_notes_creator_live as creator_live
 from decision_os.companion import field_notes_whole_flow as whole_flow
 from decision_os.companion.field_notes_creator_live import (
+    FieldNoteCreatorLiveA1CaptureCommitReceipt,
     FieldNoteCreatorLiveAttemptExistsError,
     FieldNoteCreatorLiveDurabilityError,
     FieldNoteCreatorLiveProofRuntime,
@@ -21,6 +22,7 @@ from decision_os.companion.field_notes_reuse import (
     FieldNoteIdentity,
     assess_field_note_reuse,
 )
+from decision_os.companion.field_notes_model import compile_draft
 from decision_os.companion.field_notes_whole_flow import (
     FieldNoteCreatorLiveRuntimeProvenance,
     FieldNoteWholeFlowTraceEvent,
@@ -32,6 +34,7 @@ from tests.test_field_notes_whole_flow import (
     ARTIFACT_SECRET,
     PRIVATE_NOTE_TEXT,
     build_bundle,
+    proposal,
     runtime,
     source_repository,
 )
@@ -45,6 +48,8 @@ OBSERVED_AT = (
     "2026-08-05T11:32:00Z",
     "2026-08-05T11:41:00Z",
 )
+RUN_1_TASK = "Complete the bounded creator-live Run 1 task."
+RUN_1_TASK_SHA256 = hashlib.sha256(RUN_1_TASK.encode("utf-8")).hexdigest()
 
 
 class CreatorLiveTestCase(unittest.TestCase):
@@ -82,12 +87,71 @@ class CreatorLiveTestCase(unittest.TestCase):
     ) -> None:
         evidence = bundle or self.bundle
         assert evidence.a1_capture is not None
+        readback = runtime_path.read_back()
+        capture_commit = self.capture_commit(
+            runtime_path,
+            evidence.a1_capture,
+        )
         with patch.object(
             creator_live,
             "_utc_now_rfc3339",
             return_value=observed_at,
         ):
-            runtime_path.record_a1_capture(evidence.a1_capture)
+            runtime_path.record_a1_capture(
+                evidence.a1_capture,
+                capture_commit=capture_commit,
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=readback.runtime,
+            )
+
+    @staticmethod
+    def capture_commit(
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        draft,
+    ) -> FieldNoteCreatorLiveA1CaptureCommitReceipt:
+        readback = runtime_path.read_back()
+        note = FieldNoteIdentity(
+            note_path=draft.relative_path,
+            field_note_id=draft.field_note_id,
+            note_sha256=draft.sha256,
+            origin_run_id=draft.source_run_id,
+        )
+        return FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+            authority=creator_live._A1_CAPTURE_COMMIT_AUTHORITY,
+            proof_attempt_id=readback.proof_attempt_id,
+            run_id=readback.run_1.run_id,
+            task_sha256=RUN_1_TASK_SHA256,
+            actual_runtime_identity=readback.runtime,
+            source_repository=readback.source_repository,
+            note=note,
+            note_byte_count=len(draft.markdown),
+            draft_evidence_sha256=whole_flow._a1_evidence_sha256(draft),
+            draft_created_at=draft.created_at,
+            save_as_of=draft.created_at,
+        )
+
+    @staticmethod
+    def reissue_capture_commit(
+        commit: FieldNoteCreatorLiveA1CaptureCommitReceipt,
+        **changes,
+    ) -> FieldNoteCreatorLiveA1CaptureCommitReceipt:
+        values = {
+            "proof_attempt_id": commit.proof_attempt_id,
+            "run_id": commit.run_id,
+            "task_sha256": commit.task_sha256,
+            "actual_runtime_identity": commit.actual_runtime_identity,
+            "source_repository": commit.source_repository,
+            "note": commit.note,
+            "note_byte_count": commit.note_byte_count,
+            "draft_evidence_sha256": commit.draft_evidence_sha256,
+            "draft_created_at": commit.draft_created_at,
+            "save_as_of": commit.save_as_of,
+        }
+        values.update(changes)
+        return FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+            authority=creator_live._A1_CAPTURE_COMMIT_AUTHORITY,
+            **values,
+        )
 
     def open_run_2(
         self,
@@ -127,7 +191,15 @@ class CreatorLiveTestCase(unittest.TestCase):
             "_utc_now_rfc3339",
             side_effect=OBSERVED_AT,
         ):
-            runtime_path.record_a1_capture(evidence.a1_capture)
+            runtime_path.record_a1_capture(
+                evidence.a1_capture,
+                capture_commit=self.capture_commit(
+                    runtime_path,
+                    evidence.a1_capture,
+                ),
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+            )
             runtime_path.open_run_2(evidence.run_2)
             runtime_path.record_a2_reconnect(
                 evidence.a2_reconnect,
@@ -160,6 +232,13 @@ class CreatorLiveProvenanceTests(CreatorLiveTestCase):
         self.assertEqual("PASS", receipt.state)
         self.assertEqual("FIXTURE", receipt.proof_mode)
         self.assertIsNone(receipt.creator_live_readback)
+        assert self.bundle.a1_capture is not None
+        self.assertEqual(
+            whole_flow._a1_evidence_sha256(self.bundle.a1_capture),
+            receipt.a1_evidence_sha256,
+        )
+        self.assertIsNone(receipt.a1_draft_sha256)
+        self.assertIsNone(receipt.a1_capture_commit_sha256)
 
     def test_hand_built_trace_cannot_satisfy_creator_live(self) -> None:
         live = replace(self.bundle, attempt=self.live_attempt)
@@ -200,6 +279,196 @@ class CreatorLiveProvenanceTests(CreatorLiveTestCase):
 
 
 class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
+    def test_draft_alone_cannot_emit_a1_checkpoint(self) -> None:
+        runtime_path = self.open_runtime()
+        assert self.bundle.a1_capture is not None
+        with self.assertRaises(TypeError):
+            runtime_path.record_a1_capture(  # type: ignore[call-arg]
+                self.bundle.a1_capture
+            )
+        readback = runtime_path.read_back()
+        self.assertEqual("OPEN", readback.state)
+        self.assertEqual(0, readback.trace_event_count)
+
+    def test_changed_capture_sha_or_byte_count_fails_terminal(self) -> None:
+        assert self.bundle.a1_capture is not None
+        for label, note_sha256, byte_delta in (
+            ("wrong-sha", "0" * 64, 0),
+            ("wrong-count", self.bundle.a1_capture.sha256, 1),
+        ):
+            with self.subTest(label=label):
+                runtime_path = self.open_runtime(label)
+                draft = self.bundle.a1_capture
+                commit = self.capture_commit(runtime_path, draft)
+                changed_note = replace(
+                    commit.note,
+                    note_sha256=note_sha256,
+                )
+                changed = FieldNoteCreatorLiveA1CaptureCommitReceipt._issue(
+                    authority=creator_live._A1_CAPTURE_COMMIT_AUTHORITY,
+                    proof_attempt_id=commit.proof_attempt_id,
+                    run_id=commit.run_id,
+                    task_sha256=commit.task_sha256,
+                    actual_runtime_identity=(
+                        commit.actual_runtime_identity
+                    ),
+                    source_repository=commit.source_repository,
+                    note=changed_note,
+                    note_byte_count=commit.note_byte_count + byte_delta,
+                    draft_evidence_sha256=(
+                        commit.draft_evidence_sha256
+                    ),
+                    draft_created_at=commit.draft_created_at,
+                    save_as_of=commit.save_as_of,
+                )
+                with self.assertRaises(FieldNoteCreatorLiveStageError):
+                    runtime_path.record_a1_capture(
+                        draft,
+                        capture_commit=changed,
+                        expected_task_sha256=RUN_1_TASK_SHA256,
+                        actual_runtime_identity=(
+                            runtime_path.read_back().runtime
+                        ),
+                    )
+                self.assertEqual(
+                    "A1_CAPTURE_COMMIT_MISMATCH",
+                    runtime_path.read_back().failure_reason,
+                )
+
+    def test_changed_task_or_actual_runtime_in_commit_fails_terminal(self) -> None:
+        assert self.bundle.a1_capture is not None
+        for label, changes in (
+            ("task", {"task_sha256": "f" * 64}),
+            (
+                "runtime",
+                {
+                    "actual_runtime_identity": replace(
+                        self.bundle.run_1.runtime,
+                        model="other-model",
+                    )
+                },
+            ),
+        ):
+            with self.subTest(identity=label):
+                runtime_path = self.open_runtime(f"changed-{label}")
+                commit = self.capture_commit(
+                    runtime_path,
+                    self.bundle.a1_capture,
+                )
+                changed = self.reissue_capture_commit(commit, **changes)
+                with self.assertRaises(FieldNoteCreatorLiveStageError):
+                    runtime_path.record_a1_capture(
+                        self.bundle.a1_capture,
+                        capture_commit=changed,
+                        expected_task_sha256=RUN_1_TASK_SHA256,
+                        actual_runtime_identity=(
+                            runtime_path.read_back().runtime
+                        ),
+                        observed_at=OBSERVED_AT[0],
+                    )
+                self.assertEqual(
+                    "A1_CAPTURE_COMMIT_MISMATCH",
+                    runtime_path.read_back().failure_reason,
+                )
+
+    def test_draft_before_run_1_is_temporally_rejected(self) -> None:
+        runtime_path = self.open_runtime("draft-before-run")
+        draft = compile_draft(
+            proposal(),
+            source_run_id=self.bundle.run_1.run_id,
+            created_at="2026-08-05T09:59:00Z",
+            field_note_id="fn_a7_whole_flow_fixture_before_run",
+        )
+        commit = self.capture_commit(runtime_path, draft)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a1_capture(
+                draft,
+                capture_commit=commit,
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+                observed_at=OBSERVED_AT[0],
+            )
+        readback = runtime_path.read_back()
+        self.assertEqual("A1_CAPTURE_CHRONOLOGY_INVALID", readback.failure_reason)
+        self.assertEqual("TIMESTAMP_CHANGE", readback.repair_action)
+
+    def test_save_before_draft_creation_is_rejected_by_typed_receipt(self) -> None:
+        assert self.bundle.a1_capture is not None
+        runtime_path = self.open_runtime("save-before-draft")
+        commit = self.capture_commit(runtime_path, self.bundle.a1_capture)
+        with self.assertRaises(FieldNoteCreatorLiveValidationError):
+            self.reissue_capture_commit(
+                commit,
+                save_as_of="2026-08-05T10:00:00Z",
+            )
+        self.assertEqual(0, runtime_path.read_back().trace_event_count)
+
+    def test_save_after_proof_as_of_is_temporally_rejected(self) -> None:
+        assert self.bundle.a1_capture is not None
+        runtime_path = self.open_runtime("save-after-proof")
+        commit = self.reissue_capture_commit(
+            self.capture_commit(runtime_path, self.bundle.a1_capture),
+            save_as_of="2026-08-05T12:01:00Z",
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a1_capture(
+                self.bundle.a1_capture,
+                capture_commit=commit,
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+                observed_at="2026-08-05T12:01:00Z",
+            )
+        self.assertEqual(
+            "A1_CAPTURE_CHRONOLOGY_INVALID",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_checkpoint_observation_before_save_is_temporally_rejected(self) -> None:
+        assert self.bundle.a1_capture is not None
+        runtime_path = self.open_runtime("observe-before-save")
+        commit = self.reissue_capture_commit(
+            self.capture_commit(runtime_path, self.bundle.a1_capture),
+            save_as_of="2026-08-05T10:03:00Z",
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_a1_capture(
+                self.bundle.a1_capture,
+                capture_commit=commit,
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+                observed_at=OBSERVED_AT[0],
+            )
+        self.assertEqual(
+            "A1_CAPTURE_CHRONOLOGY_INVALID",
+            runtime_path.read_back().failure_reason,
+        )
+
+    def test_capture_commit_identity_is_the_creator_live_trace_identity(self) -> None:
+        assert self.bundle.a1_capture is not None
+        events = []
+        commits = []
+        for label, save_as_of in (
+            ("first-commit", self.bundle.a1_capture.created_at),
+            ("second-commit", "2026-08-05T10:01:30Z"),
+        ):
+            runtime_path = self.open_runtime(label)
+            commit = self.reissue_capture_commit(
+                self.capture_commit(runtime_path, self.bundle.a1_capture),
+                save_as_of=save_as_of,
+            )
+            event = runtime_path.record_a1_capture(
+                self.bundle.a1_capture,
+                capture_commit=commit,
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+                observed_at=OBSERVED_AT[0],
+            )
+            events.append(event)
+            commits.append(commit)
+            self.assertEqual(commit.receipt_sha256, event.evidence_sha256)
+        self.assertNotEqual(commits[0].receipt_sha256, commits[1].receipt_sha256)
+        self.assertNotEqual(events[0].trace_sha256, events[1].trace_sha256)
+
     def test_attempt_opens_with_exact_repository_and_runtime(self) -> None:
         readback = self.open_runtime().read_back()
         self.assertEqual("OPEN", readback.state)
@@ -302,7 +571,15 @@ class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
         self.record_a1(runtime_path)
         assert self.bundle.a1_capture is not None
         with self.assertRaises(FieldNoteCreatorLiveStageError):
-            runtime_path.record_a1_capture(self.bundle.a1_capture)
+            runtime_path.record_a1_capture(
+                self.bundle.a1_capture,
+                capture_commit=self.capture_commit(
+                    runtime_path,
+                    self.bundle.a1_capture,
+                ),
+                expected_task_sha256=RUN_1_TASK_SHA256,
+                actual_runtime_identity=runtime_path.read_back().runtime,
+            )
         self.assertEqual("RETRY_REPLACEMENT", runtime_path.read_back().repair_action)
 
     def test_failed_stage_cannot_later_emit_success(self) -> None:
@@ -356,7 +633,7 @@ class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
         assert evidence.a6_review is not None
         self.assertEqual(
             (
-                whole_flow._a1_evidence_sha256(evidence.a1_capture),
+                readback.a1_capture_commit.receipt_sha256,
                 whole_flow._a2_receipt_sha256(evidence.a2_reconnect),
                 whole_flow._a3_receipt_sha256(evidence.a3_assessment),
                 evidence.a4_snapshot.events[0].event_sha256,
@@ -943,6 +1220,27 @@ class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
         self.assertEqual(live.attempt, runtime_path.read_back().attempt)
         self.assertEqual(live.attempt, receipt.attempt)
         self.assertEqual("TYPED_TRACE_VERIFIED", receipt.human_repair_result)
+        commit = runtime_path.read_back().a1_capture_commit
+        assert commit is not None
+        self.assertEqual(commit.receipt_sha256, receipt.a1_evidence_sha256)
+        self.assertEqual(
+            commit.receipt_sha256,
+            receipt.a1_capture_commit_sha256,
+        )
+        self.assertEqual(
+            commit.draft_evidence_sha256,
+            receipt.a1_draft_sha256,
+        )
+
+    def test_direct_a7_receipt_cannot_cross_bind_a1_commit_identity(self) -> None:
+        runtime_path, _ = self.complete_runtime("direct-a7-commit")
+        live = self.live_bundle(runtime_path.read_back())
+        receipt = verify_field_note_whole_flow(live)
+        self.assertEqual("PASS", receipt.state)
+        for field in ("a1_capture_commit_sha256", "a1_draft_sha256"):
+            with self.subTest(field=field):
+                with self.assertRaises(FieldNoteWholeFlowValidationError):
+                    replace(receipt, **{field: "f" * 64})
         self.assertIsNotNone(receipt.creator_live_readback)
 
     def assert_attempt_substitution_fails(self, **changes) -> None:
