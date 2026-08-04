@@ -690,6 +690,8 @@ class FieldNotesCodexAdapter(CodexAdapter):
             return "A1_DIRECT_WRITE_REQUESTED"
         attempts = len(self._capture_proposal_call_ids)
         if attempts == 0:
+            if self._capture_request_shape_valid is False:
+                return "A1_PROPOSAL_REQUEST_SHAPE_INVALID"
             return "A1_PROPOSAL_MISSING"
         if attempts != 1:
             return "A1_PROPOSAL_DUPLICATE"

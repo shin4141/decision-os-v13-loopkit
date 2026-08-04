@@ -180,6 +180,14 @@ class _CaptureAdapter:
                 failure="A1_PROPOSAL_DUPLICATE",
                 attempts=2,
             )
+        if self.owner.mode == "request_shape_invalid":
+            return self.owner.result(
+                config.run_id,
+                normal_terminal=False,
+                proposal=None,
+                failure="A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+                attempts=0,
+            )
         if self.owner.mode == "malformed":
             return self.owner.result(
                 config.run_id,
@@ -238,6 +246,9 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         self.read_evidence: tuple[CodexReadEvidence, ...] = ()
         self.task_sha256_override: str | None = None
         self.omit_proposal_diagnostic = False
+        self.proposal_diagnostic_override: (
+            FieldNoteA1ProposalDiagnostic | None
+        ) = None
         self.diagnostic_final_subcause_override: str | None = None
         self.result_run_id_override: str | None = None
         self.controller = FieldNotesCompanionController(
@@ -328,6 +339,8 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                 else proposal_failure
             ),
         )
+        if self.proposal_diagnostic_override is not None:
+            diagnostic = self.proposal_diagnostic_override
         return FieldNoteCodexRunResult(
             run_id=run_id,
             normal_terminal=normal_terminal,
@@ -535,6 +548,71 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             "A1_PROPOSAL_SCHEMA_REJECTED",
             readback.a1_proposal_diagnostic.final_subcause,
         )
+
+    def test_zero_identity_shape_failure_is_durable_and_cannot_continue(
+        self,
+    ) -> None:
+        self.mode = "request_shape_invalid"
+        self.proposal_diagnostic_override = FieldNoteA1ProposalDiagnostic(
+            proposal_call_count=0,
+            call_identity_sha256=None,
+            request_identity_sha256="2" * 64,
+            arguments_identity_sha256="3" * 64,
+            request_shape_valid=False,
+            malformed_observed=True,
+            gate_invoked=False,
+            gate_response_code=None,
+            gate_response_success=None,
+            accepted_proposal_present=False,
+            item_start_observed=True,
+            item_completion_observed=False,
+            item_observed_status=None,
+            item_expected_status=None,
+            all_proposals_completed=False,
+            request_identity_mismatch=False,
+            response_identity_mismatch=False,
+            inconsistent_replay=False,
+            protocol_identity_failure=True,
+            protocol_failure_phase="dynamic_tool_call",
+            direct_write_identity=None,
+            final_subcause="A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+        )
+        with patch.object(self.controller, "field_note_save") as save:
+            with self.assertRaises(FieldNoteCreatorLiveA1CaptureBridgeError):
+                self.bridge().capture("Propose exactly once and stop.")
+        self.assertEqual(0, save.call_count)
+        readback = self.runtime.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertEqual("A1_CAPTURE", readback.failure_boundary)
+        self.assertEqual(
+            "A1_PROPOSAL_REQUEST_SHAPE_INVALID",
+            readback.failure_reason,
+        )
+        self.assertEqual(
+            self.proposal_diagnostic_override,
+            readback.a1_proposal_diagnostic,
+        )
+        self.assertTrue(readback.durable_readback_verified)
+        self.assertEqual(
+            readback.journal_record_count,
+            readback.anchor_record_count,
+        )
+        journal = self.runtime.journal_path.read_text(encoding="utf-8")
+        anchor = self.runtime.anchor_path.read_text(encoding="utf-8")
+        assert self.proposal_diagnostic_override is not None
+        self.assertIn(
+            self.proposal_diagnostic_override.diagnostic_sha256,
+            journal,
+        )
+        self.assertIn("A1_PROPOSAL_REQUEST_SHAPE_INVALID", journal)
+        self.assertIn(readback.journal_sha256, anchor)
+        self.assertEqual(0, readback.trace_event_count)
+        self.assertIsNone(readback.run_2)
+        self.assertFalse(
+            (self.repository / ".decision-os" / "field-notes").exists()
+        )
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            self.runtime.open_run_2(self.run_1)
 
     def test_non_proposal_failures_precede_valid_diagnostic_subcause(
         self,
