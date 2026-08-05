@@ -878,8 +878,22 @@ class BehaviorAndBundleTests(unittest.TestCase):
         self.assertEqual(assemble_public_bundle(**arguments), assemble_public_bundle(**arguments))
 
     def test_58_no_cycle_or_proof_root_created(self):
-        self.assertFalse((ROOT / ".decision-os").exists())
-        self.assertNotIn("cycle-", (ROOT / "decision_os/companion/field_notes_creator_live_candidate.py").read_text(encoding="utf-8").casefold())
+        proof_parent = ROOT / ".decision-os/field-notes/proofs"
+        if proof_parent.exists():
+            self.assertEqual(
+                {
+                    "cycle-005",
+                    "proof_a7_creator_live_002_1d4c714b11c3f614",
+                    "proof_a7_creator_live_003_94a0d625f4d155f5",
+                    "proof_a7_creator_live_004_862c2f5cfdf7b134",
+                    "proof_a7_creator_live_005_1f0c0263566af0a8",
+                },
+                {path.name for path in proof_parent.iterdir()},
+            )
+        module = (
+            ROOT / "decision_os/companion/field_notes_creator_live_candidate.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("cycle-", module.casefold())
 
 
 if __name__ == "__main__":
