@@ -27,6 +27,7 @@ from decision_os.companion.field_notes_creator_live import (
     FieldNoteCreatorLiveA1CaptureCommitReceipt,
     FieldNoteCreatorLiveProofRuntime,
     FieldNoteCreatorLiveStageError,
+    FieldNoteCreatorLiveTraceReadbackV2,
     _A1_CAPTURE_COMMIT_AUTHORITY,
 )
 from decision_os.companion.field_notes_model import (
@@ -123,7 +124,9 @@ class FieldNoteCreatorLiveA1CaptureBridge:
         readback = self.runtime.read_back()
         if (
             not readback.durable_readback_verified
+            or not isinstance(readback, FieldNoteCreatorLiveTraceReadbackV2)
             or readback.state != "OPEN"
+            or readback.terminal_proof_as_of is not None
             or readback.current_stage != "A1_CAPTURE"
             or readback.trace_event_count != 0
             or readback.run_2 is not None

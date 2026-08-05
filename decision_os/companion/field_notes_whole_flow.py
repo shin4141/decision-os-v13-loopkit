@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 
 
 WHOLE_FLOW_SCHEMA = "decision-os.field-note-whole-flow-proof.v0.1"
+WHOLE_FLOW_SCHEMA_V2 = "decision-os.field-note-whole-flow-proof.v0.2"
 WHOLE_FLOW_TRACE_SCHEMA = "decision-os.field-note-whole-flow-trace-event.v0.1"
 WAREHOUSE_MANIFEST_SCHEMA = (
     "decision-os.portable-candidate-warehouse-manifest.v0.1"
@@ -207,7 +208,7 @@ class FieldNoteSourceRepositoryIdentity:
 
 @dataclass(frozen=True)
 class FieldNoteWholeFlowAttempt:
-    """Caller-supplied identity and explicit As-of for one bounded proof."""
+    """Historical v0.1 or fixture identity with an explicit proof cutoff."""
 
     proof_attempt_id: str
     proof_mode: WholeFlowMode
@@ -238,6 +239,49 @@ class FieldNoteWholeFlowAttempt:
             "proof_mode": self.proof_mode,
             "creator_id": self.creator_id,
             "proof_as_of": self.proof_as_of,
+        }
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveAttempt:
+    """Forward-only creator-live identity carrying authorization evidence."""
+
+    proof_attempt_id: str
+    proof_mode: Literal["CREATOR_LIVE"]
+    creator_id: str
+    authorization_observed_at: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "proof_attempt_id",
+            _bounded_text(self.proof_attempt_id, "Proof attempt ID"),
+        )
+        object.__setattr__(
+            self,
+            "creator_id",
+            _bounded_text(self.creator_id, "Creator identity"),
+        )
+        if self.proof_mode != "CREATOR_LIVE":
+            raise FieldNoteWholeFlowValidationError(
+                "Creator-live attempt mode is invalid."
+            )
+        normalized, _ = _parse_time(
+            self.authorization_observed_at,
+            "Authorization observation",
+        )
+        object.__setattr__(
+            self,
+            "authorization_observed_at",
+            normalized,
+        )
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "proof_attempt_id": self.proof_attempt_id,
+            "proof_mode": self.proof_mode,
+            "creator_id": self.creator_id,
+            "authorization_observed_at": self.authorization_observed_at,
         }
 
 
@@ -499,7 +543,7 @@ class FieldNoteWholeFlowTraceEvent:
 class FieldNoteWholeFlowEvidenceBundle:
     """Existing A1-A6 values plus the smallest typed no-repair trace."""
 
-    attempt: FieldNoteWholeFlowAttempt
+    attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt
     source_repository: FieldNoteSourceRepositoryIdentity
     run_1: FieldNoteWholeFlowRunIdentity
     run_2: FieldNoteWholeFlowRunIdentity
@@ -515,8 +559,14 @@ class FieldNoteWholeFlowEvidenceBundle:
     creator_live_readback: FieldNoteCreatorLiveTraceReadback | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(
+            self.attempt,
+            (FieldNoteWholeFlowAttempt, FieldNoteCreatorLiveAttempt),
+        ):
+            raise FieldNoteWholeFlowValidationError(
+                "Whole-Flow bundle lacks a typed proof attempt."
+            )
         required = (
-            (self.attempt, FieldNoteWholeFlowAttempt, "proof attempt"),
             (
                 self.source_repository,
                 FieldNoteSourceRepositoryIdentity,
@@ -649,7 +699,10 @@ class FieldNoteWholeFlowClaimBoundary:
 class FieldNoteWholeFlowProofReceipt:
     """Deterministic bounded result of verifying one exact A1-A6 lineage."""
 
-    schema: Literal["decision-os.field-note-whole-flow-proof.v0.1"]
+    schema: Literal[
+        "decision-os.field-note-whole-flow-proof.v0.1",
+        "decision-os.field-note-whole-flow-proof.v0.2",
+    ]
     proof_attempt_id: str
     proof_mode: WholeFlowMode
     proof_as_of: str
@@ -698,7 +751,7 @@ class FieldNoteWholeFlowProofReceipt:
     claim_boundary: FieldNoteWholeFlowClaimBoundary
 
     def __post_init__(self) -> None:
-        if self.schema != WHOLE_FLOW_SCHEMA:
+        if self.schema not in {WHOLE_FLOW_SCHEMA, WHOLE_FLOW_SCHEMA_V2}:
             raise FieldNoteWholeFlowValidationError(
                 "Whole-Flow receipt schema is unsupported."
             )
@@ -810,6 +863,7 @@ class FieldNoteWholeFlowProofReceipt:
         if self.creator_live_readback is not None:
             from decision_os.companion.field_notes_creator_live import (
                 FieldNoteCreatorLiveTraceReadback,
+                FieldNoteCreatorLiveTraceReadbackV2,
             )
 
             if not isinstance(
@@ -818,6 +872,27 @@ class FieldNoteWholeFlowProofReceipt:
             ):
                 raise FieldNoteWholeFlowValidationError(
                     "Receipt creator-live durable read-back is not typed."
+                )
+            if self.schema == WHOLE_FLOW_SCHEMA_V2:
+                if (
+                    not isinstance(
+                        self.creator_live_readback,
+                        FieldNoteCreatorLiveTraceReadbackV2,
+                    )
+                    or self.creator_live_readback.state
+                    not in {"FAILED", "TRACE_COMPLETE"}
+                    or self.creator_live_readback.terminal_proof_as_of
+                    != self.proof_as_of
+                ):
+                    raise FieldNoteWholeFlowValidationError(
+                        "v0.2 receipt terminal cutoff is not runtime-bound."
+                    )
+            elif isinstance(
+                self.creator_live_readback,
+                FieldNoteCreatorLiveTraceReadbackV2,
+            ):
+                raise FieldNoteWholeFlowValidationError(
+                    "v0.1 receipt cannot reinterpret v0.2 read-back."
                 )
         if (
             self.proof_mode == "FIXTURE"
@@ -1087,9 +1162,19 @@ class FieldNoteWholeFlowProofReceipt:
             previous_time = event_time
 
     @property
-    def attempt(self) -> FieldNoteWholeFlowAttempt:
+    def attempt(self) -> FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt:
         """Return the exact typed attempt identity preserved by this receipt."""
 
+        if self.schema == WHOLE_FLOW_SCHEMA_V2:
+            readback = self.creator_live_readback
+            if readback is None or not isinstance(
+                readback.attempt,
+                FieldNoteCreatorLiveAttempt,
+            ):
+                raise FieldNoteWholeFlowValidationError(
+                    "v0.2 receipt lacks its creator-live attempt identity."
+                )
+            return readback.attempt
         return FieldNoteWholeFlowAttempt(
             proof_attempt_id=self.proof_attempt_id,
             proof_mode=self.proof_mode,
@@ -1181,7 +1266,11 @@ class FieldNoteWholeFlowProofReceipt:
     def render_text(self) -> str:
         return "\n".join(
             (
-                "Field Note Whole-Flow Proof Receipt v0.1",
+                (
+                    "Field Note Whole-Flow Proof Receipt v0.2"
+                    if self.schema == WHOLE_FLOW_SCHEMA_V2
+                    else "Field Note Whole-Flow Proof Receipt v0.1"
+                ),
                 f"State: {self.state}",
                 f"Proof mode: {self.proof_mode}",
                 f"Proof As-of: {self.proof_as_of}",
@@ -1472,6 +1561,22 @@ def _outcome_summary(packet: FieldNoteMaturityReviewPacket) -> FieldNoteOutcomeS
     )
 
 
+def _bundle_proof_as_of(bundle: FieldNoteWholeFlowEvidenceBundle) -> str:
+    if isinstance(bundle.attempt, FieldNoteCreatorLiveAttempt):
+        readback = bundle.creator_live_readback
+        terminal = (
+            getattr(readback, "terminal_proof_as_of", None)
+            if readback is not None
+            else None
+        )
+        if terminal is None:
+            raise FieldNoteWholeFlowValidationError(
+                "Forward-only creator-live proof is not terminal."
+            )
+        return _parse_time(terminal, "Terminal Proof As-of")[0]
+    return bundle.attempt.proof_as_of
+
+
 def _receipt(
     bundle: FieldNoteWholeFlowEvidenceBundle,
     *,
@@ -1498,10 +1603,14 @@ def _receipt(
     )
     a1_draft_sha256 = _a1_evidence_sha256(a1) if a1 else None
     return FieldNoteWholeFlowProofReceipt(
-        schema=WHOLE_FLOW_SCHEMA,
+        schema=(
+            WHOLE_FLOW_SCHEMA_V2
+            if isinstance(bundle.attempt, FieldNoteCreatorLiveAttempt)
+            else WHOLE_FLOW_SCHEMA
+        ),
         proof_attempt_id=bundle.attempt.proof_attempt_id,
         proof_mode=bundle.attempt.proof_mode,
-        proof_as_of=bundle.attempt.proof_as_of,
+        proof_as_of=_bundle_proof_as_of(bundle),
         creator_id=bundle.attempt.creator_id,
         source_repository=bundle.source_repository,
         source_runtime=bundle.run_1.runtime,
@@ -1764,7 +1873,7 @@ def verify_field_note_whole_flow(
             "A1 checkpoint observation",
         )
         _, proof_time = _parse_time(
-            bundle.attempt.proof_as_of,
+            _bundle_proof_as_of(bundle),
             "Proof As-of",
         )
         if not (
@@ -1915,7 +2024,7 @@ def verify_field_note_whole_flow(
     _, review_time = _parse_time(a6.review_as_of, "A6 Review As-of")
     if review_time < max(recorded_time, use_time, outcome_time):
         return _fail(bundle, "A6_REVIEW", "A6_FUTURE_DATED_EVIDENCE")
-    _, proof_time = _parse_time(bundle.attempt.proof_as_of, "Proof As-of")
+    _, proof_time = _parse_time(_bundle_proof_as_of(bundle), "Proof As-of")
     if proof_time < review_time:
         return _fail(bundle, "PROOF_AS_OF", "PROOF_AS_OF_PRECEDES_A6_REVIEW")
 
