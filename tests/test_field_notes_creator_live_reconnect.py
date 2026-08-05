@@ -510,6 +510,27 @@ class CreatorLiveExactReconnectTests(unittest.TestCase):
             {"INJECTED", "ACTIVATION_UNKNOWN"},
         )
         self.assertEqual(1, completion.reconnect_receipt.full_notes_injected)
+        task_bytes = b"fixed Run 2 task"
+        self.assertEqual(len(task_bytes), completion.task_byte_count)
+        self.assertEqual(
+            hashlib.sha256(task_bytes).hexdigest(),
+            completion.task_sha256,
+        )
+        self.assertEqual(2, completion.transmission_ordinal)
+        self.assertTrue(completion.normal_terminal)
+        self.assertEqual("completed", completion.turn_status)
+        self.assertEqual("NORMAL_TERMINAL", completion.runtime_status)
+        self.assertTrue(completion.failure_diagnostic_absent)
+        self.assertEqual(
+            hashlib.sha256(completion.final_output_bytes).hexdigest(),
+            completion.final_output_sha256,
+        )
+        self.assertEqual("", self.controller.snapshot()["run"]["result"])
+        self.controller.release_creator_live_a2_run_completion(
+            expected_run_id=self.run_2.run_id
+        )
+        self.assertIsNone(self.controller._creator_live_a2_run_completion)
+        self.assertEqual("", self.controller.snapshot()["run"]["result"])
 
     def _assert_cross_bound_terminal(
         self,

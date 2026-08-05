@@ -96,6 +96,36 @@ CREATOR_LIVE_ANCHOR_SCHEMA_V2 = (
 )
 CREATOR_LIVE_JOURNAL_FILENAME_V2 = "creator-live-proof-v0.2.jsonl"
 CREATOR_LIVE_ANCHOR_FILENAME_V2 = "creator-live-proof-v0.2.anchor.jsonl"
+CREATOR_LIVE_JOURNAL_SCHEMA_V3 = (
+    "decision-os.field-note-creator-live-proof-journal.v0.3"
+)
+CREATOR_LIVE_RECORD_SCHEMA_V3 = (
+    "decision-os.field-note-creator-live-proof-record.v0.3"
+)
+CREATOR_LIVE_READBACK_SCHEMA_V3 = (
+    "decision-os.field-note-creator-live-proof-readback.v0.3"
+)
+CREATOR_LIVE_ANCHOR_SCHEMA_V3 = (
+    "decision-os.field-note-creator-live-proof-anchor.v0.3"
+)
+CREATOR_LIVE_JOURNAL_FILENAME_V3 = "creator-live-proof-v0.3.jsonl"
+CREATOR_LIVE_ANCHOR_FILENAME_V3 = "creator-live-proof-v0.3.anchor.jsonl"
+TERMINAL_PROJECTION_BINDING_SCHEMA = (
+    "decision-os.field-note-creator-live-terminal-projection-binding.v0.1"
+)
+RUN_2_OUTPUT_IDENTITY_SCHEMA = (
+    "decision-os.field-note-creator-live-run-2-output-identity.v0.1"
+)
+OUTPUT_ARTIFACT_IDENTITY_SCHEMA = (
+    "decision-os.field-note-creator-live-output-artifact-identity.v0.1"
+)
+A3_COMPILER_AUDIT_SCHEMA = (
+    "decision-os.field-note-creator-live-a3-compiler-audit.v0.1"
+)
+A3_COMPILER_VERSION = (
+    "decision-os.creator-live-a3-exact-output-artifact-compiler.v0.1"
+)
+A3_COMPILER_BRANCH = "EXACT_UTF8_NON_WHOLE_UNIQUE_SOURCE_UNIQUE_OUTPUT"
 A1_CAPTURE_COMMIT_SCHEMA = (
     "decision-os.field-note-creator-live-a1-capture-commit.v0.1"
 )
@@ -112,6 +142,8 @@ JournalRecordKind = Literal[
     "ATTEMPT_OPENED",
     "RUN_1_OPENED",
     "RUN_2_OPENED",
+    "RUN_2_OUTPUT_IDENTITY_RECORDED",
+    "A3_COMPILER_AUDIT_RECORDED",
     "CHECKPOINT",
     "ATTEMPT_FAILED",
     "TRACE_COMPLETED",
@@ -127,6 +159,310 @@ _STAGES: tuple[TraceStage, ...] = (
 )
 _READBACK_AUTHORITY = object()
 _A1_CAPTURE_COMMIT_AUTHORITY = object()
+
+
+def _identity_text(value: Any, label: str, *, maximum: int = 512) -> str:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or value != value.strip()
+        or len(value) > maximum
+        or "\x00" in value
+        or "\n" in value
+        or "\r" in value
+    ):
+        raise FieldNoteCreatorLiveValidationError(f"{label} is invalid.")
+    return value
+
+
+def _identity_sha256(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise FieldNoteCreatorLiveValidationError(f"{label} is invalid.")
+    return value
+
+
+def _identity_count(value: Any, label: str, *, positive: bool = False) -> int:
+    if (
+        type(value) is not int
+        or value < (1 if positive else 0)
+    ):
+        raise FieldNoteCreatorLiveValidationError(f"{label} is invalid.")
+    return value
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveContractIdentity:
+    profile: str
+    title: str
+    source_byte_count: int
+    source_sha256: str
+    wrapper_sha256: str
+    interpretation_sha256: str
+
+    def __post_init__(self) -> None:
+        _identity_text(self.profile, "Contract profile", maximum=128)
+        _identity_text(self.title, "Contract title", maximum=256)
+        _identity_count(
+            self.source_byte_count,
+            "Contract source byte count",
+            positive=True,
+        )
+        _identity_sha256(self.source_sha256, "Contract source SHA-256")
+        _identity_sha256(self.wrapper_sha256, "Contract wrapper SHA-256")
+        _identity_sha256(
+            self.interpretation_sha256,
+            "Contract interpretation SHA-256",
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "profile": self.profile,
+            "title": self.title,
+            "source_byte_count": self.source_byte_count,
+            "source_sha256": self.source_sha256,
+            "wrapper_sha256": self.wrapper_sha256,
+            "interpretation_sha256": self.interpretation_sha256,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteCreatorLiveContractIdentity:
+        fields = {
+            "profile",
+            "title",
+            "source_byte_count",
+            "source_sha256",
+            "wrapper_sha256",
+            "interpretation_sha256",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "Contract terminal projection identity is invalid."
+            )
+        return cls(**value)
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveTaskIdentity:
+    byte_count: int
+    sha256: str
+
+    def __post_init__(self) -> None:
+        _identity_count(self.byte_count, "Task byte count", positive=True)
+        _identity_sha256(self.sha256, "Task SHA-256")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"byte_count": self.byte_count, "sha256": self.sha256}
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteCreatorLiveTaskIdentity:
+        if not isinstance(value, dict) or set(value) != {"byte_count", "sha256"}:
+            raise FieldNoteCreatorLiveValidationError(
+                "Task terminal projection identity is invalid."
+            )
+        return cls(**value)
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveHistoricalBoundary:
+    cycle_key: str
+    state: str
+    failure_boundary: str
+    failure_code: str
+
+    def __post_init__(self) -> None:
+        _identity_text(self.cycle_key, "Historical Cycle key", maximum=128)
+        _identity_text(self.state, "Historical state", maximum=64)
+        _identity_text(
+            self.failure_boundary,
+            "Historical failure boundary",
+            maximum=128,
+        )
+        _identity_text(self.failure_code, "Historical failure code", maximum=256)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "cycle_key": self.cycle_key,
+            "state": self.state,
+            "failure_boundary": self.failure_boundary,
+            "failure_code": self.failure_code,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteCreatorLiveHistoricalBoundary:
+        fields = {"cycle_key", "state", "failure_boundary", "failure_code"}
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "Historical terminal projection boundary is invalid."
+            )
+        return cls(**value)
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveTerminalProjectionBinding:
+    schema: str
+    launch_binding_sha256: str
+    contract_identity: FieldNoteCreatorLiveContractIdentity
+    ordinary_contract_execution_authority: str
+    guided_intake_freeze_authority: str
+    implementation_authorization_observed_at: str
+    run_1_task: FieldNoteCreatorLiveTaskIdentity
+    run_2_task: FieldNoteCreatorLiveTaskIdentity
+    historical_boundary: FieldNoteCreatorLiveHistoricalBoundary
+    retry_count: int
+    replacement_count: int
+
+    def __post_init__(self) -> None:
+        if self.schema != TERMINAL_PROJECTION_BINDING_SCHEMA:
+            raise FieldNoteCreatorLiveValidationError(
+                "Terminal projection binding schema is invalid."
+            )
+        _identity_sha256(self.launch_binding_sha256, "Launch binding SHA-256")
+        if not isinstance(
+            self.contract_identity,
+            FieldNoteCreatorLiveContractIdentity,
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Contract terminal projection identity is invalid."
+            )
+        if self.ordinary_contract_execution_authority != "INTERPRETATION_ONLY":
+            raise FieldNoteCreatorLiveValidationError(
+                "Ordinary Contract authority changed."
+            )
+        if self.guided_intake_freeze_authority != (
+            "IMMUTABLE_INTERPRETATION_ONLY"
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Guided Intake freeze authority changed."
+            )
+        _parse_time(
+            self.implementation_authorization_observed_at,
+            "Implementation authorization observation",
+        )
+        if not isinstance(self.run_1_task, FieldNoteCreatorLiveTaskIdentity) or (
+            not isinstance(self.run_2_task, FieldNoteCreatorLiveTaskIdentity)
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Terminal projection task identity is invalid."
+            )
+        if not isinstance(
+            self.historical_boundary,
+            FieldNoteCreatorLiveHistoricalBoundary,
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Historical terminal projection boundary is invalid."
+            )
+        if self.retry_count != 0 or self.replacement_count != 0:
+            raise FieldNoteCreatorLiveValidationError(
+                "Creator-live retry or replacement count widened."
+            )
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        launch_binding_sha256: str,
+        contract_identity: FieldNoteCreatorLiveContractIdentity,
+        ordinary_contract_execution_authority: str,
+        guided_intake_freeze_authority: str,
+        implementation_authorization_observed_at: str,
+        run_1_task: FieldNoteCreatorLiveTaskIdentity,
+        run_2_task: FieldNoteCreatorLiveTaskIdentity,
+        historical_boundary: FieldNoteCreatorLiveHistoricalBoundary,
+        retry_count: int = 0,
+        replacement_count: int = 0,
+    ) -> FieldNoteCreatorLiveTerminalProjectionBinding:
+        return cls(
+            schema=TERMINAL_PROJECTION_BINDING_SCHEMA,
+            launch_binding_sha256=launch_binding_sha256,
+            contract_identity=contract_identity,
+            ordinary_contract_execution_authority=(
+                ordinary_contract_execution_authority
+            ),
+            guided_intake_freeze_authority=guided_intake_freeze_authority,
+            implementation_authorization_observed_at=(
+                implementation_authorization_observed_at
+            ),
+            run_1_task=run_1_task,
+            run_2_task=run_2_task,
+            historical_boundary=historical_boundary,
+            retry_count=retry_count,
+            replacement_count=replacement_count,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "launch_binding_sha256": self.launch_binding_sha256,
+            "contract_identity": self.contract_identity.as_dict(),
+            "ordinary_contract_execution_authority": (
+                self.ordinary_contract_execution_authority
+            ),
+            "guided_intake_freeze_authority": (
+                self.guided_intake_freeze_authority
+            ),
+            "implementation_authorization_observed_at": (
+                self.implementation_authorization_observed_at
+            ),
+            "run_1_task": self.run_1_task.as_dict(),
+            "run_2_task": self.run_2_task.as_dict(),
+            "historical_boundary": self.historical_boundary.as_dict(),
+            "retry_count": self.retry_count,
+            "replacement_count": self.replacement_count,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+    ) -> FieldNoteCreatorLiveTerminalProjectionBinding:
+        fields = {
+            "schema",
+            "launch_binding_sha256",
+            "contract_identity",
+            "ordinary_contract_execution_authority",
+            "guided_intake_freeze_authority",
+            "implementation_authorization_observed_at",
+            "run_1_task",
+            "run_2_task",
+            "historical_boundary",
+            "retry_count",
+            "replacement_count",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "Terminal projection binding is invalid."
+            )
+        return cls(
+            schema=value["schema"],
+            launch_binding_sha256=value["launch_binding_sha256"],
+            contract_identity=FieldNoteCreatorLiveContractIdentity.from_dict(
+                value["contract_identity"]
+            ),
+            ordinary_contract_execution_authority=(
+                value["ordinary_contract_execution_authority"]
+            ),
+            guided_intake_freeze_authority=(
+                value["guided_intake_freeze_authority"]
+            ),
+            implementation_authorization_observed_at=(
+                value["implementation_authorization_observed_at"]
+            ),
+            run_1_task=FieldNoteCreatorLiveTaskIdentity.from_dict(
+                value["run_1_task"]
+            ),
+            run_2_task=FieldNoteCreatorLiveTaskIdentity.from_dict(
+                value["run_2_task"]
+            ),
+            historical_boundary=FieldNoteCreatorLiveHistoricalBoundary.from_dict(
+                value["historical_boundary"]
+            ),
+            retry_count=value["retry_count"],
+            replacement_count=value["replacement_count"],
+        )
 
 
 class FieldNoteCreatorLiveError(RuntimeError):
@@ -150,6 +486,548 @@ class FieldNoteCreatorLiveDurabilityError(FieldNoteCreatorLiveError):
 
 class FieldNoteCreatorLiveAttemptExistsError(FieldNoteCreatorLiveError):
     """The one-attempt journal already exists and cannot be replaced."""
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveOutputArtifactIdentity:
+    schema: str
+    artifact_id: str
+    proof_attempt_id: str
+    run_id: str
+    transmission_ordinal: int
+    media_type: str
+    byte_count: int
+    sha256: str
+
+    @staticmethod
+    def _body(
+        *,
+        proof_attempt_id: str,
+        run_id: str,
+        transmission_ordinal: int,
+        media_type: str,
+        byte_count: int,
+        sha256: str,
+    ) -> dict[str, Any]:
+        return {
+            "schema": OUTPUT_ARTIFACT_IDENTITY_SCHEMA,
+            "proof_attempt_id": proof_attempt_id,
+            "run_id": run_id,
+            "transmission_ordinal": transmission_ordinal,
+            "media_type": media_type,
+            "byte_count": byte_count,
+            "sha256": sha256,
+        }
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        proof_attempt_id: str,
+        run_id: str,
+        byte_count: int,
+        sha256: str,
+    ) -> FieldNoteCreatorLiveOutputArtifactIdentity:
+        _identity_text(proof_attempt_id, "Output proof-attempt ID", maximum=256)
+        _identity_text(run_id, "Output Run ID", maximum=256)
+        _identity_count(byte_count, "Output byte count", positive=True)
+        _identity_sha256(sha256, "Output SHA-256")
+        body = cls._body(
+            proof_attempt_id=proof_attempt_id,
+            run_id=run_id,
+            transmission_ordinal=2,
+            media_type="text/plain; charset=utf-8",
+            byte_count=byte_count,
+            sha256=sha256,
+        )
+        return cls(
+            **body,
+            artifact_id=_canonical_sha256(body),
+        )
+
+    def __post_init__(self) -> None:
+        body = self._body(
+            proof_attempt_id=_identity_text(
+                self.proof_attempt_id,
+                "Output proof-attempt ID",
+                maximum=256,
+            ),
+            run_id=_identity_text(self.run_id, "Output Run ID", maximum=256),
+            transmission_ordinal=self.transmission_ordinal,
+            media_type=self.media_type,
+            byte_count=self.byte_count,
+            sha256=self.sha256,
+        )
+        if (
+            self.schema != OUTPUT_ARTIFACT_IDENTITY_SCHEMA
+            or self.transmission_ordinal != 2
+            or self.media_type != "text/plain; charset=utf-8"
+            or self.byte_count > 65_536
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Output artifact fixed identity is invalid."
+            )
+        _identity_count(self.byte_count, "Output byte count", positive=True)
+        _identity_sha256(self.sha256, "Output SHA-256")
+        if self.artifact_id != _canonical_sha256(body):
+            raise FieldNoteCreatorLiveValidationError(
+                "Output artifact canonical identity is invalid."
+            )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "artifact_id": self.artifact_id,
+            "proof_attempt_id": self.proof_attempt_id,
+            "run_id": self.run_id,
+            "transmission_ordinal": self.transmission_ordinal,
+            "media_type": self.media_type,
+            "byte_count": self.byte_count,
+            "sha256": self.sha256,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+    ) -> FieldNoteCreatorLiveOutputArtifactIdentity:
+        fields = {
+            "schema",
+            "artifact_id",
+            "proof_attempt_id",
+            "run_id",
+            "transmission_ordinal",
+            "media_type",
+            "byte_count",
+            "sha256",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "Output artifact identity is invalid."
+            )
+        return cls(**value)
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveRun2OutputIdentity:
+    schema: str
+    proof_attempt_id: str
+    run_id: str
+    task_byte_count: int
+    task_sha256: str
+    transmission_ordinal: int
+    normal_terminal: bool
+    turn_status: str
+    runtime_status: str
+    failure_diagnostic_absent: bool
+    final_output_byte_count: int
+    final_output_sha256: str
+    output_artifact: FieldNoteCreatorLiveOutputArtifactIdentity
+    a3_compiler_branch: str
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        proof_attempt_id: str,
+        run_id: str,
+        task_byte_count: int,
+        task_sha256: str,
+        final_output_byte_count: int,
+        final_output_sha256: str,
+    ) -> FieldNoteCreatorLiveRun2OutputIdentity:
+        artifact = FieldNoteCreatorLiveOutputArtifactIdentity.create(
+            proof_attempt_id=proof_attempt_id,
+            run_id=run_id,
+            byte_count=final_output_byte_count,
+            sha256=final_output_sha256,
+        )
+        return cls(
+            schema=RUN_2_OUTPUT_IDENTITY_SCHEMA,
+            proof_attempt_id=proof_attempt_id,
+            run_id=run_id,
+            task_byte_count=task_byte_count,
+            task_sha256=task_sha256,
+            transmission_ordinal=2,
+            normal_terminal=True,
+            turn_status="completed",
+            runtime_status="NORMAL_TERMINAL",
+            failure_diagnostic_absent=True,
+            final_output_byte_count=final_output_byte_count,
+            final_output_sha256=final_output_sha256,
+            output_artifact=artifact,
+            a3_compiler_branch=A3_COMPILER_BRANCH,
+        )
+
+    def __post_init__(self) -> None:
+        _identity_text(self.proof_attempt_id, "Run 2 proof-attempt ID", maximum=256)
+        _identity_text(self.run_id, "Run 2 output Run ID", maximum=256)
+        _identity_count(self.task_byte_count, "Run 2 task byte count", positive=True)
+        _identity_sha256(self.task_sha256, "Run 2 task SHA-256")
+        _identity_count(
+            self.final_output_byte_count,
+            "Run 2 final-output byte count",
+            positive=True,
+        )
+        _identity_sha256(self.final_output_sha256, "Run 2 final-output SHA-256")
+        if (
+            self.schema != RUN_2_OUTPUT_IDENTITY_SCHEMA
+            or self.transmission_ordinal != 2
+            or self.normal_terminal is not True
+            or self.turn_status != "completed"
+            or self.runtime_status != "NORMAL_TERMINAL"
+            or self.failure_diagnostic_absent is not True
+            or self.a3_compiler_branch != A3_COMPILER_BRANCH
+            or self.final_output_byte_count > 65_536
+            or not isinstance(
+                self.output_artifact,
+                FieldNoteCreatorLiveOutputArtifactIdentity,
+            )
+            or self.output_artifact.proof_attempt_id != self.proof_attempt_id
+            or self.output_artifact.run_id != self.run_id
+            or self.output_artifact.transmission_ordinal != 2
+            or self.output_artifact.byte_count != self.final_output_byte_count
+            or self.output_artifact.sha256 != self.final_output_sha256
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Run 2 output identity is cross-bound or invalid."
+            )
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "proof_attempt_id": self.proof_attempt_id,
+            "run_id": self.run_id,
+            "task_byte_count": self.task_byte_count,
+            "task_sha256": self.task_sha256,
+            "transmission_ordinal": self.transmission_ordinal,
+            "normal_terminal": self.normal_terminal,
+            "turn_status": self.turn_status,
+            "runtime_status": self.runtime_status,
+            "failure_diagnostic_absent": self.failure_diagnostic_absent,
+            "final_output_byte_count": self.final_output_byte_count,
+            "final_output_sha256": self.final_output_sha256,
+            "output_artifact": self.output_artifact.as_dict(),
+            "a3_compiler_branch": self.a3_compiler_branch,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: Any,
+    ) -> FieldNoteCreatorLiveRun2OutputIdentity:
+        fields = {
+            "schema",
+            "proof_attempt_id",
+            "run_id",
+            "task_byte_count",
+            "task_sha256",
+            "transmission_ordinal",
+            "normal_terminal",
+            "turn_status",
+            "runtime_status",
+            "failure_diagnostic_absent",
+            "final_output_byte_count",
+            "final_output_sha256",
+            "output_artifact",
+            "a3_compiler_branch",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "Run 2 output identity record is invalid."
+            )
+        return cls(
+            **{key: value[key] for key in fields - {"output_artifact"}},
+            output_artifact=FieldNoteCreatorLiveOutputArtifactIdentity.from_dict(
+                value["output_artifact"]
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveA3RejectionCounts:
+    below_minimum_byte_length: int
+    whole_note_range: int
+    non_unique_source_occurrence: int
+    absent_output_occurrence: int
+    multiple_output_occurrences: int
+
+    def __post_init__(self) -> None:
+        for label, value in self.as_dict().items():
+            _identity_count(value, f"A3 rejection count {label}")
+
+    def as_dict(self) -> dict[str, int]:
+        return {
+            "below_minimum_byte_length": self.below_minimum_byte_length,
+            "whole_note_range": self.whole_note_range,
+            "non_unique_source_occurrence": self.non_unique_source_occurrence,
+            "absent_output_occurrence": self.absent_output_occurrence,
+            "multiple_output_occurrences": self.multiple_output_occurrences,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteCreatorLiveA3RejectionCounts:
+        fields = {
+            "below_minimum_byte_length",
+            "whole_note_range",
+            "non_unique_source_occurrence",
+            "absent_output_occurrence",
+            "multiple_output_occurrences",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "A3 rejection counts are invalid."
+            )
+        return cls(**value)
+
+
+@dataclass(frozen=True, init=False)
+class FieldNoteCreatorLiveA3CompilerAudit:
+    schema: str
+    proof_attempt_id: str
+    run_id: str
+    output_artifact_id: str
+    compiler_version: str
+    compiler_branch: str
+    source_note_byte_count: int
+    source_note_sha256: str
+    output_byte_count: int
+    output_sha256: str
+    eligible_candidate_count: int
+    rejection_counts: FieldNoteCreatorLiveA3RejectionCounts
+    longest_candidate_byte_count: int
+    winning_candidate_count: int
+    selected_source_start_byte: int | None
+    selected_source_end_byte: int | None
+    selected_output_start_byte: int | None
+    selected_output_end_byte: int | None
+    terminal_a3_code: str | None
+    audit_sha256: str
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        raise FieldNoteCreatorLiveValidationError(
+            "A3 compiler audits are issued only from exact compiler facts."
+        )
+
+    @classmethod
+    def issue(
+        cls,
+        *,
+        proof_attempt_id: str,
+        run_id: str,
+        output_artifact_id: str,
+        source_note_byte_count: int,
+        source_note_sha256: str,
+        output_byte_count: int,
+        output_sha256: str,
+        eligible_candidate_count: int,
+        rejection_counts: FieldNoteCreatorLiveA3RejectionCounts,
+        longest_candidate_byte_count: int,
+        winning_candidate_count: int,
+        selected_source_start_byte: int | None,
+        selected_source_end_byte: int | None,
+        selected_output_start_byte: int | None,
+        selected_output_end_byte: int | None,
+        terminal_a3_code: str | None,
+    ) -> FieldNoteCreatorLiveA3CompilerAudit:
+        _identity_text(proof_attempt_id, "A3 proof-attempt ID", maximum=256)
+        _identity_text(run_id, "A3 Run ID", maximum=256)
+        _identity_sha256(output_artifact_id, "A3 output artifact ID")
+        _identity_count(
+            source_note_byte_count,
+            "A3 source Note byte count",
+            positive=True,
+        )
+        _identity_sha256(source_note_sha256, "A3 source Note SHA-256")
+        _identity_count(output_byte_count, "A3 output byte count", positive=True)
+        _identity_sha256(output_sha256, "A3 output SHA-256")
+        _identity_count(eligible_candidate_count, "A3 eligible candidate count")
+        _identity_count(
+            longest_candidate_byte_count,
+            "A3 longest candidate byte count",
+        )
+        _identity_count(winning_candidate_count, "A3 winning candidate count")
+        if not isinstance(rejection_counts, FieldNoteCreatorLiveA3RejectionCounts):
+            raise FieldNoteCreatorLiveValidationError(
+                "A3 rejection counts are invalid."
+            )
+        offsets = (
+            selected_source_start_byte,
+            selected_source_end_byte,
+            selected_output_start_byte,
+            selected_output_end_byte,
+        )
+        if winning_candidate_count == 1:
+            if (
+                eligible_candidate_count < 1
+                or terminal_a3_code is not None
+                or any(type(value) is not int for value in offsets)
+            ):
+                raise FieldNoteCreatorLiveValidationError(
+                    "A3 winning offsets are invalid."
+                )
+            source_start = selected_source_start_byte
+            source_end = selected_source_end_byte
+            output_start = selected_output_start_byte
+            output_end = selected_output_end_byte
+            assert isinstance(source_start, int)
+            assert isinstance(source_end, int)
+            assert isinstance(output_start, int)
+            assert isinstance(output_end, int)
+            if (
+                not 0 <= source_start < source_end <= source_note_byte_count
+                or not 0 <= output_start < output_end <= output_byte_count
+                or source_end - source_start != output_end - output_start
+                or longest_candidate_byte_count != source_end - source_start
+            ):
+                raise FieldNoteCreatorLiveValidationError(
+                    "A3 winning offsets are out of bounds."
+                )
+        else:
+            if any(value is not None for value in offsets):
+                raise FieldNoteCreatorLiveValidationError(
+                    "A3 non-winning offsets must be null."
+                )
+            expected_code = (
+                "A3_EXACT_STRUCTURE_MISSING"
+                if eligible_candidate_count == 0
+                else "A3_EXACT_STRUCTURE_AMBIGUOUS"
+            )
+            if (
+                winning_candidate_count < 0
+                or terminal_a3_code != expected_code
+                or (
+                    eligible_candidate_count == 0
+                    and (
+                        winning_candidate_count != 0
+                        or longest_candidate_byte_count != 0
+                    )
+                )
+                or (
+                    eligible_candidate_count > 0
+                    and winning_candidate_count < 2
+                )
+            ):
+                raise FieldNoteCreatorLiveValidationError(
+                    "A3 terminal compiler result is invalid."
+                )
+        body = {
+            "schema": A3_COMPILER_AUDIT_SCHEMA,
+            "proof_attempt_id": proof_attempt_id,
+            "run_id": run_id,
+            "output_artifact_id": output_artifact_id,
+            "compiler_version": A3_COMPILER_VERSION,
+            "compiler_branch": A3_COMPILER_BRANCH,
+            "source_note_byte_count": source_note_byte_count,
+            "source_note_sha256": source_note_sha256,
+            "output_byte_count": output_byte_count,
+            "output_sha256": output_sha256,
+            "eligible_candidate_count": eligible_candidate_count,
+            "rejection_counts": rejection_counts.as_dict(),
+            "longest_candidate_byte_count": longest_candidate_byte_count,
+            "winning_candidate_count": winning_candidate_count,
+            "selected_source_start_byte": selected_source_start_byte,
+            "selected_source_end_byte": selected_source_end_byte,
+            "selected_output_start_byte": selected_output_start_byte,
+            "selected_output_end_byte": selected_output_end_byte,
+            "terminal_a3_code": terminal_a3_code,
+        }
+        value = object.__new__(cls)
+        for field, item in {
+            **body,
+            "rejection_counts": rejection_counts,
+            "audit_sha256": _canonical_sha256(body),
+        }.items():
+            object.__setattr__(value, field, item)
+        return value
+
+    def _body(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "proof_attempt_id": self.proof_attempt_id,
+            "run_id": self.run_id,
+            "output_artifact_id": self.output_artifact_id,
+            "compiler_version": self.compiler_version,
+            "compiler_branch": self.compiler_branch,
+            "source_note_byte_count": self.source_note_byte_count,
+            "source_note_sha256": self.source_note_sha256,
+            "output_byte_count": self.output_byte_count,
+            "output_sha256": self.output_sha256,
+            "eligible_candidate_count": self.eligible_candidate_count,
+            "rejection_counts": self.rejection_counts.as_dict(),
+            "longest_candidate_byte_count": self.longest_candidate_byte_count,
+            "winning_candidate_count": self.winning_candidate_count,
+            "selected_source_start_byte": self.selected_source_start_byte,
+            "selected_source_end_byte": self.selected_source_end_byte,
+            "selected_output_start_byte": self.selected_output_start_byte,
+            "selected_output_end_byte": self.selected_output_end_byte,
+            "terminal_a3_code": self.terminal_a3_code,
+        }
+
+    def as_dict(self) -> dict[str, Any]:
+        return {**self._body(), "audit_sha256": self.audit_sha256}
+
+    @classmethod
+    def from_dict(cls, value: Any) -> FieldNoteCreatorLiveA3CompilerAudit:
+        fields = {
+            "schema",
+            "proof_attempt_id",
+            "run_id",
+            "output_artifact_id",
+            "compiler_version",
+            "compiler_branch",
+            "source_note_byte_count",
+            "source_note_sha256",
+            "output_byte_count",
+            "output_sha256",
+            "eligible_candidate_count",
+            "rejection_counts",
+            "longest_candidate_byte_count",
+            "winning_candidate_count",
+            "selected_source_start_byte",
+            "selected_source_end_byte",
+            "selected_output_start_byte",
+            "selected_output_end_byte",
+            "terminal_a3_code",
+            "audit_sha256",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise FieldNoteCreatorLiveValidationError(
+                "A3 compiler audit record is invalid."
+            )
+        if (
+            value["schema"] != A3_COMPILER_AUDIT_SCHEMA
+            or value["compiler_version"] != A3_COMPILER_VERSION
+            or value["compiler_branch"] != A3_COMPILER_BRANCH
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "A3 compiler audit fixed identity is invalid."
+            )
+        issued = cls.issue(
+            proof_attempt_id=value["proof_attempt_id"],
+            run_id=value["run_id"],
+            output_artifact_id=value["output_artifact_id"],
+            source_note_byte_count=value["source_note_byte_count"],
+            source_note_sha256=value["source_note_sha256"],
+            output_byte_count=value["output_byte_count"],
+            output_sha256=value["output_sha256"],
+            eligible_candidate_count=value["eligible_candidate_count"],
+            rejection_counts=FieldNoteCreatorLiveA3RejectionCounts.from_dict(
+                value["rejection_counts"]
+            ),
+            longest_candidate_byte_count=value["longest_candidate_byte_count"],
+            winning_candidate_count=value["winning_candidate_count"],
+            selected_source_start_byte=value["selected_source_start_byte"],
+            selected_source_end_byte=value["selected_source_end_byte"],
+            selected_output_start_byte=value["selected_output_start_byte"],
+            selected_output_end_byte=value["selected_output_end_byte"],
+            terminal_a3_code=value["terminal_a3_code"],
+        )
+        if issued.audit_sha256 != value["audit_sha256"]:
+            raise FieldNoteCreatorLiveValidationError(
+                "A3 compiler audit canonical identity is invalid."
+            )
+        return issued
 
 
 def _proposal_diagnostic_reason_matches(
@@ -639,14 +1517,21 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
                 repair_action="RECEIPT_REWRITE",
             )
         kind = value["kind"]
-        if kind not in {
+        base_kinds = {
             "ATTEMPT_OPENED",
             "RUN_1_OPENED",
             "RUN_2_OPENED",
             "CHECKPOINT",
             "ATTEMPT_FAILED",
             "TRACE_COMPLETED",
-        }:
+        }
+        v3_kinds = {
+            "RUN_2_OUTPUT_IDENTITY_RECORDED",
+            "A3_COMPILER_AUDIT_RECORDED",
+        }
+        if kind not in base_kinds | v3_kinds or (
+            kind in v3_kinds and value["schema"] != CREATOR_LIVE_RECORD_SCHEMA_V3
+        ):
             raise _JournalIntegrityError(
                 "CREATOR_LIVE_DURABLE_TRACE_TAMPERED",
                 repair_action="RECEIPT_REWRITE",
@@ -665,6 +1550,7 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
             value["schema"] not in {
                 CREATOR_LIVE_RECORD_SCHEMA,
                 CREATOR_LIVE_RECORD_SCHEMA_V2,
+                CREATOR_LIVE_RECORD_SCHEMA_V3,
             }
             or value["schema"] != record_schema
             or value["sequence"] != index
@@ -742,6 +1628,7 @@ def _parse_anchors(raw: bytes) -> tuple[_AnchorRecord, ...]:
             value["schema"] not in {
                 CREATOR_LIVE_ANCHOR_SCHEMA,
                 CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+                CREATOR_LIVE_ANCHOR_SCHEMA_V3,
             }
             or value["schema"] != anchor_schema
             or value["generation"] != generation
@@ -1186,7 +2073,15 @@ class FieldNoteCreatorLiveTraceReadback:
             and self.trace_chain_head_sha256 == proof_trace[-1].trace_sha256
             and self.anchor_record_count
             == self.journal_record_count
-            - (1 if self.schema == CREATOR_LIVE_READBACK_SCHEMA_V2 else 0)
+            - (
+                1
+                if self.schema
+                in {
+                    CREATOR_LIVE_READBACK_SCHEMA_V2,
+                    CREATOR_LIVE_READBACK_SCHEMA_V3,
+                }
+                else 0
+            )
             and self.journal_byte_length > 0
             and all(
                 event.runtime_provenance == self.runtime_provenance
@@ -1282,6 +2177,61 @@ class FieldNoteCreatorLiveTraceReadbackV2(FieldNoteCreatorLiveTraceReadback):
         )
 
 
+@dataclass(frozen=True, init=False)
+class FieldNoteCreatorLiveTraceReadbackV3(FieldNoteCreatorLiveTraceReadbackV2):
+    """Forward-only content-free output and compiler audit projection."""
+
+    terminal_projection_binding: FieldNoteCreatorLiveTerminalProjectionBinding
+    run_2_output_identity: FieldNoteCreatorLiveRun2OutputIdentity | None
+    a3_compiler_audit: FieldNoteCreatorLiveA3CompilerAudit | None
+
+    @classmethod
+    def _create_v3(
+        cls,
+        *,
+        terminal_projection_binding: FieldNoteCreatorLiveTerminalProjectionBinding,
+        run_2_output_identity: FieldNoteCreatorLiveRun2OutputIdentity | None,
+        a3_compiler_audit: FieldNoteCreatorLiveA3CompilerAudit | None,
+        **kwargs: Any,
+    ) -> FieldNoteCreatorLiveTraceReadbackV3:
+        if not isinstance(
+            terminal_projection_binding,
+            FieldNoteCreatorLiveTerminalProjectionBinding,
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "v0.3 terminal projection binding is invalid."
+            )
+        value = super()._create_v2(**kwargs)
+        assert isinstance(value, cls)
+        object.__setattr__(value, "schema", CREATOR_LIVE_READBACK_SCHEMA_V3)
+        object.__setattr__(
+            value,
+            "terminal_projection_binding",
+            terminal_projection_binding,
+        )
+        object.__setattr__(value, "run_2_output_identity", run_2_output_identity)
+        object.__setattr__(value, "a3_compiler_audit", a3_compiler_audit)
+        return value
+
+    def _body(self) -> dict[str, Any]:
+        return {
+            **super()._body(),
+            "terminal_projection_binding": (
+                self.terminal_projection_binding.as_dict()
+            ),
+            "run_2_output_identity": (
+                self.run_2_output_identity.as_dict()
+                if self.run_2_output_identity is not None
+                else None
+            ),
+            "a3_compiler_audit": (
+                self.a3_compiler_audit.as_dict()
+                if self.a3_compiler_audit is not None
+                else None
+            ),
+        }
+
+
 @dataclass(frozen=True)
 class _StaticIdentity:
     attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt
@@ -1293,6 +2243,9 @@ class _StaticIdentity:
     record_schema: str
     anchor_schema: str
     attempt_opened_at: str | None
+    terminal_projection_binding: (
+        FieldNoteCreatorLiveTerminalProjectionBinding | None
+    )
 
 
 def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
@@ -1302,8 +2255,12 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
             repair_action="EVIDENCE_DELETION",
         )
     payload = records[0].payload
-    if records[0].schema == CREATOR_LIVE_RECORD_SCHEMA_V2:
-        if set(payload) != {
+    if records[0].schema in {
+        CREATOR_LIVE_RECORD_SCHEMA_V2,
+        CREATOR_LIVE_RECORD_SCHEMA_V3,
+    }:
+        is_v3 = records[0].schema == CREATOR_LIVE_RECORD_SCHEMA_V3
+        required_fields = {
             "journal_schema",
             "attempt",
             "attempt_opened_at",
@@ -1311,7 +2268,17 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
             "runtime",
             "run_1_id",
             "one_attempt_no_retry",
-        } or payload["journal_schema"] != CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+        }
+        if is_v3:
+            required_fields.add("terminal_projection_binding")
+        expected_journal_schema = (
+            CREATOR_LIVE_JOURNAL_SCHEMA_V3
+            if is_v3
+            else CREATOR_LIVE_JOURNAL_SCHEMA_V2
+        )
+        if set(payload) != required_fields or payload["journal_schema"] != (
+            expected_journal_schema
+        ):
             raise _JournalIntegrityError(
                 "CREATOR_LIVE_ATTEMPT_RECORD_INVALID",
                 repair_action="RECEIPT_REWRITE",
@@ -1369,16 +2336,52 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
             runtime=runtime,
             run_1=run_1,
         )
+        terminal_projection_binding = None
+        if is_v3:
+            try:
+                terminal_projection_binding = (
+                    FieldNoteCreatorLiveTerminalProjectionBinding.from_dict(
+                        payload["terminal_projection_binding"]
+                    )
+                )
+            except FieldNoteCreatorLiveValidationError as exc:
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_TERMINAL_PROJECTION_BINDING_INVALID",
+                    repair_action="RECEIPT_REWRITE",
+                ) from exc
+            _, implementation_authorization_time = _parse_time(
+                terminal_projection_binding.implementation_authorization_observed_at,
+                "Implementation authorization observation",
+            )
+            if (
+                implementation_authorization_time > opened_time
+                or not attempt.proof_attempt_id.endswith(
+                    "_" + terminal_projection_binding.launch_binding_sha256
+                )
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_TERMINAL_PROJECTION_BINDING_MISMATCH",
+                    repair_action="RECEIPT_REWRITE",
+                )
         return _StaticIdentity(
             attempt=attempt,
             repository=repository,
             runtime=runtime,
             run_1=run_1,
             provenance=provenance,
-            journal_schema=CREATOR_LIVE_JOURNAL_SCHEMA_V2,
-            record_schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
-            anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            journal_schema=expected_journal_schema,
+            record_schema=(
+                CREATOR_LIVE_RECORD_SCHEMA_V3
+                if is_v3
+                else CREATOR_LIVE_RECORD_SCHEMA_V2
+            ),
+            anchor_schema=(
+                CREATOR_LIVE_ANCHOR_SCHEMA_V3
+                if is_v3
+                else CREATOR_LIVE_ANCHOR_SCHEMA_V2
+            ),
             attempt_opened_at=opened_at,
+            terminal_projection_binding=terminal_projection_binding,
         )
     if set(payload) != {
         "journal_schema",
@@ -1428,6 +2431,7 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
         record_schema=CREATOR_LIVE_RECORD_SCHEMA,
         anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA,
         attempt_opened_at=None,
+        terminal_projection_binding=None,
     )
 
 
@@ -1455,6 +2459,8 @@ def _project_records(
     captured_note_byte_count: int | None = None
     a1_capture_commit: FieldNoteCreatorLiveA1CaptureCommitReceipt | None = None
     a1_proposal_diagnostic: FieldNoteA1ProposalDiagnostic | None = None
+    run_2_output_identity: FieldNoteCreatorLiveRun2OutputIdentity | None = None
+    a3_compiler_audit: FieldNoteCreatorLiveA3CompilerAudit | None = None
     a3_reuse_event_id: str | None = None
     state: CreatorLiveAttemptState = "OPEN"
     failure_boundary: WholeFlowBoundary | None = None
@@ -1465,7 +2471,8 @@ def _project_records(
 
     start_index = (
         2
-        if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2
+        if static.journal_schema
+        in {CREATOR_LIVE_JOURNAL_SCHEMA_V2, CREATOR_LIVE_JOURNAL_SCHEMA_V3}
         else 1
     )
     for record in records[start_index:]:
@@ -1509,6 +2516,86 @@ def _project_records(
                     "CREATOR_LIVE_RUN_ORDER_INVALID",
                     repair_action="TIMESTAMP_CHANGE",
                 )
+            continue
+        if record.kind == "RUN_2_OUTPUT_IDENTITY_RECORDED":
+            if (
+                static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V3
+                or run_2 is None
+                or len(events) != 2
+                or run_2_output_identity is not None
+                or a3_compiler_audit is not None
+                or static.terminal_projection_binding is None
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_RUN_2_OUTPUT_ORDER_INVALID",
+                    repair_action="RECEIPT_REWRITE",
+                )
+            try:
+                candidate_output_identity = (
+                    FieldNoteCreatorLiveRun2OutputIdentity.from_dict(payload)
+                )
+            except FieldNoteCreatorLiveValidationError as exc:
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_RUN_2_OUTPUT_IDENTITY_INVALID",
+                    repair_action="RECEIPT_REWRITE",
+                ) from exc
+            expected_task = static.terminal_projection_binding.run_2_task
+            if (
+                candidate_output_identity.proof_attempt_id
+                != static.attempt.proof_attempt_id
+                or candidate_output_identity.run_id != run_2.run_id
+                or candidate_output_identity.task_byte_count
+                != expected_task.byte_count
+                or candidate_output_identity.task_sha256 != expected_task.sha256
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_RUN_2_OUTPUT_IDENTITY_MISMATCH",
+                    repair_action="RECEIPT_REWRITE",
+                )
+            run_2_output_identity = candidate_output_identity
+            continue
+        if record.kind == "A3_COMPILER_AUDIT_RECORDED":
+            if (
+                static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V3
+                or run_2 is None
+                or len(events) != 2
+                or run_2_output_identity is None
+                or a3_compiler_audit is not None
+                or captured_note is None
+                or captured_note_byte_count is None
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_A3_COMPILER_AUDIT_ORDER_INVALID",
+                    repair_action="RECEIPT_REWRITE",
+                )
+            try:
+                candidate_audit = FieldNoteCreatorLiveA3CompilerAudit.from_dict(
+                    payload
+                )
+            except FieldNoteCreatorLiveValidationError as exc:
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_A3_COMPILER_AUDIT_INVALID",
+                    repair_action="RECEIPT_REWRITE",
+                ) from exc
+            if (
+                candidate_audit.proof_attempt_id
+                != static.attempt.proof_attempt_id
+                or candidate_audit.run_id != run_2.run_id
+                or candidate_audit.output_artifact_id
+                != run_2_output_identity.output_artifact.artifact_id
+                or candidate_audit.output_byte_count
+                != run_2_output_identity.final_output_byte_count
+                or candidate_audit.output_sha256
+                != run_2_output_identity.final_output_sha256
+                or candidate_audit.source_note_byte_count
+                != captured_note_byte_count
+                or candidate_audit.source_note_sha256 != captured_note.note_sha256
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_A3_COMPILER_AUDIT_MISMATCH",
+                    repair_action="RECEIPT_REWRITE",
+                )
+            a3_compiler_audit = candidate_audit
             continue
         if record.kind == "CHECKPOINT":
             if set(payload) != {"event", "binding"}:
@@ -1609,6 +2696,16 @@ def _project_records(
                         repair_action="RECEIPT_REWRITE",
                     )
             elif index == 2:
+                if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3 and (
+                    run_2_output_identity is None
+                    or a3_compiler_audit is None
+                    or a3_compiler_audit.winning_candidate_count != 1
+                    or a3_compiler_audit.terminal_a3_code is not None
+                ):
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_A3_DURABLE_AUDIT_MISSING",
+                        repair_action="EVIDENCE_DELETION",
+                    )
                 if set(binding) != {
                     "evidence_type",
                     "evidence_sha256",
@@ -1652,7 +2749,10 @@ def _project_records(
                 "proposal_diagnostic",
                 "proposal_diagnostic_sha256",
             }
-            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            if static.journal_schema in {
+                CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            }:
                 legacy_fields = legacy_fields | {"proof_as_of"}
                 diagnostic_fields = diagnostic_fields | {"proof_as_of"}
             if set(payload) not in {
@@ -1697,7 +2797,10 @@ def _project_records(
             failure_boundary = boundary
             failure_reason = _bounded_reason(payload["failure_reason"])
             repair_action = action
-            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            if static.journal_schema in {
+                CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            }:
                 terminal_proof_as_of, terminal_time = _parse_time(
                     payload["proof_as_of"],
                     "Terminal Proof As-of",
@@ -1717,6 +2820,23 @@ def _project_records(
                         "CREATOR_LIVE_TERMINAL_CUTOFF_INVALID",
                         repair_action="TIMESTAMP_CHANGE",
                     )
+            if (
+                static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3
+                and boundary == "A3_REUSE"
+                and failure_reason
+                in {
+                    "A3_EXACT_STRUCTURE_MISSING",
+                    "A3_EXACT_STRUCTURE_AMBIGUOUS",
+                }
+                and (
+                    a3_compiler_audit is None
+                    or a3_compiler_audit.terminal_a3_code != failure_reason
+                )
+            ):
+                raise _JournalIntegrityError(
+                    "CREATOR_LIVE_A3_TERMINAL_AUDIT_MISMATCH",
+                    repair_action="RECEIPT_REWRITE",
+                )
             if set(payload) == diagnostic_fields:
                 if (
                     boundary != "A1_CAPTURE"
@@ -1758,12 +2878,24 @@ def _project_records(
                 "runtime_provenance_id",
                 "no_repair_verified",
             }
-            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            if static.journal_schema in {
+                CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            }:
                 completion_fields.add("proof_as_of")
             if set(payload) != completion_fields or (
                 len(events) != len(_STAGES)
                 or run_2 is None
                 or a3_reuse_event_id is None
+                or (
+                    static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3
+                    and (
+                        run_2_output_identity is None
+                        or a3_compiler_audit is None
+                        or a3_compiler_audit.winning_candidate_count != 1
+                        or a3_compiler_audit.terminal_a3_code is not None
+                    )
+                )
                 or payload["trace_event_count"] != len(_STAGES)
                 or payload["trace_chain_head_sha256"] != previous_trace
                 or payload["runtime_provenance_id"]
@@ -1774,7 +2906,10 @@ def _project_records(
                     "CREATOR_LIVE_COMPLETION_RECORD_INVALID",
                     repair_action="RECEIPT_REWRITE",
                 )
-            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            if static.journal_schema in {
+                CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            }:
                 terminal_proof_as_of, terminal_time = _parse_time(
                     payload["proof_as_of"],
                     "Terminal Proof As-of",
@@ -1828,6 +2963,21 @@ def _project_records(
         anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=True,
     )
+    if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3:
+        assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
+        assert static.attempt_opened_at is not None
+        assert static.terminal_projection_binding is not None
+        return FieldNoteCreatorLiveTraceReadbackV3._create_v3(
+            terminal_projection_binding=static.terminal_projection_binding,
+            run_2_output_identity=run_2_output_identity,
+            a3_compiler_audit=a3_compiler_audit,
+            authorization_observed_at=(
+                static.attempt.authorization_observed_at
+            ),
+            attempt_opened_at=static.attempt_opened_at,
+            terminal_proof_as_of=terminal_proof_as_of,
+            **readback_fields,
+        )
     if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
         assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
         assert static.attempt_opened_at is not None
@@ -1878,6 +3028,21 @@ def _failed_readback(
         anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=False,
     )
+    if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3:
+        assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
+        assert static.attempt_opened_at is not None
+        assert static.terminal_projection_binding is not None
+        return FieldNoteCreatorLiveTraceReadbackV3._create_v3(
+            terminal_projection_binding=static.terminal_projection_binding,
+            run_2_output_identity=None,
+            a3_compiler_audit=None,
+            authorization_observed_at=(
+                static.attempt.authorization_observed_at
+            ),
+            attempt_opened_at=static.attempt_opened_at,
+            terminal_proof_as_of=None,
+            **fields,
+        )
     if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
         assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
         assert static.attempt_opened_at is not None
@@ -1908,15 +3073,24 @@ class FieldNoteCreatorLiveProofRuntime:
     ) -> None:
         self._storage_root = storage_root
         is_v2 = static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2
+        is_v3 = static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3
         self._journal_path = storage_root / (
-            CREATOR_LIVE_JOURNAL_FILENAME_V2
-            if is_v2
-            else CREATOR_LIVE_JOURNAL_FILENAME
+            CREATOR_LIVE_JOURNAL_FILENAME_V3
+            if is_v3
+            else (
+                CREATOR_LIVE_JOURNAL_FILENAME_V2
+                if is_v2
+                else CREATOR_LIVE_JOURNAL_FILENAME
+            )
         )
         self._anchor_path = storage_root / (
-            CREATOR_LIVE_ANCHOR_FILENAME_V2
-            if is_v2
-            else CREATOR_LIVE_ANCHOR_FILENAME
+            CREATOR_LIVE_ANCHOR_FILENAME_V3
+            if is_v3
+            else (
+                CREATOR_LIVE_ANCHOR_FILENAME_V2
+                if is_v2
+                else CREATOR_LIVE_ANCHOR_FILENAME
+            )
         )
         self._static = static
         self._lock = threading.Lock()
@@ -1938,6 +3112,9 @@ class FieldNoteCreatorLiveProofRuntime:
         source_repository: FieldNoteSourceRepositoryIdentity,
         run_1_id: str,
         runtime: CodexRuntimeIdentity,
+        terminal_projection_binding: (
+            FieldNoteCreatorLiveTerminalProjectionBinding | None
+        ) = None,
     ) -> FieldNoteCreatorLiveProofRuntime:
         if not isinstance(attempt, FieldNoteCreatorLiveAttempt):
             raise FieldNoteCreatorLiveValidationError(
@@ -1949,6 +3126,20 @@ class FieldNoteCreatorLiveProofRuntime:
         ) or not isinstance(runtime, CodexRuntimeIdentity):
             raise FieldNoteCreatorLiveValidationError(
                 "Creator-live runtime identity is not typed."
+            )
+        is_v3 = terminal_projection_binding is not None
+        if is_v3 and not isinstance(
+            terminal_projection_binding,
+            FieldNoteCreatorLiveTerminalProjectionBinding,
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Creator-live terminal projection binding is not typed."
+            )
+        if is_v3 and not attempt.proof_attempt_id.endswith(
+            "_" + terminal_projection_binding.launch_binding_sha256
+        ):
+            raise FieldNoteCreatorLiveValidationError(
+                "Creator-live launch binding does not match the attempt."
             )
         if (
             not isinstance(run_1_id, str)
@@ -1977,6 +3168,8 @@ class FieldNoteCreatorLiveProofRuntime:
                 CREATOR_LIVE_ANCHOR_FILENAME,
                 CREATOR_LIVE_JOURNAL_FILENAME_V2,
                 CREATOR_LIVE_ANCHOR_FILENAME_V2,
+                CREATOR_LIVE_JOURNAL_FILENAME_V3,
+                CREATOR_LIVE_ANCHOR_FILENAME_V3,
             )
         ):
             raise FieldNoteCreatorLiveAttemptExistsError(
@@ -2022,13 +3215,26 @@ class FieldNoteCreatorLiveProofRuntime:
             runtime=runtime,
             run_1=run_1,
             provenance=provenance,
-            journal_schema=CREATOR_LIVE_JOURNAL_SCHEMA_V2,
-            record_schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
-            anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            journal_schema=(
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3
+                if is_v3
+                else CREATOR_LIVE_JOURNAL_SCHEMA_V2
+            ),
+            record_schema=(
+                CREATOR_LIVE_RECORD_SCHEMA_V3
+                if is_v3
+                else CREATOR_LIVE_RECORD_SCHEMA_V2
+            ),
+            anchor_schema=(
+                CREATOR_LIVE_ANCHOR_SCHEMA_V3
+                if is_v3
+                else CREATOR_LIVE_ANCHOR_SCHEMA_V2
+            ),
             attempt_opened_at=attempt_opened_at,
+            terminal_projection_binding=terminal_projection_binding,
         )
         payload = {
-            "journal_schema": CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+            "journal_schema": static.journal_schema,
             "attempt": attempt.as_dict(),
             "attempt_opened_at": attempt_opened_at,
             "source_repository": source_repository.as_dict(),
@@ -2036,12 +3242,16 @@ class FieldNoteCreatorLiveProofRuntime:
             "run_1_id": run_1_id,
             "one_attempt_no_retry": True,
         }
+        if terminal_projection_binding is not None:
+            payload["terminal_projection_binding"] = (
+                terminal_projection_binding.as_dict()
+            )
         record = _JournalRecord.create(
             sequence=0,
             kind="ATTEMPT_OPENED",
             payload=payload,
             previous_record_sha256=JOURNAL_GENESIS_SHA256,
-            schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
+            schema=static.record_schema,
         )
         run_record = _JournalRecord.create(
             sequence=1,
@@ -2051,9 +3261,13 @@ class FieldNoteCreatorLiveProofRuntime:
                 "runtime_provenance": provenance.as_dict(),
             },
             previous_record_sha256=record.record_sha256,
-            schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
+            schema=static.record_schema,
         )
-        path = root / CREATOR_LIVE_JOURNAL_FILENAME_V2
+        path = root / (
+            CREATOR_LIVE_JOURNAL_FILENAME_V3
+            if is_v3
+            else CREATOR_LIVE_JOURNAL_FILENAME_V2
+        )
         try:
             descriptor = os.open(
                 path,
@@ -2080,9 +3294,13 @@ class FieldNoteCreatorLiveProofRuntime:
             journal_raw=journal_raw,
             journal_records=(record, run_record),
             previous_anchor_sha256=ANCHOR_GENESIS_SHA256,
-            schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            schema=static.anchor_schema,
         )
-        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME_V2
+        anchor_path = root / (
+            CREATOR_LIVE_ANCHOR_FILENAME_V3
+            if is_v3
+            else CREATOR_LIVE_ANCHOR_FILENAME_V2
+        )
         try:
             anchor_descriptor = os.open(
                 anchor_path,
@@ -2121,11 +3339,15 @@ class FieldNoteCreatorLiveProofRuntime:
         storage_root: Path,
     ) -> FieldNoteCreatorLiveProofRuntime:
         root = Path(storage_root)
+        v3_path = root / CREATOR_LIVE_JOURNAL_FILENAME_V3
+        v3_anchor = root / CREATOR_LIVE_ANCHOR_FILENAME_V3
         v2_path = root / CREATOR_LIVE_JOURNAL_FILENAME_V2
         v2_anchor = root / CREATOR_LIVE_ANCHOR_FILENAME_V2
         v1_path = root / CREATOR_LIVE_JOURNAL_FILENAME
         v1_anchor = root / CREATOR_LIVE_ANCHOR_FILENAME
-        if v2_path.exists() or v2_anchor.exists():
+        if v3_path.exists() or v3_anchor.exists():
+            path, anchor_path = v3_path, v3_anchor
+        elif v2_path.exists() or v2_anchor.exists():
             path, anchor_path = v2_path, v2_anchor
         else:
             path, anchor_path = v1_path, v1_anchor
@@ -2206,7 +3428,10 @@ class FieldNoteCreatorLiveProofRuntime:
         kind: JournalRecordKind,
         payload: dict[str, Any],
     ) -> FieldNoteCreatorLiveTraceReadback:
-        if self._static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+        if self._static.journal_schema not in {
+            CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+            CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+        }:
             raise FieldNoteCreatorLiveStageError(
                 "Historical v0.1 creator-live attempts are read-only."
             )
@@ -2291,6 +3516,12 @@ class FieldNoteCreatorLiveProofRuntime:
                 fcntl.flock(journal_descriptor, fcntl.LOCK_UN)
                 os.close(anchor_descriptor)
                 os.close(journal_descriptor)
+        if self._static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V3:
+            directory = os.open(self._storage_root, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
         return self.read_back()
 
     def _terminal_failure(
@@ -2331,7 +3562,10 @@ class FieldNoteCreatorLiveProofRuntime:
             "failure_reason": bounded,
             "repair_action": repair_action,
         }
-        if self._static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+        if self._static.journal_schema in {
+            CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+            CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+        }:
             payload["proof_as_of"] = self._runtime_terminal_proof_as_of(
                 readback
             )
@@ -2445,7 +3679,10 @@ class FieldNoteCreatorLiveProofRuntime:
                 ),
                 "no_repair_verified": True,
             }
-            if self._static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            if self._static.journal_schema in {
+                CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+                CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            }:
                 completion_payload["proof_as_of"] = (
                     self._runtime_terminal_proof_as_of(completed)
                 )
@@ -2454,6 +3691,87 @@ class FieldNoteCreatorLiveProofRuntime:
                 completion_payload,
             )
         return event
+
+    def record_run_2_output_identity(
+        self,
+        identity: FieldNoteCreatorLiveRun2OutputIdentity,
+    ) -> FieldNoteCreatorLiveTraceReadbackV3:
+        readback = self._require_stage("A3_REUSE")
+        if self._static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V3 or (
+            not isinstance(readback, FieldNoteCreatorLiveTraceReadbackV3)
+        ):
+            raise FieldNoteCreatorLiveStageError(
+                "Run 2 output identity requires a v0.3 attempt."
+            )
+        if (
+            not isinstance(identity, FieldNoteCreatorLiveRun2OutputIdentity)
+            or readback.run_2 is None
+            or readback.run_2_output_identity is not None
+            or readback.a3_compiler_audit is not None
+            or identity.proof_attempt_id != readback.proof_attempt_id
+            or identity.run_id != readback.run_2.run_id
+            or identity.task_byte_count
+            != readback.terminal_projection_binding.run_2_task.byte_count
+            or identity.task_sha256
+            != readback.terminal_projection_binding.run_2_task.sha256
+        ):
+            self._terminal_failure(
+                "A3_REUSE",
+                "A3_RUN_2_OUTPUT_IDENTITY_INVALID",
+            )
+        recorded = self._append(
+            "RUN_2_OUTPUT_IDENTITY_RECORDED",
+            identity.as_dict(),
+        )
+        if not isinstance(recorded, FieldNoteCreatorLiveTraceReadbackV3) or (
+            recorded.run_2_output_identity != identity
+        ):
+            raise FieldNoteCreatorLiveDurabilityError(
+                "Run 2 output identity did not survive exact read-back."
+            )
+        return recorded
+
+    def record_a3_compiler_audit(
+        self,
+        audit: FieldNoteCreatorLiveA3CompilerAudit,
+    ) -> FieldNoteCreatorLiveTraceReadbackV3:
+        readback = self._require_stage("A3_REUSE")
+        if self._static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V3 or (
+            not isinstance(readback, FieldNoteCreatorLiveTraceReadbackV3)
+        ):
+            raise FieldNoteCreatorLiveStageError(
+                "A3 compiler audit requires a v0.3 attempt."
+            )
+        output_identity = readback.run_2_output_identity
+        note = readback.captured_note
+        if (
+            not isinstance(audit, FieldNoteCreatorLiveA3CompilerAudit)
+            or output_identity is None
+            or readback.a3_compiler_audit is not None
+            or readback.run_2 is None
+            or note is None
+            or readback.captured_note_byte_count is None
+            or audit.proof_attempt_id != readback.proof_attempt_id
+            or audit.run_id != readback.run_2.run_id
+            or audit.output_artifact_id
+            != output_identity.output_artifact.artifact_id
+            or audit.output_byte_count != output_identity.final_output_byte_count
+            or audit.output_sha256 != output_identity.final_output_sha256
+            or audit.source_note_byte_count != readback.captured_note_byte_count
+            or audit.source_note_sha256 != note.note_sha256
+        ):
+            self._terminal_failure(
+                "A3_REUSE",
+                "A3_COMPILER_AUDIT_IDENTITY_INVALID",
+            )
+        recorded = self._append("A3_COMPILER_AUDIT_RECORDED", audit.as_dict())
+        if not isinstance(recorded, FieldNoteCreatorLiveTraceReadbackV3) or (
+            recorded.a3_compiler_audit != audit
+        ):
+            raise FieldNoteCreatorLiveDurabilityError(
+                "A3 compiler audit did not survive exact read-back."
+            )
+        return recorded
 
     def open_run_2(
         self,
@@ -2698,6 +4016,33 @@ class FieldNoteCreatorLiveProofRuntime:
                 "A3_REUSE",
                 "A3_STRUCTURE_BINDING_INVALID",
             )
+        if isinstance(readback, FieldNoteCreatorLiveTraceReadbackV3):
+            audit = readback.a3_compiler_audit
+            output_identity = readback.run_2_output_identity
+            structure = receipt.use_evidence.structure_binding
+            if (
+                audit is None
+                or output_identity is None
+                or audit.winning_candidate_count != 1
+                or audit.terminal_a3_code is not None
+                or structure.start_byte != audit.selected_source_start_byte
+                or structure.end_byte != audit.selected_source_end_byte
+                or receipt.use_evidence.evidence_class != "OUTPUT_ARTIFACT"
+                or receipt.use_evidence.evidence_origin
+                != "IMMEDIATE_COMPLETION_RECORD"
+                or receipt.use_evidence.evidence_sha256
+                != output_identity.final_output_sha256
+                or receipt.use_evidence.evidence_ref
+                != (
+                    f"run:{readback.run_2.run_id}:final-output:bytes:"
+                    f"{audit.selected_output_start_byte}:"
+                    f"{audit.selected_output_end_byte}"
+                )
+            ):
+                self._terminal_failure(
+                    "A3_REUSE",
+                    "A3_COMPILER_AUDIT_CLAIM_MISMATCH",
+                )
         if receipt.reuse_event_id != _expected_reuse_event_id(receipt):
             self._terminal_failure("A3_REUSE", "A3_REUSE_EVENT_ID_INVALID")
         if receipt.promotion != PromotionPolicyBoundary():

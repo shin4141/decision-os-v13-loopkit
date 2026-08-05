@@ -2164,6 +2164,149 @@ class CompanionServerTest(unittest.TestCase):
 
 
 class CompanionClientBehaviorTest(unittest.TestCase):
+    def test_creator_live_terminal_render_removes_all_start_paths(self) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for client behavior tests.")
+        static_root = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+        )
+        html = (static_root / "index.html").read_text(encoding="utf-8")
+        javascript = (static_root / "app.js").read_text(encoding="utf-8")
+        self.assertIn("TERMINAL — NO RETRY OR REPLACEMENT", html)
+        self.assertNotIn("832 bytes · unavailable", html)
+        self.assertNotIn("856 bytes · unavailable", html)
+        self.assertNotIn("2026-08-05T08:47:00Z", html)
+        harness = textwrap.dedent(
+            r"""
+            "use strict";
+            const assert = require("assert");
+            const fs = require("fs");
+            const vm = require("vm");
+            const source = fs.readFileSync(process.argv[1], "utf8");
+            const renderStart = source.indexOf("function renderCreatorLiveCycle005");
+            const renderEnd = source.indexOf("\nfunction render(state)", renderStart);
+            const clickStart = source.indexOf(
+              'optionalById("creator-live-start")?.addEventListener("click"'
+            );
+            const clickEnd = source.indexOf(
+              '\n\nbyId("new-run").addEventListener',
+              clickStart,
+            );
+            assert(renderStart >= 0 && renderEnd > renderStart);
+            assert(clickStart >= 0 && clickEnd > clickStart);
+
+            const ids = [
+              "creator-live-start", "creator-live-terminal-label",
+              "creator-live-cycle-005-status", "creator-live-revision",
+              "creator-live-contract", "creator-live-contract-authority",
+              "creator-live-freeze-authority", "creator-live-authorization",
+              "creator-live-implementation-authorization", "creator-live-runtime",
+              "creator-live-run-1", "creator-live-run-2",
+              "creator-live-attempt-policy", "creator-live-historical-boundary",
+              "creator-live-p0", "creator-live-binding-sha256",
+              "creator-live-stage", "creator-live-failure-code",
+              "creator-live-proof-attempt", "creator-live-proof-as-of",
+              "creator-live-journal-sha256", "creator-live-anchor-sha256",
+              "creator-live-readback-sha256", "creator-live-output-artifact",
+              "creator-live-compiler",
+            ];
+            const elements = Object.fromEntries(ids.map((id) => [id, {
+              id, textContent: "", hidden: false, disabled: false, listener: null,
+              addEventListener(_kind, listener) { this.listener = listener; },
+            }]));
+            let postCount = 0;
+            const context = {
+              byId: (id) => elements[id],
+              optionalById: (id) => elements[id] || null,
+              setText: (id, value) => { elements[id].textContent = String(value); },
+              latestState: null,
+              requestActive: false,
+              postJSON: async () => { postCount += 1; return null; },
+            };
+            vm.createContext(context);
+            vm.runInContext(source.slice(renderStart, renderEnd), context);
+            const cycle = {
+              state: "FAILED",
+              stage: "A3_REUSE",
+              storage_occupied: true,
+              start_allowed: false,
+              p0: { ready: false, failure_code: "CYCLE_005_ATTEMPT_EXISTS" },
+              launch_binding_sha256: "a".repeat(64),
+              identities: {
+                revision: "b".repeat(40),
+                contract_identity: "NOT_DURABLY_PERSISTED",
+                ordinary_contract_execution_authority: "NOT_DURABLY_PERSISTED",
+                guided_intake_freeze_authority: "NOT_DURABLY_PERSISTED",
+                runtime: {
+                  account_type: "chatgpt", model: "gpt-5.6-sol",
+                  reasoning_effort: "ultra", service_tier: "priority",
+                  codex_cli_version: "0.146.0-alpha.3.1",
+                },
+                run_1_task: {
+                  byte_count: "NOT_DURABLY_PERSISTED", sha256: "c".repeat(64),
+                },
+                run_2_task: {
+                  byte_count: "NOT_DURABLY_PERSISTED",
+                  sha256: "NOT_DURABLY_PERSISTED",
+                },
+                cycle_authorization_observed_at: "2026-08-05T06:22:00Z",
+                implementation_authorization_observed_at: "NOT_DURABLY_PERSISTED",
+                historical_boundary: "NOT_DURABLY_PERSISTED",
+                launch_binding_sha256: "a".repeat(64),
+                proof_attempt_id: "proof-fixture",
+                proof_as_of: "2026-08-05T11:24:40.255812Z",
+                journal_sha256: "d".repeat(64), anchor_sha256: "e".repeat(64),
+                readback_sha256: "f".repeat(64), terminal_stage: "A3_REUSE",
+                failure_code: "A3_EXACT_STRUCTURE_MISSING",
+                retry_count: "NOT_DURABLY_PERSISTED",
+                replacement_count: "NOT_DURABLY_PERSISTED",
+                output_artifact: "NOT_DURABLY_PERSISTED",
+                compiler: "NOT_DURABLY_PERSISTED",
+              },
+            };
+            context.renderCreatorLiveCycle005(cycle);
+            assert.strictEqual(elements["creator-live-start"].hidden, true);
+            assert.strictEqual(elements["creator-live-start"].disabled, true);
+            assert.strictEqual(elements["creator-live-terminal-label"].hidden, false);
+            assert.strictEqual(
+              elements["creator-live-contract"].textContent,
+              "NOT_DURABLY_PERSISTED",
+            );
+            assert.strictEqual(
+              elements["creator-live-run-1"].textContent,
+              `NOT_DURABLY_PERSISTED · ${"c".repeat(64)}`,
+            );
+            assert.strictEqual(
+              elements["creator-live-run-2"].textContent,
+              "NOT_DURABLY_PERSISTED",
+            );
+            assert.strictEqual(
+              elements["creator-live-attempt-policy"].textContent,
+              "NOT_DURABLY_PERSISTED",
+            );
+            context.latestState = { creator_live_cycle_005: cycle };
+            vm.runInContext(source.slice(clickStart, clickEnd), context);
+            elements["creator-live-start"].disabled = false;
+            Promise.resolve(elements["creator-live-start"].listener()).then(() => {
+              assert.strictEqual(postCount, 0);
+            }).catch((error) => { console.error(error); process.exitCode = 1; });
+            """
+        )
+        completed = subprocess.run(
+            [node, "-e", harness, str(static_root / "app.js")],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            0,
+            completed.returncode,
+            msg=f"Node terminal Cycle 005 harness failed:\n{completed.stdout}{completed.stderr}",
+        )
+
     def test_operation_awareness_state_transition_harness(self) -> None:
         node = shutil.which("node")
         self.assertIsNotNone(node, "Node.js is required for client behavior tests.")

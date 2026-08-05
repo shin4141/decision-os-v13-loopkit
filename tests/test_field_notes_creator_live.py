@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -14,12 +15,24 @@ from decision_os.companion.field_notes_adapter import (
 )
 from decision_os.companion.field_notes_creator_live import (
     FieldNoteCreatorLiveA1CaptureCommitReceipt,
+    FieldNoteCreatorLiveA3CompilerAudit,
+    FieldNoteCreatorLiveA3RejectionCounts,
     FieldNoteCreatorLiveAttemptExistsError,
+    FieldNoteCreatorLiveContractIdentity,
     FieldNoteCreatorLiveDurabilityError,
+    FieldNoteCreatorLiveHistoricalBoundary,
     FieldNoteCreatorLiveProofRuntime,
+    FieldNoteCreatorLiveRun2OutputIdentity,
     FieldNoteCreatorLiveStageError,
+    FieldNoteCreatorLiveTaskIdentity,
+    FieldNoteCreatorLiveTerminalProjectionBinding,
     FieldNoteCreatorLiveTraceReadback,
+    FieldNoteCreatorLiveTraceReadbackV3,
     FieldNoteCreatorLiveValidationError,
+)
+from decision_os.companion.field_notes_creator_live_entrypoint import (
+    _claim_from_verified_a3_audit,
+    compile_run_2_output_artifact_audited,
 )
 from decision_os.companion.field_notes_reuse import (
     FieldNoteIdentity,
@@ -53,6 +66,9 @@ OBSERVED_AT = (
 )
 RUN_1_TASK = "Complete the bounded creator-live Run 1 task."
 RUN_1_TASK_SHA256 = hashlib.sha256(RUN_1_TASK.encode("utf-8")).hexdigest()
+RUN_2_TASK = "Complete the bounded creator-live Run 2 task."
+RUN_2_TASK_SHA256 = hashlib.sha256(RUN_2_TASK.encode("utf-8")).hexdigest()
+V3_LAUNCH_BINDING = "a4" * 32
 
 
 def proposal_diagnostic(
@@ -130,6 +146,66 @@ class CreatorLiveTestCase(unittest.TestCase):
                 source_repository=evidence.source_repository,
                 run_1_id=evidence.run_1.run_id,
                 runtime=evidence.run_1.runtime,
+            )
+
+    def terminal_projection_binding(
+        self,
+    ) -> FieldNoteCreatorLiveTerminalProjectionBinding:
+        return FieldNoteCreatorLiveTerminalProjectionBinding.create(
+            launch_binding_sha256=V3_LAUNCH_BINDING,
+            contract_identity=FieldNoteCreatorLiveContractIdentity(
+                profile="ORDINARY_USER_PATH_CONTRACT_APPROVED_CANDIDATE_V0_1",
+                title="Ordinary User Path Contract v0.1 — APPROVED CANDIDATE",
+                source_byte_count=11_039,
+                source_sha256="1" * 64,
+                wrapper_sha256="2" * 64,
+                interpretation_sha256="3" * 64,
+            ),
+            ordinary_contract_execution_authority="INTERPRETATION_ONLY",
+            guided_intake_freeze_authority=(
+                "IMMUTABLE_INTERPRETATION_ONLY"
+            ),
+            implementation_authorization_observed_at=(
+                "2026-08-05T09:58:00Z"
+            ),
+            run_1_task=FieldNoteCreatorLiveTaskIdentity(
+                byte_count=len(RUN_1_TASK.encode("utf-8")),
+                sha256=RUN_1_TASK_SHA256,
+            ),
+            run_2_task=FieldNoteCreatorLiveTaskIdentity(
+                byte_count=len(RUN_2_TASK.encode("utf-8")),
+                sha256=RUN_2_TASK_SHA256,
+            ),
+            historical_boundary=FieldNoteCreatorLiveHistoricalBoundary(
+                cycle_key="cycle-004",
+                state="FAILED",
+                failure_boundary="A1_CAPTURE",
+                failure_code="A1_CAPTURE_CHRONOLOGY_INVALID",
+            ),
+        )
+
+    def open_runtime_v3(
+        self,
+        label: str = "attempt-v3",
+    ) -> FieldNoteCreatorLiveProofRuntime:
+        attempt = whole_flow.FieldNoteCreatorLiveAttempt(
+            proof_attempt_id="proof_a7_fixture_005_" + V3_LAUNCH_BINDING,
+            proof_mode="CREATOR_LIVE",
+            creator_id=self.bundle.attempt.creator_id,
+            authorization_observed_at="2026-08-05T09:58:00Z",
+        )
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=("2026-08-05T09:59:00Z", self.bundle.run_1.started_at),
+        ):
+            return FieldNoteCreatorLiveProofRuntime.open_attempt(
+                self.root / label,
+                attempt=attempt,
+                source_repository=self.bundle.source_repository,
+                run_1_id=self.bundle.run_1.run_id,
+                runtime=self.bundle.run_1.runtime,
+                terminal_projection_binding=self.terminal_projection_binding(),
             )
 
     def record_a1(
@@ -225,6 +301,71 @@ class CreatorLiveTestCase(unittest.TestCase):
         self.record_a1(runtime_path, bundle=bundle)
         self.open_run_2(runtime_path, bundle=bundle)
         return runtime_path
+
+    def ready_for_a3_v3(
+        self,
+        label: str = "attempt-v3",
+    ) -> FieldNoteCreatorLiveProofRuntime:
+        runtime_path = self.open_runtime_v3(label)
+        self.record_a1(runtime_path)
+        run_2 = replace(
+            self.bundle.run_2,
+            proof_attempt_id=runtime_path.read_back().proof_attempt_id,
+        )
+        runtime_path.open_run_2(run_2)
+        assert self.bundle.a2_reconnect is not None
+        runtime_path.record_a2_reconnect(
+            self.bundle.a2_reconnect,
+            note=self.bundle.note,
+            note_bytes=self.bundle.note_bytes,
+        )
+        return runtime_path
+
+    def run_2_output_identity(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        output: bytes = b"bounded fixture output",
+    ) -> FieldNoteCreatorLiveRun2OutputIdentity:
+        readback = runtime_path.read_back()
+        assert readback.run_2 is not None
+        return FieldNoteCreatorLiveRun2OutputIdentity.create(
+            proof_attempt_id=readback.proof_attempt_id,
+            run_id=readback.run_2.run_id,
+            task_byte_count=len(RUN_2_TASK.encode("utf-8")),
+            task_sha256=RUN_2_TASK_SHA256,
+            final_output_byte_count=len(output),
+            final_output_sha256=hashlib.sha256(output).hexdigest(),
+        )
+
+    def missing_a3_audit(
+        self,
+        runtime_path: FieldNoteCreatorLiveProofRuntime,
+        output_identity: FieldNoteCreatorLiveRun2OutputIdentity,
+    ) -> FieldNoteCreatorLiveA3CompilerAudit:
+        return FieldNoteCreatorLiveA3CompilerAudit.issue(
+            proof_attempt_id=output_identity.proof_attempt_id,
+            run_id=output_identity.run_id,
+            output_artifact_id=output_identity.output_artifact.artifact_id,
+            source_note_byte_count=len(self.bundle.note_bytes),
+            source_note_sha256=self.bundle.note.note_sha256,
+            output_byte_count=output_identity.final_output_byte_count,
+            output_sha256=output_identity.final_output_sha256,
+            eligible_candidate_count=0,
+            rejection_counts=FieldNoteCreatorLiveA3RejectionCounts(
+                below_minimum_byte_length=1,
+                whole_note_range=0,
+                non_unique_source_occurrence=0,
+                absent_output_occurrence=1,
+                multiple_output_occurrences=0,
+            ),
+            longest_candidate_byte_count=0,
+            winning_candidate_count=0,
+            selected_source_start_byte=None,
+            selected_source_end_byte=None,
+            selected_output_start_byte=None,
+            selected_output_end_byte=None,
+            terminal_a3_code="A3_EXACT_STRUCTURE_MISSING",
+        )
 
     def complete_runtime(
         self,
@@ -1613,6 +1754,249 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         runtime_path, _ = self.complete_runtime("output", bundle=bundle)
         text = runtime_path.journal_path.read_text(encoding="utf-8")
         self.assertNotIn(ARTIFACT_SECRET, text)
+
+
+class CreatorLiveV3PersistenceTests(CreatorLiveTestCase):
+    def test_v3_open_uses_exact_journal_record_anchor_and_readback_schemas(
+        self,
+    ) -> None:
+        runtime_path = self.open_runtime_v3()
+        readback = runtime_path.read_back()
+        self.assertIsInstance(readback, FieldNoteCreatorLiveTraceReadbackV3)
+        self.assertEqual(creator_live.CREATOR_LIVE_READBACK_SCHEMA_V3, readback.schema)
+        self.assertEqual(
+            creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V3,
+            runtime_path.journal_path.name,
+        )
+        self.assertEqual(
+            creator_live.CREATOR_LIVE_ANCHOR_FILENAME_V3,
+            runtime_path.anchor_path.name,
+        )
+        records = tuple(
+            json.loads(line)
+            for line in runtime_path.journal_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        )
+        self.assertEqual(
+            ("ATTEMPT_OPENED", "RUN_1_OPENED"),
+            tuple(record["kind"] for record in records),
+        )
+        self.assertTrue(
+            all(
+                record["schema"] == creator_live.CREATOR_LIVE_RECORD_SCHEMA_V3
+                for record in records
+            )
+        )
+        self.assertEqual(
+            creator_live.CREATOR_LIVE_JOURNAL_SCHEMA_V3,
+            records[0]["payload"]["journal_schema"],
+        )
+        self.assertEqual(
+            self.terminal_projection_binding().as_dict(),
+            records[0]["payload"]["terminal_projection_binding"],
+        )
+        anchors = tuple(
+            json.loads(line)
+            for line in runtime_path.anchor_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        )
+        self.assertTrue(
+            all(
+                anchor["schema"] == creator_live.CREATOR_LIVE_ANCHOR_SCHEMA_V3
+                for anchor in anchors
+            )
+        )
+
+    def test_crash_after_normal_terminal_before_output_persistence_is_open_only(
+        self,
+    ) -> None:
+        runtime_path = self.ready_for_a3_v3("v3-before-output")
+        restarted = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        ).read_back()
+        self.assertEqual("OPEN", restarted.state)
+        self.assertEqual("A3_REUSE", restarted.current_stage)
+        self.assertIsNone(restarted.run_2_output_identity)
+        self.assertIsNone(restarted.a3_compiler_audit)
+
+    def test_crash_after_output_readback_before_a3_preserves_only_identity(
+        self,
+    ) -> None:
+        runtime_path = self.ready_for_a3_v3("v3-after-output")
+        identity = self.run_2_output_identity(runtime_path)
+        durable = runtime_path.record_run_2_output_identity(identity)
+        self.assertEqual(identity, durable.run_2_output_identity)
+        restarted = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        ).read_back()
+        self.assertEqual(identity, restarted.run_2_output_identity)
+        self.assertIsNone(restarted.a3_compiler_audit)
+        self.assertEqual("A3_REUSE", restarted.current_stage)
+
+    def test_crash_during_compiler_audit_persistence_fails_integrity_closed(
+        self,
+    ) -> None:
+        runtime_path = self.ready_for_a3_v3("v3-torn-audit")
+        identity = self.run_2_output_identity(runtime_path)
+        runtime_path.record_run_2_output_identity(identity)
+        audit = self.missing_a3_audit(runtime_path, identity)
+        real_write = creator_live.os.write
+        calls = 0
+
+        def torn_anchor(descriptor, data):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                return 0
+            return real_write(descriptor, data)
+
+        with patch.object(creator_live.os, "write", side_effect=torn_anchor):
+            with self.assertRaises(FieldNoteCreatorLiveDurabilityError):
+                runtime_path.record_a3_compiler_audit(audit)
+        failed = runtime_path.read_back()
+        self.assertEqual("FAILED", failed.state)
+        self.assertFalse(failed.durable_readback_verified)
+
+    def test_zero_candidate_audit_is_durable_before_exact_terminal_failure(
+        self,
+    ) -> None:
+        runtime_path = self.ready_for_a3_v3("v3-zero-audit")
+        identity = self.run_2_output_identity(runtime_path)
+        runtime_path.record_run_2_output_identity(identity)
+        audit = self.missing_a3_audit(runtime_path, identity)
+        durable = runtime_path.record_a3_compiler_audit(audit)
+        self.assertEqual(audit, durable.a3_compiler_audit)
+        with self.assertRaisesRegex(
+            FieldNoteCreatorLiveStageError,
+            "A3_EXACT_STRUCTURE_MISSING",
+        ):
+            runtime_path.record_stage_failure(
+                "A3_REUSE",
+                "A3_EXACT_STRUCTURE_MISSING",
+            )
+        terminal = runtime_path.read_back()
+        self.assertEqual("FAILED", terminal.state)
+        self.assertEqual("A3_REUSE", terminal.failure_boundary)
+        self.assertEqual("A3_EXACT_STRUCTURE_MISSING", terminal.failure_reason)
+        self.assertEqual(audit, terminal.a3_compiler_audit)
+        self.assertIsNone(terminal.a3_compiler_audit.selected_source_start_byte)
+        kinds = tuple(
+            json.loads(line)["kind"]
+            for line in runtime_path.journal_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        )
+        self.assertLess(
+            kinds.index("RUN_2_OUTPUT_IDENTITY_RECORDED"),
+            kinds.index("A3_COMPILER_AUDIT_RECORDED"),
+        )
+        self.assertLess(
+            kinds.index("A3_COMPILER_AUDIT_RECORDED"),
+            kinds.index("ATTEMPT_FAILED"),
+        )
+
+    def test_one_candidate_offsets_are_durable_before_a3_checkpoint(self) -> None:
+        runtime_path = self.ready_for_a3_v3("v3-one-winner")
+        note = self.bundle.note
+        note_bytes = self.bundle.note_bytes
+        structure = max(
+            (
+                line
+                for line in note_bytes.splitlines()
+                if len(line.strip()) >= 32 and note_bytes.count(line) == 1
+            ),
+            key=len,
+        )
+        run_2 = runtime_path.read_back().run_2
+        assert run_2 is not None
+        output = b"\n".join(
+            (
+                note.note_path.encode("utf-8"),
+                note.field_note_id.encode("utf-8"),
+                note.note_sha256.encode("utf-8"),
+                run_2.run_id.encode("utf-8"),
+                structure,
+            )
+        )
+        identity = self.run_2_output_identity(runtime_path, output)
+        runtime_path.record_run_2_output_identity(identity)
+        winner, audit = compile_run_2_output_artifact_audited(
+            note=note,
+            note_bytes=note_bytes,
+            run_2_id=run_2.run_id,
+            final_output_bytes=output,
+            output_identity=identity,
+        )
+        self.assertIsNotNone(winner)
+        durable = runtime_path.record_a3_compiler_audit(audit)
+        assert winner is not None
+        assert durable.a3_compiler_audit is not None
+        claim = _claim_from_verified_a3_audit(
+            note=note,
+            note_bytes=note_bytes,
+            run_2_id=run_2.run_id,
+            output_identity=identity,
+            observed_at=OBSERVED_AT[2],
+            winner=winner,
+            audit=durable.a3_compiler_audit,
+        )
+        receipt = assess_field_note_reuse(note, claim, note_bytes=note_bytes)
+        runtime_path.record_a3_reuse(
+            receipt,
+            note=note,
+            note_bytes=note_bytes,
+        )
+        readback = runtime_path.read_back()
+        self.assertEqual(3, readback.trace_event_count)
+        self.assertEqual(
+            claim.use_evidence.structure_binding.start_byte,
+            readback.a3_compiler_audit.selected_source_start_byte,
+        )
+        kinds = tuple(
+            json.loads(line)["kind"]
+            for line in runtime_path.journal_path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        )
+        a3_checkpoint_index = max(
+            index
+            for index, kind in enumerate(kinds)
+            if kind == "CHECKPOINT"
+        )
+        self.assertLess(
+            kinds.index("A3_COMPILER_AUDIT_RECORDED"),
+            a3_checkpoint_index,
+        )
+
+    def test_cycle_005_v2_typed_readback_and_files_remain_exact(self) -> None:
+        root = (
+            Path(__file__).resolve().parents[1]
+            / ".decision-os/field-notes/proofs/cycle-005"
+        )
+        journal = root / creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V2
+        anchor = root / creator_live.CREATOR_LIVE_ANCHOR_FILENAME_V2
+        before = (
+            hashlib.sha256(journal.read_bytes()).hexdigest(),
+            hashlib.sha256(anchor.read_bytes()).hexdigest(),
+        )
+        readback = FieldNoteCreatorLiveProofRuntime.load_attempt(root).read_back()
+        self.assertEqual(
+            (
+                "1de2e998804f5fb694707846b7deb0dc9d8b5f9cfc6027ad0210ddc270029322",
+                "e246757a7ba98849a6b4a694ababf473dc1a98baf1fc1ce0ea7daa3a6e7e8610",
+            ),
+            before,
+        )
+        self.assertEqual(
+            "481be90dc8751bda3d7b00714f5a0c650230dffa8974a1332881ce42c127710f",
+            readback.readback_sha256,
+        )
+        self.assertEqual(before, (
+            hashlib.sha256(journal.read_bytes()).hexdigest(),
+            hashlib.sha256(anchor.read_bytes()).hexdigest(),
+        ))
 
 
 class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):

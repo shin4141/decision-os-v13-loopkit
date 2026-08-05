@@ -122,6 +122,13 @@ class FieldNoteCreatorLiveA2RunCompletion:
     """Typed exact reconnect evidence observed from one completed Run 2."""
 
     run_id: str
+    task_byte_count: int
+    task_sha256: str
+    transmission_ordinal: int
+    normal_terminal: bool
+    turn_status: str
+    runtime_status: str
+    failure_diagnostic_absent: bool
     actual_runtime_identity: CodexRuntimeIdentity
     reconnect_receipt: FieldNoteReconnectReceipt
     final_output_bytes: bytes
@@ -131,6 +138,19 @@ class FieldNoteCreatorLiveA2RunCompletion:
         if (
             not isinstance(self.run_id, str)
             or not self.run_id.strip()
+            or type(self.task_byte_count) is not int
+            or self.task_byte_count <= 0
+            or not isinstance(self.task_sha256, str)
+            or len(self.task_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.task_sha256
+            )
+            or self.transmission_ordinal != 2
+            or self.normal_terminal is not True
+            or self.turn_status != "completed"
+            or self.runtime_status != "NORMAL_TERMINAL"
+            or self.failure_diagnostic_absent is not True
             or not isinstance(
                 self.actual_runtime_identity,
                 CodexRuntimeIdentity,
@@ -179,6 +199,8 @@ class FieldNotesCompanionController(CompanionController):
         self._creator_live_a2_reconnect_target: (
             FieldNoteCreatorLiveA2ReconnectTarget | None
         ) = None
+        self._creator_live_a2_task_byte_count: int | None = None
+        self._creator_live_a2_task_sha256: str | None = None
         self._creator_live_a2_completed_run_id: str | None = None
         self._creator_live_a2_run_completion: (
             FieldNoteCreatorLiveA2RunCompletion | None
@@ -237,6 +259,8 @@ class FieldNotesCompanionController(CompanionController):
 
     def _clear_creator_live_a2_locked(self) -> None:
         self._creator_live_a2_reconnect_target = None
+        self._creator_live_a2_task_byte_count = None
+        self._creator_live_a2_task_sha256 = None
         self._creator_live_a2_completed_run_id = None
         self._creator_live_a2_run_completion = None
         self._creator_live_a2_failure_reason = None
@@ -293,6 +317,14 @@ class FieldNotesCompanionController(CompanionController):
 
         if not isinstance(target, FieldNoteCreatorLiveA2ReconnectTarget):
             raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+        try:
+            task_bytes = task.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise FieldNoteCreatorLiveA2ReconnectError(
+                "A2_TARGET_INVALID"
+            ) from exc
+        if not task_bytes:
+            raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
         with self._condition:
             self._require_no_active_run()
             if self._creator_live_a1_capture_config is not None:
@@ -302,11 +334,15 @@ class FieldNotesCompanionController(CompanionController):
             self._clear_field_note_locked()
             self._clear_creator_live_a2_locked()
             self._creator_live_a2_reconnect_target = target
+            self._creator_live_a2_task_byte_count = len(task_bytes)
+            self._creator_live_a2_task_sha256 = hashlib.sha256(
+                task_bytes
+            ).hexdigest()
         try:
             return super().start_run(task, task_mode="manual")
         except Exception:
             with self._condition:
-                self._creator_live_a2_reconnect_target = None
+                self._clear_creator_live_a2_locked()
             raise
 
     def new_run(self) -> dict[str, Any]:
@@ -633,8 +669,26 @@ class FieldNotesCompanionController(CompanionController):
                     final_output_bytes = b""
             if reconnect_failure is None:
                 assert result.runtime_identity is not None
+                if (
+                    self._creator_live_a2_task_byte_count is None
+                    or self._creator_live_a2_task_sha256 is None
+                ):
+                    reconnect_failure = "A2_TARGET_INVALID"
+            if reconnect_failure is None:
+                assert result.runtime_identity is not None
+                assert self._creator_live_a2_task_byte_count is not None
+                assert self._creator_live_a2_task_sha256 is not None
                 reconnect_completion = FieldNoteCreatorLiveA2RunCompletion(
                     run_id=result.run_id,
+                    task_byte_count=self._creator_live_a2_task_byte_count,
+                    task_sha256=self._creator_live_a2_task_sha256,
+                    transmission_ordinal=2,
+                    normal_terminal=result.normal_terminal,
+                    turn_status=result.turn_status,
+                    runtime_status=result.status,
+                    failure_diagnostic_absent=(
+                        result.failure_diagnostic is None
+                    ),
                     actual_runtime_identity=result.runtime_identity,
                     reconnect_receipt=reconnect_receipt,
                     final_output_bytes=final_output_bytes,
@@ -663,6 +717,7 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a2_reconnect_target = None
                 self._creator_live_a2_run_completion = reconnect_completion
                 self._creator_live_a2_failure_reason = reconnect_failure
+                self._run["result"] = ""
             self._creator_live_a1_run_completion = completion
             if capture is not None:
                 self._creator_live_a1_completed_draft = draft
@@ -823,6 +878,23 @@ class FieldNotesCompanionController(CompanionController):
                     or "A2_TARGET_INVALID"
                 )
             return completion
+
+    def release_creator_live_a2_run_completion(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> None:
+        """Discard the controller-owned transient Run 2 output bytes."""
+
+        with self._condition:
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or self._creator_live_a2_completed_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A2_TARGET_RUN_2_MISMATCH")
+            self._creator_live_a2_run_completion = None
+            self._run["result"] = ""
 
     def creator_live_a2_failure_reason(
         self,
@@ -1534,7 +1606,7 @@ class FieldNotesCompanionController(CompanionController):
             "running"
             if state == "RUNNING"
             else "completed"
-            if state == "PASS"
+            if state in {"PASS", "TRACE_COMPLETE"}
             else "needs_attention"
         )
         snapshot["run"] = {
