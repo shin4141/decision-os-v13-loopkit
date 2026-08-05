@@ -42,8 +42,8 @@ from decision_os.companion.field_notes_creator_live_reconnect import (
 from decision_os.companion.field_notes_model import compile_draft
 from decision_os.companion.field_notes_reuse import FieldNoteIdentity
 from decision_os.companion.field_notes_whole_flow import (
+    FieldNoteCreatorLiveAttempt,
     FieldNoteSourceRepositoryIdentity,
-    FieldNoteWholeFlowAttempt,
     FieldNoteWholeFlowRunIdentity,
 )
 from tests.test_acceleration_codex_adapter import (
@@ -182,19 +182,36 @@ class CreatorLiveExactReconnectTests(unittest.TestCase):
             repository_id=repository_id(self.repository),
             source_commit=git_output(self.repository, "rev-parse", "HEAD"),
         )
-        self.attempt = FieldNoteWholeFlowAttempt(
+        self.attempt = FieldNoteCreatorLiveAttempt(
             proof_attempt_id="proof_a7_exact_reconnect_fixture_001",
             proof_mode="CREATOR_LIVE",
             creator_id="fixture-creator",
-            proof_as_of="2026-08-06T12:00:00Z",
+            authorization_observed_at="2026-08-06T09:58:00Z",
         )
-        self.run_1 = FieldNoteWholeFlowRunIdentity(
-            proof_attempt_id=self.attempt.proof_attempt_id,
-            run_id="run_exact_reconnect_fixture_1",
-            started_at="2026-08-06T10:00:00Z",
-            repository=self.source_repository,
-            runtime=_runtime_identity(),
+        exact_runtime = _runtime_identity()
+        terminal_clock = patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value="2026-08-06T12:00:00Z",
         )
+        terminal_clock.start()
+        self.addCleanup(terminal_clock.stop)
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=(
+                "2026-08-06T09:59:00Z",
+                "2026-08-06T10:00:00Z",
+            ),
+        ):
+            self.runtime = FieldNoteCreatorLiveProofRuntime.open_attempt(
+                self.root / "runtime",
+                attempt=self.attempt,
+                source_repository=self.source_repository,
+                run_1_id="run_exact_reconnect_fixture_1",
+                runtime=exact_runtime,
+            )
+        self.run_1 = self.runtime.read_back().run_1
         self.run_2 = FieldNoteWholeFlowRunIdentity(
             proof_attempt_id=self.attempt.proof_attempt_id,
             run_id="run_exact_reconnect_fixture_2",
@@ -211,12 +228,6 @@ class CreatorLiveExactReconnectTests(unittest.TestCase):
         self.note_path = self.repository / self.draft.relative_path
         self.note_path.parent.mkdir(parents=True)
         self.note_path.write_bytes(self.draft.markdown)
-        self.runtime = FieldNoteCreatorLiveProofRuntime.open_attempt(
-            self.root / "runtime",
-            attempt=self.attempt,
-            source_repository=self.source_repository,
-            run_1=self.run_1,
-        )
         note = FieldNoteIdentity(
             note_path=self.draft.relative_path,
             field_note_id=self.draft.field_note_id,

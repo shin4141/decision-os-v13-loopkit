@@ -92,10 +92,19 @@ class CreatorLiveTestCase(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.bundle, self.ledger = build_bundle(self.root / "evidence")
-        self.live_attempt = replace(
-            self.bundle.attempt,
+        self.live_attempt = whole_flow.FieldNoteCreatorLiveAttempt(
+            proof_attempt_id=self.bundle.attempt.proof_attempt_id,
             proof_mode="CREATOR_LIVE",
+            creator_id=self.bundle.attempt.creator_id,
+            authorization_observed_at="2026-08-05T09:58:00Z",
         )
+        terminal_clock = patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value="2026-08-05T12:00:00Z",
+        )
+        terminal_clock.start()
+        self.addCleanup(terminal_clock.stop)
 
     def open_runtime(
         self,
@@ -104,13 +113,24 @@ class CreatorLiveTestCase(unittest.TestCase):
         bundle=None,
     ) -> FieldNoteCreatorLiveProofRuntime:
         evidence = bundle or self.bundle
-        attempt = replace(evidence.attempt, proof_mode="CREATOR_LIVE")
-        return FieldNoteCreatorLiveProofRuntime.open_attempt(
-            self.root / label,
-            attempt=attempt,
-            source_repository=evidence.source_repository,
-            run_1=evidence.run_1,
+        attempt = whole_flow.FieldNoteCreatorLiveAttempt(
+            proof_attempt_id=evidence.attempt.proof_attempt_id,
+            proof_mode="CREATOR_LIVE",
+            creator_id=evidence.attempt.creator_id,
+            authorization_observed_at="2026-08-05T09:58:00Z",
         )
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=("2026-08-05T09:59:00Z", evidence.run_1.started_at),
+        ):
+            return FieldNoteCreatorLiveProofRuntime.open_attempt(
+                self.root / label,
+                attempt=attempt,
+                source_repository=evidence.source_repository,
+                run_1_id=evidence.run_1.run_id,
+                runtime=evidence.run_1.runtime,
+            )
 
     def record_a1(
         self,
@@ -223,7 +243,7 @@ class CreatorLiveTestCase(unittest.TestCase):
         with patch.object(
             creator_live,
             "_utc_now_rfc3339",
-            side_effect=OBSERVED_AT,
+            side_effect=(*OBSERVED_AT, "2026-08-05T12:00:00Z"),
         ):
             runtime_path.record_a1_capture(
                 evidence.a1_capture,
@@ -254,7 +274,8 @@ class CreatorLiveTestCase(unittest.TestCase):
         evidence = bundle or self.bundle
         return replace(
             evidence,
-            attempt=replace(evidence.attempt, proof_mode="CREATOR_LIVE"),
+            attempt=readback.attempt,
+            run_1=readback.run_1,
             proof_trace=readback.events,
             creator_live_readback=readback,
         )
@@ -275,7 +296,10 @@ class CreatorLiveProvenanceTests(CreatorLiveTestCase):
         self.assertIsNone(receipt.a1_capture_commit_sha256)
 
     def test_hand_built_trace_cannot_satisfy_creator_live(self) -> None:
-        live = replace(self.bundle, attempt=self.live_attempt)
+        live = replace(
+            self.bundle,
+            attempt=replace(self.bundle.attempt, proof_mode="CREATOR_LIVE"),
+        )
         receipt = verify_field_note_whole_flow(live)
         self.assertEqual("NOT_READY", receipt.state)
         self.assertEqual(
@@ -313,6 +337,188 @@ class CreatorLiveProvenanceTests(CreatorLiveTestCase):
 
 
 class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
+    def test_runtime_issued_terminal_cutoff_allows_delayed_run_1(self) -> None:
+        authorization_observed_at = "2026-08-05T08:00:00Z"
+        attempt_opened_at = "2026-08-05T09:59:00Z"
+        run_1_started_at = "2026-08-05T10:00:00Z"
+        terminal_proof_as_of = "2026-08-05T10:03:00Z"
+        attempt = whole_flow.FieldNoteCreatorLiveAttempt(
+            proof_attempt_id=self.bundle.attempt.proof_attempt_id,
+            proof_mode="CREATOR_LIVE",
+            creator_id=self.bundle.attempt.creator_id,
+            authorization_observed_at=authorization_observed_at,
+        )
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=(attempt_opened_at, run_1_started_at),
+        ):
+            runtime_path = FieldNoteCreatorLiveProofRuntime.open_attempt(
+                self.root / "delayed-run-1",
+                attempt=attempt,
+                source_repository=self.bundle.source_repository,
+                run_1_id=self.bundle.run_1.run_id,
+                runtime=self.bundle.run_1.runtime,
+            )
+
+        assert self.bundle.a1_capture is not None
+        runtime_path.record_a1_capture(
+            self.bundle.a1_capture,
+            capture_commit=self.capture_commit(
+                runtime_path,
+                self.bundle.a1_capture,
+            ),
+            expected_task_sha256=RUN_1_TASK_SHA256,
+            actual_runtime_identity=self.bundle.run_1.runtime,
+            observed_at=OBSERVED_AT[0],
+        )
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value=terminal_proof_as_of,
+        ):
+            with self.assertRaises(FieldNoteCreatorLiveStageError):
+                runtime_path.record_stage_failure(
+                    "A2_RECONNECT",
+                    "DELAYED_RUN_1_TEST_TERMINAL",
+                )
+
+        readback = runtime_path.read_back()
+        self.assertEqual(authorization_observed_at, readback.authorization_observed_at)
+        self.assertEqual(attempt_opened_at, readback.attempt_opened_at)
+        self.assertEqual(run_1_started_at, readback.run_1.started_at)
+        self.assertEqual(OBSERVED_AT[0], readback.last_admitted_observation)
+        self.assertEqual(terminal_proof_as_of, readback.terminal_proof_as_of)
+        self.assertEqual("FAILED", readback.state)
+        self.assertLess(
+            readback.authorization_observed_at,
+            readback.attempt_opened_at,
+        )
+        self.assertLess(readback.attempt_opened_at, readback.run_1.started_at)
+        self.assertLess(readback.run_1.started_at, self.bundle.a1_capture.created_at)
+        self.assertLessEqual(
+            self.bundle.a1_capture.created_at,
+            readback.a1_capture_commit.save_as_of,
+        )
+        self.assertLessEqual(
+            readback.a1_capture_commit.save_as_of,
+            readback.last_admitted_observation,
+        )
+        self.assertLessEqual(
+            readback.last_admitted_observation,
+            readback.terminal_proof_as_of,
+        )
+
+    def test_open_readback_has_no_guessed_terminal_cutoff(self) -> None:
+        runtime_path = self.open_runtime("open-time-authorities")
+        readback = runtime_path.read_back()
+        self.assertEqual(creator_live.CREATOR_LIVE_READBACK_SCHEMA_V2, readback.schema)
+        self.assertEqual(
+            readback.attempt.authorization_observed_at,
+            readback.authorization_observed_at,
+        )
+        self.assertLessEqual(
+            readback.authorization_observed_at,
+            readback.attempt_opened_at,
+        )
+        self.assertLess(readback.attempt_opened_at, readback.run_1.started_at)
+        self.assertIsNone(readback.terminal_proof_as_of)
+        self.assertIsNone(readback.last_admitted_observation)
+        self.assertEqual(
+            creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V2,
+            runtime_path.journal_path.name,
+        )
+        self.assertNotIn(
+            b'"proof_as_of"',
+            runtime_path.journal_path.read_bytes(),
+        )
+
+    def test_authorization_after_attempt_opening_is_rejected(self) -> None:
+        attempt = whole_flow.FieldNoteCreatorLiveAttempt(
+            proof_attempt_id=self.bundle.attempt.proof_attempt_id,
+            proof_mode="CREATOR_LIVE",
+            creator_id=self.bundle.attempt.creator_id,
+            authorization_observed_at="2026-08-05T10:00:00Z",
+        )
+        root = self.root / "authorization-after-opening"
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=("2026-08-05T09:59:00Z", "2026-08-05T10:01:00Z"),
+        ):
+            with self.assertRaises(FieldNoteCreatorLiveValidationError):
+                FieldNoteCreatorLiveProofRuntime.open_attempt(
+                    root,
+                    attempt=attempt,
+                    source_repository=self.bundle.source_repository,
+                    run_1_id=self.bundle.run_1.run_id,
+                    runtime=self.bundle.run_1.runtime,
+                )
+        self.assertFalse((root / creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V2).exists())
+
+    def test_attempt_opening_not_before_run_1_is_rejected(self) -> None:
+        root = self.root / "opening-after-run"
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=("2026-08-05T10:00:00Z", "2026-08-05T10:00:00Z"),
+        ):
+            with self.assertRaises(FieldNoteCreatorLiveValidationError):
+                FieldNoteCreatorLiveProofRuntime.open_attempt(
+                    root,
+                    attempt=self.live_attempt,
+                    source_repository=self.bundle.source_repository,
+                    run_1_id=self.bundle.run_1.run_id,
+                    runtime=self.bundle.run_1.runtime,
+                )
+        self.assertFalse((root / creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V2).exists())
+
+    def test_failure_before_first_checkpoint_gets_terminal_cutoff(self) -> None:
+        runtime_path = self.open_runtime("failure-before-checkpoint")
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value="2026-08-05T10:00:00Z",
+        ):
+            with self.assertRaises(FieldNoteCreatorLiveStageError):
+                runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        readback = runtime_path.read_back()
+        self.assertEqual("2026-08-05T10:00:00Z", readback.terminal_proof_as_of)
+        self.assertIsNone(readback.last_admitted_observation)
+        self.assertLessEqual(
+            readback.attempt_opened_at,
+            readback.terminal_proof_as_of,
+        )
+
+    def test_terminal_cutoff_is_immutable_across_load_and_append(self) -> None:
+        runtime_path = self.open_runtime("immutable-terminal")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        before = runtime_path.journal_path.read_bytes()
+        first = runtime_path.read_back()
+        loaded = FieldNoteCreatorLiveProofRuntime.load_attempt(
+            runtime_path.journal_path.parent
+        )
+        second = loaded.read_back()
+        self.assertEqual(first.terminal_proof_as_of, second.terminal_proof_as_of)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            loaded.record_stage_failure("A1_CAPTURE", "OTHER_FAILURE")
+        self.assertEqual(before, runtime_path.journal_path.read_bytes())
+
+    def test_terminal_cutoff_byte_change_fails_durable_readback(self) -> None:
+        runtime_path = self.open_runtime("changed-terminal-cutoff")
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        raw = runtime_path.journal_path.read_bytes()
+        original = b'"proof_as_of":"2026-08-05T12:00:00Z"'
+        changed = b'"proof_as_of":"2026-08-05T12:00:01Z"'
+        self.assertIn(original, raw)
+        runtime_path.journal_path.write_bytes(raw.replace(original, changed, 1))
+        readback = runtime_path.read_back()
+        self.assertEqual("FAILED", readback.state)
+        self.assertFalse(readback.durable_readback_verified)
+        self.assertIsNone(readback.terminal_proof_as_of)
+
     def test_draft_alone_cannot_emit_a1_checkpoint(self) -> None:
         runtime_path = self.open_runtime()
         assert self.bundle.a1_capture is not None
@@ -437,25 +643,31 @@ class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
             )
         self.assertEqual(0, runtime_path.read_back().trace_event_count)
 
-    def test_save_after_proof_as_of_is_temporally_rejected(self) -> None:
+    def test_terminal_cutoff_before_a1_observation_is_rejected(self) -> None:
         assert self.bundle.a1_capture is not None
         runtime_path = self.open_runtime("save-after-proof")
         commit = self.reissue_capture_commit(
             self.capture_commit(runtime_path, self.bundle.a1_capture),
             save_as_of="2026-08-05T12:01:00Z",
         )
-        with self.assertRaises(FieldNoteCreatorLiveStageError):
-            runtime_path.record_a1_capture(
-                self.bundle.a1_capture,
-                capture_commit=commit,
-                expected_task_sha256=RUN_1_TASK_SHA256,
-                actual_runtime_identity=runtime_path.read_back().runtime,
-                observed_at="2026-08-05T12:01:00Z",
-            )
-        self.assertEqual(
-            "A1_CAPTURE_CHRONOLOGY_INVALID",
-            runtime_path.read_back().failure_reason,
+        runtime_path.record_a1_capture(
+            self.bundle.a1_capture,
+            capture_commit=commit,
+            expected_task_sha256=RUN_1_TASK_SHA256,
+            actual_runtime_identity=runtime_path.read_back().runtime,
+            observed_at="2026-08-05T12:01:00Z",
         )
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value="2026-08-05T12:00:00Z",
+        ):
+            with self.assertRaises(FieldNoteCreatorLiveValidationError):
+                runtime_path.record_stage_failure(
+                    "A2_RECONNECT",
+                    "TERMINAL_CUTOFF_TEST",
+                )
+        self.assertEqual("OPEN", runtime_path.read_back().state)
 
     def test_checkpoint_observation_before_save_is_temporally_rejected(self) -> None:
         assert self.bundle.a1_capture is not None
@@ -678,7 +890,8 @@ class CreatorLiveAttemptStateTests(CreatorLiveTestCase):
                 runtime_path.journal_path.parent,
                 attempt=self.live_attempt,
                 source_repository=self.bundle.source_repository,
-                run_1=self.bundle.run_1,
+                run_1_id=self.bundle.run_1.run_id,
+                runtime=self.bundle.run_1.runtime,
             )
         self.assertEqual("OPEN", runtime_path.read_back().state)
 
@@ -969,6 +1182,83 @@ class CreatorLiveStageAcquisitionTests(CreatorLiveTestCase):
 
 
 class CreatorLiveDurabilityTests(CreatorLiveTestCase):
+    def test_historical_v0_1_artifacts_remain_byte_exact_and_read_only(self) -> None:
+        root = self.root / "historical-v0-1"
+        root.mkdir()
+        attempt = whole_flow.FieldNoteWholeFlowAttempt(
+            proof_attempt_id=self.bundle.attempt.proof_attempt_id,
+            proof_mode="CREATOR_LIVE",
+            creator_id=self.bundle.attempt.creator_id,
+            proof_as_of="2026-08-05T12:00:00Z",
+        )
+        provenance = whole_flow.FieldNoteCreatorLiveRuntimeProvenance._issue(
+            authority=whole_flow._RUNTIME_PROVENANCE_AUTHORITY,
+            proof_attempt_id=attempt.proof_attempt_id,
+            source_repository=self.bundle.source_repository,
+            runtime=self.bundle.run_1.runtime,
+            issued_for_run_1_id=self.bundle.run_1.run_id,
+        )
+        record = creator_live._JournalRecord.create(
+            sequence=0,
+            kind="ATTEMPT_OPENED",
+            payload={
+                "journal_schema": creator_live.CREATOR_LIVE_JOURNAL_SCHEMA,
+                "attempt": attempt.as_dict(),
+                "source_repository": self.bundle.source_repository.as_dict(),
+                "runtime": whole_flow._runtime_as_dict(self.bundle.run_1.runtime),
+                "run_1": self.bundle.run_1.as_dict(),
+                "runtime_provenance": provenance.as_dict(),
+                "one_attempt_no_retry": True,
+            },
+            previous_record_sha256=creator_live.JOURNAL_GENESIS_SHA256,
+        )
+        journal_raw = record.serialize_line()
+        anchor = creator_live._AnchorRecord.create(
+            generation=0,
+            proof_attempt_id=attempt.proof_attempt_id,
+            journal_raw=journal_raw,
+            journal_records=(record,),
+            previous_anchor_sha256=creator_live.ANCHOR_GENESIS_SHA256,
+        )
+        anchor_raw = anchor.serialize_line()
+        journal_path = root / creator_live.CREATOR_LIVE_JOURNAL_FILENAME
+        anchor_path = root / creator_live.CREATOR_LIVE_ANCHOR_FILENAME
+        journal_path.write_bytes(journal_raw)
+        anchor_path.write_bytes(anchor_raw)
+
+        self.assertEqual(
+            "6c154a8df21c4eb25245919e9b672b66d75c893f32b9937191f51881c73d0451",
+            hashlib.sha256(journal_raw).hexdigest(),
+        )
+        self.assertEqual(
+            "d4033bee02d008dd269395663c3e13f04e24cb98c5c62413048aec384db82695",
+            hashlib.sha256(anchor_raw).hexdigest(),
+        )
+        runtime_path = FieldNoteCreatorLiveProofRuntime.load_attempt(root)
+        readback = runtime_path.read_back()
+        self.assertEqual(creator_live.CREATOR_LIVE_READBACK_SCHEMA, readback.schema)
+        self.assertEqual(
+            "e04be488d568651afb7d89f7cc19ec0f5cc558a13460fc1d1e84d2fe9dc5450a",
+            readback.readback_sha256,
+        )
+        self.assertEqual(attempt, readback.attempt)
+        self.assertFalse(hasattr(readback, "terminal_proof_as_of"))
+        receipt = verify_field_note_whole_flow(
+            replace(
+                self.bundle,
+                attempt=attempt,
+                creator_live_readback=readback,
+                proof_trace=(),
+            )
+        )
+        self.assertEqual("NOT_READY", receipt.state)
+        self.assertEqual(whole_flow.WHOLE_FLOW_SCHEMA, receipt.schema)
+        self.assertEqual(attempt.proof_as_of, receipt.proof_as_of)
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A1_CAPTURE", "A1_FAILED")
+        self.assertEqual(journal_raw, journal_path.read_bytes())
+        self.assertEqual(anchor_raw, anchor_path.read_bytes())
+
     def runtime_through_a2(
         self,
         label: str,
@@ -1050,8 +1340,8 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         self.assertTrue(readback.durable_readback_verified)
         self.assertEqual(diagnostic, readback.a1_proposal_diagnostic)
         self.assertEqual(
-            readback.journal_record_count,
             readback.anchor_record_count,
+            readback.journal_record_count - 1,
         )
         journal = runtime_path.journal_path.read_text(encoding="utf-8")
         anchor = runtime_path.anchor_path.read_text(encoding="utf-8")
@@ -1185,7 +1475,10 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
         self.assertEqual("TRACE_COMPLETE", readback.state)
         self.assertTrue(readback.durable_readback_verified)
         self.assertEqual(6, readback.trace_event_count)
-        self.assertEqual(readback.journal_record_count, readback.anchor_record_count)
+        self.assertEqual(
+            readback.journal_record_count - 1,
+            readback.anchor_record_count,
+        )
         self.assertEqual(
             len(runtime_path.journal_path.read_bytes()),
             readback.journal_byte_length,
@@ -1202,6 +1495,14 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
             readback.events[-1].trace_sha256,
             readback.trace_chain_head_sha256,
         )
+
+    def test_trace_completion_cannot_be_extended(self) -> None:
+        runtime_path, _ = self.complete_runtime("completion-terminal")
+        readback = runtime_path.read_back()
+        before = runtime_path.journal_path.read_bytes()
+        with self.assertRaises(FieldNoteCreatorLiveStageError):
+            runtime_path.record_stage_failure("A6_REVIEW", "LATE_FAILURE")
+        self.assertEqual(before, runtime_path.journal_path.read_bytes())
         loaded = FieldNoteCreatorLiveProofRuntime.load_attempt(
             runtime_path.journal_path.parent
         )
@@ -1263,8 +1564,8 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
             proof_trace=readback.events,
             creator_live_readback=None,
         )
-        receipt = verify_field_note_whole_flow(live)
-        self.assertEqual("NOT_READY", receipt.state)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            verify_field_note_whole_flow(live)
 
     def test_repair_marker_causes_fail(self) -> None:
         runtime_path = self.open_runtime()
@@ -1315,12 +1616,13 @@ class CreatorLiveDurabilityTests(CreatorLiveTestCase):
 
 
 class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
-    def test_open_attempt_is_not_ready_not_fail(self) -> None:
+    def test_open_attempt_cannot_produce_a_receipt(self) -> None:
         runtime_path = self.open_runtime()
         live = self.live_bundle(runtime_path.read_back())
-        receipt = verify_field_note_whole_flow(live)
-        self.assertEqual("NOT_READY", receipt.state)
-        self.assertEqual("CREATOR_LIVE_TRACE_INCOMPLETE", receipt.failure_reason)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            verify_field_note_whole_flow(live)
+        with self.assertRaises(FieldNoteWholeFlowValidationError):
+            build_portable_candidate_warehouse_manifest(live)
 
     def test_failed_attempt_enters_a7_as_fail(self) -> None:
         runtime_path = self.open_runtime()
@@ -1330,12 +1632,21 @@ class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
         receipt = verify_field_note_whole_flow(live)
         self.assertEqual("FAIL", receipt.state)
         self.assertEqual("A1_FAILED", receipt.failure_reason)
+        self.assertEqual(
+            runtime_path.read_back().terminal_proof_as_of,
+            receipt.proof_as_of,
+        )
 
     def test_trace_complete_creator_live_evidence_can_enter_a7(self) -> None:
         runtime_path, _ = self.complete_runtime()
         live = self.live_bundle(runtime_path.read_back())
         receipt = verify_field_note_whole_flow(live)
         self.assertEqual("PASS", receipt.state)
+        self.assertEqual(whole_flow.WHOLE_FLOW_SCHEMA_V2, receipt.schema)
+        self.assertEqual(
+            runtime_path.read_back().terminal_proof_as_of,
+            receipt.proof_as_of,
+        )
         self.assertEqual("CREATOR_LIVE", receipt.proof_mode)
         self.assertEqual(live.attempt, runtime_path.read_back().attempt)
         self.assertEqual(live.attempt, receipt.attempt)
@@ -1380,10 +1691,12 @@ class CreatorLiveA7AdmissionTests(CreatorLiveTestCase):
     def test_changed_creator_identity_cannot_enter_a7(self) -> None:
         self.assert_attempt_substitution_fails(creator_id="Other Creator")
 
-    def test_changed_proof_as_of_cannot_enter_a7(self) -> None:
-        self.assert_attempt_substitution_fails(
-            proof_as_of="2026-08-05T12:01:00Z"
-        )
+    def test_caller_cannot_supply_terminal_proof_as_of(self) -> None:
+        with self.assertRaises(TypeError):
+            replace(
+                self.live_attempt,
+                proof_as_of="2026-08-05T12:01:00Z",
+            )
 
     def test_changed_attempt_id_cannot_enter_a7(self) -> None:
         self.assert_attempt_substitution_fails(proof_attempt_id="other_attempt")

@@ -43,6 +43,7 @@ from decision_os.companion.field_notes_whole_flow import (
     TRACE_GENESIS_SHA256,
     WHOLE_FLOW_TRACE_SCHEMA,
     FieldNoteCreatorLiveRuntimeProvenance,
+    FieldNoteCreatorLiveAttempt,
     FieldNoteSourceRepositoryIdentity,
     FieldNoteWholeFlowAttempt,
     FieldNoteWholeFlowRunIdentity,
@@ -81,6 +82,20 @@ CREATOR_LIVE_ANCHOR_SCHEMA = (
 )
 CREATOR_LIVE_JOURNAL_FILENAME = "creator-live-proof-v0.1.jsonl"
 CREATOR_LIVE_ANCHOR_FILENAME = "creator-live-proof-v0.1.anchor.jsonl"
+CREATOR_LIVE_JOURNAL_SCHEMA_V2 = (
+    "decision-os.field-note-creator-live-proof-journal.v0.2"
+)
+CREATOR_LIVE_RECORD_SCHEMA_V2 = (
+    "decision-os.field-note-creator-live-proof-record.v0.2"
+)
+CREATOR_LIVE_READBACK_SCHEMA_V2 = (
+    "decision-os.field-note-creator-live-proof-readback.v0.2"
+)
+CREATOR_LIVE_ANCHOR_SCHEMA_V2 = (
+    "decision-os.field-note-creator-live-proof-anchor.v0.2"
+)
+CREATOR_LIVE_JOURNAL_FILENAME_V2 = "creator-live-proof-v0.2.jsonl"
+CREATOR_LIVE_ANCHOR_FILENAME_V2 = "creator-live-proof-v0.2.anchor.jsonl"
 A1_CAPTURE_COMMIT_SCHEMA = (
     "decision-os.field-note-creator-live-a1-capture-commit.v0.1"
 )
@@ -95,6 +110,7 @@ CreatorLiveAttemptState = Literal[
 ]
 JournalRecordKind = Literal[
     "ATTEMPT_OPENED",
+    "RUN_1_OPENED",
     "RUN_2_OPENED",
     "CHECKPOINT",
     "ATTEMPT_FAILED",
@@ -331,7 +347,7 @@ def _a1_capture_chronology_is_valid(
     draft_created_at: str,
     save_as_of: str,
     observed_at: str,
-    proof_as_of: str,
+    proof_as_of: str | None = None,
 ) -> bool:
     """Compare the five creator-live A1 instants in their required order."""
 
@@ -339,8 +355,11 @@ def _a1_capture_chronology_is_valid(
     _, draft_time = _parse_time(draft_created_at, "A1 draft creation time")
     _, save_time = _parse_time(save_as_of, "A1 capture save As-of")
     _, observed_time = _parse_time(observed_at, "A1 checkpoint observation")
+    chronology_valid = run_time <= draft_time <= save_time <= observed_time
+    if proof_as_of is None:
+        return chronology_valid
     _, proof_time = _parse_time(proof_as_of, "Proof As-of")
-    return run_time <= draft_time <= save_time <= observed_time <= proof_time
+    return chronology_valid and observed_time <= proof_time
 
 
 def _runtime_from_dict(value: Any) -> CodexRuntimeIdentity:
@@ -447,8 +466,29 @@ def _attempt_from_dict(value: Any) -> FieldNoteWholeFlowAttempt:
     return attempt
 
 
+def _attempt_v2_from_dict(value: Any) -> FieldNoteCreatorLiveAttempt:
+    if not isinstance(value, dict) or set(value) != {
+        "proof_attempt_id",
+        "proof_mode",
+        "creator_id",
+        "authorization_observed_at",
+    }:
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_ATTEMPT_IDENTITY_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        )
+    try:
+        return FieldNoteCreatorLiveAttempt(**value)
+    except (TypeError, ValueError) as exc:
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_ATTEMPT_IDENTITY_INVALID",
+            repair_action="RECEIPT_REWRITE",
+        ) from exc
+
+
 @dataclass(frozen=True)
 class _JournalRecord:
+    schema: str
     sequence: int
     kind: JournalRecordKind
     payload: dict[str, Any]
@@ -463,15 +503,17 @@ class _JournalRecord:
         kind: JournalRecordKind,
         payload: dict[str, Any],
         previous_record_sha256: str,
+        schema: str = CREATOR_LIVE_RECORD_SCHEMA,
     ) -> _JournalRecord:
         body = {
-            "schema": CREATOR_LIVE_RECORD_SCHEMA,
+            "schema": schema,
             "sequence": sequence,
             "kind": kind,
             "payload": payload,
             "previous_record_sha256": previous_record_sha256,
         }
         return cls(
+            schema=schema,
             sequence=sequence,
             kind=kind,
             payload=payload,
@@ -481,7 +523,7 @@ class _JournalRecord:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "schema": CREATOR_LIVE_RECORD_SCHEMA,
+            "schema": self.schema,
             "sequence": self.sequence,
             "kind": self.kind,
             "payload": self.payload,
@@ -495,6 +537,7 @@ class _JournalRecord:
 
 @dataclass(frozen=True)
 class _AnchorRecord:
+    schema: str
     generation: int
     proof_attempt_id: str
     journal_record_count: int
@@ -513,9 +556,10 @@ class _AnchorRecord:
         journal_raw: bytes,
         journal_records: tuple[_JournalRecord, ...],
         previous_anchor_sha256: str,
+        schema: str = CREATOR_LIVE_ANCHOR_SCHEMA,
     ) -> _AnchorRecord:
         body = {
-            "schema": CREATOR_LIVE_ANCHOR_SCHEMA,
+            "schema": schema,
             "generation": generation,
             "proof_attempt_id": proof_attempt_id,
             "journal_record_count": len(journal_records),
@@ -527,6 +571,7 @@ class _AnchorRecord:
             "previous_anchor_sha256": previous_anchor_sha256,
         }
         return cls(
+            schema=schema,
             generation=generation,
             proof_attempt_id=proof_attempt_id,
             journal_record_count=len(journal_records),
@@ -541,7 +586,7 @@ class _AnchorRecord:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "schema": CREATOR_LIVE_ANCHOR_SCHEMA,
+            "schema": self.schema,
             "generation": self.generation,
             "proof_attempt_id": self.proof_attempt_id,
             "journal_record_count": self.journal_record_count,
@@ -566,6 +611,7 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
         )
     records: list[_JournalRecord] = []
     previous = JOURNAL_GENESIS_SHA256
+    record_schema: str | None = None
     for index, line in enumerate(raw.splitlines()):
         try:
             text = line.decode("utf-8")
@@ -595,6 +641,7 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
         kind = value["kind"]
         if kind not in {
             "ATTEMPT_OPENED",
+            "RUN_1_OPENED",
             "RUN_2_OPENED",
             "CHECKPOINT",
             "ATTEMPT_FAILED",
@@ -612,8 +659,14 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
             "previous_record_sha256": value["previous_record_sha256"],
         }
         expected_sha = _canonical_sha256(body)
+        if record_schema is None:
+            record_schema = value["schema"]
         if (
-            value["schema"] != CREATOR_LIVE_RECORD_SCHEMA
+            value["schema"] not in {
+                CREATOR_LIVE_RECORD_SCHEMA,
+                CREATOR_LIVE_RECORD_SCHEMA_V2,
+            }
+            or value["schema"] != record_schema
             or value["sequence"] != index
             or value["previous_record_sha256"] != previous
             or value["record_sha256"] != expected_sha
@@ -631,6 +684,7 @@ def _parse_records(raw: bytes) -> tuple[_JournalRecord, ...]:
             )
             raise _JournalIntegrityError(reason, repair_action=action)
         record = _JournalRecord(
+            schema=value["schema"],
             sequence=index,
             kind=kind,
             payload=value["payload"],
@@ -650,6 +704,7 @@ def _parse_anchors(raw: bytes) -> tuple[_AnchorRecord, ...]:
         )
     anchors: list[_AnchorRecord] = []
     previous = ANCHOR_GENESIS_SHA256
+    anchor_schema: str | None = None
     for generation, line in enumerate(raw.splitlines()):
         try:
             text = line.decode("utf-8")
@@ -681,8 +736,14 @@ def _parse_anchors(raw: bytes) -> tuple[_AnchorRecord, ...]:
             )
         body = {key: value[key] for key in required - {"anchor_sha256"}}
         expected_sha = _canonical_sha256(body)
+        if anchor_schema is None:
+            anchor_schema = value["schema"]
         if (
-            value["schema"] != CREATOR_LIVE_ANCHOR_SCHEMA
+            value["schema"] not in {
+                CREATOR_LIVE_ANCHOR_SCHEMA,
+                CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            }
+            or value["schema"] != anchor_schema
             or value["generation"] != generation
             or value["previous_anchor_sha256"] != previous
             or value["anchor_sha256"] != expected_sha
@@ -714,6 +775,7 @@ def _parse_anchors(raw: bytes) -> tuple[_AnchorRecord, ...]:
                     repair_action="EVENT_ID_CHANGE",
                 )
         anchor = _AnchorRecord(
+            schema=value["schema"],
             generation=generation,
             proof_attempt_id=value["proof_attempt_id"],
             journal_record_count=value["journal_record_count"],
@@ -836,7 +898,7 @@ def _a1_capture_commit_from_dict(
 def _provenance_from_dict(
     value: Any,
     *,
-    attempt: FieldNoteWholeFlowAttempt,
+    attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt,
     repository: FieldNoteSourceRepositoryIdentity,
     runtime: CodexRuntimeIdentity,
     run_1: FieldNoteWholeFlowRunIdentity,
@@ -859,7 +921,7 @@ def _provenance_from_dict(
 def _event_from_dict(
     value: Any,
     *,
-    attempt: FieldNoteWholeFlowAttempt,
+    attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt,
     repository: FieldNoteSourceRepositoryIdentity,
     runtime: CodexRuntimeIdentity,
     provenance: FieldNoteCreatorLiveRuntimeProvenance,
@@ -1100,7 +1162,7 @@ class FieldNoteCreatorLiveTraceReadback:
     def matches_admission(
         self,
         *,
-        attempt: FieldNoteWholeFlowAttempt,
+        attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt,
         source_repository: FieldNoteSourceRepositoryIdentity,
         runtime: CodexRuntimeIdentity,
         run_1: FieldNoteWholeFlowRunIdentity,
@@ -1122,7 +1184,9 @@ class FieldNoteCreatorLiveTraceReadback:
             and self.events == proof_trace
             and self.trace_event_count == len(_STAGES)
             and self.trace_chain_head_sha256 == proof_trace[-1].trace_sha256
-            and self.anchor_record_count == self.journal_record_count
+            and self.anchor_record_count
+            == self.journal_record_count
+            - (1 if self.schema == CREATOR_LIVE_READBACK_SCHEMA_V2 else 0)
             and self.journal_byte_length > 0
             and all(
                 event.runtime_provenance == self.runtime_provenance
@@ -1131,13 +1195,104 @@ class FieldNoteCreatorLiveTraceReadback:
         )
 
 
+@dataclass(frozen=True, init=False)
+class FieldNoteCreatorLiveTraceReadbackV2(FieldNoteCreatorLiveTraceReadback):
+    """Forward-only readback with runtime-owned opening and terminal time."""
+
+    attempt: FieldNoteCreatorLiveAttempt
+    authorization_observed_at: str
+    attempt_opened_at: str
+    terminal_proof_as_of: str | None
+    last_admitted_observation: str | None
+
+    @classmethod
+    def _create_v2(
+        cls,
+        *,
+        authorization_observed_at: str,
+        attempt_opened_at: str,
+        terminal_proof_as_of: str | None,
+        **kwargs: Any,
+    ) -> FieldNoteCreatorLiveTraceReadbackV2:
+        attempt = kwargs.get("attempt")
+        if not isinstance(attempt, FieldNoteCreatorLiveAttempt):
+            raise FieldNoteCreatorLiveValidationError(
+                "v0.2 read-back attempt identity is invalid."
+            )
+        value = super()._create(**kwargs)
+        assert isinstance(value, cls)
+        events = value.events
+        object.__setattr__(value, "schema", CREATOR_LIVE_READBACK_SCHEMA_V2)
+        object.__setattr__(
+            value,
+            "authorization_observed_at",
+            authorization_observed_at,
+        )
+        object.__setattr__(value, "attempt_opened_at", attempt_opened_at)
+        object.__setattr__(value, "terminal_proof_as_of", terminal_proof_as_of)
+        object.__setattr__(
+            value,
+            "last_admitted_observation",
+            events[-1].observed_at if events else None,
+        )
+        return value
+
+    def _body(self) -> dict[str, Any]:
+        return {
+            **super()._body(),
+            "authorization_observed_at": self.authorization_observed_at,
+            "attempt_opened_at": self.attempt_opened_at,
+            "terminal_proof_as_of": self.terminal_proof_as_of,
+            "last_admitted_observation": self.last_admitted_observation,
+        }
+
+    def matches_admission(
+        self,
+        *,
+        attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt,
+        source_repository: FieldNoteSourceRepositoryIdentity,
+        runtime: CodexRuntimeIdentity,
+        run_1: FieldNoteWholeFlowRunIdentity,
+        run_2: FieldNoteWholeFlowRunIdentity,
+        proof_trace: tuple[FieldNoteWholeFlowTraceEvent, ...],
+    ) -> bool:
+        if self.terminal_proof_as_of is None or not proof_trace:
+            return False
+        _, terminal_time = _parse_time(
+            self.terminal_proof_as_of,
+            "Terminal Proof As-of",
+        )
+        _, last_time = _parse_time(
+            proof_trace[-1].observed_at,
+            "Last admitted observation",
+        )
+        return (
+            super().matches_admission(
+                attempt=attempt,
+                source_repository=source_repository,
+                runtime=runtime,
+                run_1=run_1,
+                run_2=run_2,
+                proof_trace=proof_trace,
+            )
+            and self.authorization_observed_at
+            == self.attempt.authorization_observed_at
+            and self.last_admitted_observation == proof_trace[-1].observed_at
+            and last_time <= terminal_time
+        )
+
+
 @dataclass(frozen=True)
 class _StaticIdentity:
-    attempt: FieldNoteWholeFlowAttempt
+    attempt: FieldNoteWholeFlowAttempt | FieldNoteCreatorLiveAttempt
     repository: FieldNoteSourceRepositoryIdentity
     runtime: CodexRuntimeIdentity
     run_1: FieldNoteWholeFlowRunIdentity
     provenance: FieldNoteCreatorLiveRuntimeProvenance
+    journal_schema: str
+    record_schema: str
+    anchor_schema: str
+    attempt_opened_at: str | None
 
 
 def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
@@ -1147,6 +1302,84 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
             repair_action="EVIDENCE_DELETION",
         )
     payload = records[0].payload
+    if records[0].schema == CREATOR_LIVE_RECORD_SCHEMA_V2:
+        if set(payload) != {
+            "journal_schema",
+            "attempt",
+            "attempt_opened_at",
+            "source_repository",
+            "runtime",
+            "run_1_id",
+            "one_attempt_no_retry",
+        } or payload["journal_schema"] != CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_ATTEMPT_RECORD_INVALID",
+                repair_action="RECEIPT_REWRITE",
+            )
+        if payload["one_attempt_no_retry"] is not True:
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_RETRY_BOUNDARY_INVALID",
+                repair_action="RETRY_REPLACEMENT",
+            )
+        if len(records) < 2 or records[1].kind != "RUN_1_OPENED":
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_RUN_1_RECORD_MISSING",
+                repair_action="EVIDENCE_DELETION",
+            )
+        run_payload = records[1].payload
+        if set(run_payload) != {"run_1", "runtime_provenance"}:
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_RUN_1_RECORD_INVALID",
+                repair_action="RECEIPT_REWRITE",
+            )
+        attempt = _attempt_v2_from_dict(payload["attempt"])
+        repository = _repository_from_dict(payload["source_repository"])
+        runtime = _runtime_from_dict(payload["runtime"])
+        run_1 = _run_from_dict(
+            run_payload["run_1"],
+            repository=repository,
+            runtime=runtime,
+        )
+        if (
+            run_1.proof_attempt_id != attempt.proof_attempt_id
+            or run_1.run_id != payload["run_1_id"]
+        ):
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_RUN_ATTEMPT_MISMATCH",
+                repair_action="RECEIPT_REWRITE",
+            )
+        opened_at, opened_time = _parse_time(
+            payload["attempt_opened_at"],
+            "Attempt opening time",
+        )
+        _, authorization_time = _parse_time(
+            attempt.authorization_observed_at,
+            "Authorization observation",
+        )
+        _, run_time = _parse_time(run_1.started_at, "Run 1 start")
+        if authorization_time > opened_time or opened_time >= run_time:
+            raise _JournalIntegrityError(
+                "CREATOR_LIVE_OPENING_CHRONOLOGY_INVALID",
+                repair_action="TIMESTAMP_CHANGE",
+            )
+        provenance = _provenance_from_dict(
+            run_payload["runtime_provenance"],
+            attempt=attempt,
+            repository=repository,
+            runtime=runtime,
+            run_1=run_1,
+        )
+        return _StaticIdentity(
+            attempt=attempt,
+            repository=repository,
+            runtime=runtime,
+            run_1=run_1,
+            provenance=provenance,
+            journal_schema=CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+            record_schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
+            anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            attempt_opened_at=opened_at,
+        )
     if set(payload) != {
         "journal_schema",
         "attempt",
@@ -1191,6 +1424,10 @@ def _static_identity(records: tuple[_JournalRecord, ...]) -> _StaticIdentity:
         runtime=runtime,
         run_1=run_1,
         provenance=provenance,
+        journal_schema=CREATOR_LIVE_JOURNAL_SCHEMA,
+        record_schema=CREATOR_LIVE_RECORD_SCHEMA,
+        anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA,
+        attempt_opened_at=None,
     )
 
 
@@ -1207,6 +1444,11 @@ def _project_records(
         anchors,
         proof_attempt_id=static.attempt.proof_attempt_id,
     )
+    if any(anchor.schema != static.anchor_schema for anchor in anchors):
+        raise _JournalIntegrityError(
+            "CREATOR_LIVE_DURABLE_SCHEMA_MISMATCH",
+            repair_action="RECEIPT_REWRITE",
+        )
     run_2: FieldNoteWholeFlowRunIdentity | None = None
     events: list[FieldNoteWholeFlowTraceEvent] = []
     captured_note: FieldNoteIdentity | None = None
@@ -1218,9 +1460,15 @@ def _project_records(
     failure_boundary: WholeFlowBoundary | None = None
     failure_reason: str | None = None
     repair_action: RepairAction = "NONE"
+    terminal_proof_as_of: str | None = None
     previous_trace = TRACE_GENESIS_SHA256
 
-    for record in records[1:]:
+    start_index = (
+        2
+        if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2
+        else 1
+    )
+    for record in records[start_index:]:
         if state in {"FAILED", "TRACE_COMPLETE"}:
             raise _JournalIntegrityError(
                 "CREATOR_LIVE_TERMINAL_STATE_EXTENDED",
@@ -1346,7 +1594,14 @@ def _project_records(
                         ),
                         save_as_of=a1_capture_commit.save_as_of,
                         observed_at=event.observed_at,
-                        proof_as_of=static.attempt.proof_as_of,
+                        proof_as_of=(
+                            static.attempt.proof_as_of
+                            if isinstance(
+                                static.attempt,
+                                FieldNoteWholeFlowAttempt,
+                            )
+                            else None
+                        ),
                     )
                 ):
                     raise _JournalIntegrityError(
@@ -1397,6 +1652,9 @@ def _project_records(
                 "proposal_diagnostic",
                 "proposal_diagnostic_sha256",
             }
+            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+                legacy_fields = legacy_fields | {"proof_as_of"}
+                diagnostic_fields = diagnostic_fields | {"proof_as_of"}
             if set(payload) not in {
                 frozenset(legacy_fields),
                 frozenset(diagnostic_fields),
@@ -1439,6 +1697,26 @@ def _project_records(
             failure_boundary = boundary
             failure_reason = _bounded_reason(payload["failure_reason"])
             repair_action = action
+            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+                terminal_proof_as_of, terminal_time = _parse_time(
+                    payload["proof_as_of"],
+                    "Terminal Proof As-of",
+                )
+                lower_bound = (
+                    events[-1].observed_at
+                    if events
+                    else static.attempt_opened_at
+                )
+                assert lower_bound is not None
+                _, lower_time = _parse_time(
+                    lower_bound,
+                    "Last admitted observation",
+                )
+                if terminal_time < lower_time:
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_TERMINAL_CUTOFF_INVALID",
+                        repair_action="TIMESTAMP_CHANGE",
+                    )
             if set(payload) == diagnostic_fields:
                 if (
                     boundary != "A1_CAPTURE"
@@ -1474,12 +1752,15 @@ def _project_records(
                 a1_proposal_diagnostic = diagnostic
             continue
         if record.kind == "TRACE_COMPLETED":
-            if set(payload) != {
+            completion_fields = {
                 "trace_event_count",
                 "trace_chain_head_sha256",
                 "runtime_provenance_id",
                 "no_repair_verified",
-            } or (
+            }
+            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+                completion_fields.add("proof_as_of")
+            if set(payload) != completion_fields or (
                 len(events) != len(_STAGES)
                 or run_2 is None
                 or a3_reuse_event_id is None
@@ -1493,6 +1774,20 @@ def _project_records(
                     "CREATOR_LIVE_COMPLETION_RECORD_INVALID",
                     repair_action="RECEIPT_REWRITE",
                 )
+            if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+                terminal_proof_as_of, terminal_time = _parse_time(
+                    payload["proof_as_of"],
+                    "Terminal Proof As-of",
+                )
+                _, last_time = _parse_time(
+                    events[-1].observed_at,
+                    "Last admitted observation",
+                )
+                if terminal_time < last_time:
+                    raise _JournalIntegrityError(
+                        "CREATOR_LIVE_TERMINAL_CUTOFF_INVALID",
+                        repair_action="TIMESTAMP_CHANGE",
+                    )
             state = "TRACE_COMPLETE"
             continue
         raise _JournalIntegrityError(
@@ -1505,7 +1800,7 @@ def _project_records(
         if state == "OPEN" and len(events) < len(_STAGES)
         else None
     )
-    return FieldNoteCreatorLiveTraceReadback._create(
+    readback_fields = dict(
         authority=_READBACK_AUTHORITY,
         attempt=static.attempt,
         source_repository=static.repository,
@@ -1533,6 +1828,18 @@ def _project_records(
         anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=True,
     )
+    if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+        assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
+        assert static.attempt_opened_at is not None
+        return FieldNoteCreatorLiveTraceReadbackV2._create_v2(
+            authorization_observed_at=(
+                static.attempt.authorization_observed_at
+            ),
+            attempt_opened_at=static.attempt_opened_at,
+            terminal_proof_as_of=terminal_proof_as_of,
+            **readback_fields,
+        )
+    return FieldNoteCreatorLiveTraceReadback._create(**readback_fields)
 
 
 def _failed_readback(
@@ -1543,7 +1850,7 @@ def _failed_readback(
     reason: str,
     repair_action: RepairAction,
 ) -> FieldNoteCreatorLiveTraceReadback:
-    return FieldNoteCreatorLiveTraceReadback._create(
+    fields = dict(
         authority=_READBACK_AUTHORITY,
         attempt=static.attempt,
         source_repository=static.repository,
@@ -1571,6 +1878,18 @@ def _failed_readback(
         anchor_sha256=hashlib.sha256(anchor_raw).hexdigest(),
         durable_readback_verified=False,
     )
+    if static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+        assert isinstance(static.attempt, FieldNoteCreatorLiveAttempt)
+        assert static.attempt_opened_at is not None
+        return FieldNoteCreatorLiveTraceReadbackV2._create_v2(
+            authorization_observed_at=(
+                static.attempt.authorization_observed_at
+            ),
+            attempt_opened_at=static.attempt_opened_at,
+            terminal_proof_as_of=None,
+            **fields,
+        )
+    return FieldNoteCreatorLiveTraceReadback._create(**fields)
 
 
 class FieldNoteCreatorLiveProofRuntime:
@@ -1588,8 +1907,17 @@ class FieldNoteCreatorLiveProofRuntime:
         static: _StaticIdentity,
     ) -> None:
         self._storage_root = storage_root
-        self._journal_path = storage_root / CREATOR_LIVE_JOURNAL_FILENAME
-        self._anchor_path = storage_root / CREATOR_LIVE_ANCHOR_FILENAME
+        is_v2 = static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2
+        self._journal_path = storage_root / (
+            CREATOR_LIVE_JOURNAL_FILENAME_V2
+            if is_v2
+            else CREATOR_LIVE_JOURNAL_FILENAME
+        )
+        self._anchor_path = storage_root / (
+            CREATOR_LIVE_ANCHOR_FILENAME_V2
+            if is_v2
+            else CREATOR_LIVE_ANCHOR_FILENAME
+        )
         self._static = static
         self._lock = threading.Lock()
 
@@ -1606,30 +1934,32 @@ class FieldNoteCreatorLiveProofRuntime:
         cls,
         storage_root: Path,
         *,
-        attempt: FieldNoteWholeFlowAttempt,
+        attempt: FieldNoteCreatorLiveAttempt,
         source_repository: FieldNoteSourceRepositoryIdentity,
-        run_1: FieldNoteWholeFlowRunIdentity,
+        run_1_id: str,
+        runtime: CodexRuntimeIdentity,
     ) -> FieldNoteCreatorLiveProofRuntime:
-        if not isinstance(attempt, FieldNoteWholeFlowAttempt) or (
-            attempt.proof_mode != "CREATOR_LIVE"
-        ):
+        if not isinstance(attempt, FieldNoteCreatorLiveAttempt):
             raise FieldNoteCreatorLiveValidationError(
-                "Creator-live runtime requires a CREATOR_LIVE attempt."
+                "Creator-live runtime requires a forward-only attempt."
             )
         if not isinstance(
             source_repository,
             FieldNoteSourceRepositoryIdentity,
-        ) or not isinstance(run_1, FieldNoteWholeFlowRunIdentity):
+        ) or not isinstance(runtime, CodexRuntimeIdentity):
             raise FieldNoteCreatorLiveValidationError(
                 "Creator-live runtime identity is not typed."
             )
         if (
-            run_1.proof_attempt_id != attempt.proof_attempt_id
-            or run_1.repository != source_repository
+            not isinstance(run_1_id, str)
+            or not run_1_id.strip()
+            or len(run_1_id) > 256
+            or "\x00" in run_1_id
         ):
             raise FieldNoteCreatorLiveValidationError(
-                "Run 1 is cross-bound to the creator-live attempt."
+                "Creator-live Run 1 ID is invalid."
             )
+        run_1_id = run_1_id.strip()
         root = Path(storage_root)
         if not root.is_absolute():
             raise FieldNoteCreatorLiveValidationError(
@@ -1640,27 +1970,70 @@ class FieldNoteCreatorLiveProofRuntime:
                 "Creator-live storage root cannot be a symlink."
             )
         root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if any(
+            (root / filename).exists()
+            for filename in (
+                CREATOR_LIVE_JOURNAL_FILENAME,
+                CREATOR_LIVE_ANCHOR_FILENAME,
+                CREATOR_LIVE_JOURNAL_FILENAME_V2,
+                CREATOR_LIVE_ANCHOR_FILENAME_V2,
+            )
+        ):
+            raise FieldNoteCreatorLiveAttemptExistsError(
+                "Creator-live one-attempt storage already exists."
+            )
+        attempt_opened_at, opened_time = _parse_time(
+            _utc_now_rfc3339(),
+            "Attempt opening time",
+        )
+        _, authorization_time = _parse_time(
+            attempt.authorization_observed_at,
+            "Authorization observation",
+        )
+        if authorization_time > opened_time:
+            raise FieldNoteCreatorLiveValidationError(
+                "Authorization observation follows attempt opening."
+            )
+        run_1_started_at, run_time = _parse_time(
+            _utc_now_rfc3339(),
+            "Run 1 start",
+        )
+        if opened_time >= run_time:
+            raise FieldNoteCreatorLiveValidationError(
+                "Attempt opening must precede Run 1."
+            )
+        run_1 = FieldNoteWholeFlowRunIdentity(
+            proof_attempt_id=attempt.proof_attempt_id,
+            run_id=run_1_id,
+            started_at=run_1_started_at,
+            repository=source_repository,
+            runtime=runtime,
+        )
         provenance = FieldNoteCreatorLiveRuntimeProvenance._issue(
             authority=_RUNTIME_PROVENANCE_AUTHORITY,
             proof_attempt_id=attempt.proof_attempt_id,
             source_repository=source_repository,
-            runtime=run_1.runtime,
+            runtime=runtime,
             issued_for_run_1_id=run_1.run_id,
         )
         static = _StaticIdentity(
             attempt=attempt,
             repository=source_repository,
-            runtime=run_1.runtime,
+            runtime=runtime,
             run_1=run_1,
             provenance=provenance,
+            journal_schema=CREATOR_LIVE_JOURNAL_SCHEMA_V2,
+            record_schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
+            anchor_schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
+            attempt_opened_at=attempt_opened_at,
         )
         payload = {
-            "journal_schema": CREATOR_LIVE_JOURNAL_SCHEMA,
+            "journal_schema": CREATOR_LIVE_JOURNAL_SCHEMA_V2,
             "attempt": attempt.as_dict(),
+            "attempt_opened_at": attempt_opened_at,
             "source_repository": source_repository.as_dict(),
-            "runtime": _runtime_as_dict(run_1.runtime),
-            "run_1": run_1.as_dict(),
-            "runtime_provenance": provenance.as_dict(),
+            "runtime": _runtime_as_dict(runtime),
+            "run_1_id": run_1_id,
             "one_attempt_no_retry": True,
         }
         record = _JournalRecord.create(
@@ -1668,8 +2041,19 @@ class FieldNoteCreatorLiveProofRuntime:
             kind="ATTEMPT_OPENED",
             payload=payload,
             previous_record_sha256=JOURNAL_GENESIS_SHA256,
+            schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
         )
-        path = root / CREATOR_LIVE_JOURNAL_FILENAME
+        run_record = _JournalRecord.create(
+            sequence=1,
+            kind="RUN_1_OPENED",
+            payload={
+                "run_1": run_1.as_dict(),
+                "runtime_provenance": provenance.as_dict(),
+            },
+            previous_record_sha256=record.record_sha256,
+            schema=CREATOR_LIVE_RECORD_SCHEMA_V2,
+        )
+        path = root / CREATOR_LIVE_JOURNAL_FILENAME_V2
         try:
             descriptor = os.open(
                 path,
@@ -1681,9 +2065,9 @@ class FieldNoteCreatorLiveProofRuntime:
                 "Creator-live one-attempt journal already exists."
             ) from exc
         try:
-            line = record.serialize_line()
-            written = os.write(descriptor, line)
-            if written != len(line):
+            journal_raw = record.serialize_line() + run_record.serialize_line()
+            written = os.write(descriptor, journal_raw)
+            if written != len(journal_raw):
                 raise FieldNoteCreatorLiveDurabilityError(
                     "Creator-live attempt record write was incomplete."
                 )
@@ -1693,11 +2077,12 @@ class FieldNoteCreatorLiveProofRuntime:
         anchor = _AnchorRecord.create(
             generation=0,
             proof_attempt_id=attempt.proof_attempt_id,
-            journal_raw=line,
-            journal_records=(record,),
+            journal_raw=journal_raw,
+            journal_records=(record, run_record),
             previous_anchor_sha256=ANCHOR_GENESIS_SHA256,
+            schema=CREATOR_LIVE_ANCHOR_SCHEMA_V2,
         )
-        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME
+        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME_V2
         try:
             anchor_descriptor = os.open(
                 anchor_path,
@@ -1736,8 +2121,14 @@ class FieldNoteCreatorLiveProofRuntime:
         storage_root: Path,
     ) -> FieldNoteCreatorLiveProofRuntime:
         root = Path(storage_root)
-        path = root / CREATOR_LIVE_JOURNAL_FILENAME
-        anchor_path = root / CREATOR_LIVE_ANCHOR_FILENAME
+        v2_path = root / CREATOR_LIVE_JOURNAL_FILENAME_V2
+        v2_anchor = root / CREATOR_LIVE_ANCHOR_FILENAME_V2
+        v1_path = root / CREATOR_LIVE_JOURNAL_FILENAME
+        v1_anchor = root / CREATOR_LIVE_ANCHOR_FILENAME
+        if v2_path.exists() or v2_anchor.exists():
+            path, anchor_path = v2_path, v2_anchor
+        else:
+            path, anchor_path = v1_path, v1_anchor
         journal_raw = path.read_bytes()
         anchor_raw = anchor_path.read_bytes()
         records = _parse_records(journal_raw)
@@ -1815,6 +2206,10 @@ class FieldNoteCreatorLiveProofRuntime:
         kind: JournalRecordKind,
         payload: dict[str, Any],
     ) -> FieldNoteCreatorLiveTraceReadback:
+        if self._static.journal_schema != CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            raise FieldNoteCreatorLiveStageError(
+                "Historical v0.1 creator-live attempts are read-only."
+            )
         with self._lock:
             journal_descriptor: int | None = None
             try:
@@ -1865,6 +2260,7 @@ class FieldNoteCreatorLiveProofRuntime:
                     kind=kind,
                     payload=payload,
                     previous_record_sha256=records[-1].record_sha256,
+                    schema=self._static.record_schema,
                 )
                 line = record.serialize_line()
                 written = os.write(journal_descriptor, line)
@@ -1881,6 +2277,7 @@ class FieldNoteCreatorLiveProofRuntime:
                     journal_raw=next_journal_raw,
                     journal_records=next_records,
                     previous_anchor_sha256=anchors[-1].anchor_sha256,
+                    schema=self._static.anchor_schema,
                 )
                 anchor_line = anchor.serialize_line()
                 anchor_written = os.write(anchor_descriptor, anchor_line)
@@ -1934,6 +2331,10 @@ class FieldNoteCreatorLiveProofRuntime:
             "failure_reason": bounded,
             "repair_action": repair_action,
         }
+        if self._static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+            payload["proof_as_of"] = self._runtime_terminal_proof_as_of(
+                readback
+            )
         if proposal_diagnostic is not None:
             payload.update(
                 {
@@ -1949,6 +2350,33 @@ class FieldNoteCreatorLiveProofRuntime:
             )
         self._append("ATTEMPT_FAILED", payload)
         raise FieldNoteCreatorLiveStageError(bounded)
+
+    def _runtime_terminal_proof_as_of(
+        self,
+        readback: FieldNoteCreatorLiveTraceReadback,
+    ) -> str:
+        proof_as_of, proof_time = _parse_time(
+            _utc_now_rfc3339(),
+            "Terminal Proof As-of",
+        )
+        lower_bound = (
+            readback.events[-1].observed_at
+            if readback.events
+            else self._static.attempt_opened_at
+        )
+        if lower_bound is None:
+            raise FieldNoteCreatorLiveValidationError(
+                "Terminal Proof As-of lacks an opening lower bound."
+            )
+        _, lower_time = _parse_time(
+            lower_bound,
+            "Last admitted observation",
+        )
+        if proof_time < lower_time:
+            raise FieldNoteCreatorLiveValidationError(
+                "Terminal Proof As-of precedes admitted evidence."
+            )
+        return proof_as_of
 
     def _require_stage(self, stage: TraceStage) -> FieldNoteCreatorLiveTraceReadback:
         readback = self.read_back()
@@ -2007,18 +2435,23 @@ class FieldNoteCreatorLiveProofRuntime:
         )
         if stage == "A6_REVIEW":
             completed = self.read_back()
+            completion_payload = {
+                "trace_event_count": len(_STAGES),
+                "trace_chain_head_sha256": (
+                    completed.trace_chain_head_sha256
+                ),
+                "runtime_provenance_id": (
+                    self._static.provenance.runtime_provenance_id
+                ),
+                "no_repair_verified": True,
+            }
+            if self._static.journal_schema == CREATOR_LIVE_JOURNAL_SCHEMA_V2:
+                completion_payload["proof_as_of"] = (
+                    self._runtime_terminal_proof_as_of(completed)
+                )
             self._append(
                 "TRACE_COMPLETED",
-                {
-                    "trace_event_count": len(_STAGES),
-                    "trace_chain_head_sha256": (
-                        completed.trace_chain_head_sha256
-                    ),
-                    "runtime_provenance_id": (
-                        self._static.provenance.runtime_provenance_id
-                    ),
-                    "no_repair_verified": True,
-                },
+                completion_payload,
             )
         return event
 
@@ -2141,7 +2574,14 @@ class FieldNoteCreatorLiveProofRuntime:
             draft_created_at=draft.created_at,
             save_as_of=capture_commit.save_as_of,
             observed_at=checkpoint_observed_at,
-            proof_as_of=self._static.attempt.proof_as_of,
+            proof_as_of=(
+                self._static.attempt.proof_as_of
+                if isinstance(
+                    self._static.attempt,
+                    FieldNoteWholeFlowAttempt,
+                )
+                else None
+            ),
         ):
             self._terminal_failure(
                 "A1_CAPTURE",

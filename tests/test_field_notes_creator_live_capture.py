@@ -16,6 +16,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexRuntimeIdentity,
 )
 from decision_os.acceleration.model import git_output, repository_id
+from decision_os.companion import field_notes_creator_live as creator_live
 from decision_os.companion.field_notes_adapter import (
     FieldNoteA1ProposalDiagnostic,
     FieldNoteCodexRunResult,
@@ -36,9 +37,8 @@ from decision_os.companion.field_notes_creator_live_capture import (
 )
 from decision_os.companion.field_notes_model import FieldNoteDraft, compile_draft
 from decision_os.companion.field_notes_whole_flow import (
+    FieldNoteCreatorLiveAttempt,
     FieldNoteSourceRepositoryIdentity,
-    FieldNoteWholeFlowAttempt,
-    FieldNoteWholeFlowRunIdentity,
 )
 
 
@@ -221,31 +221,42 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
             repository_id=repository_id(self.repository),
             source_commit=git_output(self.repository, "rev-parse", "HEAD"),
         )
-        self.attempt = FieldNoteWholeFlowAttempt(
+        self.attempt = FieldNoteCreatorLiveAttempt(
             proof_attempt_id="proof_a7_capture_bridge_fixture_001",
             proof_mode="CREATOR_LIVE",
             creator_id="fixture-creator",
-            proof_as_of="2026-08-06T03:00:00Z",
+            authorization_observed_at="2026-08-06T00:58:00Z",
         )
-        self.run_1 = FieldNoteWholeFlowRunIdentity(
-            proof_attempt_id=self.attempt.proof_attempt_id,
-            run_id="run_creator_live_capture_fixture_001",
-            started_at="2026-08-06T01:00:00Z",
-            repository=self.source_repository,
-            runtime=CodexRuntimeIdentity(
-                model="gpt-5.6-sol",
-                reasoning_effort="ultra",
-                service_tier="priority",
-                codex_cli_version="0.146.0-alpha.3.1",
-                account_type="chatgpt",
+        exact_runtime = CodexRuntimeIdentity(
+            model="gpt-5.6-sol",
+            reasoning_effort="ultra",
+            service_tier="priority",
+            codex_cli_version="0.146.0-alpha.3.1",
+            account_type="chatgpt",
+        )
+        terminal_clock = patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            return_value="2026-08-06T03:00:00Z",
+        )
+        terminal_clock.start()
+        self.addCleanup(terminal_clock.stop)
+        with patch.object(
+            creator_live,
+            "_utc_now_rfc3339",
+            side_effect=(
+                "2026-08-06T00:59:00Z",
+                "2026-08-06T01:00:00Z",
             ),
-        )
-        self.runtime = FieldNoteCreatorLiveProofRuntime.open_attempt(
-            self.root / "fixture-runtime",
-            attempt=self.attempt,
-            source_repository=self.source_repository,
-            run_1=self.run_1,
-        )
+        ):
+            self.runtime = FieldNoteCreatorLiveProofRuntime.open_attempt(
+                self.root / "fixture-runtime",
+                attempt=self.attempt,
+                source_repository=self.source_repository,
+                run_1_id="run_creator_live_capture_fixture_001",
+                runtime=exact_runtime,
+            )
+        self.run_1 = self.runtime.read_back().run_1
         self.mode = "valid"
         self.last_draft: FieldNoteDraft | None = None
         self.observed_task: str | None = None
@@ -634,7 +645,7 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
                 )
                 self.assertTrue(readback.durable_readback_verified)
                 self.assertEqual(
-                    readback.journal_record_count,
+                    readback.journal_record_count - 1,
                     readback.anchor_record_count,
                 )
                 journal = self.runtime.journal_path.read_text(encoding="utf-8")
@@ -703,7 +714,7 @@ class CreatorLiveCaptureBridgeTests(unittest.TestCase):
         )
         self.assertTrue(readback.durable_readback_verified)
         self.assertEqual(
-            readback.journal_record_count,
+            readback.journal_record_count - 1,
             readback.anchor_record_count,
         )
         journal = self.runtime.journal_path.read_text(encoding="utf-8")
