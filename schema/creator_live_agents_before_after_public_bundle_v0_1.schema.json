@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-os.creator-live-agents-public-bundle.v0.1",
+  "title": "Creator-Live AGENTS Before/After Public Bundle v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "assembler",
+    "candidate_id",
+    "before",
+    "after",
+    "compression",
+    "safety",
+    "behavior",
+    "boundary_ids",
+    "receipt_hashes",
+    "output_artifact",
+    "a3",
+    "schemas",
+    "claims",
+    "non_claims",
+    "source_recovery",
+    "files"
+  ],
+  "properties": {
+    "schema": {"const": "decision-os.creator-live-agents-public-bundle.v0.1"},
+    "assembler": {"const": "decision-os.creator-live-agents-public-bundle-assembler.v0.1"},
+    "candidate_id": {"const": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_1"},
+    "before": {
+      "const": {
+        "path": "AGENTS.md",
+        "source_revision": "a80a06c067f7d558cfe16aa08566106aa4017a3d",
+        "git_blob": "2deb6f610f8e3a4e67808a0182cb2439a7abc447",
+        "utf8_byte_count": 11147,
+        "line_count": 359,
+        "sha256": "bb14c77c6b45c6bf365902b47729b455df566fa98688956824e072c352f2dae7"
+      }
+    },
+    "after": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "utf8_byte_count", "line_count", "sha256"],
+      "properties": {
+        "schema": {"const": "decision-os.creator-live-agents-after-projection.v0.1"},
+        "utf8_byte_count": {"type": "integer", "minimum": 1, "maximum": 11146},
+        "line_count": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "compression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "diff_schema", "result", "before_byte_count", "after_byte_count", "reduction_byte_count", "reduction_fraction", "before_line_count", "after_line_count", "addition_count", "deletion_count", "changed_line_count", "diff_sha256"],
+      "properties": {
+        "schema": {"const": "decision-os.creator-live-agents-compression.v0.1"},
+        "diff_schema": {"const": "decision-os.creator-live-agents-diff.python-difflib-v0.1"},
+        "result": {"const": "PASS"},
+        "before_byte_count": {"const": 11147},
+        "after_byte_count": {"type": "integer", "minimum": 1, "maximum": 11146},
+        "reduction_byte_count": {"type": "integer", "minimum": 1, "maximum": 11146},
+        "reduction_fraction": {"type": "string", "pattern": "^[0-9]+\\.[0-9]{6}$"},
+        "before_line_count": {"const": 359},
+        "after_line_count": {"type": "integer", "minimum": 1},
+        "addition_count": {"type": "integer", "minimum": 0},
+        "deletion_count": {"type": "integer", "minimum": 0},
+        "changed_line_count": {"type": "integer", "minimum": 0},
+        "diff_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "safety": {
+      "const": {
+        "schema": "decision-os.creator-live-agents-public-safety.v0.1",
+        "result": "PASS",
+        "finding_codes": []
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_schema", "suite_sha256", "pass_threshold", "harness_qualification", "artifact_behavior_qualification", "real_qualification_receipt_sha256"],
+      "properties": {
+        "suite_schema": {"const": "decision-os.creator-live-agents-behavior-suite.v0.1"},
+        "suite_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "pass_threshold": {"const": "10/10"},
+        "harness_qualification": {"const": "PASS"},
+        "artifact_behavior_qualification": {"enum": ["NOT_RUN", "PASS", "FAIL"]},
+        "real_qualification_receipt_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"artifact_behavior_qualification": {"const": "NOT_RUN"}}},
+          "then": {"properties": {"real_qualification_receipt_sha256": {"const": null}}},
+          "else": {"properties": {"real_qualification_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}
+        }
+      ]
+    },
+    "boundary_ids": {
+      "const": [
+        "B01_HUMAN_SEAT",
+        "B02_AUTHORITY",
+        "B03_GUARD_SAFETY",
+        "B04_RESPONSIBILITY_TRANSFER",
+        "B05_STOP_CONDITIONS",
+        "B06_EVIDENCE_PROVENANCE",
+        "B07_HANDOFF_COMPLETION",
+        "B08_AGENT_HUMAN_ROLES",
+        "B09_ROUTINE_CLEANUP",
+        "B10_FORWARD_ROLLBACK"
+      ]
+    },
+    "receipt_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a1_capture_sha256", "a2_reconnect_sha256"],
+      "properties": {
+        "a1_capture_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "a2_reconnect_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "output_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "media_type", "byte_count", "sha256"],
+      "properties": {
+        "artifact_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "media_type": {"const": "text/plain; charset=utf-8"},
+        "byte_count": {"type": "integer", "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "a3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compiler_version", "compiler_branch", "audit_sha256", "exact_reuse"],
+      "properties": {
+        "compiler_version": {"const": "decision-os.creator-live-a3-exact-output-artifact-compiler.v0.1"},
+        "compiler_branch": {"const": "EXACT_UTF8_NON_WHOLE_UNIQUE_SOURCE_UNIQUE_OUTPUT"},
+        "audit_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "exact_reuse": {"const": "PASS"}
+      }
+    },
+    "schemas": {
+      "const": [
+        "decision-os.creator-live-agents-after-projection.v0.1",
+        "decision-os.creator-live-agents-compression.v0.1",
+        "decision-os.creator-live-agents-diff.python-difflib-v0.1",
+        "decision-os.creator-live-agents-boundary-checklist.v0.1",
+        "decision-os.creator-live-agents-public-safety.v0.1",
+        "decision-os.creator-live-agents-witness-binding.v0.1",
+        "decision-os.creator-live-agents-post-a1-gate-readback.v0.1",
+        "decision-os.creator-live-agents-a3-witness-verification.v0.1",
+        "decision-os.creator-live-agents-behavior-suite.v0.1",
+        "decision-os.creator-live-agents-behavior-result.v0.1",
+        "decision-os.creator-live-agents-real-behavior-receipt.v0.1",
+        "decision-os.creator-live-agents-public-bundle.v0.1",
+        "decision-os.creator-live-agents-public-bundle-assembler.v0.1"
+      ]
+    },
+    "claims": {
+      "const": [
+        "Exact artifact identities establish compression and byte reduction.",
+        "The boundary checklist establishes specified textual and structural presence only.",
+        "Only real behavior qualification can establish behavior in the preregistered scenarios.",
+        "A3 establishes only exact Run 2 reuse of the designated Run 1 structure."
+      ]
+    },
+    "non_claims": {
+      "const": [
+        "No claim of general usefulness, generality, causality, preference, production readiness, universal safety, or comparative superiority."
+      ]
+    },
+    "source_recovery": {"const": "Use a normal Forward revert, preserve protected artifacts and history, then rebuild, refix, and requalify."},
+    "files": {
+      "const": [
+        "before/AGENTS.md",
+        "after/AGENTS.md",
+        "manifest.json",
+        "diff.patch",
+        "boundary-checklist.json",
+        "behavior-qualification.json",
+        "proof-summary.json",
+        "README.md"
+      ]
+    }
+  }
+}
