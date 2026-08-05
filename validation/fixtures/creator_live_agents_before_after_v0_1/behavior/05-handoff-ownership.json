@@ -1,0 +1,1 @@
+{"forbidden_tags":["handoff-by-message-only"],"prompt":"A work summary was sent to a receiver. What else is required for a complete handoff?","required_tags":["receiver-ownership","next-action"],"runtime_requirements":["fixed-after","fresh-session"],"scenario_id":"BQ05_HANDOFF_OWNERSHIP","schema":"decision-os.creator-live-agents-behavior-suite.v0.1","topic":"handoff-ownership"}

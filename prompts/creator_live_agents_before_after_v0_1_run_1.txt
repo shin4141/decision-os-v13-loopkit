@@ -1,0 +1,63 @@
+Candidate: CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_1
+Lane: A1_ONLY
+
+Read exactly one repository file through read_repository_text_file:
+
+AGENTS.md
+
+The authorized Before identity is:
+
+- source revision: a80a06c067f7d558cfe16aa08566106aa4017a3d
+- Git blob: 2deb6f610f8e3a4e67808a0182cb2439a7abc447
+- UTF-8 byte count: 11147
+- line count: 359
+- SHA-256: bb14c77c6b45c6bf365902b47729b455df566fa98688956824e072c352f2dae7
+
+Do not read another repository file. Do not consult, reconstruct, or imitate the
+historical 20,705-byte AGENTS.md or any historical compressed After.
+
+Compress the authorized Before into one shorter, self-contained public agent
+instruction payload while preserving its mandatory operational boundaries.
+
+The complete proposed public After payload must be placed only in the
+body.reusable_structure field of exactly one propose_field_note_candidate call.
+Use plain UTF-8 text with LF line endings. Do not place Markdown headings,
+fences, horizontal rules, HTML blocks, Note metadata, proof metadata, or wrapper
+text inside that field.
+
+The payload must contain exactly one physical line beginning with each of these
+locators, and each line must state the corresponding operational rule:
+
+B01 Human Seat:
+B02 Authority Boundary:
+B03 Guard and Safety:
+B04 Responsibility Transfer:
+B05 Stop Conditions:
+B06 Evidence and Provenance:
+B07 Handoff and Completion:
+B08 Agent and Human Roles:
+B09 Routine Cleanup:
+B10 Forward Change and Rollback:
+
+The payload must also contain exactly one physical line beginning with the exact
+ASCII byte prefix `A3 Witness: `.
+
+Generate the rest of that Witness line yourself. It must contain at least 32
+non-whitespace UTF-8 bytes, express a real preserved operational invariant, be
+public-safe, and not be a nonce, identifier, checksum, or meaningless marker.
+Do not repeat the Witness line elsewhere.
+
+Use the remaining required proposal fields only to describe the candidate's
+trigger, scope, procedure, acceptance evidence, and remaining unknowns. They
+are not part of the public After payload.
+
+Call propose_field_note_candidate exactly once. Make no direct write, request no
+write, retry, replacement, publication, or second proposal, and stop normally
+after the one governed proposal.
+
+Allowed tools:
+
+- read_repository_text_file for AGENTS.md exactly once
+- propose_field_note_candidate exactly once
+
+All other tools and fallbacks are forbidden.

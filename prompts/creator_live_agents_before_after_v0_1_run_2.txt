@@ -1,0 +1,46 @@
+Candidate: CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_1
+Lane: EXACT_A2_ONLY
+
+Use only the exact durable A1 Note reconnected by the verified A2 lane and the
+verified content-free candidate receipts supplied by the coordinator. Do not
+scan for, select, read, reconstruct, or fall back to another Note or After.
+
+Produce one private draft of the public Before/After Proof Bundle explanation.
+Keep established metrics separate from NOT_ESTABLISHED values. Distinguish
+harness qualification from artifact behavior qualification. Artifact behavior
+must remain NOT_RUN unless a separately authorized real qualification receipt
+is supplied.
+
+Find the single line in the reconnected Note whose exact ASCII byte locator
+prefix is `A3 Witness: `.
+
+Reproduce that complete line byte-for-byte exactly once in the final output and
+use its operational statement substantively in the explanation. Do not copy any
+other A3-eligible line from the Note. Do not normalize, trim, paraphrase, or
+repeat the Witness.
+
+The public-bundle draft must state that A3 establishes only exact reuse of the
+designated Run 1 structure. It must not claim that A3 proves compression
+quality, behavior preservation, usefulness, generality, causal improvement,
+human preference, production readiness, universal safety, or superiority over
+other tools.
+
+Use only public-allowlisted candidate values in the draft, with one private
+exception: the exact Witness line required above is permitted only as the single
+raw A3-proof occurrence in this private Run 2 final output. It must not enter an
+assembled public projection or bundle unless separate publication approval
+explicitly allows the Witness text. Expose no raw Note, Note path or ID, Run ID,
+proof-attempt ID, task body, journal, anchor, approval, provider configuration,
+private path, raw Run 2 output, or other private proof metadata.
+
+Make no proposal or write. Request no retry, replacement, publication, release,
+or authority expansion. Stop normally after the one final response.
+
+Exact input authorities:
+
+- the verified durable A1 Note delivered by exact A2 reconnect
+- the durable PASS Post-A1 candidate-gate readback
+- the fixed Before identity in the candidate Contract
+
+All scans, alternate Notes, fallback selection, reconstruction, writes, and
+authority substitutions are forbidden.
