@@ -9,7 +9,7 @@ import io
 import os
 from pathlib import Path
 import stat
-from typing import Any
+from typing import Any, Callable
 
 from decision_os.acceleration.codex_adapter import (
     ADAPTER_NAME,
@@ -124,6 +124,8 @@ class FieldNoteCreatorLiveA2RunCompletion:
     run_id: str
     actual_runtime_identity: CodexRuntimeIdentity
     reconnect_receipt: FieldNoteReconnectReceipt
+    final_output_bytes: bytes
+    final_output_sha256: str
 
     def __post_init__(self) -> None:
         if (
@@ -142,6 +144,11 @@ class FieldNoteCreatorLiveA2RunCompletion:
             not in {"INJECTED", "ACTIVATION_UNKNOWN"}
             or self.reconnect_receipt.failure_reason is not None
             or self.reconnect_receipt.full_notes_injected != 1
+            or not isinstance(self.final_output_bytes, bytes)
+            or not self.final_output_bytes
+            or len(self.final_output_bytes) > 65_536
+            or hashlib.sha256(self.final_output_bytes).hexdigest()
+            != self.final_output_sha256
         ):
             raise ValueError("Creator-live A2 Run completion is invalid.")
 
@@ -150,6 +157,10 @@ class FieldNotesCompanionController(CompanionController):
     """Companion controller extended only with Field Notes Lite Capture."""
 
     def __init__(self, **kwargs: Any) -> None:
+        creator_live_entrypoint_factory: Callable[[Any], Any] | None = kwargs.pop(
+            "creator_live_entrypoint_factory",
+            None,
+        )
         self._field_note_draft: FieldNoteDraft | None = None
         self._field_note_pending: _PendingSave | None = None
         self._creator_live_a1_capture_config: (
@@ -159,6 +170,7 @@ class FieldNotesCompanionController(CompanionController):
         self._creator_live_a1_run_completion: (
             FieldNoteCreatorLiveA1RunCompletion | None
         ) = None
+        self._creator_live_a1_completed_draft: FieldNoteDraft | None = None
         self._creator_live_a1_failure_reason: str | None = None
         self._creator_live_a1_direct_write_identity: str | None = None
         self._creator_live_a1_proposal_diagnostic: (
@@ -191,6 +203,13 @@ class FieldNotesCompanionController(CompanionController):
                 ),
             )
         super().__init__(**kwargs)
+        if creator_live_entrypoint_factory is None:
+            from decision_os.companion.field_notes_creator_live_entrypoint import (
+                CreatorLiveCycle005Entrypoint,
+            )
+
+            creator_live_entrypoint_factory = CreatorLiveCycle005Entrypoint
+        self._creator_live_cycle_005 = creator_live_entrypoint_factory(self)
 
     def _active_creator_live_a1_capture(
         self,
@@ -224,6 +243,8 @@ class FieldNotesCompanionController(CompanionController):
 
     def start_run(self, task: str, *, task_mode: str = "manual") -> dict[str, Any]:
         with self._condition:
+            if self.creator_live_cycle_005_mutation_blocked():
+                raise FieldNoteError("CREATOR_LIVE_CYCLE_005_ACTIVE")
             self._require_no_active_run()
             self._clear_field_note_locked()
             self._clear_creator_live_a2_locked()
@@ -251,6 +272,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_capture_config = config
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
+            self._creator_live_a1_completed_draft = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
@@ -293,6 +315,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
+            self._creator_live_a1_completed_draft = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
@@ -306,6 +329,7 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
+            self._creator_live_a1_completed_draft = None
             self._creator_live_a1_failure_reason = None
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
@@ -584,10 +608,39 @@ class FieldNotesCompanionController(CompanionController):
                 reconnect_failure = "A2_TARGET_INVALID"
             else:
                 assert result.runtime_identity is not None
+                try:
+                    final_output_bytes = result.final_message.encode("utf-8")
+                except UnicodeEncodeError:
+                    reconnect_failure = "A2_OUTPUT_INVALID"
+                    final_output_bytes = b""
+                if (
+                    reconnect_failure is None
+                    and (
+                        not result.normal_terminal
+                        or result.turn_status != "completed"
+                        or result.status != "NORMAL_TERMINAL"
+                        or result.failure_diagnostic is not None
+                        or getattr(result, "field_note_proposal", None)
+                        is not None
+                        or result.file_actions
+                        or result.checkpoint_outcomes
+                        or not final_output_bytes
+                        or len(final_output_bytes) > 65_536
+                    )
+                ):
+                    reconnect_failure = "A2_OUTPUT_INVALID"
+                if reconnect_failure is not None:
+                    final_output_bytes = b""
+            if reconnect_failure is None:
+                assert result.runtime_identity is not None
                 reconnect_completion = FieldNoteCreatorLiveA2RunCompletion(
                     run_id=result.run_id,
                     actual_runtime_identity=result.runtime_identity,
                     reconnect_receipt=reconnect_receipt,
+                    final_output_bytes=final_output_bytes,
+                    final_output_sha256=hashlib.sha256(
+                        final_output_bytes
+                    ).hexdigest(),
                 )
         else:
             draft = self._eligible_draft(result)
@@ -611,6 +664,8 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a2_run_completion = reconnect_completion
                 self._creator_live_a2_failure_reason = reconnect_failure
             self._creator_live_a1_run_completion = completion
+            if capture is not None:
+                self._creator_live_a1_completed_draft = draft
             self._creator_live_a1_failure_reason = capture_failure
             self._creator_live_a1_proposal_diagnostic = proposal_diagnostic
             self._run["field_note_reconnect"] = reconnect_projection
@@ -682,6 +737,24 @@ class FieldNotesCompanionController(CompanionController):
                     "Creator-live A1 Run completion is unavailable."
                 )
             return completion
+
+    def creator_live_a1_completed_draft(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> FieldNoteDraft:
+        """Return the private typed A1 draft retained for A7 construction."""
+
+        with self._condition:
+            draft = self._creator_live_a1_completed_draft
+            if (
+                not isinstance(expected_run_id, str)
+                or not expected_run_id
+                or draft is None
+                or draft.source_run_id != expected_run_id
+            ):
+                raise FieldNoteError("A1_CAPTURE_IDENTITY_MISMATCH")
+            return draft
 
     def creator_live_a1_proposal_diagnostic(
         self,
@@ -779,6 +852,7 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_capture_config = None
                 self._creator_live_a1_failure_reason = "A1_RUN_FAILED"
                 self._creator_live_a1_run_completion = None
+                self._creator_live_a1_completed_draft = None
                 self._creator_live_a1_proposal_diagnostic = None
             if self._creator_live_a2_reconnect_target is not None:
                 self._creator_live_a2_completed_run_id = (
@@ -1428,3 +1502,69 @@ class FieldNotesCompanionController(CompanionController):
             self._field_note_draft = None
             self._run["field_note"] = {"state": "saved", "path": path}
             return self._snapshot_locked()
+
+    def creator_live_cycle_005_start(
+        self,
+        launch_binding_sha256: str,
+    ) -> dict[str, Any]:
+        """Start only the dedicated Cycle 005 production entrypoint."""
+
+        self._creator_live_cycle_005.start(launch_binding_sha256)
+        return self.snapshot()
+
+    def creator_live_cycle_005_mutation_blocked(self) -> bool:
+        entrypoint = getattr(self, "_creator_live_cycle_005", None)
+        return bool(entrypoint is not None and entrypoint.mutation_blocked)
+
+    @staticmethod
+    def creator_live_cycle_005_public_projection(
+        snapshot: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Redact private coordinator Runs from every HTTP projection."""
+
+        cycle = snapshot.get("creator_live_cycle_005")
+        if not isinstance(cycle, dict) or cycle.get("state") in {
+            "READY",
+            "NOT_READY",
+            "UNAVAILABLE",
+        }:
+            return snapshot
+        state = cycle.get("state")
+        public_state = (
+            "running"
+            if state == "RUNNING"
+            else "completed"
+            if state == "PASS"
+            else "needs_attention"
+        )
+        snapshot["run"] = {
+            "run_type": "creator_live_cycle_005",
+            "task_mode": None,
+            "state": public_state,
+            "progress": [cycle.get("stage") or "P0"],
+            "result": "",
+            "file_actions": [],
+            "read_evidence": [],
+            "outcomes": None,
+            "runtime": None,
+            "receipt_delta": None,
+            "approval": None,
+            "error": cycle.get("failure_code"),
+            "failure": None,
+        }
+        return snapshot
+
+    def _snapshot_locked(self) -> dict[str, Any]:
+        snapshot = super()._snapshot_locked()
+        entrypoint = getattr(self, "_creator_live_cycle_005", None)
+        snapshot["creator_live_cycle_005"] = (
+            entrypoint.snapshot(snapshot)
+            if entrypoint is not None
+            else {
+                "cycle_key": "cycle-005",
+                "state": "UNAVAILABLE",
+                "p0": {"ready": False, "failure_code": "ENTRYPOINT_UNAVAILABLE"},
+                "launch_binding_sha256": None,
+            }
+        )
+        return snapshot

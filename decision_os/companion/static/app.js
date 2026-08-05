@@ -46,6 +46,7 @@ const EMPTY_SHA256 =
   "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 const byId = (id) => document.getElementById(id);
+const optionalById = (id) => document.querySelectorAll(`#${id}`)[0] || null;
 
 class CompanionUnavailableError extends Error {}
 
@@ -1824,6 +1825,86 @@ function renderBridge(bridge, repository) {
   byId("bridge-record-intervention").disabled = !hasSession;
 }
 
+function renderCreatorLiveCycle005(value) {
+  if (!optionalById("creator-live-start")) {
+    return;
+  }
+  const cycle = value && typeof value === "object" ? value : null;
+  const binding = cycle?.binding;
+  const contract = binding?.contract;
+  const runtime = binding?.runtime;
+  const tasks = binding?.tasks;
+  const state = cycle?.state || "UNAVAILABLE";
+  setText("creator-live-cycle-005-status", state.replaceAll("_", " "));
+  setText("creator-live-revision", binding?.repository?.head || "Unavailable");
+  setText(
+    "creator-live-contract",
+    contract?.source_sha256
+      ? `${contract.profile} · ${contract.source_byte_count} bytes · ${contract.source_sha256}`
+      : "Unavailable",
+  );
+  setText(
+    "creator-live-contract-authority",
+    contract?.ordinary_contract_execution_authority || "Unavailable",
+  );
+  setText(
+    "creator-live-freeze-authority",
+    contract?.guided_intake_freeze_authority_state || "Unavailable",
+  );
+  setText(
+    "creator-live-authorization",
+    binding?.authorizations?.cycle_observed_at || "2026-08-05T06:22:00Z",
+  );
+  setText(
+    "creator-live-implementation-authorization",
+    binding?.authorizations?.implementation_observed_at ||
+      "2026-08-05T08:47:00Z",
+  );
+  setText(
+    "creator-live-runtime",
+    runtime
+      ? `${runtime.provider} · ${runtime.account_type} · ${runtime.model} · ${runtime.reasoning_effort} · ${runtime.service_tier} · CLI ${runtime.codex_cli_version}`
+      : "Unavailable",
+  );
+  setText(
+    "creator-live-run-1",
+    tasks?.run_1
+      ? `${tasks.run_1.byte_count} bytes · ${tasks.run_1.sha256} · ${tasks.run_1.lane}`
+      : "832 bytes · unavailable",
+  );
+  setText(
+    "creator-live-run-2",
+    tasks?.run_2
+      ? `${tasks.run_2.byte_count} bytes · ${tasks.run_2.sha256} · ${tasks.run_2.lane}`
+      : "856 bytes · unavailable",
+  );
+  setText(
+    "creator-live-attempt-policy",
+    cycle
+      ? `${cycle.one_attempt_no_retry ? "One attempt · no retry" : "Policy unavailable"} · ${cycle.replacement_permitted ? "replacement permitted" : "no replacement"}`
+      : "One attempt · no retry · no replacement",
+  );
+  setText(
+    "creator-live-historical-boundary",
+    binding?.historical_boundary || "Unavailable",
+  );
+  setText(
+    "creator-live-p0",
+    cycle?.p0?.ready
+      ? "PASS"
+      : cycle?.p0?.failure_code || "Unavailable",
+  );
+  setText(
+    "creator-live-binding-sha256",
+    cycle?.launch_binding_sha256 || "Unavailable",
+  );
+  setText("creator-live-stage", cycle?.stage || "P0");
+  byId("creator-live-start").disabled =
+    state !== "READY" ||
+    cycle?.p0?.ready !== true ||
+    typeof cycle?.launch_binding_sha256 !== "string";
+}
+
 function render(state) {
   if (!connected) {
     return;
@@ -1930,6 +2011,10 @@ function render(state) {
   renderOrdinaryContract(state.ordinary_contract, repository);
   renderGuidedIntake(state.guided_intake, repository);
   renderBridge(state.manual_bridge, repository);
+  renderCreatorLiveCycle005(state.creator_live_cycle_005);
+  if (state.creator_live_cycle_005?.state === "RUNNING") {
+    disableStateChangingControls();
+  }
   if (["PREPARING", "FIXING"].includes(state.ordinary_contract?.state)) {
     byId("contract-file").disabled = true;
     byId("contract-import").disabled = true;
@@ -1941,6 +2026,10 @@ function render(state) {
 }
 
 function disableStateChangingControls() {
+  const creatorLiveStart = optionalById("creator-live-start");
+  if (creatorLiveStart) {
+    creatorLiveStart.disabled = true;
+  }
   byId("choose-repository").disabled = true;
   byId("ordinary-contract-file").disabled = true;
   byId("ordinary-contract-confirm").disabled = true;
@@ -2022,6 +2111,7 @@ function enterDisconnected() {
   renderOrdinaryContract(null, null);
   renderGuidedIntake(null, null);
   renderBridge(null, null);
+  renderCreatorLiveCycle005(null);
 
   setText("global-error", DISCONNECTED_MESSAGE);
   setHidden("global-error", false);
@@ -2454,6 +2544,23 @@ byId("run").addEventListener("click", async () => {
     render(state);
   } else if (latestState) {
     render(latestState);
+  }
+});
+
+optionalById("creator-live-start")?.addEventListener("click", async () => {
+  const digest = latestState?.creator_live_cycle_005?.launch_binding_sha256;
+  if (
+    byId("creator-live-start").disabled ||
+    requestActive ||
+    typeof digest !== "string"
+  ) {
+    return;
+  }
+  const state = await postJSON("/api/creator-live/cycles/005/start", {
+    launch_binding_sha256: digest,
+  });
+  if (state) {
+    render(state);
   }
 });
 

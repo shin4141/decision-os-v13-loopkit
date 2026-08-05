@@ -259,6 +259,24 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.creator-live-card {
+  border-color: #b8c8f8;
+}
+
+.creator-live-binding {
+  display: grid;
+  gap: 0.45rem 1rem;
+  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  margin: 0 0 1rem;
+}
+
+.creator-live-binding dd {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .path-value {
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 0.82rem;
@@ -796,6 +814,7 @@ dd {
   }
 
   .operation-summary,
+  .creator-live-binding,
   .result-outcomes,
   .approval-actions {
     grid-template-columns: 1fr;

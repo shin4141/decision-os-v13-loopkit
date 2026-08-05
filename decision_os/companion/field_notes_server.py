@@ -10,11 +10,24 @@ from decision_os.companion.field_notes_controller import (
     FieldNoteError,
     FieldNotesCompanionController,
 )
+from decision_os.companion.field_notes_creator_live_entrypoint import (
+    CreatorLiveEntrypointError,
+)
 from decision_os.companion.server import CompanionRequestHandler, CompanionServer
 
 
 class FieldNotesRequestHandler(CompanionRequestHandler):
-    """Serve Field Notes assets and three bounded state-change routes."""
+    """Serve Field Notes assets and bounded state-change routes."""
+
+    def _json(self, status: HTTPStatus, value: object) -> None:
+        controller = self.server.controller
+        if (
+            isinstance(value, dict)
+            and isinstance(controller, FieldNotesCompanionController)
+            and "creator_live_cycle_005" in value
+        ):
+            value = controller.creator_live_cycle_005_public_projection(value)
+        super()._json(status, value)
 
     def _asset(self, filename: str, content_type: str) -> None:
         if not self._request_allowed():
@@ -64,6 +77,50 @@ class FieldNotesRequestHandler(CompanionRequestHandler):
 
     def do_POST(self) -> None:
         path = urlsplit(self.path).path
+        controller = self.server.controller
+        if (
+            path != "/api/creator-live/cycles/005/start"
+            and isinstance(controller, FieldNotesCompanionController)
+            and controller.creator_live_cycle_005_mutation_blocked()
+        ):
+            if not self._request_allowed(state_change=True):
+                return
+            self._error(
+                HTTPStatus.CONFLICT,
+                "CREATOR_LIVE_CYCLE_005_ACTIVE",
+            )
+            return
+        if path == "/api/creator-live/cycles/005/start":
+            if not self._request_allowed(state_change=True):
+                return
+            value = self._read_json(strict=True)
+            if value is None:
+                return
+            if not isinstance(controller, FieldNotesCompanionController):
+                self._error(
+                    HTTPStatus.CONFLICT,
+                    "CREATOR_LIVE_ENTRYPOINT_UNAVAILABLE",
+                )
+                return
+            if (
+                set(value) != {"launch_binding_sha256"}
+                or not isinstance(value["launch_binding_sha256"], str)
+            ):
+                self._error(
+                    HTTPStatus.BAD_REQUEST,
+                    "CREATOR_LIVE_REQUEST_INVALID",
+                )
+                return
+            try:
+                snapshot = controller.creator_live_cycle_005_start(
+                    value["launch_binding_sha256"]
+                )
+            except CreatorLiveEntrypointError as exc:
+                self._error(HTTPStatus(exc.http_status), exc.code)
+                return
+            snapshot["csrf"] = self.server.csrf_token
+            self._json(HTTPStatus.ACCEPTED, snapshot)
+            return
         if path not in {
             "/api/field-notes/save",
             "/api/field-notes/skip",
@@ -76,7 +133,6 @@ class FieldNotesRequestHandler(CompanionRequestHandler):
         value = self._read_json(strict=True)
         if value is None:
             return
-        controller = self.server.controller
         if not isinstance(controller, FieldNotesCompanionController):
             self._error(HTTPStatus.CONFLICT, "Field Notes controller is unavailable.")
             return
