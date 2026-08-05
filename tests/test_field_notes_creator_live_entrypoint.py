@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 from decision_os.companion.field_notes_controller import (
@@ -19,6 +20,7 @@ from decision_os.companion.field_notes_creator_live_entrypoint import (
     EXPECTED_EXECUTION_AUTHORITY,
     EXPECTED_FREEZE_AUTHORITY,
     IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT,
+    NOT_DURABLY_PERSISTED,
     RUN_1_TASK,
     RUN_1_TASK_SHA256,
     RUN_2_TASK,
@@ -28,10 +30,20 @@ from decision_os.companion.field_notes_creator_live_entrypoint import (
     CreatorLiveEntrypointError,
     CreatorLiveP0Result,
     compile_run_2_output_artifact,
+    compile_run_2_output_artifact_audited,
 )
+from decision_os.companion.field_notes_creator_live import (
+    FieldNoteCreatorLiveOutputArtifactIdentity,
+    FieldNoteCreatorLiveRun2OutputIdentity,
+    FieldNoteCreatorLiveValidationError,
+)
+from decision_os.companion.field_notes_model import canonical_json
 from decision_os.companion.field_notes_reuse import FieldNoteIdentity
 from decision_os.companion.field_notes_server import configure_field_notes_server
 from decision_os.companion.server import CompanionServer
+from decision_os.companion.field_notes_whole_flow import (
+    FieldNoteSourceRepositoryIdentity,
+)
 from tests.test_companion_controller import ScriptedFactory, create_repository
 
 
@@ -65,6 +77,41 @@ class _ReadyEntrypoint(CreatorLiveCycle005Entrypoint):
         binding = {
             "schema": "test.creator-live-binding",
             "cycle_key": "cycle-005",
+            "contract": {
+                "profile": "ORDINARY_USER_PATH_CONTRACT_APPROVED_CANDIDATE_V0_1",
+                "title": "Ordinary User Path Contract v0.1 — APPROVED CANDIDATE",
+                "source_byte_count": 11_039,
+                "source_sha256": "1" * 64,
+                "wrapper_sha256": "2" * 64,
+                "interpretation_sha256": "3" * 64,
+                "ordinary_contract_execution_authority": (
+                    EXPECTED_EXECUTION_AUTHORITY
+                ),
+                "guided_intake_freeze_authority_state": (
+                    EXPECTED_FREEZE_AUTHORITY
+                ),
+            },
+            "tasks": {
+                "run_1": {
+                    "byte_count": 832,
+                    "sha256": RUN_1_TASK_SHA256,
+                },
+                "run_2": {
+                    "byte_count": 856,
+                    "sha256": RUN_2_TASK_SHA256,
+                },
+            },
+            "authorizations": {
+                "implementation_observed_at": (
+                    IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT
+                ),
+            },
+            "historical_boundary": {
+                "cycle_key": "cycle-004",
+                "state": "FAILED",
+                "failure_boundary": "A1_CAPTURE",
+                "failure_code": "A1_CAPTURE_CHRONOLOGY_INVALID",
+            },
         }
         return CreatorLiveP0Result(True, None, binding, _DIGEST)
 
@@ -87,6 +134,7 @@ class _FakeHTTPEntrypoint:
                     "source_sha256": "b" * 64,
                     "source_byte_count": 11_039,
                     "profile": "ORDINARY_USER_PATH_CONTRACT_APPROVED_CANDIDATE_V0_1",
+                    "title": "Ordinary User Path Contract v0.1 — APPROVED CANDIDATE",
                     "ordinary_contract_execution_authority": (
                         EXPECTED_EXECUTION_AUTHORITY
                     ),
@@ -120,7 +168,12 @@ class _FakeHTTPEntrypoint:
                         "lane": "EXACT_A2_ONLY",
                     },
                 },
-                "historical_boundary": "Historical attempts remain terminal.",
+                "historical_boundary": {
+                    "cycle_key": "cycle-004",
+                    "state": "FAILED",
+                    "failure_boundary": "A1_CAPTURE",
+                    "failure_code": "A1_CAPTURE_CHRONOLOGY_INVALID",
+                },
             },
             "identities": None,
             "receipt_sha256": None,
@@ -128,6 +181,8 @@ class _FakeHTTPEntrypoint:
             "failure_code": None,
             "one_attempt_no_retry": True,
             "replacement_permitted": False,
+            "storage_occupied": False,
+            "start_allowed": True,
         }
 
     def start(self, digest: str) -> dict[str, object]:
@@ -203,6 +258,21 @@ class CreatorLiveTaskAndEvidenceTests(unittest.TestCase):
             observed_at="2026-08-05T09:00:00Z",
         )
 
+    def output_identity(
+        self,
+        output: bytes,
+        *,
+        run_2_id: str | None = None,
+    ) -> FieldNoteCreatorLiveRun2OutputIdentity:
+        return FieldNoteCreatorLiveRun2OutputIdentity.create(
+            proof_attempt_id="proof-fixture-005",
+            run_id=run_2_id or self.run_2_id,
+            task_byte_count=len(RUN_2_TASK.encode("utf-8")),
+            task_sha256=RUN_2_TASK_SHA256,
+            final_output_byte_count=len(output),
+            final_output_sha256=hashlib.sha256(output).hexdigest(),
+        )
+
     def test_canonical_task_bytes_hashes_lanes_and_authorizations_are_exact(
         self,
     ) -> None:
@@ -218,7 +288,7 @@ class CreatorLiveTaskAndEvidenceTests(unittest.TestCase):
         )
         self.assertEqual("2026-08-05T06:22:00Z", CYCLE_AUTHORIZATION_OBSERVED_AT)
         self.assertEqual(
-            "2026-08-05T08:47:00Z",
+            "2026-08-05T12:28:00Z",
             IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT,
         )
         self.assertIn("Propose exactly one new Field Note", RUN_1_TASK)
@@ -263,6 +333,123 @@ class CreatorLiveTaskAndEvidenceTests(unittest.TestCase):
                 final_output_sha256="0" * 64,
                 observed_at="2026-08-05T09:00:00Z",
             )
+
+    def test_audited_a3_persists_exact_winner_offsets_and_counts(self) -> None:
+        output = self.output()
+        winner, audit = compile_run_2_output_artifact_audited(
+            note=self.note,
+            note_bytes=self.note_bytes,
+            run_2_id=self.run_2_id,
+            final_output_bytes=output,
+            output_identity=self.output_identity(output),
+        )
+        self.assertIsNotNone(winner)
+        self.assertEqual(1, audit.eligible_candidate_count)
+        self.assertEqual(1, audit.winning_candidate_count)
+        self.assertIsNone(audit.terminal_a3_code)
+        source_start = self.note_bytes.index(self.structure)
+        output_start = output.index(self.structure)
+        self.assertEqual(source_start, audit.selected_source_start_byte)
+        self.assertEqual(source_start + len(self.structure), audit.selected_source_end_byte)
+        self.assertEqual(output_start, audit.selected_output_start_byte)
+        self.assertEqual(output_start + len(self.structure), audit.selected_output_end_byte)
+        self.assertEqual(
+            hashlib.sha256(
+                canonical_json(audit._body()).encode("utf-8")
+            ).hexdigest(),
+            audit.audit_sha256,
+        )
+
+    def test_audited_a3_zero_candidate_has_counts_and_null_offsets(self) -> None:
+        output = self.output(
+            b"A semantic paraphrase that is intentionally not an exact Note range."
+        )
+        winner, audit = compile_run_2_output_artifact_audited(
+            note=self.note,
+            note_bytes=self.note_bytes,
+            run_2_id=self.run_2_id,
+            final_output_bytes=output,
+            output_identity=self.output_identity(output),
+        )
+        self.assertIsNone(winner)
+        self.assertEqual(0, audit.eligible_candidate_count)
+        self.assertEqual(0, audit.winning_candidate_count)
+        self.assertEqual("A3_EXACT_STRUCTURE_MISSING", audit.terminal_a3_code)
+        self.assertGreater(audit.rejection_counts.absent_output_occurrence, 0)
+        self.assertEqual(
+            (None, None, None, None),
+            (
+                audit.selected_source_start_byte,
+                audit.selected_source_end_byte,
+                audit.selected_output_start_byte,
+                audit.selected_output_end_byte,
+            ),
+        )
+
+    def test_audited_a3_multiple_candidate_ambiguity(self) -> None:
+        tied_note_bytes = b"# Fixture\n" + b"A" * 48 + b"\n" + b"B" * 48 + b"\n"
+        tied_note = FieldNoteIdentity(
+            note_path=self.note.note_path,
+            field_note_id=self.note.field_note_id,
+            note_sha256=hashlib.sha256(tied_note_bytes).hexdigest(),
+            origin_run_id=self.note.origin_run_id,
+        )
+        output = b"\n".join(
+            (
+                tied_note.note_path.encode(),
+                tied_note.field_note_id.encode(),
+                tied_note.note_sha256.encode(),
+                self.run_2_id.encode(),
+                b"A" * 48,
+                b"B" * 48,
+            )
+        )
+        winner, audit = compile_run_2_output_artifact_audited(
+            note=tied_note,
+            note_bytes=tied_note_bytes,
+            run_2_id=self.run_2_id,
+            final_output_bytes=output,
+            output_identity=self.output_identity(output),
+        )
+        self.assertIsNone(winner)
+        self.assertEqual(2, audit.eligible_candidate_count)
+        self.assertEqual(2, audit.winning_candidate_count)
+        self.assertEqual("A3_EXACT_STRUCTURE_AMBIGUOUS", audit.terminal_a3_code)
+        self.assertIsNone(audit.selected_source_start_byte)
+
+    def test_audited_a3_counts_multiple_output_occurrences(self) -> None:
+        output = self.output() + b"\nrepeated=" + self.structure
+        winner, audit = compile_run_2_output_artifact_audited(
+            note=self.note,
+            note_bytes=self.note_bytes,
+            run_2_id=self.run_2_id,
+            final_output_bytes=output,
+            output_identity=self.output_identity(output),
+        )
+        self.assertIsNone(winner)
+        self.assertEqual(0, audit.eligible_candidate_count)
+        self.assertEqual(
+            1,
+            audit.rejection_counts.multiple_output_occurrences,
+        )
+        self.assertEqual("A3_EXACT_STRUCTURE_MISSING", audit.terminal_a3_code)
+
+    def test_output_artifact_id_is_canonical_and_mismatch_is_rejected(self) -> None:
+        output = self.output()
+        artifact = self.output_identity(output).output_artifact
+        body = {
+            key: value
+            for key, value in artifact.as_dict().items()
+            if key != "artifact_id"
+        }
+        self.assertEqual(
+            hashlib.sha256(canonical_json(body).encode("utf-8")).hexdigest(),
+            artifact.artifact_id,
+        )
+        invalid = artifact.as_dict()
+        invalid["artifact_id"] = "0" * 64
+        with self.assertRaises(FieldNoteCreatorLiveValidationError):
+            FieldNoteCreatorLiveOutputArtifactIdentity.from_dict(invalid)
         tied_note_bytes = b"# Fixture\n" + b"A" * 48 + b"\n" + b"B" * 48 + b"\n"
         tied_note = FieldNoteIdentity(
             note_path=self.note.note_path,
@@ -337,7 +524,12 @@ class CreatorLiveAttemptIdentityTests(unittest.TestCase):
         )
 
     def test_restart_exposes_open_unresumable_and_cannot_create_replacement(self) -> None:
-        self.entrypoint().start(_DIGEST)
+        opened = self.entrypoint()
+        opened.start(_DIGEST)
+        opened._active = False
+        opened._terminal_state = "FAILED"
+        in_process = opened.snapshot(_Controller(self.repository).snapshot())
+        self.assertEqual("OPEN_UNRESUMABLE", in_process["state"])
         restarted = self.entrypoint()
         snapshot = restarted.snapshot(_Controller(self.repository).snapshot())
         self.assertEqual("OPEN_UNRESUMABLE", snapshot["state"])
@@ -360,9 +552,29 @@ class CreatorLiveAttemptIdentityTests(unittest.TestCase):
         ):
             entrypoint.start(_DIGEST)
         self.assertEqual("FAILED", entrypoint._runtime.read_back().state)
+        entrypoint._terminal_state = "PASS"
+        self.assertEqual(
+            "FAILED",
+            entrypoint.snapshot(_Controller(self.repository).snapshot())["state"],
+        )
         restarted = self.entrypoint()
         snapshot = restarted.snapshot(_Controller(self.repository).snapshot())
         self.assertEqual("FAILED", snapshot["state"])
+        self.assertIsNone(snapshot["binding"])
+        identities = snapshot["identities"]
+        self.assertEqual(
+            "ORDINARY_USER_PATH_CONTRACT_APPROVED_CANDIDATE_V0_1",
+            identities["contract_identity"]["profile"],
+        )
+        self.assertEqual(832, identities["run_1_task"]["byte_count"])
+        self.assertEqual(856, identities["run_2_task"]["byte_count"])
+        self.assertEqual(
+            IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT,
+            identities["implementation_authorization_observed_at"],
+        )
+        self.assertEqual(0, identities["retry_count"])
+        self.assertEqual(0, identities["replacement_count"])
+        self.assertNotIn(str(self.repository), json.dumps(snapshot))
         with self.assertRaisesRegex(CreatorLiveEntrypointError, "ATTEMPT_EXISTS"):
             restarted.start(_DIGEST)
 
@@ -399,6 +611,173 @@ class CreatorLiveAttemptIdentityTests(unittest.TestCase):
         self.assertEqual("INTEGRITY_FAILURE", snapshot["state"])
         with self.assertRaisesRegex(CreatorLiveEntrypointError, "ATTEMPT_EXISTS"):
             entrypoint.start(_DIGEST)
+
+    def test_post_completion_readback_failure_releases_transient_output(self) -> None:
+        run_2_id = "run_a7_creator_live_cycle_005_2_" + _DIGEST
+
+        class Controller:
+            def __init__(self) -> None:
+                self._creator_live_a2_run_completion = object()
+
+            def creator_live_a1_completed_draft(
+                self, *, expected_run_id: str
+            ) -> object:
+                self.a1_run_id = expected_run_id
+                return object()
+
+            def creator_live_a2_run_completion(
+                self, *, expected_run_id: str
+            ) -> object:
+                self.asserted_run_id = expected_run_id
+                return self._creator_live_a2_run_completion
+
+            def release_creator_live_a2_run_completion(
+                self, *, expected_run_id: str
+            ) -> None:
+                self.released_run_id = expected_run_id
+                self._creator_live_a2_run_completion = None
+
+        note = object()
+
+        class Runtime:
+            def __init__(self) -> None:
+                self.read_count = 0
+
+            def read_back(self) -> object:
+                self.read_count += 1
+                if self.read_count == 1:
+                    return type(
+                        "AfterA1",
+                        (),
+                        {
+                            "proof_attempt_id": "proof-fixture",
+                            "run_1": type("Run1", (), {"run_id": "run-1"})(),
+                            "captured_note": note,
+                        },
+                    )()
+                if self.read_count == 2:
+                    return object()
+                if self.read_count == 3:
+                    raise ValueError("POST_COMPLETION_READBACK_FAILED")
+                return type("Failed", (), {"state": "FAILED"})()
+
+            def open_run_2(self, _identity: object) -> None:
+                return None
+
+        class Bridge:
+            def __init__(self, **_kwargs: object) -> None:
+                pass
+
+            def capture(self, _task: str) -> None:
+                return None
+
+            def reconnect(self, _task: str) -> None:
+                return None
+
+        controller = Controller()
+        entrypoint = CreatorLiveCycle005Entrypoint(
+            controller,
+            spec=self.spec,
+        )
+        source = FieldNoteSourceRepositoryIdentity(
+            repository_id="repo:v1:" + "a" * 64,
+            source_commit="a" * 40,
+        )
+        runtime = Runtime()
+        prepared = type("Prepared", (), {"note_bytes": b"fixture\n"})()
+        with (
+            patch(
+                "decision_os.companion.field_notes_creator_live_entrypoint."
+                "FieldNoteCreatorLiveA1CaptureBridge",
+                Bridge,
+            ),
+            patch(
+                "decision_os.companion.field_notes_creator_live_entrypoint."
+                "FieldNoteCreatorLiveA2ReconnectBridge",
+                Bridge,
+            ),
+            patch(
+                "decision_os.companion.field_notes_creator_live_entrypoint."
+                "creator_live_a2_target_from_readback",
+                return_value=object(),
+            ),
+            patch(
+                "decision_os.companion.field_notes_creator_live_entrypoint."
+                "prepare_creator_live_a2_reconnect",
+                return_value=prepared,
+            ),
+        ):
+            entrypoint._run_sequence(runtime, source, _DIGEST)
+
+        self.assertIsNone(
+            controller._creator_live_a2_run_completion,
+            entrypoint._terminal_failure_code,
+        )
+        self.assertEqual(run_2_id, controller.released_run_id)
+        self.assertEqual("FAILED", entrypoint._terminal_state)
+
+
+class CreatorLiveCycle005BackwardProjectionTests(unittest.TestCase):
+    def test_cycle_005_projects_only_exact_v2_durable_values(self) -> None:
+        entrypoint = CreatorLiveCycle005Entrypoint(object())
+        snapshot = entrypoint.snapshot({})
+        identities = snapshot["identities"]
+        self.assertEqual("FAILED", snapshot["state"])
+        self.assertEqual("A3_REUSE", snapshot["stage"])
+        self.assertFalse(snapshot["start_allowed"])
+        self.assertTrue(snapshot["storage_occupied"])
+        self.assertIsNone(snapshot["binding"])
+        self.assertEqual(
+            "bbfa49ba48254758a8b6429b2eb88d141954eac8",
+            identities["revision"],
+        )
+        self.assertEqual(NOT_DURABLY_PERSISTED, identities["contract_identity"])
+        self.assertEqual(
+            NOT_DURABLY_PERSISTED,
+            identities["run_1_task"]["byte_count"],
+        )
+        self.assertEqual(RUN_1_TASK_SHA256, identities["run_1_task"]["sha256"])
+        self.assertEqual(
+            NOT_DURABLY_PERSISTED,
+            identities["run_2_task"]["byte_count"],
+        )
+        self.assertEqual(
+            "2026-08-05T11:24:40.255812Z",
+            identities["proof_as_of"],
+        )
+        self.assertEqual(
+            "1de2e998804f5fb694707846b7deb0dc9d8b5f9cfc6027ad0210ddc270029322",
+            identities["journal_sha256"],
+        )
+        self.assertEqual(
+            "e246757a7ba98849a6b4a694ababf473dc1a98baf1fc1ce0ea7daa3a6e7e8610",
+            identities["anchor_sha256"],
+        )
+        self.assertEqual(
+            "481be90dc8751bda3d7b00714f5a0c650230dffa8974a1332881ce42c127710f",
+            identities["readback_sha256"],
+        )
+        self.assertEqual("A3_EXACT_STRUCTURE_MISSING", identities["failure_code"])
+
+    def test_cycle_005_never_reconstructs_from_contemporary_constants(self) -> None:
+        spec = CreatorLiveCycle005Spec(
+            run_1_task="CONTEMPORARY_PRIVATE_RUN_1_TASK",
+            run_2_task="CONTEMPORARY_PRIVATE_RUN_2_TASK",
+            implementation_authorization_observed_at=(
+                "2099-01-01T00:00:00Z"
+            ),
+        )
+        snapshot = CreatorLiveCycle005Entrypoint(
+            object(),
+            spec=spec,
+        ).snapshot({})
+        raw = json.dumps(snapshot, sort_keys=True)
+        self.assertNotIn("CONTEMPORARY_PRIVATE", raw)
+        self.assertNotIn("2099-01-01", raw)
+        self.assertEqual(
+            NOT_DURABLY_PERSISTED,
+            snapshot["identities"]["implementation_authorization_observed_at"],
+        )
 
 
 class CreatorLiveHTTPTests(unittest.TestCase):
@@ -577,6 +956,48 @@ class CreatorLiveHTTPTests(unittest.TestCase):
         self.assertNotIn("PRIVATE NOTE", encoded)
         self.assertNotIn("PRIVATE", encoded)
         self.assertEqual(["A2"], projected["run"]["progress"])
+
+    def test_terminal_http_state_is_allowlisted_and_duplicate_start_is_409(
+        self,
+    ) -> None:
+        cookie, csrf = self.bootstrap()
+        self.controller._creator_live_cycle_005 = CreatorLiveCycle005Entrypoint(
+            self.controller
+        )
+        status, _headers, raw = self.request(
+            "GET",
+            "/api/state",
+            cookie=cookie,
+            content_type=None,
+        )
+        self.assertEqual(200, status)
+        cycle = json.loads(raw)["creator_live_cycle_005"]
+        encoded = json.dumps(cycle, sort_keys=True)
+        self.assertEqual("FAILED", cycle["state"])
+        self.assertIsNone(cycle["binding"])
+        self.assertFalse(cycle["start_allowed"])
+        for private in (
+            RUN_1_TASK,
+            RUN_2_TASK,
+            "note_path",
+            "note_id",
+            "PRIVATE MODEL OUTPUT",
+            "protected_history",
+            "/Users/sn/Documents/v13/decision-os-v13-loopkit",
+        ):
+            self.assertNotIn(private, encoded)
+        status, _headers, body = self.request(
+            "POST",
+            "/api/creator-live/cycles/005/start",
+            payload=json.dumps(
+                {"launch_binding_sha256": cycle["launch_binding_sha256"]}
+            ).encode("utf-8"),
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(409, status)
+        self.assertEqual("CYCLE_005_ATTEMPT_EXISTS", json.loads(body)["error"])
 
 
 if __name__ == "__main__":

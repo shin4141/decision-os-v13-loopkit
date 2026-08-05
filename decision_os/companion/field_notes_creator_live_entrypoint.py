@@ -18,10 +18,21 @@ from decision_os.acceleration.model import git_output, repository_id
 from decision_os.companion.field_notes_creator_live import (
     CREATOR_LIVE_ANCHOR_FILENAME,
     CREATOR_LIVE_ANCHOR_FILENAME_V2,
+    CREATOR_LIVE_ANCHOR_FILENAME_V3,
     CREATOR_LIVE_JOURNAL_FILENAME,
     CREATOR_LIVE_JOURNAL_FILENAME_V2,
+    CREATOR_LIVE_JOURNAL_FILENAME_V3,
+    FieldNoteCreatorLiveA3CompilerAudit,
+    FieldNoteCreatorLiveA3RejectionCounts,
     FieldNoteCreatorLiveAttemptExistsError,
+    FieldNoteCreatorLiveContractIdentity,
+    FieldNoteCreatorLiveHistoricalBoundary,
     FieldNoteCreatorLiveProofRuntime,
+    FieldNoteCreatorLiveRun2OutputIdentity,
+    FieldNoteCreatorLiveTaskIdentity,
+    FieldNoteCreatorLiveTerminalProjectionBinding,
+    FieldNoteCreatorLiveTraceReadbackV2,
+    FieldNoteCreatorLiveTraceReadbackV3,
 )
 from decision_os.companion.field_notes_creator_live_capture import (
     FieldNoteCreatorLiveA1CaptureBridge,
@@ -64,7 +75,7 @@ from decision_os.companion.field_notes_whole_flow import (
 
 CYCLE_KEY = "cycle-005"
 CYCLE_AUTHORIZATION_OBSERVED_AT = "2026-08-05T06:22:00Z"
-IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT = "2026-08-05T08:47:00Z"
+IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT = "2026-08-05T12:28:00Z"
 EXPECTED_REPOSITORY = Path(
     "/Users/sn/Documents/v13/decision-os-v13-loopkit"
 )
@@ -151,7 +162,10 @@ _PROOF_FILENAMES = (
     CREATOR_LIVE_ANCHOR_FILENAME,
     CREATOR_LIVE_JOURNAL_FILENAME_V2,
     CREATOR_LIVE_ANCHOR_FILENAME_V2,
+    CREATOR_LIVE_JOURNAL_FILENAME_V3,
+    CREATOR_LIVE_ANCHOR_FILENAME_V3,
 )
+NOT_DURABLY_PERSISTED = "NOT_DURABLY_PERSISTED"
 
 PROTECTED_HISTORY: tuple[tuple[str, str], ...] = (
     (
@@ -204,6 +218,11 @@ PROTECTED_HISTORY: tuple[tuple[str, str], ...] = (
 class _Controller(Protocol):
     def creator_live_a1_completed_draft(self, *, expected_run_id: str) -> Any: ...
     def creator_live_a2_run_completion(self, *, expected_run_id: str) -> Any: ...
+    def release_creator_live_a2_run_completion(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> None: ...
 
 
 class CreatorLiveEntrypointError(RuntimeError):
@@ -374,17 +393,21 @@ def _proof_storage_occupied(root: Path) -> bool:
         return True
 
 
-def compile_run_2_output_artifact(
+@dataclass(frozen=True)
+class _A3CompilerScan:
+    candidates: tuple[tuple[int, int, bytes, int], ...]
+    longest_candidate_byte_count: int
+    winners: tuple[tuple[int, int, bytes, int], ...]
+    rejection_counts: FieldNoteCreatorLiveA3RejectionCounts
+
+
+def _validate_run_2_output_artifact_inputs(
     *,
     note: FieldNoteIdentity,
     note_bytes: bytes,
-    run_2_id: str,
     final_output_bytes: bytes,
     final_output_sha256: str,
-    observed_at: str,
-) -> FieldNoteReuseClaim:
-    """Compile only a unique, exact, non-whole UTF-8 output-artifact claim."""
-
+) -> None:
     if (
         not isinstance(note_bytes, bytes)
         or _sha256_bytes(note_bytes) != note.note_sha256
@@ -406,14 +429,42 @@ def compile_run_2_output_artifact(
     ):
         if identity.encode("utf-8") not in final_output_bytes:
             raise ValueError("A3_OUTPUT_ARTIFACT_LINEAGE_MISSING")
+
+
+def _scan_run_2_output_artifact(
+    *,
+    note_bytes: bytes,
+    final_output_bytes: bytes,
+) -> _A3CompilerScan:
     candidates: list[tuple[int, int, bytes, int]] = []
+    rejection_counts = {
+        "below_minimum_byte_length": 0,
+        "whole_note_range": 0,
+        "non_unique_source_occurrence": 0,
+        "absent_output_occurrence": 0,
+        "multiple_output_occurrences": 0,
+    }
     for match in re.finditer(rb"[^\r\n]+", note_bytes):
         structure = match.group(0)
+        below_minimum = len(structure.strip()) < 32
+        whole_note = match.start() == 0 and match.end() == len(note_bytes)
+        source_occurrences = note_bytes.count(structure)
+        output_occurrences = final_output_bytes.count(structure)
+        if below_minimum:
+            rejection_counts["below_minimum_byte_length"] += 1
+        if whole_note:
+            rejection_counts["whole_note_range"] += 1
+        if source_occurrences != 1:
+            rejection_counts["non_unique_source_occurrence"] += 1
+        if output_occurrences == 0:
+            rejection_counts["absent_output_occurrence"] += 1
+        elif output_occurrences > 1:
+            rejection_counts["multiple_output_occurrences"] += 1
         if (
-            len(structure.strip()) < 32
-            or (match.start() == 0 and match.end() == len(note_bytes))
-            or note_bytes.count(structure) != 1
-            or final_output_bytes.count(structure) != 1
+            below_minimum
+            or whole_note
+            or source_occurrences != 1
+            or output_occurrences != 1
         ):
             continue
         candidates.append(
@@ -424,13 +475,28 @@ def compile_run_2_output_artifact(
                 final_output_bytes.index(structure),
             )
         )
-    if not candidates:
-        raise ValueError("A3_EXACT_STRUCTURE_MISSING")
-    longest = max(len(item[2]) for item in candidates)
+    longest = max((len(item[2]) for item in candidates), default=0)
     winners = tuple(item for item in candidates if len(item[2]) == longest)
-    if len(winners) != 1:
-        raise ValueError("A3_EXACT_STRUCTURE_AMBIGUOUS")
-    start, end, structure, output_start = winners[0]
+    return _A3CompilerScan(
+        candidates=tuple(candidates),
+        longest_candidate_byte_count=longest,
+        winners=winners,
+        rejection_counts=FieldNoteCreatorLiveA3RejectionCounts(
+            **rejection_counts
+        ),
+    )
+
+
+def _claim_from_a3_winner(
+    *,
+    note: FieldNoteIdentity,
+    note_bytes: bytes,
+    run_2_id: str,
+    final_output_sha256: str,
+    observed_at: str,
+    winner: tuple[int, int, bytes, int],
+) -> FieldNoteReuseClaim:
+    start, end, structure, output_start = winner
     binding = bind_field_note_structure(
         note,
         note_bytes,
@@ -473,6 +539,199 @@ def compile_run_2_output_artifact(
                 "Independent evidence may later confirm the exact structure's "
                 "bounded contribution."
             ),
+        ),
+    )
+
+
+def compile_run_2_output_artifact(
+    *,
+    note: FieldNoteIdentity,
+    note_bytes: bytes,
+    run_2_id: str,
+    final_output_bytes: bytes,
+    final_output_sha256: str,
+    observed_at: str,
+) -> FieldNoteReuseClaim:
+    """Compile only a unique, exact, non-whole UTF-8 output-artifact claim."""
+
+    _validate_run_2_output_artifact_inputs(
+        note=note,
+        note_bytes=note_bytes,
+        final_output_bytes=final_output_bytes,
+        final_output_sha256=final_output_sha256,
+    )
+    scan = _scan_run_2_output_artifact(
+        note_bytes=note_bytes,
+        final_output_bytes=final_output_bytes,
+    )
+    if not scan.candidates:
+        raise ValueError("A3_EXACT_STRUCTURE_MISSING")
+    if len(scan.winners) != 1:
+        raise ValueError("A3_EXACT_STRUCTURE_AMBIGUOUS")
+    return _claim_from_a3_winner(
+        note=note,
+        note_bytes=note_bytes,
+        run_2_id=run_2_id,
+        final_output_sha256=final_output_sha256,
+        observed_at=observed_at,
+        winner=scan.winners[0],
+    )
+
+
+def compile_run_2_output_artifact_audited(
+    *,
+    note: FieldNoteIdentity,
+    note_bytes: bytes,
+    run_2_id: str,
+    final_output_bytes: bytes,
+    output_identity: FieldNoteCreatorLiveRun2OutputIdentity,
+) -> tuple[
+    tuple[int, int, bytes, int] | None,
+    FieldNoteCreatorLiveA3CompilerAudit,
+]:
+    """Return transient winner facts plus their content-free typed audit."""
+
+    if (
+        not isinstance(output_identity, FieldNoteCreatorLiveRun2OutputIdentity)
+        or output_identity.run_id != run_2_id
+        or output_identity.final_output_byte_count != len(final_output_bytes)
+        or output_identity.final_output_sha256
+        != _sha256_bytes(final_output_bytes)
+    ):
+        raise ValueError("A3_OUTPUT_ARTIFACT_IDENTITY_INVALID")
+    _validate_run_2_output_artifact_inputs(
+        note=note,
+        note_bytes=note_bytes,
+        final_output_bytes=final_output_bytes,
+        final_output_sha256=output_identity.final_output_sha256,
+    )
+    scan = _scan_run_2_output_artifact(
+        note_bytes=note_bytes,
+        final_output_bytes=final_output_bytes,
+    )
+    winner = scan.winners[0] if len(scan.winners) == 1 else None
+    terminal_a3_code = (
+        None
+        if winner is not None
+        else "A3_EXACT_STRUCTURE_MISSING"
+        if not scan.candidates
+        else "A3_EXACT_STRUCTURE_AMBIGUOUS"
+    )
+    audit = FieldNoteCreatorLiveA3CompilerAudit.issue(
+        proof_attempt_id=output_identity.proof_attempt_id,
+        run_id=run_2_id,
+        output_artifact_id=output_identity.output_artifact.artifact_id,
+        source_note_byte_count=len(note_bytes),
+        source_note_sha256=note.note_sha256,
+        output_byte_count=len(final_output_bytes),
+        output_sha256=output_identity.final_output_sha256,
+        eligible_candidate_count=len(scan.candidates),
+        rejection_counts=scan.rejection_counts,
+        longest_candidate_byte_count=scan.longest_candidate_byte_count,
+        winning_candidate_count=len(scan.winners),
+        selected_source_start_byte=(winner[0] if winner is not None else None),
+        selected_source_end_byte=(winner[1] if winner is not None else None),
+        selected_output_start_byte=(winner[3] if winner is not None else None),
+        selected_output_end_byte=(
+            winner[3] + len(winner[2]) if winner is not None else None
+        ),
+        terminal_a3_code=terminal_a3_code,
+    )
+    return winner, audit
+
+
+def _claim_from_verified_a3_audit(
+    *,
+    note: FieldNoteIdentity,
+    note_bytes: bytes,
+    run_2_id: str,
+    output_identity: FieldNoteCreatorLiveRun2OutputIdentity,
+    observed_at: str,
+    winner: tuple[int, int, bytes, int],
+    audit: FieldNoteCreatorLiveA3CompilerAudit,
+) -> FieldNoteReuseClaim:
+    start, end, structure, output_start = winner
+    if (
+        audit.proof_attempt_id != output_identity.proof_attempt_id
+        or audit.run_id != run_2_id
+        or audit.output_artifact_id
+        != output_identity.output_artifact.artifact_id
+        or audit.source_note_byte_count != len(note_bytes)
+        or audit.source_note_sha256 != note.note_sha256
+        or audit.output_byte_count != output_identity.final_output_byte_count
+        or audit.output_sha256 != output_identity.final_output_sha256
+        or audit.winning_candidate_count != 1
+        or audit.terminal_a3_code is not None
+        or audit.selected_source_start_byte != start
+        or audit.selected_source_end_byte != end
+        or audit.selected_output_start_byte != output_start
+        or audit.selected_output_end_byte != output_start + len(structure)
+        or note_bytes[start:end] != structure
+    ):
+        raise ValueError("A3_COMPILER_AUDIT_READBACK_MISMATCH")
+    return _claim_from_a3_winner(
+        note=note,
+        note_bytes=note_bytes,
+        run_2_id=run_2_id,
+        final_output_sha256=output_identity.final_output_sha256,
+        observed_at=observed_at,
+        winner=winner,
+    )
+
+
+def _terminal_projection_binding_from_p0(
+    p0: CreatorLiveP0Result,
+) -> FieldNoteCreatorLiveTerminalProjectionBinding:
+    binding = p0.binding
+    if p0.launch_binding_sha256 is None or not isinstance(binding, Mapping):
+        raise ValueError("P0_TERMINAL_PROJECTION_BINDING_UNAVAILABLE")
+    contract = binding.get("contract")
+    tasks = binding.get("tasks")
+    authorizations = binding.get("authorizations")
+    historical = binding.get("historical_boundary")
+    if (
+        not isinstance(contract, Mapping)
+        or not isinstance(tasks, Mapping)
+        or not isinstance(authorizations, Mapping)
+        or not isinstance(historical, Mapping)
+        or not isinstance(tasks.get("run_1"), Mapping)
+        or not isinstance(tasks.get("run_2"), Mapping)
+    ):
+        raise ValueError("P0_TERMINAL_PROJECTION_BINDING_UNAVAILABLE")
+    run_1_task = tasks["run_1"]
+    run_2_task = tasks["run_2"]
+    return FieldNoteCreatorLiveTerminalProjectionBinding.create(
+        launch_binding_sha256=p0.launch_binding_sha256,
+        contract_identity=FieldNoteCreatorLiveContractIdentity(
+            profile=contract.get("profile"),
+            title=contract.get("title"),
+            source_byte_count=contract.get("source_byte_count"),
+            source_sha256=contract.get("source_sha256"),
+            wrapper_sha256=contract.get("wrapper_sha256"),
+            interpretation_sha256=contract.get("interpretation_sha256"),
+        ),
+        ordinary_contract_execution_authority=contract.get(
+            "ordinary_contract_execution_authority"
+        ),
+        guided_intake_freeze_authority=contract.get(
+            "guided_intake_freeze_authority_state"
+        ),
+        implementation_authorization_observed_at=authorizations.get(
+            "implementation_observed_at"
+        ),
+        run_1_task=FieldNoteCreatorLiveTaskIdentity(
+            byte_count=run_1_task.get("byte_count"),
+            sha256=run_1_task.get("sha256"),
+        ),
+        run_2_task=FieldNoteCreatorLiveTaskIdentity(
+            byte_count=run_2_task.get("byte_count"),
+            sha256=run_2_task.get("sha256"),
+        ),
+        historical_boundary=FieldNoteCreatorLiveHistoricalBoundary(
+            cycle_key=historical.get("cycle_key"),
+            state=historical.get("state"),
+            failure_boundary=historical.get("failure_boundary"),
+            failure_code=historical.get("failure_code"),
         ),
     )
 
@@ -753,6 +1012,7 @@ class CreatorLiveCycle005Entrypoint:
                 },
                 "contract": {
                     "profile": EXPECTED_CONTRACT_PROFILE,
+                    "title": EXPECTED_CONTRACT_TITLE,
                     "source_byte_count": EXPECTED_CONTRACT_BYTES,
                     "source_sha256": EXPECTED_CONTRACT_SHA256,
                     "wrapper_sha256": EXPECTED_WRAPPER_SHA256,
@@ -819,10 +1079,12 @@ class CreatorLiveCycle005Entrypoint:
                     "source_tree_sha256": source_product_tree,
                     "installed_tree_sha256": installed_product_tree,
                 },
-                "historical_boundary": (
-                    "Cycle 004 remains FAILED/A1_CAPTURE/"
-                    "A1_CAPTURE_CHRONOLOGY_INVALID; earlier proofs remain terminal."
-                ),
+                "historical_boundary": {
+                    "cycle_key": "cycle-004",
+                    "state": "FAILED",
+                    "failure_boundary": "A1_CAPTURE",
+                    "failure_code": "A1_CAPTURE_CHRONOLOGY_INVALID",
+                },
             }
             digest = _sha256_bytes(canonical_json(binding).encode("utf-8"))
             return CreatorLiveP0Result(True, None, binding, digest)
@@ -839,61 +1101,218 @@ class CreatorLiveCycle005Entrypoint:
                 code = "P0_IDENTITY_UNAVAILABLE"
             return CreatorLiveP0Result(False, code[:128], None, None)
 
-    def _public_readback(self, runtime: FieldNoteCreatorLiveProofRuntime) -> dict[str, Any]:
+    def _public_readback(
+        self,
+        runtime: FieldNoteCreatorLiveProofRuntime,
+    ) -> dict[str, Any]:
         readback = runtime.read_back()
+        if not readback.durable_readback_verified:
+            raise ValueError("PROOF_STORAGE_INTEGRITY_FAILURE")
+        prefix = "proof_a7_creator_live_cycle_005_"
+        launch_binding_sha256 = readback.proof_attempt_id.removeprefix(prefix)
+        if (
+            not _SHA256.fullmatch(launch_binding_sha256)
+            or readback.proof_attempt_id != prefix + launch_binding_sha256
+        ):
+            raise ValueError("PROOF_ATTEMPT_IDENTITY_INVALID")
+        terminal_state = readback.state
+        terminal_stage = (
+            readback.failure_boundary
+            if readback.state == "FAILED"
+            else "A7"
+            if readback.state == "TRACE_COMPLETE"
+            else readback.current_stage
+        )
+        contract_identity: dict[str, Any] | str = NOT_DURABLY_PERSISTED
+        ordinary_authority: str = NOT_DURABLY_PERSISTED
+        freeze_authority: str = NOT_DURABLY_PERSISTED
+        run_1_task: dict[str, Any] = {
+            "byte_count": NOT_DURABLY_PERSISTED,
+            "sha256": (
+                readback.a1_capture_commit.task_sha256
+                if readback.a1_capture_commit is not None
+                else NOT_DURABLY_PERSISTED
+            ),
+        }
+        run_2_task: dict[str, Any] = {
+            "byte_count": NOT_DURABLY_PERSISTED,
+            "sha256": NOT_DURABLY_PERSISTED,
+        }
+        implementation_authorization: str = NOT_DURABLY_PERSISTED
+        historical_boundary: dict[str, Any] | str = NOT_DURABLY_PERSISTED
+        retry_count: int | str = NOT_DURABLY_PERSISTED
+        replacement_count: int | str = NOT_DURABLY_PERSISTED
+        output_artifact: dict[str, Any] | str = NOT_DURABLY_PERSISTED
+        compiler: dict[str, Any] | str = NOT_DURABLY_PERSISTED
+        if isinstance(readback, FieldNoteCreatorLiveTraceReadbackV3):
+            binding = readback.terminal_projection_binding
+            contract = binding.contract_identity
+            contract_identity = {
+                "profile": contract.profile,
+                "title": contract.title,
+                "source_byte_count": contract.source_byte_count,
+                "source_sha256": contract.source_sha256,
+                "wrapper_sha256": contract.wrapper_sha256,
+                "interpretation_sha256": contract.interpretation_sha256,
+            }
+            ordinary_authority = binding.ordinary_contract_execution_authority
+            freeze_authority = binding.guided_intake_freeze_authority
+            run_1_task = {
+                "byte_count": binding.run_1_task.byte_count,
+                "sha256": binding.run_1_task.sha256,
+            }
+            run_2_task = {
+                "byte_count": binding.run_2_task.byte_count,
+                "sha256": binding.run_2_task.sha256,
+            }
+            implementation_authorization = (
+                binding.implementation_authorization_observed_at
+            )
+            historical = binding.historical_boundary
+            historical_boundary = {
+                "cycle_key": historical.cycle_key,
+                "state": historical.state,
+                "failure_boundary": historical.failure_boundary,
+                "failure_code": historical.failure_code,
+            }
+            retry_count = binding.retry_count
+            replacement_count = binding.replacement_count
+            output = readback.run_2_output_identity
+            if output is not None:
+                artifact = output.output_artifact
+                output_artifact = {
+                    "schema": artifact.schema,
+                    "artifact_id": artifact.artifact_id,
+                    "proof_attempt_id": artifact.proof_attempt_id,
+                    "run_id": artifact.run_id,
+                    "transmission_ordinal": artifact.transmission_ordinal,
+                    "media_type": artifact.media_type,
+                    "byte_count": artifact.byte_count,
+                    "sha256": artifact.sha256,
+                }
+            audit = readback.a3_compiler_audit
+            if audit is not None:
+                counts = audit.rejection_counts
+                compiler = {
+                    "compiler_version": audit.compiler_version,
+                    "compiler_branch": audit.compiler_branch,
+                    "source_note_byte_count": audit.source_note_byte_count,
+                    "source_note_sha256": audit.source_note_sha256,
+                    "output_artifact_id": audit.output_artifact_id,
+                    "output_byte_count": audit.output_byte_count,
+                    "output_sha256": audit.output_sha256,
+                    "eligible_candidate_count": audit.eligible_candidate_count,
+                    "rejection_counts": {
+                        "below_minimum_byte_length": (
+                            counts.below_minimum_byte_length
+                        ),
+                        "whole_note_range": counts.whole_note_range,
+                        "non_unique_source_occurrence": (
+                            counts.non_unique_source_occurrence
+                        ),
+                        "absent_output_occurrence": (
+                            counts.absent_output_occurrence
+                        ),
+                        "multiple_output_occurrences": (
+                            counts.multiple_output_occurrences
+                        ),
+                    },
+                    "longest_candidate_byte_count": (
+                        audit.longest_candidate_byte_count
+                    ),
+                    "winning_candidate_count": audit.winning_candidate_count,
+                    "selected_source_start_byte": (
+                        audit.selected_source_start_byte
+                    ),
+                    "selected_source_end_byte": audit.selected_source_end_byte,
+                    "selected_output_start_byte": (
+                        audit.selected_output_start_byte
+                    ),
+                    "selected_output_end_byte": audit.selected_output_end_byte,
+                    "terminal_a3_code": audit.terminal_a3_code,
+                    "audit_sha256": audit.audit_sha256,
+                }
+        elif not isinstance(readback, FieldNoteCreatorLiveTraceReadbackV2):
+            raise ValueError("PROOF_READBACK_VERSION_UNSUPPORTED")
         return {
+            "revision": readback.source_repository.source_commit,
+            "contract_identity": contract_identity,
+            "ordinary_contract_execution_authority": ordinary_authority,
+            "guided_intake_freeze_authority": freeze_authority,
+            "runtime": {
+                "account_type": readback.runtime.account_type,
+                "model": readback.runtime.model,
+                "reasoning_effort": readback.runtime.reasoning_effort,
+                "service_tier": readback.runtime.service_tier,
+                "codex_cli_version": readback.runtime.codex_cli_version,
+            },
+            "run_1_task": run_1_task,
+            "run_2_task": run_2_task,
+            "cycle_authorization_observed_at": readback.authorization_observed_at,
+            "implementation_authorization_observed_at": (
+                implementation_authorization
+            ),
+            "historical_boundary": historical_boundary,
+            "launch_binding_sha256": launch_binding_sha256,
             "proof_attempt_id": readback.proof_attempt_id,
-            "run_1_id": readback.run_1.run_id,
-            "run_2_id": readback.run_2.run_id if readback.run_2 else None,
-            "note_id": (
-                readback.captured_note.field_note_id
-                if readback.captured_note is not None
-                else None
-            ),
-            "note_path": (
-                readback.captured_note.note_path
-                if readback.captured_note is not None
-                else None
-            ),
-            "note_sha256": (
-                readback.captured_note.note_sha256
-                if readback.captured_note is not None
-                else None
-            ),
             "proof_as_of": readback.terminal_proof_as_of,
-            "journal_sha256": _sha256_bytes(runtime.journal_path.read_bytes()),
-            "anchor_sha256": _sha256_bytes(runtime.anchor_path.read_bytes()),
+            "journal_sha256": readback.journal_sha256,
+            "anchor_sha256": readback.anchor_sha256,
+            "readback_sha256": readback.readback_sha256,
+            "terminal_state": terminal_state,
+            "terminal_stage": terminal_stage,
+            "failure_code": readback.failure_reason,
+            "retry_count": retry_count,
+            "replacement_count": replacement_count,
+            "output_artifact": output_artifact,
+            "compiler": compiler,
         }
 
     def snapshot(self, base_snapshot: Mapping[str, Any]) -> dict[str, Any]:
         with self._lock:
             root = self.spec.storage_root
             if self._runtime is not None:
-                readback = self._runtime.read_back()
-                state = self._terminal_state or (
-                    "RUNNING" if self._active else readback.state
-                )
-                digest = readback.proof_attempt_id.removeprefix(
-                    "proof_a7_creator_live_cycle_005_"
-                )
-                return {
-                    "cycle_key": self.spec.cycle_key,
-                    "state": state,
-                    "stage": self._stage,
-                    "p0": {"ready": True, "failure_code": None},
-                    "launch_binding_sha256": digest if _SHA256.fullmatch(digest) else None,
-                    "binding": None,
-                    "identities": self._public_readback(self._runtime),
-                    "receipt_sha256": self._receipt_sha256,
-                    "manifest_sha256": self._manifest_sha256,
-                    "failure_code": self._terminal_failure_code,
-                    "one_attempt_no_retry": True,
-                    "replacement_permitted": False,
-                }
+                try:
+                    identities = self._public_readback(self._runtime)
+                    durable_state = identities["terminal_state"]
+                    state = (
+                        "RUNNING"
+                        if self._active
+                        else durable_state
+                        if durable_state in {"FAILED", "TRACE_COMPLETE"}
+                        else "OPEN_UNRESUMABLE"
+                    )
+                    stage = identities["terminal_stage"] or "proof-open"
+                    return {
+                        "cycle_key": self.spec.cycle_key,
+                        "state": state,
+                        "stage": stage,
+                        "p0": {
+                            "ready": False,
+                            "failure_code": "CYCLE_005_ATTEMPT_EXISTS",
+                        },
+                        "launch_binding_sha256": identities[
+                            "launch_binding_sha256"
+                        ],
+                        "binding": None,
+                        "identities": identities,
+                        "receipt_sha256": None,
+                        "manifest_sha256": None,
+                        "failure_code": identities["failure_code"],
+                        "one_attempt_no_retry": True,
+                        "replacement_permitted": False,
+                        "storage_occupied": True,
+                        "start_allowed": False,
+                    }
+                except Exception:
+                    self._runtime = None
+                    self._terminal_state = "INTEGRITY_FAILURE"
             if _proof_storage_occupied(root):
                 try:
                     runtime = FieldNoteCreatorLiveProofRuntime.load_attempt(root)
                     readback = runtime.read_back()
+                    if not readback.durable_readback_verified:
+                        raise ValueError("PROOF_STORAGE_INTEGRITY_FAILURE")
                     self._runtime = runtime
                     state = (
                         readback.state
@@ -901,7 +1320,13 @@ class CreatorLiveCycle005Entrypoint:
                         else "OPEN_UNRESUMABLE"
                     )
                     self._terminal_state = state
-                    self._stage = readback.current_stage or "A7"
+                    self._stage = (
+                        readback.failure_boundary
+                        if readback.state == "FAILED"
+                        else "A7"
+                        if readback.state == "TRACE_COMPLETE"
+                        else readback.current_stage or "proof-open"
+                    )
                     return self.snapshot(base_snapshot)
                 except Exception:
                     return {
@@ -917,6 +1342,8 @@ class CreatorLiveCycle005Entrypoint:
                         "failure_code": "PROOF_STORAGE_INTEGRITY_FAILURE",
                         "one_attempt_no_retry": True,
                         "replacement_permitted": False,
+                        "storage_occupied": True,
+                        "start_allowed": False,
                     }
             p0 = self._p0(base_snapshot)
             return {
@@ -932,6 +1359,8 @@ class CreatorLiveCycle005Entrypoint:
                 "failure_code": p0.failure_code,
                 "one_attempt_no_retry": True,
                 "replacement_permitted": False,
+                "storage_occupied": False,
+                "start_allowed": p0.ready,
             }
 
     def start(self, launch_binding_sha256: str) -> dict[str, Any]:
@@ -969,6 +1398,9 @@ class CreatorLiveCycle005Entrypoint:
             )
             run_1_id = "run_a7_creator_live_cycle_005_1_" + launch_binding_sha256
             try:
+                terminal_projection_binding = (
+                    _terminal_projection_binding_from_p0(p0)
+                )
                 attempt = FieldNoteCreatorLiveAttempt(
                     proof_attempt_id=proof_attempt_id,
                     proof_mode="CREATOR_LIVE",
@@ -985,7 +1417,9 @@ class CreatorLiveCycle005Entrypoint:
             except Exception as exc:
                 self._starting = False
                 raise CreatorLiveEntrypointError(
-                    "P0_REPOSITORY_IDENTITY_CHANGED"
+                    "P0_TERMINAL_PROJECTION_BINDING_UNAVAILABLE"
+                    if str(exc).startswith("P0_TERMINAL_PROJECTION")
+                    else "P0_REPOSITORY_IDENTITY_CHANGED"
                 ) from exc
             try:
                 runtime = self.runtime_opener(
@@ -994,6 +1428,7 @@ class CreatorLiveCycle005Entrypoint:
                     source_repository=source,
                     run_1_id=run_1_id,
                     runtime=self.spec.runtime,
+                    terminal_projection_binding=terminal_projection_binding,
                 )
             except FieldNoteCreatorLiveAttemptExistsError as exc:
                 self._starting = False
@@ -1106,20 +1541,67 @@ class CreatorLiveCycle005Entrypoint:
             completion = self.controller.creator_live_a2_run_completion(
                 expected_run_id=run_2_id
             )
-            after_a2 = runtime.read_back()
-            target = after_a2.captured_note
-            if target is None:
-                raise ValueError("A2_TARGET_MISSING")
-            note_bytes = exact.note_bytes
-            self._stage = "A3"
-            evidence_as_of = self.now()
-            claim = compile_run_2_output_artifact(
+            try:
+                after_a2 = runtime.read_back()
+                target = after_a2.captured_note
+                if target is None:
+                    raise ValueError("A2_TARGET_MISSING")
+                note_bytes = exact.note_bytes
+                reconnect_receipt = completion.reconnect_receipt
+                final_output_bytes = completion.final_output_bytes
+                output_identity = FieldNoteCreatorLiveRun2OutputIdentity.create(
+                    proof_attempt_id=after_a2.proof_attempt_id,
+                    run_id=completion.run_id,
+                    task_byte_count=completion.task_byte_count,
+                    task_sha256=completion.task_sha256,
+                    final_output_byte_count=len(final_output_bytes),
+                    final_output_sha256=completion.final_output_sha256,
+                )
+                if (
+                    completion.transmission_ordinal != 2
+                    or completion.normal_terminal is not True
+                    or completion.turn_status != "completed"
+                    or completion.runtime_status != "NORMAL_TERMINAL"
+                    or completion.failure_diagnostic_absent is not True
+                ):
+                    raise ValueError("A2_OUTPUT_IDENTITY_INVALID")
+                durable_output = runtime.record_run_2_output_identity(
+                    output_identity
+                )
+                if durable_output.run_2_output_identity != output_identity:
+                    raise ValueError("A2_OUTPUT_IDENTITY_READBACK_MISMATCH")
+                self._stage = "A3"
+                evidence_as_of = self.now()
+                winner, audit = compile_run_2_output_artifact_audited(
+                    note=target,
+                    note_bytes=note_bytes,
+                    run_2_id=run_2_id,
+                    final_output_bytes=final_output_bytes,
+                    output_identity=output_identity,
+                )
+                durable_audit = runtime.record_a3_compiler_audit(audit)
+                if durable_audit.a3_compiler_audit != audit:
+                    raise ValueError("A3_COMPILER_AUDIT_READBACK_MISMATCH")
+            finally:
+                self.controller.release_creator_live_a2_run_completion(
+                    expected_run_id=run_2_id
+                )
+                del completion
+            if audit.terminal_a3_code is not None:
+                runtime.record_stage_failure(
+                    "A3_REUSE",
+                    audit.terminal_a3_code,
+                )
+            if winner is None or durable_audit.a3_compiler_audit is None:
+                raise ValueError("A3_COMPILER_RESULT_INVALID")
+            claim = _claim_from_verified_a3_audit(
                 note=target,
                 note_bytes=note_bytes,
                 run_2_id=run_2_id,
-                final_output_bytes=completion.final_output_bytes,
-                final_output_sha256=completion.final_output_sha256,
+                output_identity=output_identity,
                 observed_at=evidence_as_of,
+                winner=winner,
+                audit=durable_audit.a3_compiler_audit,
             )
             assessment = assess_field_note_reuse(
                 target,
@@ -1146,7 +1628,7 @@ class CreatorLiveCycle005Entrypoint:
                     note_bytes=note_bytes,
                     reuse_claim=claim,
                     recorded_at=self.now(),
-                    delivery_context=completion.reconnect_receipt,
+                    delivery_context=reconnect_receipt,
                 ),
             )
             if commit.assessment != assessment or commit.durable_snapshot is None:
@@ -1174,7 +1656,7 @@ class CreatorLiveCycle005Entrypoint:
                 note=target,
                 note_bytes=note_bytes,
                 a1_capture=draft,
-                a2_reconnect=completion.reconnect_receipt,
+                a2_reconnect=reconnect_receipt,
                 a3_assessment=assessment,
                 a4_snapshot=commit.durable_snapshot,
                 a5_commit=commit,
@@ -1213,5 +1695,6 @@ __all__ = [
     "RUN_2_TASK",
     "RUN_2_TASK_SHA256",
     "compile_run_2_output_artifact",
+    "compile_run_2_output_artifact_audited",
     "product_tree_sha256",
 ]

@@ -1831,62 +1831,97 @@ function renderCreatorLiveCycle005(value) {
   }
   const cycle = value && typeof value === "object" ? value : null;
   const binding = cycle?.binding;
-  const contract = binding?.contract;
-  const runtime = binding?.runtime;
-  const tasks = binding?.tasks;
+  const identities = cycle?.identities;
+  const contract = identities?.contract_identity ?? binding?.contract;
+  const runtime = identities?.runtime ?? binding?.runtime;
+  const run1 = identities?.run_1_task ?? binding?.tasks?.run_1;
+  const run2 = identities?.run_2_task ?? binding?.tasks?.run_2;
+  const notDurable = "NOT_DURABLY_PERSISTED";
+  const formatTaskIdentity = (task) => {
+    if (!task) {
+      return "Unavailable";
+    }
+    if (task.byte_count === notDurable && task.sha256 === notDurable) {
+      return notDurable;
+    }
+    const byteCount =
+      task.byte_count === notDurable
+        ? notDurable
+        : `${task.byte_count} bytes`;
+    return `${byteCount} · ${task.sha256}${task.lane ? ` · ${task.lane}` : ""}`;
+  };
   const state = cycle?.state || "UNAVAILABLE";
   setText("creator-live-cycle-005-status", state.replaceAll("_", " "));
-  setText("creator-live-revision", binding?.repository?.head || "Unavailable");
+  setText(
+    "creator-live-revision",
+    identities?.revision ?? binding?.repository?.head ?? "Unavailable",
+  );
   setText(
     "creator-live-contract",
-    contract?.source_sha256
-      ? `${contract.profile} · ${contract.source_byte_count} bytes · ${contract.source_sha256}`
-      : "Unavailable",
+    typeof contract === "string"
+      ? contract
+      : contract?.source_sha256
+        ? `${contract.profile} · ${contract.title} · ${contract.source_byte_count} bytes · ${contract.source_sha256}`
+        : "Unavailable",
   );
   setText(
     "creator-live-contract-authority",
-    contract?.ordinary_contract_execution_authority || "Unavailable",
+    identities?.ordinary_contract_execution_authority ??
+      contract?.ordinary_contract_execution_authority ??
+      "Unavailable",
   );
   setText(
     "creator-live-freeze-authority",
-    contract?.guided_intake_freeze_authority_state || "Unavailable",
+    identities?.guided_intake_freeze_authority ??
+      contract?.guided_intake_freeze_authority_state ??
+      "Unavailable",
   );
   setText(
     "creator-live-authorization",
-    binding?.authorizations?.cycle_observed_at || "2026-08-05T06:22:00Z",
+    identities?.cycle_authorization_observed_at ??
+      binding?.authorizations?.cycle_observed_at ??
+      "Unavailable",
   );
   setText(
     "creator-live-implementation-authorization",
-    binding?.authorizations?.implementation_observed_at ||
-      "2026-08-05T08:47:00Z",
+    identities?.implementation_authorization_observed_at ??
+      binding?.authorizations?.implementation_observed_at ??
+      "Unavailable",
   );
   setText(
     "creator-live-runtime",
     runtime
-      ? `${runtime.provider} · ${runtime.account_type} · ${runtime.model} · ${runtime.reasoning_effort} · ${runtime.service_tier} · CLI ${runtime.codex_cli_version}`
+      ? `${runtime.account_type} · ${runtime.model} · ${runtime.reasoning_effort} · ${runtime.service_tier} · CLI ${runtime.codex_cli_version}`
       : "Unavailable",
   );
   setText(
     "creator-live-run-1",
-    tasks?.run_1
-      ? `${tasks.run_1.byte_count} bytes · ${tasks.run_1.sha256} · ${tasks.run_1.lane}`
-      : "832 bytes · unavailable",
+    formatTaskIdentity(run1),
   );
   setText(
     "creator-live-run-2",
-    tasks?.run_2
-      ? `${tasks.run_2.byte_count} bytes · ${tasks.run_2.sha256} · ${tasks.run_2.lane}`
-      : "856 bytes · unavailable",
+    formatTaskIdentity(run2),
   );
   setText(
     "creator-live-attempt-policy",
-    cycle
+    identities
+      ? identities.retry_count === notDurable &&
+        identities.replacement_count === notDurable
+        ? notDurable
+        : `${identities.retry_count} retries · ${identities.replacement_count} replacements`
+      : cycle
       ? `${cycle.one_attempt_no_retry ? "One attempt · no retry" : "Policy unavailable"} · ${cycle.replacement_permitted ? "replacement permitted" : "no replacement"}`
       : "One attempt · no retry · no replacement",
   );
+  const historical =
+    identities?.historical_boundary ?? binding?.historical_boundary;
   setText(
     "creator-live-historical-boundary",
-    binding?.historical_boundary || "Unavailable",
+    typeof historical === "string"
+      ? historical
+      : historical
+        ? `${historical.cycle_key} · ${historical.state} / ${historical.failure_boundary} / ${historical.failure_code}`
+        : "Unavailable",
   );
   setText(
     "creator-live-p0",
@@ -1896,13 +1931,72 @@ function renderCreatorLiveCycle005(value) {
   );
   setText(
     "creator-live-binding-sha256",
-    cycle?.launch_binding_sha256 || "Unavailable",
+    identities?.launch_binding_sha256 ??
+      cycle?.launch_binding_sha256 ??
+      "Unavailable",
   );
-  setText("creator-live-stage", cycle?.stage || "P0");
-  byId("creator-live-start").disabled =
-    state !== "READY" ||
-    cycle?.p0?.ready !== true ||
-    typeof cycle?.launch_binding_sha256 !== "string";
+  setText(
+    "creator-live-stage",
+    identities?.terminal_stage ?? cycle?.stage ?? "P0",
+  );
+  setText(
+    "creator-live-failure-code",
+    identities?.failure_code ?? cycle?.failure_code ?? "Unavailable",
+  );
+  setText(
+    "creator-live-proof-attempt",
+    identities?.proof_attempt_id ?? "Unavailable",
+  );
+  setText(
+    "creator-live-proof-as-of",
+    identities?.proof_as_of ?? "Unavailable",
+  );
+  setText(
+    "creator-live-journal-sha256",
+    identities?.journal_sha256 ?? "Unavailable",
+  );
+  setText(
+    "creator-live-anchor-sha256",
+    identities?.anchor_sha256 ?? "Unavailable",
+  );
+  setText(
+    "creator-live-readback-sha256",
+    identities?.readback_sha256 ?? "Unavailable",
+  );
+  const artifact = identities?.output_artifact;
+  setText(
+    "creator-live-output-artifact",
+    typeof artifact === "string"
+      ? artifact
+      : artifact
+        ? `${artifact.artifact_id} · ${artifact.byte_count} bytes · ${artifact.sha256}`
+        : "Unavailable",
+  );
+  const compiler = identities?.compiler;
+  setText(
+    "creator-live-compiler",
+    typeof compiler === "string"
+      ? compiler
+      : compiler
+        ? `${compiler.compiler_version} · ${compiler.compiler_branch} · eligible ${compiler.eligible_candidate_count} · winners ${compiler.winning_candidate_count} · ${compiler.terminal_a3_code ?? "PASS"} · ${compiler.audit_sha256}`
+        : "Unavailable",
+  );
+  const start = byId("creator-live-start");
+  const terminal = cycle?.storage_occupied === true || [
+    "FAILED",
+    "TRACE_COMPLETE",
+    "PASS",
+    "OPEN_UNRESUMABLE",
+    "INTEGRITY_FAILURE",
+  ].includes(state);
+  const startAllowed =
+    cycle?.start_allowed === true &&
+    state === "READY" &&
+    cycle?.p0?.ready === true &&
+    typeof cycle?.launch_binding_sha256 === "string";
+  start.hidden = terminal;
+  start.disabled = !startAllowed;
+  byId("creator-live-terminal-label").hidden = !terminal;
 }
 
 function render(state) {
@@ -2548,10 +2642,14 @@ byId("run").addEventListener("click", async () => {
 });
 
 optionalById("creator-live-start")?.addEventListener("click", async () => {
-  const digest = latestState?.creator_live_cycle_005?.launch_binding_sha256;
+  const cycle = latestState?.creator_live_cycle_005;
+  const digest = cycle?.launch_binding_sha256;
   if (
     byId("creator-live-start").disabled ||
     requestActive ||
+    cycle?.storage_occupied !== false ||
+    cycle?.start_allowed !== true ||
+    cycle?.state !== "READY" ||
     typeof digest !== "string"
   ) {
     return;
