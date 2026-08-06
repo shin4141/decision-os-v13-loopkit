@@ -23,6 +23,23 @@ BUNDLED_CODEX_PATH = Path(
     "/Applications/ChatGPT.app/Contents/Resources/codex"
 )
 CODEX_CLI_VERSION = "0.146.0-alpha.3.1"
+
+# Cycle 006 is intentionally Forward-only.  Keep the historical/default
+# bundled identity above unchanged and bind only the migrated Cycle 006 route
+# to this preserved, content-addressed artifact.
+CYCLE_006_CODEX_CLI_VERSION = "0.147.0-alpha.1.2"
+CYCLE_006_CODEX_SHA256 = (
+    "9f6748b4ab10ffc92c28b9ccedae89e61a302bbc011df7d276ee38f55906e481"
+)
+CYCLE_006_CODEX_PATH = Path(
+    "/Users/sn/Library/Application Support/Decision OS Companion/"
+    "runtime-artifacts/codex/"
+    f"{CYCLE_006_CODEX_SHA256}/codex"
+)
+CYCLE_006_CODEX_RECOVERY_RECEIPT = CYCLE_006_CODEX_PATH.with_name(
+    "recovery-receipt.json"
+)
+_CYCLE_006_CODEX_MAX_BYTES = 275_653_216
 CODEX_MODEL = "gpt-5.6-sol"
 CODEX_REASONING_EFFORT = "ultra"
 CODEX_SERVICE_TIER = "priority"
@@ -75,6 +92,126 @@ _READ_TOOL_SPEC = {
         },
     },
 }
+
+
+def _runtime_stat_identity(value: os.stat_result) -> tuple[int, ...]:
+    """Return fields that must remain stable throughout artifact checking."""
+
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_nlink,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _runtime_parent_chain_identity(path: Path) -> tuple[tuple[int, ...], ...]:
+    """Reject symlink traversal and bind every directory in the fixed path."""
+
+    identities: list[tuple[int, ...]] = []
+    for parent in reversed(path.parents):
+        try:
+            observed = parent.lstat()
+        except OSError as exc:
+            raise ValueError("P0_CODEX_CLI_UNAVAILABLE") from exc
+        if stat.S_ISLNK(observed.st_mode):
+            raise ValueError("P0_CODEX_CLI_SYMLINK")
+        if not stat.S_ISDIR(observed.st_mode):
+            raise ValueError("P0_CODEX_CLI_UNAVAILABLE")
+        identities.append(
+            (observed.st_dev, observed.st_ino, observed.st_mode)
+        )
+    return tuple(identities)
+
+
+def _verify_cycle_006_codex_runtime_identity(
+    executable: Path,
+) -> tuple[str, tuple[int, ...]]:
+    """Return the version and stable file identity of the fixed artifact.
+
+    The caller supplies a configured path only so a substituted configuration
+    can be rejected.  The expected path, full binary digest, and version are
+    fixed constants rather than runtime-discovered or PATH-resolved values.
+    """
+
+    configured = Path(executable)
+    if configured != CYCLE_006_CODEX_PATH:
+        raise ValueError("P0_CODEX_CLI_PATH_MISMATCH")
+    parent_chain = _runtime_parent_chain_identity(configured)
+    try:
+        before = configured.lstat()
+    except OSError as exc:
+        raise ValueError("P0_CODEX_CLI_UNAVAILABLE") from exc
+    if stat.S_ISLNK(before.st_mode):
+        raise ValueError("P0_CODEX_CLI_SYMLINK")
+    if (
+        not stat.S_ISREG(before.st_mode)
+        or stat.S_IMODE(before.st_mode) != 0o755
+    ):
+        raise ValueError("P0_CODEX_CLI_NOT_REGULAR_EXECUTABLE")
+    if before.st_size > _CYCLE_006_CODEX_MAX_BYTES:
+        raise ValueError("P0_CODEX_CLI_SHA256_MISMATCH")
+
+    digest = hashlib.sha256()
+    try:
+        with configured.open("rb") as stream:
+            opened = os.fstat(stream.fileno())
+            if _runtime_stat_identity(opened) != _runtime_stat_identity(before):
+                raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED")
+            while block := stream.read(1024 * 1024):
+                digest.update(block)
+            after_read = os.fstat(stream.fileno())
+    except ValueError:
+        raise
+    except OSError as exc:
+        raise ValueError("P0_CODEX_CLI_UNAVAILABLE") from exc
+    if _runtime_stat_identity(after_read) != _runtime_stat_identity(before):
+        raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED")
+    if digest.hexdigest() != CYCLE_006_CODEX_SHA256:
+        raise ValueError("P0_CODEX_CLI_SHA256_MISMATCH")
+
+    try:
+        completed = subprocess.run(
+            (str(configured), "--version"),
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError("P0_CODEX_CLI_VERSION_PROBE_FAILED") from exc
+    if completed.returncode != 0:
+        raise ValueError("P0_CODEX_CLI_VERSION_PROBE_FAILED")
+    expected_stdout = (
+        f"codex-cli {CYCLE_006_CODEX_CLI_VERSION}\n".encode("ascii")
+    )
+    if completed.stdout != expected_stdout:
+        raise ValueError("P0_CODEX_CLI_VERSION_MISMATCH")
+    try:
+        after_probe = configured.lstat()
+    except OSError as exc:
+        raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED") from exc
+    if _runtime_stat_identity(after_probe) != _runtime_stat_identity(before):
+        raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED")
+    try:
+        ending_parent_chain = _runtime_parent_chain_identity(configured)
+    except ValueError as exc:
+        raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED") from exc
+    if ending_parent_chain != parent_chain:
+        raise ValueError("P0_CODEX_CLI_IDENTITY_CHANGED")
+    return (
+        CYCLE_006_CODEX_CLI_VERSION,
+        _runtime_stat_identity(after_probe),
+    )
+
+
+def verify_cycle_006_codex_runtime_artifact(executable: Path) -> str:
+    """Verify the sole Forward-only Cycle 006 Codex executable."""
+
+    version, _identity = _verify_cycle_006_codex_runtime_identity(executable)
+    return version
 
 
 def _trailing_line_ending(value: str) -> str:
@@ -829,6 +966,13 @@ class _SubprocessTransport:
             return self._failure_category
 
     def start(self) -> None:
+        self._probe_version()
+        self._launch()
+        self._start_stderr_drain()
+
+    def _probe_version(self) -> None:
+        """Read the historical/default transport's CLI identity."""
+
         if not self.executable.is_file():
             raise CodexAdapterUnavailable(
                 f"Bundled Codex executable is unavailable at {self.executable}.",
@@ -854,6 +998,10 @@ class _SubprocessTransport:
                 diagnostic=_failure_diagnostic("version_verification"),
             )
         self._version = observed[len(prefix) :].strip()
+
+    def _launch(self) -> None:
+        """Spawn the configured executable without resolving through PATH."""
+
         try:
             self._process = subprocess.Popen(
                 (
@@ -888,6 +1036,8 @@ class _SubprocessTransport:
                 "Bundled Codex app-server could not be started.",
                 diagnostic=_failure_diagnostic("transport_start"),
             ) from exc
+
+    def _start_stderr_drain(self) -> None:
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr,
             name="decision-os-codex-stderr",
@@ -974,6 +1124,54 @@ class _SubprocessTransport:
                 process.wait(timeout=2)
         if self._stderr_thread is not None:
             self._stderr_thread.join(timeout=1)
+
+
+class _Cycle006SubprocessTransport(_SubprocessTransport):
+    """Strictly bind the fixed Cycle 006 artifact around one exact launch."""
+
+    def _strict_identity(self) -> tuple[str, tuple[int, ...]]:
+        try:
+            return _verify_cycle_006_codex_runtime_identity(self.executable)
+        except ValueError as exc:
+            raise CodexAdapterFailure(
+                "The fixed Cycle 006 Codex runtime failed artifact verification.",
+                diagnostic=_failure_diagnostic("version_verification"),
+            ) from exc
+
+    def _current_identity(self) -> tuple[int, ...]:
+        try:
+            current = self.executable.lstat()
+        except OSError as exc:
+            raise CodexAdapterFailure(
+                "The fixed Cycle 006 Codex runtime changed before launch.",
+                diagnostic=_failure_diagnostic("version_verification"),
+            ) from exc
+        return _runtime_stat_identity(current)
+
+    def start(self) -> None:
+        version, verified_identity = self._strict_identity()
+        if self._current_identity() != verified_identity:
+            raise CodexAdapterFailure(
+                "The fixed Cycle 006 Codex runtime changed before launch.",
+                diagnostic=_failure_diagnostic("version_verification"),
+            )
+        self._version = version
+        self._launch()
+        try:
+            post_version, post_identity = self._strict_identity()
+            if (
+                post_version != version
+                or post_identity != verified_identity
+                or self._current_identity() != verified_identity
+            ):
+                raise CodexAdapterFailure(
+                    "The fixed Cycle 006 Codex runtime changed during launch.",
+                    diagnostic=_failure_diagnostic("version_verification"),
+                )
+        except Exception:
+            self.close()
+            raise
+        self._start_stderr_drain()
 
 
 TransportFactory = Callable[[Path], AppServerTransport]
