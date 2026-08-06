@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-os.creator-live-agents-common-before-comparison.v0.1",
+  "title": "Creator-Live AGENTS Common-Before Three-Lane Comparison",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "comparison_result", "shared_before", "lanes", "claim_boundary", "cross_lane_isolation"],
+  "properties": {
+    "schema": {"const": "decision-os.creator-live-agents-common-before-comparison.v0.1"},
+    "comparison_result": {"const": "NOT_ESTABLISHED"},
+    "shared_before": {"const": {"logical_artifact": "AGENTS.md", "virtual_path": "before/AGENTS.md", "source_revision": "21cd88d4efb378a60cd08a28712083d9d4a8bc19", "git_blob": "f85b0d9b17a8f90a7128ea96d9c8f63a88022128", "utf8_byte_count": 20705, "line_count": 517, "sha256": "e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db"}},
+    "lanes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": false,
+      "prefixItems": [
+        {"type": "object", "additionalProperties": false, "required": ["lane_id", "tool_identity", "version_identity", "common_before_binding", "after_identity", "reduction", "qualification"], "properties": {"lane_id": {"const": "A_COMPACTOR"}, "tool_identity": {"$ref": "#/$defs/unknown"}, "version_identity": {"$ref": "#/$defs/unknown"}, "common_before_binding": {"$ref": "#/$defs/unknown"}, "after_identity": {"$ref": "#/$defs/unknown"}, "reduction": {"$ref": "#/$defs/unknown"}, "qualification": {"$ref": "#/$defs/unknown"}}},
+        {"const": {"lane_id": "B_HISTORICAL_HUMAN_AI_MANUAL", "common_before_binding": {"result": "PASS", "sha256": "e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db"}, "after_identity": {"result": "PASS", "utf8_byte_count": 11147, "line_count": 359, "sha256": "bb14c77c6b45c6bf365902b47729b455df566fa98688956824e072c352f2dae7"}, "reduction": {"result": "PASS", "byte_count": 9558, "fraction": "0.461628", "approximate_percentage": "46.16%", "line_count": 158}, "qualification": {"class": "CANONICAL_MANUAL_TEXTUAL_RESTRUCTURING_ONLY", "b01_b10_receipt": "NOT_ESTABLISHED", "behavior": "NOT_ESTABLISHED"}}},
+        {"type": "object", "additionalProperties": false, "required": ["lane_id", "common_before_binding", "after_identity", "reduction", "b01_b10", "independence", "public_safety", "behavior", "a1", "a2", "a3_exact_reuse", "retry_replacement", "explicit_non_claims"], "properties": {"lane_id": {"const": "C_V13_CREATOR_LIVE"}, "common_before_binding": {"const": {"result": "PASS", "sha256": "e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db"}}, "after_identity": {"$ref": "#/$defs/unknown"}, "reduction": {"$ref": "#/$defs/unknown"}, "b01_b10": {"$ref": "#/$defs/unknown"}, "independence": {"$ref": "#/$defs/unknown"}, "public_safety": {"$ref": "#/$defs/unknown"}, "behavior": {"$ref": "#/$defs/unknown"}, "a1": {"$ref": "#/$defs/unknown"}, "a2": {"$ref": "#/$defs/unknown"}, "a3_exact_reuse": {"$ref": "#/$defs/unknown"}, "retry_replacement": {"const": "NOT_AUTHORIZED"}, "explicit_non_claims": {"const": ["Independence does not establish absence of latent model memory.", "Shorter does not mean better.", "A higher reduction rate does not establish a superior system across layers.", "Structural presence does not establish behavior preservation.", "A3 does not establish usefulness, safety, or generality.", "A common Before does not establish identical objectives across lanes.", "V13 is not only a compressor.", "Public usefulness and cross-tool superiority are not established."]}}}
+      ]
+    },
+    "claim_boundary": {"const": {"common_source_is_not_common_objective": true, "higher_reduction_is_not_cross_layer_superiority": true, "structural_is_not_behavioral": true}},
+    "cross_lane_isolation": {"const": {"run_1_input_lanes": ["SHARED_BEFORE_ONLY"], "run_2_input_lanes": ["C_EXACT_NOTE_AND_RECEIPTS_ONLY"], "assembled_after_lane_c_qualification": true, "public_content_free_receipts_only": true, "missing_values_explicit": "NOT_ESTABLISHED"}}
+  },
+  "$defs": {
+    "unknown": {"const": {"result": "NOT_ESTABLISHED", "value": null}}
+  }
+}

@@ -1,0 +1,68 @@
+Candidate: CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2
+Lane: A1_ONLY
+
+Call read_candidate_historical_before_v0_2 exactly once with an empty object.
+That one response is the complete and only authorized source artifact.
+
+The authorized Before identity is:
+
+- virtual path: before/AGENTS.md
+- source revision: 21cd88d4efb378a60cd08a28712083d9d4a8bc19
+- Git blob: f85b0d9b17a8f90a7128ea96d9c8f63a88022128
+- UTF-8 byte count: 20705
+- line count: 517
+- SHA-256: e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db
+
+Do not request or use another source. Do not read a repository path, working
+tree, Git history, Git object, other file, network source, or previous or
+parallel compression result. Do not infer omitted source material from
+candidate receipts.
+
+Compress the authorized Before into exactly one shorter, self-contained public
+agent instruction payload while preserving its mandatory operational
+boundaries.
+
+The complete proposed public After payload must be placed only in the
+body.reusable_structure field of exactly one propose_field_note_candidate call.
+Use plain UTF-8 text with LF line endings. Do not place Markdown headings,
+fences, horizontal rules, HTML blocks, Note metadata, proof metadata, or wrapper
+text inside that field.
+
+The payload must contain exactly one physical line beginning with each of these
+locators, and each line must state the corresponding operational rule:
+
+B01 Human Seat:
+B02 Authority Boundary:
+B03 Guard and Safety:
+B04 Responsibility Transfer:
+B05 Stop Conditions:
+B06 Evidence and Provenance:
+B07 Handoff and Completion:
+B08 Agent and Human Roles:
+B09 Routine Cleanup:
+B10 Forward Change and Rollback:
+
+The payload must also contain exactly one physical line beginning with the exact
+ASCII byte prefix `A3 Witness: `.
+
+Generate the rest of that Witness line yourself. It must contain at least 32
+non-whitespace UTF-8 bytes, express a real preserved operational invariant, be
+public-safe, and not be a nonce, identifier, checksum, or meaningless marker.
+Do not repeat the Witness line elsewhere.
+
+Use the remaining required proposal fields only to describe the candidate's
+trigger, scope, procedure, acceptance evidence, and remaining unknowns. They
+are not part of the public After payload.
+
+Call propose_field_note_candidate exactly once, only after the authorized
+source call succeeds. Make no direct write, request no write, retry,
+replacement, publication, or second proposal, and stop normally after the one
+governed proposal.
+
+Allowed tools:
+
+- read_candidate_historical_before_v0_2 exactly once, with no arguments
+- propose_field_note_candidate exactly once
+
+All other tools, capabilities, attachments, fallbacks, and source substitutions
+are forbidden.
