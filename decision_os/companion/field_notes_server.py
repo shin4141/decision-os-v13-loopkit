@@ -13,6 +13,9 @@ from decision_os.companion.field_notes_controller import (
 from decision_os.companion.field_notes_creator_live_entrypoint import (
     CreatorLiveEntrypointError,
 )
+from decision_os.companion.field_notes_creator_live_cycle_006 import (
+    CreatorLiveCycle006Error,
+)
 from decision_os.companion.server import CompanionRequestHandler, CompanionServer
 
 
@@ -90,6 +93,18 @@ class FieldNotesRequestHandler(CompanionRequestHandler):
                 "CREATOR_LIVE_CYCLE_005_ACTIVE",
             )
             return
+        if (
+            path != "/api/creator-live/cycles/006/start"
+            and isinstance(controller, FieldNotesCompanionController)
+            and controller.creator_live_cycle_006_mutation_blocked()
+        ):
+            if not self._request_allowed(state_change=True):
+                return
+            self._error(
+                HTTPStatus.CONFLICT,
+                "CREATOR_LIVE_CYCLE_006_ACTIVE",
+            )
+            return
         if path == "/api/creator-live/cycles/005/start":
             if not self._request_allowed(state_change=True):
                 return
@@ -116,6 +131,37 @@ class FieldNotesRequestHandler(CompanionRequestHandler):
                     value["launch_binding_sha256"]
                 )
             except CreatorLiveEntrypointError as exc:
+                self._error(HTTPStatus(exc.http_status), exc.code)
+                return
+            snapshot["csrf"] = self.server.csrf_token
+            self._json(HTTPStatus.ACCEPTED, snapshot)
+            return
+        if path == "/api/creator-live/cycles/006/start":
+            if not self._request_allowed(state_change=True):
+                return
+            value = self._read_json(strict=True)
+            if value is None:
+                return
+            if not isinstance(controller, FieldNotesCompanionController):
+                self._error(
+                    HTTPStatus.CONFLICT,
+                    "CREATOR_LIVE_CYCLE_006_ENTRYPOINT_UNAVAILABLE",
+                )
+                return
+            if (
+                set(value) != {"launch_binding_sha256"}
+                or not isinstance(value["launch_binding_sha256"], str)
+            ):
+                self._error(
+                    HTTPStatus.BAD_REQUEST,
+                    "CREATOR_LIVE_CYCLE_006_REQUEST_INVALID",
+                )
+                return
+            try:
+                snapshot = controller.creator_live_cycle_006_start(
+                    value["launch_binding_sha256"]
+                )
+            except CreatorLiveCycle006Error as exc:
                 self._error(HTTPStatus(exc.http_status), exc.code)
                 return
             snapshot["csrf"] = self.server.csrf_token

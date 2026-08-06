@@ -33,7 +33,7 @@ from scripts.qualify_companion_process import (
 
 
 EXPECTED_PRODUCT_TREE = (
-    "815613804a6028a33806afe096ca072c80515ee8ebb73514b96f85ca02f784d6"
+    "ee4d762c08cb1e12b4c2e3d521d2f11272f0bd04f2b540faf7182a86df8a6068"
 )
 LIVE_RUNTIME = Path(
     "/Users/sn/Library/Application Support/Decision OS Companion/runtime"

@@ -6,7 +6,8 @@ import copy
 from dataclasses import dataclass, field, replace
 import hashlib
 import json
-from typing import Any, Callable, Mapping
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Mapping
 
 from decision_os.acceleration import codex_adapter as codex
 from decision_os.acceleration.codex_adapter import (
@@ -33,6 +34,14 @@ from decision_os.companion.field_notes_creator_live_reconnect import (
     prepare_creator_live_a2_reconnect,
 )
 
+if TYPE_CHECKING:
+    from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+        FixedSourceToolSession,
+        IsolationEvidence,
+        PostA1GateReadbackV02,
+        SourceToolCallResult,
+    )
+
 
 _FIELD_NOTE_PROPOSAL_INSTRUCTIONS = (
     " You may optionally call propose_field_note_candidate "
@@ -52,6 +61,54 @@ _CREATOR_LIVE_A1_CAPTURE_INSTRUCTIONS = (
     "modify, delete, patch, or otherwise write any repository file. Do not emit "
     "the candidate as raw Markdown or JSON. Stop normally after the one "
     "proposal call and the bounded read-only task."
+)
+
+_CREATOR_LIVE_CANDIDATE_V02_A2_INSTRUCTIONS = (
+    "This is the isolated Candidate v0.2 exact A2 reconnect lane. Use only "
+    "the one supplied exact Field Note and the fixed user task. No dynamic "
+    "tool, native file reader, repository scan, alternate-note selection, "
+    "reconstruction, shell, Git, web, MCP, plugin, app, hook, attachment, "
+    "dependency installation, file change, retry, replacement, or publication "
+    "is authorized. Complete the bounded task normally or fail closed."
+)
+
+_CANDIDATE_PASSIVE_ITEM_TYPES = frozenset(
+    {"agentMessage", "plan", "reasoning", "userMessage"}
+)
+
+_CANDIDATE_CORE_NOTIFICATION_METHODS = frozenset(
+    {
+        "error",
+        "item/completed",
+        "item/fileChange/patchUpdated",
+        "item/started",
+        "model/rerouted",
+        "serverRequest/resolved",
+        "thread/settings/updated",
+        "turn/completed",
+        "turn/started",
+    }
+)
+
+_CANDIDATE_ITEM_DELTA_TYPES = {
+    "item/agentMessage/delta": "agentMessage",
+    "item/plan/delta": "plan",
+    "item/reasoning/summaryPartAdded": "reasoning",
+    "item/reasoning/summaryTextDelta": "reasoning",
+    "item/reasoning/textDelta": "reasoning",
+}
+
+_CANDIDATE_PASSIVE_NOTIFICATION_METHODS = frozenset(
+    {
+        *_CANDIDATE_ITEM_DELTA_TYPES,
+        "deprecationNotice",
+        "model/safetyBuffering/updated",
+        "thread/status/changed",
+        "thread/tokenUsage/updated",
+        "turn/moderationMetadata",
+        "turn/plan/updated",
+        "warning",
+    }
 )
 
 _DIRECT_MUTATION_REASONS = frozenset(
@@ -287,10 +344,98 @@ class FieldNoteCreatorLiveA1CaptureConfig:
 
 
 @dataclass(frozen=True)
+class FieldNoteCreatorLiveCandidateV02A1Config:
+    """Private selector and fixed contract binding for Cycle 006 Run 1."""
+
+    run_id: str
+    expected_runtime_identity: CodexRuntimeIdentity
+    contract_identity_sha256: str
+    turn_start_intent_observer: Callable[[str], None] | None = field(
+        default=None,
+        compare=False,
+        repr=False,
+    )
+    turn_started_observer: Callable[[str], None] | None = field(
+        default=None,
+        compare=False,
+        repr=False,
+    )
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.run_id, str)
+            or not self.run_id.strip()
+            or not isinstance(self.expected_runtime_identity, CodexRuntimeIdentity)
+            or not isinstance(self.contract_identity_sha256, str)
+            or len(self.contract_identity_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.contract_identity_sha256
+            )
+            or (
+                self.turn_start_intent_observer is not None
+                and not callable(self.turn_start_intent_observer)
+            )
+            or (
+                self.turn_started_observer is not None
+                and not callable(self.turn_started_observer)
+            )
+        ):
+            raise ValueError("Candidate v0.2 Run-1 configuration is invalid.")
+
+
+@dataclass(frozen=True)
+class FieldNoteCreatorLiveCandidateV02A2Config:
+    """Exact durable Candidate v0.2 Post-A1 prerequisite for Run 2."""
+
+    readback_path: str
+    readback_sha256: str
+    turn_start_intent_observer: Callable[[str], None] | None = field(
+        default=None,
+        compare=False,
+        repr=False,
+    )
+    turn_started_observer: Callable[[str], None] | None = field(
+        default=None,
+        compare=False,
+        repr=False,
+    )
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.readback_path, str)
+            or not self.readback_path
+            or not isinstance(self.readback_sha256, str)
+            or len(self.readback_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in self.readback_sha256
+            )
+            or (
+                self.turn_start_intent_observer is not None
+                and not callable(self.turn_start_intent_observer)
+            )
+            or (
+                self.turn_started_observer is not None
+                and not callable(self.turn_started_observer)
+            )
+        ):
+            raise ValueError("Candidate v0.2 Run-2 configuration is invalid.")
+
+
+@dataclass(frozen=True)
 class _ProposalResponse:
     call_id: str
     arguments_identity: str
     success: bool
+    content_items: tuple[dict[str, str], ...]
+
+
+@dataclass(frozen=True)
+class _FixedSourceResponse:
+    call_id: str
+    arguments_identity: str
+    result: SourceToolCallResult
     content_items: tuple[dict[str, str], ...]
 
 
@@ -305,6 +450,7 @@ class FieldNoteCodexRunResult(CodexRunResult):
     creator_live_a1_proposal_diagnostic: (
         FieldNoteA1ProposalDiagnostic | None
     ) = None
+    candidate_v0_2_isolation_evidence: IsolationEvidence | None = None
 
 
 class FieldNotesCodexAdapter(CodexAdapter):
@@ -320,6 +466,12 @@ class FieldNotesCodexAdapter(CodexAdapter):
         ] | None = None,
         creator_live_a2_reconnect_provider: Callable[
             [], FieldNoteCreatorLiveA2ReconnectTarget | None
+        ] | None = None,
+        candidate_v0_2_a1_provider: Callable[
+            [], FieldNoteCreatorLiveCandidateV02A1Config | None
+        ] | None = None,
+        candidate_v0_2_a2_provider: Callable[
+            [], FieldNoteCreatorLiveCandidateV02A2Config | None
         ] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -337,12 +489,20 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._creator_live_a2_reconnect_provider = (
             creator_live_a2_reconnect_provider or (lambda: None)
         )
+        self._candidate_v0_2_a1_provider = (
+            candidate_v0_2_a1_provider or (lambda: None)
+        )
+        self._candidate_v0_2_a2_provider = (
+            candidate_v0_2_a2_provider or (lambda: None)
+        )
         super().__init__(*args, **kwargs)
 
     def _reset_run(self) -> None:
         super()._reset_run()
         capture = self._creator_live_a1_capture_provider()
         reconnect_target = self._creator_live_a2_reconnect_provider()
+        candidate_a1 = self._candidate_v0_2_a1_provider()
+        candidate_a2 = self._candidate_v0_2_a2_provider()
         if capture is not None and not isinstance(
             capture,
             FieldNoteCreatorLiveA1CaptureConfig,
@@ -357,8 +517,39 @@ class FieldNotesCodexAdapter(CodexAdapter):
             raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
         if capture is not None and reconnect_target is not None:
             raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+        if candidate_a1 is not None and not isinstance(
+            candidate_a1,
+            FieldNoteCreatorLiveCandidateV02A1Config,
+        ):
+            raise codex.CodexAdapterFailure(
+                "Candidate v0.2 Run-1 configuration is invalid."
+            )
+        if candidate_a2 is not None and not isinstance(
+            candidate_a2,
+            FieldNoteCreatorLiveCandidateV02A2Config,
+        ):
+            raise codex.CodexAdapterFailure(
+                "Candidate v0.2 Run-2 configuration is invalid."
+            )
+        if (
+            (candidate_a1 is not None)
+            != (
+                capture is not None
+                and candidate_a1 is not None
+                and capture.run_id == candidate_a1.run_id
+                and capture.expected_runtime_identity
+                == candidate_a1.expected_runtime_identity
+            )
+            or (candidate_a2 is not None and reconnect_target is None)
+            or (candidate_a1 is not None and candidate_a2 is not None)
+        ):
+            raise codex.CodexAdapterFailure(
+                "Candidate v0.2 lane configuration is inconsistent."
+            )
         self._creator_live_a1_capture = capture
         self._creator_live_a2_reconnect_target = reconnect_target
+        self._candidate_v0_2_a1 = candidate_a1
+        self._candidate_v0_2_a2 = candidate_a2
         if capture is not None:
             self._run_id = capture.run_id
         elif reconnect_target is not None:
@@ -396,12 +587,42 @@ class FieldNotesCodexAdapter(CodexAdapter):
         self._capture_request_identity_mismatch = False
         self._capture_response_identity_mismatch = False
         self._capture_inconsistent_replay = False
+        self._candidate_source_session = (
+            self._new_candidate_source_session()
+            if candidate_a1 is not None
+            else None
+        )
+        self._candidate_source_responses: dict[str, _FixedSourceResponse] = {}
+        self._candidate_source_requests: dict[str | int, str | None] = {}
+        self._candidate_resolved_source_requests: set[str | int] = set()
+        self._candidate_source_started_ids: set[str] = set()
+        self._candidate_completed_source_items: set[str] = set()
+        self._candidate_events: list[dict[str, Any]] = []
+        self._candidate_event_reason_codes: set[str] = set()
+        self._candidate_source_success_ordinal: int | None = None
+        self._candidate_proposal_first_ordinal: int | None = None
+        self._candidate_proposal_seen: set[str] = set()
+        self._candidate_proposal_started_ids: set[str] = set()
+        self._candidate_user_message: dict[str, Any] | None = None
+        self._candidate_user_message_phases: set[str] = set()
+        self._candidate_post_a1_readback: PostA1GateReadbackV02 | None = None
         prompt = self._reconnect_prompt
         if reconnect_target is not None:
             self._reconnect_plan = prepare_creator_live_a2_reconnect(
                 self.engine.store.repository,
                 reconnect_target,
             ).plan
+            if candidate_a2 is not None:
+                from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                    read_post_a1_readback_v0_2,
+                    require_post_a1_gate_for_a2,
+                )
+
+                self._candidate_post_a1_readback = read_post_a1_readback_v0_2(
+                    Path(candidate_a2.readback_path),
+                    candidate_a2.readback_sha256,
+                )
+                require_post_a1_gate_for_a2(self._candidate_post_a1_readback)
         elif isinstance(prompt, str) and self._creator_live_a1_capture is None:
             self._reconnect_plan = prepare_field_note_reconnect(
                 self.engine.store.repository,
@@ -411,24 +632,107 @@ class FieldNotesCodexAdapter(CodexAdapter):
         else:
             self._reconnect_plan = None
 
-    def _developer_instructions(self) -> str:
-        existing = (
-            _CREATOR_LIVE_A1_CAPTURE_INSTRUCTIONS
-            if self._creator_live_a1_capture is not None
-            else (
-                codex._DEVELOPER_INSTRUCTIONS
-                + _FIELD_NOTE_PROPOSAL_INSTRUCTIONS
-            )
+    def _start_turn(self, prompt: str) -> None:
+        """Write ahead, then record accepted Cycle 006 turn activity."""
+
+        candidate = self._candidate_v0_2_a1 or self._candidate_v0_2_a2
+        intent_observer = (
+            candidate.turn_start_intent_observer
+            if candidate is not None
+            else None
         )
+        if intent_observer is not None:
+            intent_observer(self._run_id)
+        super()._start_turn(prompt)
+        observer = (
+            candidate.turn_started_observer if candidate is not None else None
+        )
+        if observer is not None:
+            observer(self._run_id)
+
+    def _developer_instructions(self) -> str:
+        if self._candidate_v0_2_a1 is not None:
+            from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                CANDIDATE_DEVELOPER_INSTRUCTIONS,
+            )
+
+            existing = CANDIDATE_DEVELOPER_INSTRUCTIONS
+        elif self._candidate_v0_2_a2 is not None:
+            from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                CANDIDATE_ID,
+            )
+
+            readback = self._candidate_post_a1_readback
+            if readback is None:
+                raise codex.CodexAdapterFailure(
+                    "Candidate v0.2 Post-A1 gate is unavailable."
+                )
+            context = {
+                "schema": "decision-os.creator-live-candidate-v0.2-a2-context.v0.1",
+                "candidate_id": CANDIDATE_ID,
+                "post_a1_result": readback.result,
+                "post_a1_readback_sha256": readback.readback_sha256,
+                "source_isolation_receipt_sha256": readback.source_isolation.get(
+                    "receipt_sha256"
+                ),
+                "independence_receipt_sha256": readback.independence.get(
+                    "receipt_sha256"
+                ),
+                "witness_sha256": readback.witness_binding.get("witness_sha256"),
+            }
+            existing = (
+                "Candidate v0.2 durable Post-A1 gate context (content-free): "
+                + canonical_json(context)
+                + "\n"
+                + _CREATOR_LIVE_CANDIDATE_V02_A2_INSTRUCTIONS
+            )
+        else:
+            existing = (
+                _CREATOR_LIVE_A1_CAPTURE_INSTRUCTIONS
+                if self._creator_live_a1_capture is not None
+                else (
+                    codex._DEVELOPER_INSTRUCTIONS
+                    + _FIELD_NOTE_PROPOSAL_INSTRUCTIONS
+                )
+            )
         plan = self._reconnect_plan
         if plan is None or plan.envelope is None:
             return existing
         return plan.envelope + existing
 
+    def _dynamic_tools(self) -> list[dict[str, Any]]:
+        if self._candidate_v0_2_a1 is not None:
+            from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                candidate_dynamic_tools,
+            )
+
+            return candidate_dynamic_tools()
+        if self._candidate_v0_2_a2 is not None:
+            return []
+        return [
+            copy.deepcopy(codex._READ_TOOL_SPEC),
+            field_note_tool_spec_for_trust(
+                self.trusted_source_model_class,
+                self.trusted_target_model_class,
+            ),
+        ]
+
+    @staticmethod
+    def _new_candidate_source_session() -> FixedSourceToolSession:
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            FixedSourceToolSession,
+        )
+
+        return FixedSourceToolSession()
+
     def _start_thread(self) -> None:
         self._emit("run", "Starting one fresh bounded Run.")
         repository = self.engine.store.repository
         developer_instructions = self._developer_instructions()
+        candidate = bool(
+            self._candidate_v0_2_a1 is not None
+            or self._candidate_v0_2_a2 is not None
+        )
         isolated_features = {
             "apps": False,
             "hooks": False,
@@ -436,6 +740,7 @@ class FieldNotesCodexAdapter(CodexAdapter):
             "remote_plugin": False,
             "shell_tool": False,
             "skill_mcp_dependency_install": False,
+            **({"plugins": False} if candidate else {}),
         }
         result = self._require_object(
             self._request(
@@ -448,16 +753,19 @@ class FieldNotesCodexAdapter(CodexAdapter):
                         "mcp_servers": {},
                         "model_reasoning_effort": self.expected_reasoning_effort,
                         "plugins": {},
+                        **(
+                            {
+                                "project_doc_fallback_filenames": [],
+                                "project_doc_max_bytes": 0,
+                                "web_search": "disabled",
+                            }
+                            if candidate
+                            else {}
+                        ),
                     },
                     "cwd": str(repository),
                     "developerInstructions": developer_instructions,
-                    "dynamicTools": [
-                        copy.deepcopy(codex._READ_TOOL_SPEC),
-                        field_note_tool_spec_for_trust(
-                            self.trusted_source_model_class,
-                            self.trusted_target_model_class,
-                        ),
-                    ],
+                    "dynamicTools": self._dynamic_tools(),
                     "ephemeral": True,
                     "model": self.expected_model,
                     "modelProvider": "openai",
@@ -542,6 +850,152 @@ class FieldNotesCodexAdapter(CodexAdapter):
             },
         )
 
+    def _candidate_record_event(self, kind: str, **facts: Any) -> int:
+        event = {
+            "ordinal": len(self._candidate_events) + 1,
+            "kind": kind,
+            **facts,
+        }
+        self._candidate_events.append(event)
+        return event["ordinal"]
+
+    @staticmethod
+    def _fixed_source_content(
+        result: SourceToolCallResult,
+    ) -> tuple[dict[str, str], ...]:
+        payload = (
+            dict(result.payload)
+            if result.success
+            else {"code": result.code, "status": "rejected"}
+        )
+        return (
+            {
+                "type": "inputText",
+                "text": json.dumps(
+                    payload,
+                    allow_nan=False,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            },
+        )
+
+    def _send_fixed_source_response(
+        self,
+        request_id: str | int,
+        response: _FixedSourceResponse,
+    ) -> None:
+        self._send(
+            {
+                "id": request_id,
+                "result": {
+                    "contentItems": [dict(item) for item in response.content_items],
+                    "success": response.result.success,
+                },
+            }
+        )
+        self._candidate_resolved_source_requests.add(request_id)
+
+    def _reject_duplicate_candidate_tool_request(
+        self,
+        request_id: str | int,
+        *,
+        reason_code: str,
+    ) -> None:
+        """Reject a second lifecycle request without replaying protected bytes."""
+
+        self._candidate_event_reason_codes.add(reason_code)
+        self._mark_identity_failure()
+        self._send(
+            {
+                "error": {
+                    "code": -32600,
+                    "message": "Duplicate candidate tool lifecycle.",
+                },
+                "id": request_id,
+            }
+        )
+
+    def _respond_fixed_source_tool_call(self, message: dict[str, Any]) -> None:
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            SOURCE_TOOL_NAME,
+        )
+
+        request_id = message.get("id")
+        params = message.get("params")
+        if (
+            not isinstance(request_id, (str, int))
+            or isinstance(request_id, bool)
+            or not isinstance(params, dict)
+        ):
+            self._candidate_event_reason_codes.add("SOURCE_REQUEST_SHAPE_INVALID")
+            self._mark_identity_failure()
+            return
+        call_id = params.get("callId")
+        arguments = params.get("arguments")
+        safe_call_id = call_id if isinstance(call_id, str) else "invalid-source"
+        safe_arguments = arguments if isinstance(arguments, dict) else {}
+        arguments_identity = self._arguments_identity(safe_arguments)
+        if self._candidate_source_requests:
+            self._reject_duplicate_candidate_tool_request(
+                request_id,
+                reason_code="SOURCE_REQUEST_COUNT_INVALID",
+            )
+            return
+        self._candidate_source_requests[request_id] = (
+            call_id if isinstance(call_id, str) else None
+        )
+        item = self._items.get(safe_call_id)
+        valid_shape = bool(
+            set(params).issubset(
+                {"arguments", "callId", "namespace", "threadId", "tool", "turnId"}
+            )
+            and set(params) >= {"arguments", "callId", "threadId", "tool", "turnId"}
+            and isinstance(call_id, str)
+            and bool(call_id)
+            and isinstance(arguments, dict)
+            and not arguments
+            and params.get("tool") == SOURCE_TOOL_NAME
+            and params.get("namespace") is None
+            and self._ids_match(params)
+            and self._settings_verified
+            and item is not None
+            and item.get("type") == "dynamicToolCall"
+            and item.get("tool") == SOURCE_TOOL_NAME
+            and item.get("namespace") is None
+            and item.get("arguments") == arguments
+        )
+        if not valid_shape or self._candidate_source_session is None:
+            self._candidate_event_reason_codes.add("SOURCE_REQUEST_SHAPE_INVALID")
+            self._mark_identity_failure()
+            return
+        assert isinstance(call_id, str)
+        assert isinstance(arguments, dict)
+        result = self._candidate_source_session.call(call_id, arguments)
+        response = _FixedSourceResponse(
+            call_id=call_id,
+            arguments_identity=arguments_identity,
+            result=result,
+            content_items=self._fixed_source_content(result),
+        )
+        self._candidate_source_responses[call_id] = response
+        ordinal = self._candidate_record_event(
+            "source_response",
+            call_identity_sha256=hashlib.sha256(
+                call_id.encode("utf-8")
+            ).hexdigest(),
+            arguments_identity_sha256=arguments_identity,
+            success=result.success,
+            code=result.code,
+            semantic_disclosure=result.semantic_disclosure,
+        )
+        if result.success and result.semantic_disclosure:
+            self._candidate_source_success_ordinal = ordinal
+        else:
+            self._candidate_event_reason_codes.add(result.code)
+        self._send_fixed_source_response(request_id, response)
+
     def _send_proposal_response(
         self,
         request_id: str | int,
@@ -614,11 +1068,33 @@ class FieldNotesCodexAdapter(CodexAdapter):
             )
         safe_call_id = call_id if isinstance(call_id, str) else "invalid-proposal"
         safe_arguments = arguments if isinstance(arguments, dict) else {}
+        if (
+            self._candidate_v0_2_a1 is not None
+            and isinstance(call_id, str)
+            and call_id
+            and call_id not in self._candidate_proposal_seen
+        ):
+            self._candidate_proposal_seen.add(call_id)
+            ordinal = self._candidate_record_event(
+                "proposal_request",
+                call_identity_sha256=hashlib.sha256(
+                    call_id.encode("utf-8")
+                ).hexdigest(),
+                arguments_identity_sha256=self._arguments_identity(safe_arguments),
+            )
+            if self._candidate_proposal_first_ordinal is None:
+                self._candidate_proposal_first_ordinal = ordinal
         if self._creator_live_a1_capture is not None:
             if isinstance(call_id, str) and call_id:
                 self._capture_proposal_call_ids.add(call_id)
             else:
                 self._capture_proposal_malformed = True
+        if self._candidate_v0_2_a1 is not None and self._proposal_request_ids:
+            self._reject_duplicate_candidate_tool_request(
+                request_id,
+                reason_code="PROPOSAL_REQUEST_COUNT_INVALID",
+            )
+            return
         if request_id in self._proposal_request_ids:
             if self._proposal_request_ids[request_id] != call_id:
                 if self._creator_live_a1_capture is not None:
@@ -869,8 +1345,249 @@ class FieldNotesCodexAdapter(CodexAdapter):
             return "A1_RUN_INCOMPLETE"
         return None
 
-    def _cache_item(self, params: dict[str, Any]) -> None:
+    def _candidate_fixed_task_matches(self, value: str) -> bool:
+        if not isinstance(value, str):
+            return False
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            FIXED_TASK_IDENTITIES,
+        )
+
+        task_index = 0 if self._candidate_v0_2_a1 is not None else 1
+        identity = FIXED_TASK_IDENTITIES[task_index]
+        encoded = value.encode("utf-8")
+        return bool(
+            len(encoded) == identity.byte_count
+            and hashlib.sha256(encoded).hexdigest() == identity.sha256
+        )
+
+    def _candidate_passive_item_admission(
+        self,
+        params: dict[str, Any],
+        *,
+        phase: str,
+    ) -> bool | None:
+        """Admit only inert, schema-bounded item types in Candidate Runs."""
+
+        if self._candidate_v0_2_a1 is None and self._candidate_v0_2_a2 is None:
+            return None
         item = params.get("item")
+        item_type = item.get("type") if isinstance(item, dict) else None
+        if item_type in {"dynamicToolCall", "fileChange"}:
+            return None
+        if item_type not in _CANDIDATE_PASSIVE_ITEM_TYPES:
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_ITEM_TYPE_NOT_ALLOWED"
+            )
+            self._mark_unsupported("unsupported_dynamic_tool")
+            if not self._ids_match(params):
+                self._mark_identity_failure()
+            return False
+        if not self._ids_match(params):
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_PASSIVE_ITEM_IDENTITY_MISMATCH"
+            )
+            self._mark_identity_failure()
+            return False
+        assert isinstance(item, dict)
+        item_id = item.get("id")
+        shape_valid = isinstance(item_id, str) and bool(item_id)
+        if item_type == "userMessage":
+            content = item.get("content")
+            text_input = (
+                content[0]
+                if isinstance(content, list) and len(content) == 1
+                else None
+            )
+            shape_valid = bool(
+                shape_valid
+                and set(item).issubset({"clientId", "content", "id", "type"})
+                and set(item) >= {"content", "id", "type"}
+                and (
+                    item.get("clientId") is None
+                    or isinstance(item.get("clientId"), str)
+                )
+            )
+            shape_valid = bool(
+                shape_valid
+                and isinstance(text_input, dict)
+                and set(text_input).issubset(
+                    {"text", "text_elements", "type"}
+                )
+                and set(text_input) >= {"text", "type"}
+                and text_input.get("type") == "text"
+                and text_input.get("text_elements", []) == []
+                and isinstance(text_input.get("text"), str)
+                and self._candidate_fixed_task_matches(text_input["text"])
+                and self._reconnect_prompt == text_input["text"]
+            )
+            if not shape_valid:
+                self._candidate_event_reason_codes.add(
+                    "CANDIDATE_USER_MESSAGE_INVALID"
+                )
+                self._mark_identity_failure()
+                return False
+            if (
+                self._candidate_user_message is not None
+                and self._candidate_user_message != item
+            ):
+                self._candidate_event_reason_codes.add(
+                    "CANDIDATE_USER_MESSAGE_COUNT_INVALID"
+                )
+                self._mark_identity_failure()
+                return False
+            if phase in self._candidate_user_message_phases:
+                self._candidate_event_reason_codes.add(
+                    "CANDIDATE_USER_MESSAGE_COUNT_INVALID"
+                )
+                self._mark_identity_failure()
+                return False
+            if self._candidate_user_message is None:
+                self._candidate_user_message = copy.deepcopy(item)
+            self._candidate_user_message_phases.add(phase)
+            return True
+        if item_type == "agentMessage":
+            shape_valid = bool(
+                shape_valid
+                and set(item).issubset(
+                    {"id", "memoryCitation", "phase", "text", "type"}
+                )
+                and set(item) >= {"id", "text", "type"}
+                and isinstance(item.get("text"), str)
+                and item.get("phase") in {None, "commentary", "final_answer"}
+                and item.get("memoryCitation") is None
+            )
+        elif item_type == "reasoning":
+            shape_valid = bool(
+                shape_valid
+                and set(item).issubset({"content", "id", "summary", "type"})
+                and set(item) >= {"id", "type"}
+                and isinstance(item.get("content", []), list)
+                and all(
+                    isinstance(value, str) for value in item.get("content", [])
+                )
+                and isinstance(item.get("summary", []), list)
+                and all(
+                    isinstance(value, str) for value in item.get("summary", [])
+                )
+            )
+        elif item_type == "plan":
+            shape_valid = bool(
+                shape_valid
+                and set(item) == {"id", "text", "type"}
+                and isinstance(item.get("text"), str)
+            )
+        if not shape_valid:
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_PASSIVE_ITEM_SHAPE_INVALID"
+            )
+            self._mark_identity_failure()
+            return False
+        return True
+
+    def _cache_item(self, params: dict[str, Any]) -> None:
+        passive_admission = self._candidate_passive_item_admission(
+            params,
+            phase="started",
+        )
+        if passive_admission is not None:
+            if passive_admission:
+                item = params["item"]
+                item_id = item["id"]
+                existing = self._items.get(item_id)
+                if existing is not None and existing != item:
+                    self._candidate_event_reason_codes.add(
+                        "CANDIDATE_PASSIVE_ITEM_LIFECYCLE_INVALID"
+                    )
+                    self._mark_identity_failure()
+                else:
+                    self._items[item_id] = copy.deepcopy(item)
+            return
+        item = params.get("item")
+        if (
+            (self._candidate_v0_2_a1 is not None or self._candidate_v0_2_a2 is not None)
+            and isinstance(item, dict)
+            and item.get("type") == "fileChange"
+        ):
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_FILE_CHANGE_ITEM_STARTED"
+            )
+            self._mark_unsupported("unsupported_file_change_shape")
+            if not self._ids_match(params):
+                self._mark_identity_failure()
+            return
+        if (
+            (self._candidate_v0_2_a1 is not None or self._candidate_v0_2_a2 is not None)
+            and isinstance(item, dict)
+            and item.get("type") == "dynamicToolCall"
+        ):
+            tool = item.get("tool")
+            allowed = {FIELD_NOTE_TOOL_NAME}
+            if self._candidate_v0_2_a1 is not None:
+                from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                    SOURCE_TOOL_NAME,
+                )
+
+                allowed.add(SOURCE_TOOL_NAME)
+            if self._candidate_v0_2_a2 is not None or tool not in allowed:
+                self._candidate_event_reason_codes.add(
+                    "UNADVERTISED_DYNAMIC_TOOL_ITEM"
+                )
+                self._mark_unsupported("unsupported_dynamic_tool")
+                return
+        if self._candidate_v0_2_a1 is not None:
+            from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                SOURCE_TOOL_NAME,
+            )
+
+            if (
+                isinstance(item, dict)
+                and item.get("type") == "dynamicToolCall"
+                and item.get("tool") == SOURCE_TOOL_NAME
+            ):
+                if not self._ids_match(params):
+                    self._candidate_event_reason_codes.add(
+                        "SOURCE_ITEM_IDENTITY_MISMATCH"
+                    )
+                    self._mark_identity_failure()
+                    return
+                item_id = item.get("id")
+                arguments = item.get("arguments")
+                if (
+                    not isinstance(item_id, str)
+                    or not item_id
+                    or item.get("namespace") is not None
+                    or item.get("status") != "inProgress"
+                    or not isinstance(arguments, dict)
+                    or arguments
+                ):
+                    self._candidate_event_reason_codes.add(
+                        "SOURCE_ITEM_SHAPE_INVALID"
+                    )
+                    self._mark_identity_failure()
+                    return
+                if self._candidate_source_started_ids:
+                    self._candidate_event_reason_codes.add(
+                        "SOURCE_ITEM_COUNT_INVALID"
+                    )
+                    self._candidate_source_started_ids.add(item_id)
+                    self._mark_identity_failure()
+                    return
+                if item_id in self._items and self._items[item_id] != item:
+                    self._candidate_event_reason_codes.add(
+                        "SOURCE_ITEM_REPLAY_INCONSISTENT"
+                    )
+                    self._mark_identity_failure()
+                    return
+                self._candidate_source_started_ids.add(item_id)
+                self._items[item_id] = item
+                self._candidate_record_event(
+                    "source_item_started",
+                    call_identity_sha256=hashlib.sha256(
+                        item_id.encode("utf-8")
+                    ).hexdigest(),
+                    arguments_identity_sha256=self._arguments_identity(arguments),
+                )
+                return
         if (
             isinstance(item, dict)
             and item.get("type") == "dynamicToolCall"
@@ -894,6 +1611,16 @@ class FieldNotesCodexAdapter(CodexAdapter):
                     self._capture_proposal_malformed = True
                 self._mark_identity_failure()
                 return
+            if (
+                self._candidate_v0_2_a1 is not None
+                and self._candidate_proposal_started_ids
+            ):
+                self._candidate_event_reason_codes.add(
+                    "PROPOSAL_ITEM_COUNT_INVALID"
+                )
+                self._candidate_proposal_started_ids.add(item_id)
+                self._mark_identity_failure()
+                return
             if item_id in self._items and self._items[item_id] != item:
                 if self._creator_live_a1_capture is not None:
                     existing = self._items[item_id]
@@ -908,11 +1635,146 @@ class FieldNotesCodexAdapter(CodexAdapter):
                     self._arguments_identity(arguments)
                 )
             self._items[item_id] = item
+            if (
+                self._candidate_v0_2_a1 is not None
+                and item_id not in self._candidate_proposal_started_ids
+            ):
+                self._candidate_proposal_started_ids.add(item_id)
+                if len(self._candidate_proposal_started_ids) != 1:
+                    self._candidate_event_reason_codes.add(
+                        "PROPOSAL_ITEM_COUNT_INVALID"
+                    )
+                    self._mark_identity_failure()
+                self._candidate_proposal_seen.add(item_id)
+                ordinal = self._candidate_record_event(
+                    "proposal_item_started",
+                    call_identity_sha256=hashlib.sha256(
+                        item_id.encode("utf-8")
+                    ).hexdigest(),
+                    arguments_identity_sha256=self._arguments_identity(arguments),
+                )
+                if self._candidate_proposal_first_ordinal is None:
+                    self._candidate_proposal_first_ordinal = ordinal
             return
         super()._cache_item(params)
 
     def _complete_item(self, params: dict[str, Any]) -> None:
+        passive_admission = self._candidate_passive_item_admission(
+            params,
+            phase="completed",
+        )
+        if passive_admission is not None:
+            if passive_admission:
+                super()._complete_item(params)
+            return
         item = params.get("item")
+        if (
+            (self._candidate_v0_2_a1 is not None or self._candidate_v0_2_a2 is not None)
+            and isinstance(item, dict)
+            and item.get("type") == "fileChange"
+        ):
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_FILE_CHANGE_ITEM_COMPLETED"
+            )
+            self._mark_unsupported("unsupported_file_change_shape")
+            if not self._ids_match(params):
+                self._mark_identity_failure()
+            return
+        if (
+            (self._candidate_v0_2_a1 is not None or self._candidate_v0_2_a2 is not None)
+            and isinstance(item, dict)
+            and item.get("type") == "dynamicToolCall"
+        ):
+            tool = item.get("tool")
+            allowed = {FIELD_NOTE_TOOL_NAME}
+            if self._candidate_v0_2_a1 is not None:
+                from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                    SOURCE_TOOL_NAME,
+                )
+
+                allowed.add(SOURCE_TOOL_NAME)
+            if self._candidate_v0_2_a2 is not None or tool not in allowed:
+                self._candidate_event_reason_codes.add(
+                    "UNADVERTISED_DYNAMIC_TOOL_ITEM"
+                )
+                self._mark_unsupported("unsupported_dynamic_tool")
+                return
+        if self._candidate_v0_2_a1 is not None:
+            from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                SOURCE_TOOL_NAME,
+            )
+
+            if (
+                isinstance(item, dict)
+                and item.get("type") == "dynamicToolCall"
+                and item.get("tool") == SOURCE_TOOL_NAME
+            ):
+                if not self._ids_match(params):
+                    self._candidate_event_reason_codes.add(
+                        "SOURCE_ITEM_IDENTITY_MISMATCH"
+                    )
+                    self._mark_identity_failure()
+                    return
+                item_id = item.get("id")
+                response = (
+                    self._candidate_source_responses.get(item_id)
+                    if isinstance(item_id, str)
+                    else None
+                )
+                started = (
+                    self._items.get(item_id) if isinstance(item_id, str) else None
+                )
+                resolved = any(
+                    request_id in self._candidate_resolved_source_requests
+                    and request_item_id == item_id
+                    for request_id, request_item_id
+                    in self._candidate_source_requests.items()
+                )
+                expected_status = (
+                    "completed"
+                    if response is not None and response.result.success
+                    else "failed"
+                )
+                if (
+                    item_id in self._candidate_completed_source_items
+                    or
+                    response is None
+                    or started is None
+                    or item.get("namespace") is not None
+                    or item.get("arguments") != started.get("arguments")
+                    or self._arguments_identity(item.get("arguments", {}))
+                    != response.arguments_identity
+                    or item.get("status") != expected_status
+                    or (
+                        "success" in item
+                        and item.get("success") is not response.result.success
+                    )
+                    or (
+                        "contentItems" in item
+                        and item.get("contentItems")
+                        != [dict(value) for value in response.content_items]
+                    )
+                    or not resolved
+                ):
+                    self._candidate_event_reason_codes.add(
+                        (
+                            "SOURCE_ITEM_COMPLETION_DUPLICATE"
+                            if item_id in self._candidate_completed_source_items
+                            else "SOURCE_ITEM_COMPLETION_INVALID"
+                        )
+                    )
+                    self._mark_identity_failure()
+                    return
+                assert isinstance(item_id, str)
+                self._candidate_completed_source_items.add(item_id)
+                self._candidate_record_event(
+                    "source_item_completed",
+                    call_identity_sha256=hashlib.sha256(
+                        item_id.encode("utf-8")
+                    ).hexdigest(),
+                    status=expected_status,
+                )
+                return
         if (
             isinstance(item, dict)
             and item.get("type") == "dynamicToolCall"
@@ -947,6 +1809,11 @@ class FieldNotesCodexAdapter(CodexAdapter):
             if self._creator_live_a1_capture is not None:
                 self._capture_item_expected_status = expected_status
             if (
+                (
+                    self._candidate_v0_2_a1 is not None
+                    and item_id in self._completed_proposal_items
+                )
+                or
                 response is None
                 or started is None
                 or item.get("namespace") is not None
@@ -965,6 +1832,13 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 )
                 or not resolved
             ):
+                if (
+                    self._candidate_v0_2_a1 is not None
+                    and item_id in self._completed_proposal_items
+                ):
+                    self._candidate_event_reason_codes.add(
+                        "PROPOSAL_ITEM_COMPLETION_DUPLICATE"
+                    )
                 if self._creator_live_a1_capture is not None and (
                     item.get("status") == expected_status
                 ):
@@ -975,17 +1849,287 @@ class FieldNotesCodexAdapter(CodexAdapter):
             return
         super()._complete_item(params)
 
+    @staticmethod
+    def _candidate_nonnegative_integer(value: Any) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+    def _candidate_passive_notification_admission(
+        self,
+        message: dict[str, Any],
+    ) -> bool | None:
+        """Fail closed on every Candidate notification outside a strict set."""
+
+        if self._candidate_v0_2_a1 is None and self._candidate_v0_2_a2 is None:
+            return None
+        if "id" in message:
+            return None
+        method = message.get("method")
+        if method in _CANDIDATE_CORE_NOTIFICATION_METHODS:
+            return None
+        if method not in _CANDIDATE_PASSIVE_NOTIFICATION_METHODS:
+            self._protocol_phase = "protocol_message"
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_NOTIFICATION_NOT_ALLOWED"
+            )
+            self._mark_unsupported("unsupported_request_method:other")
+            return False
+        params = message.get("params")
+        if not isinstance(params, dict):
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_PASSIVE_NOTIFICATION_INVALID"
+            )
+            self._mark_identity_failure()
+            return False
+
+        valid = False
+        item_type = _CANDIDATE_ITEM_DELTA_TYPES.get(method)
+        if item_type is not None:
+            required = {"itemId", "threadId", "turnId"}
+            if method == "item/reasoning/summaryPartAdded":
+                allowed = required | {"summaryIndex"}
+                payload_valid = self._candidate_nonnegative_integer(
+                    params.get("summaryIndex")
+                )
+            elif method == "item/reasoning/summaryTextDelta":
+                allowed = required | {"delta", "summaryIndex"}
+                payload_valid = bool(
+                    isinstance(params.get("delta"), str)
+                    and self._candidate_nonnegative_integer(
+                        params.get("summaryIndex")
+                    )
+                )
+            elif method == "item/reasoning/textDelta":
+                allowed = required | {"contentIndex", "delta"}
+                payload_valid = bool(
+                    isinstance(params.get("delta"), str)
+                    and self._candidate_nonnegative_integer(
+                        params.get("contentIndex")
+                    )
+                )
+            else:
+                allowed = required | {"delta"}
+                payload_valid = isinstance(params.get("delta"), str)
+            item_id = params.get("itemId")
+            item = self._items.get(item_id) if isinstance(item_id, str) else None
+            valid = bool(
+                set(params) == allowed
+                and self._ids_match(params)
+                and isinstance(item, dict)
+                and item.get("type") == item_type
+                and payload_valid
+            )
+        elif method == "turn/plan/updated":
+            plan = params.get("plan")
+            valid = bool(
+                {"plan", "threadId", "turnId"} <= set(params)
+                and set(params)
+                <= {"explanation", "plan", "threadId", "turnId"}
+                and self._ids_match(params)
+                and (
+                    params.get("explanation") is None
+                    or isinstance(params.get("explanation"), str)
+                )
+            )
+            valid = bool(
+                valid
+                and isinstance(plan, list)
+                and all(
+                    isinstance(step, dict)
+                    and set(step) == {"status", "step"}
+                    and step.get("status")
+                    in {"pending", "inProgress", "completed"}
+                    and isinstance(step.get("step"), str)
+                    for step in plan
+                )
+            )
+        elif method == "thread/tokenUsage/updated":
+            usage = params.get("tokenUsage")
+
+            def valid_breakdown(value: Any) -> bool:
+                if not isinstance(value, dict):
+                    return False
+                required = {
+                    "cachedInputTokens",
+                    "inputTokens",
+                    "outputTokens",
+                    "reasoningOutputTokens",
+                    "totalTokens",
+                }
+                return bool(
+                    required <= set(value)
+                    and set(value) <= required | {"cacheWriteInputTokens"}
+                    and all(
+                        self._candidate_nonnegative_integer(item)
+                        for item in value.values()
+                    )
+                )
+
+            valid = bool(
+                set(params) == {"threadId", "tokenUsage", "turnId"}
+                and self._ids_match(params)
+                and isinstance(usage, dict)
+                and {"last", "total"} <= set(usage)
+                and set(usage) <= {"last", "modelContextWindow", "total"}
+                and valid_breakdown(usage.get("last"))
+                and valid_breakdown(usage.get("total"))
+                and (
+                    usage.get("modelContextWindow") is None
+                    or self._candidate_nonnegative_integer(
+                        usage.get("modelContextWindow")
+                    )
+                )
+            )
+        elif method == "thread/status/changed":
+            status = params.get("status")
+            valid = bool(
+                set(params) == {"status", "threadId"}
+                and params.get("threadId") == self._thread_id
+                and isinstance(status, dict)
+                and (
+                    set(status) == {"type"}
+                    and status.get("type") == "idle"
+                    or set(status) == {"activeFlags", "type"}
+                    and status.get("type") == "active"
+                    and status.get("activeFlags") == []
+                )
+            )
+        elif method == "turn/moderationMetadata":
+            valid = bool(
+                set(params) == {"metadata", "threadId", "turnId"}
+                and self._ids_match(params)
+            )
+        elif method == "model/safetyBuffering/updated":
+            valid = bool(
+                {"model", "reasons", "showBufferingUi", "threadId", "turnId", "useCases"}
+                <= set(params)
+                and set(params)
+                <= {
+                    "fasterModel",
+                    "model",
+                    "reasons",
+                    "showBufferingUi",
+                    "threadId",
+                    "turnId",
+                    "useCases",
+                }
+                and self._ids_match(params)
+                and params.get("model") == self.expected_model
+                and params.get("fasterModel") is None
+                and isinstance(params.get("showBufferingUi"), bool)
+                and isinstance(params.get("reasons"), list)
+                and all(isinstance(value, str) for value in params["reasons"])
+                and isinstance(params.get("useCases"), list)
+                and all(isinstance(value, str) for value in params["useCases"])
+            )
+        elif method == "warning":
+            valid = bool(
+                {"message"} <= set(params) <= {"message", "threadId"}
+                and isinstance(params.get("message"), str)
+                and params.get("threadId") in {None, self._thread_id}
+            )
+        elif method == "deprecationNotice":
+            valid = bool(
+                {"summary"} <= set(params) <= {"details", "summary"}
+                and isinstance(params.get("summary"), str)
+                and (
+                    params.get("details") is None
+                    or isinstance(params.get("details"), str)
+                )
+            )
+
+        if not valid:
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_PASSIVE_NOTIFICATION_INVALID"
+            )
+            self._mark_identity_failure()
+            return False
+        self._protocol_phase = "protocol_message"
+        return True
+
     def _dispatch(self, message: dict[str, Any]) -> None:
+        passive_admission = self._candidate_passive_notification_admission(
+            message
+        )
+        if passive_admission is not None:
+            return
+        if (
+            message.get("method") == "item/fileChange/requestApproval"
+            and "id" in message
+            and (
+                self._candidate_v0_2_a1 is not None
+                or self._candidate_v0_2_a2 is not None
+            )
+        ):
+            self._protocol_phase = "approval_bridge"
+            params = message.get("params")
+            request_id = message.get("id")
+            item_id = params.get("itemId") if isinstance(params, dict) else None
+            valid = bool(
+                isinstance(params, dict)
+                and self._ids_match(params)
+                and isinstance(item_id, str)
+                and item_id in self._items
+                and self._items[item_id].get("type") == "fileChange"
+                and self._register_approval_request(request_id, item_id)
+            )
+            self._mark_unsupported("unsupported_file_change_shape")
+            self._candidate_event_reason_codes.add(
+                "CANDIDATE_FILE_CHANGE_DECLINED"
+            )
+            if valid:
+                self._declined_items.add(item_id)
+            else:
+                self._mark_identity_failure()
+            self._send(
+                {"id": request_id, "result": {"decision": "decline"}}
+            )
+            return
         if message.get("method") == "item/tool/call" and "id" in message:
             params = message.get("params")
+            candidate_a1 = self._candidate_v0_2_a1 is not None
+            candidate_a2 = self._candidate_v0_2_a2 is not None
+            if candidate_a1:
+                from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                    SOURCE_TOOL_NAME,
+                )
+
+                if (
+                    isinstance(params, dict)
+                    and params.get("tool") == SOURCE_TOOL_NAME
+                ):
+                    self._protocol_phase = "dynamic_tool_call"
+                    self._respond_fixed_source_tool_call(message)
+                    return
             if (
+                not candidate_a2
+                and
                 isinstance(params, dict)
                 and params.get("tool") == FIELD_NOTE_TOOL_NAME
             ):
                 self._protocol_phase = "dynamic_tool_call"
                 self._respond_field_note_tool_call(message)
                 return
+            if candidate_a1 or candidate_a2:
+                self._protocol_phase = "dynamic_tool_call"
+                self._candidate_event_reason_codes.add(
+                    "UNADVERTISED_DYNAMIC_TOOL_REQUEST"
+                )
+                self._respond_unsupported_request(message)
+                return
         super()._dispatch(message)
+
+    def _resolve_request(self, params: dict[str, Any]) -> None:
+        request_id = params.get("requestId")
+        if request_id in self._candidate_source_requests:
+            if params.get("threadId") != self._thread_id:
+                self._candidate_event_reason_codes.add(
+                    "SOURCE_REQUEST_IDENTITY_MISMATCH"
+                )
+                self._mark_identity_failure()
+                return
+            self._candidate_resolved_source_requests.add(request_id)
+            return
+        super()._resolve_request(params)
 
     async def run(self, prompt: str) -> FieldNoteCodexRunResult:
         self._reconnect_prompt = prompt
@@ -1028,7 +2172,7 @@ class FieldNotesCodexAdapter(CodexAdapter):
             if self._reconnect_plan is None
             else self._reconnect_plan.receipt
         )
-        return FieldNoteCodexRunResult(
+        field_result = FieldNoteCodexRunResult(
             run_id=result.run_id,
             normal_terminal=normal_terminal,
             status=(
@@ -1068,4 +2212,176 @@ class FieldNotesCodexAdapter(CodexAdapter):
                 else None
             ),
             creator_live_a1_proposal_diagnostic=proposal_diagnostic,
+        )
+        if self._candidate_v0_2_a1 is None:
+            return field_result
+
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            CANDIDATE_DEVELOPER_INSTRUCTIONS,
+            CandidateV02A1AdmissionGate,
+            IsolationEvidence,
+            candidate_dynamic_tools,
+            candidate_visible_input_set_sha256,
+            dynamic_tool_manifest_sha256,
+            fixed_source_identity_sha256,
+            isolation_features_sha256,
+            manual_after_contamination_codes,
+            qualify_independence,
+        )
+
+        source_session = self._candidate_source_session
+        assert source_session is not None
+        successful_source_items = {
+            call_id
+            for call_id, response in self._candidate_source_responses.items()
+            if response.result.success
+        }
+        all_sources_completed = successful_source_items.issubset(
+            self._candidate_completed_source_items
+        )
+        proposal_lineage_complete = bool(
+            len(self._candidate_proposal_started_ids) == 1
+            and self._candidate_proposal_started_ids
+            == set(self._proposal_responses)
+            == self._completed_proposal_items
+        )
+        if not proposal_lineage_complete:
+            self._candidate_event_reason_codes.add(
+                "PROPOSAL_ITEM_LINEAGE_INCOMPLETE"
+            )
+        prequalification_terminal = bool(
+            field_result.normal_terminal
+            and all_sources_completed
+            and proposal_lineage_complete
+        )
+        self._candidate_record_event(
+            "run_terminal",
+            normal_terminal=prequalification_terminal,
+            turn_status=field_result.turn_status,
+            runtime_status=field_result.status,
+            source_items_completed=all_sources_completed,
+            proposal_items_completed=all_proposals_completed,
+        )
+        task_bytes = prompt.encode("utf-8")
+        dynamic_tools = candidate_dynamic_tools()
+        runtime_identity_sha256 = (
+            hashlib.sha256(
+                canonical_json(
+                    {
+                        "model": field_result.runtime_identity.model,
+                        "reasoning_effort": (
+                            field_result.runtime_identity.reasoning_effort
+                        ),
+                        "service_tier": field_result.runtime_identity.service_tier,
+                        "codex_cli_version": (
+                            field_result.runtime_identity.codex_cli_version
+                        ),
+                        "account_type": field_result.runtime_identity.account_type,
+                    }
+                ).encode("utf-8")
+            ).hexdigest()
+            if field_result.runtime_identity is not None
+            else None
+        )
+        prohibited = int(
+            bool(
+                field_result.file_actions
+                or field_result.checkpoint_outcomes
+                or field_result.read_evidence
+                or field_result.unsupported_reason is not None
+                or self._identity_failure
+            )
+        )
+        event_reasons = set(self._candidate_event_reason_codes)
+        event_reasons.update(source_session.reason_codes)
+        evidence = IsolationEvidence(
+            contract_identity_sha256=(
+                self._candidate_v0_2_a1.contract_identity_sha256
+            ),
+            run_1_task_sha256=hashlib.sha256(task_bytes).hexdigest(),
+            developer_instructions_sha256=hashlib.sha256(
+                CANDIDATE_DEVELOPER_INSTRUCTIONS.encode("utf-8")
+            ).hexdigest(),
+            dynamic_tool_manifest_sha256=dynamic_tool_manifest_sha256(),
+            runtime_identity_sha256=runtime_identity_sha256,
+            isolation_features_sha256=isolation_features_sha256(),
+            candidate_visible_input_set_sha256=(
+                candidate_visible_input_set_sha256(
+                    task_bytes,
+                    CANDIDATE_DEVELOPER_INSTRUCTIONS.encode("utf-8"),
+                    dynamic_tools,
+                )
+            ),
+            event_log_sha256=hashlib.sha256(
+                canonical_json(self._candidate_events).encode("utf-8")
+            ).hexdigest(),
+            source_identity_sha256=fixed_source_identity_sha256(),
+            source_call_count=source_session.source_call_count,
+            semantic_disclosure_count=source_session.semantic_disclosure_count,
+            distinct_exposed_source_count=(
+                source_session.distinct_exposed_source_count
+            ),
+            repository_read_count=len(field_result.read_evidence),
+            current_after_access_count=0,
+            git_access_count=0,
+            prohibited_capability_event_count=prohibited,
+            proposal_call_count=len(self._capture_proposal_call_ids),
+            proposal_after_source=bool(
+                self._candidate_source_success_ordinal is not None
+                and self._candidate_proposal_first_ordinal is not None
+                and self._candidate_proposal_first_ordinal
+                > self._candidate_source_success_ordinal
+            ),
+            normal_terminal=prequalification_terminal,
+            capability_surface_complete=(
+                self._dynamic_tools() == dynamic_tools
+            ),
+            native_or_implicit_reader_absent=all(
+                tool.get("name") != codex._READ_TOOL_NAME for tool in dynamic_tools
+            ),
+            manual_after_exposure_codes=manual_after_contamination_codes(
+                (
+                    task_bytes,
+                    CANDIDATE_DEVELOPER_INSTRUCTIONS.encode("utf-8"),
+                    canonical_json(dynamic_tools).encode("utf-8"),
+                )
+            ),
+            event_reason_codes=tuple(sorted(event_reasons)),
+        )
+        isolation, independence = qualify_independence(evidence)
+        admitted = CandidateV02A1AdmissionGate().admit(
+            field_result.field_note_proposal,
+            isolation=isolation,
+            independence=independence,
+        )
+        candidate_pass = bool(
+            admitted is not None
+            and isolation.result == "PASS"
+            and independence.result == "PASS"
+            and proposal_lineage_complete
+        )
+        return replace(
+            field_result,
+            normal_terminal=(field_result.normal_terminal and candidate_pass),
+            status=(
+                field_result.status
+                if candidate_pass or field_result.unsupported_reason is not None
+                else "ABNORMAL_TERMINAL"
+            ),
+            error_type=(
+                field_result.error_type
+                if candidate_pass or field_result.unsupported_reason is not None
+                else "CandidateV02IndependenceError"
+            ),
+            field_note_proposal=admitted,
+            creator_live_a1_failure_reason=(
+                field_result.creator_live_a1_failure_reason
+                if field_result.creator_live_a1_failure_reason is not None
+                else (
+                    None
+                    if candidate_pass
+                    else "A1_CANDIDATE_INDEPENDENCE_NOT_PASS"
+                )
+            ),
+            candidate_v0_2_isolation_evidence=evidence,
         )
