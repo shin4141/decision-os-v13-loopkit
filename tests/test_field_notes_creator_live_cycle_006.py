@@ -680,6 +680,163 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         self.assertFalse(os.path.lexists(self.spec.storage_root))
 
 
+class Cycle006OuterGateProofAccessTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.repository = Path(self.temporary.name) / "repository"
+        self.repository.mkdir()
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def _entrypoint(
+        self,
+        *,
+        runtime_version: str,
+        live_start_authorization_observed_at: str | None = None,
+    ) -> tuple[CreatorLiveCycle006Entrypoint, list[str]]:
+        activity: list[str] = []
+
+        def runtime_opener(*_args: object, **_kwargs: object) -> object:
+            activity.append("runtime")
+            raise AssertionError("proof runtime must remain unopened")
+
+        def worker_factory(*_args: object, **_kwargs: object) -> object:
+            activity.append("worker")
+            raise AssertionError("worker must remain unallocated")
+
+        return (
+            CreatorLiveCycle006Entrypoint(
+                _Controller(self.repository),
+                spec=CreatorLiveCycle006Spec(
+                    repository=self.repository,
+                    live_start_authorization_observed_at=(
+                        live_start_authorization_observed_at
+                    ),
+                ),
+                runtime_opener=runtime_opener,
+                worker_factory=worker_factory,
+                runtime_version_probe=lambda _path: runtime_version,
+            ),
+            activity,
+        )
+
+    def test_cli_mismatch_returns_before_historical_proof_access(self) -> None:
+        entrypoint, activity = self._entrypoint(runtime_version="0.147.0-alpha.1.2")
+        with (
+            patch.object(cycle006, "EXPECTED_REPOSITORY", self.repository),
+            patch.object(
+                entrypoint,
+                "_historical_binding",
+                side_effect=AssertionError("historical binding must remain unread"),
+            ) as historical_binding,
+            patch.object(
+                cycle006.FieldNoteCreatorLiveProofRuntime,
+                "load_attempt",
+                side_effect=AssertionError("historical proof loader must remain unread"),
+            ) as historical_loader,
+        ):
+            result = entrypoint._p0(_Controller(self.repository).snapshot())
+
+        self.assertFalse(result.ready)
+        self.assertEqual(result.failure_code, "P0_CODEX_CLI_VERSION_MISMATCH")
+        self.assertIsNone(result.binding)
+        self.assertIsNone(result.launch_binding_sha256)
+        historical_binding.assert_not_called()
+        historical_loader.assert_not_called()
+        self.assertFalse(os.path.lexists(entrypoint.spec.storage_root))
+        self.assertEqual(activity, [])
+
+    def test_absent_live_authority_returns_before_historical_proof_access(self) -> None:
+        entrypoint, activity = self._entrypoint(
+            runtime_version=cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
+        )
+        with (
+            patch.object(cycle006, "EXPECTED_REPOSITORY", self.repository),
+            patch.object(
+                entrypoint,
+                "_historical_binding",
+                side_effect=AssertionError("historical binding must remain unread"),
+            ) as historical_binding,
+            patch.object(
+                cycle006.FieldNoteCreatorLiveProofRuntime,
+                "load_attempt",
+                side_effect=AssertionError("historical proof loader must remain unread"),
+            ) as historical_loader,
+        ):
+            result = entrypoint._p0(_Controller(self.repository).snapshot())
+            with self.assertRaisesRegex(
+                CreatorLiveCycle006Error,
+                "LIVE_START_AUTHORIZATION_ABSENT",
+            ):
+                entrypoint.start(_DIGEST)
+
+        self.assertFalse(result.ready)
+        self.assertEqual(result.failure_code, "LIVE_START_AUTHORIZATION_ABSENT")
+        self.assertIsNone(result.binding)
+        self.assertIsNone(result.launch_binding_sha256)
+        historical_binding.assert_not_called()
+        historical_loader.assert_not_called()
+        self.assertFalse(os.path.lexists(entrypoint.spec.storage_root))
+        self.assertEqual(activity, [])
+
+    def test_valid_outer_gates_keep_historical_binding_reachable(self) -> None:
+        authorization = "2026-08-06T02:00:00Z"
+        entrypoint = CreatorLiveCycle006Entrypoint(
+            _Controller(ROOT),
+            spec=CreatorLiveCycle006Spec(
+                repository=ROOT,
+                live_start_authorization_observed_at=authorization,
+            ),
+            runtime_version_probe=lambda _path: (
+                cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
+            ),
+        )
+        guard = {
+            "head": "a" * 40,
+            "local_main": "a" * 40,
+            "origin_main": "a" * 40,
+            "branch": "main",
+            "remote": cycle006.EXPECTED_REMOTE,
+            "ahead_behind": ("0", "0"),
+            "tracked_status": "",
+            "worktree_clean": True,
+            "index_clean": True,
+            "operation_active": False,
+            "common": ROOT / ".git",
+            "repository_id": "repo:v1:" + "b" * 64,
+        }
+        historical_calls: list[Path] = []
+
+        def historical_binding(repository: Path) -> dict[str, object]:
+            historical_calls.append(repository)
+            return {"reachable": True}
+
+        with (
+            patch.object(cycle006, "EXPECTED_REPOSITORY", ROOT),
+            patch.object(entrypoint, "_repository_guard", return_value=guard),
+            patch.object(entrypoint, "_contract_binding", return_value={"fixed": True}),
+            patch.object(entrypoint, "_candidate_binding", return_value={"bound": True}),
+            patch.object(
+                entrypoint,
+                "_historical_binding",
+                side_effect=historical_binding,
+            ),
+            patch.object(cycle006, "product_tree_sha256", return_value="c" * 64),
+            patch.object(
+                cycle006.FieldNoteCreatorLiveProofRuntime,
+                "load_attempt",
+                side_effect=AssertionError("test binding must not load proof bytes"),
+            ) as historical_loader,
+        ):
+            result = entrypoint._p0(_Controller(ROOT).snapshot())
+
+        self.assertTrue(result.ready, result.failure_code)
+        self.assertEqual(historical_calls, [ROOT, ROOT])
+        historical_loader.assert_not_called()
+        self.assertFalse(os.path.lexists(entrypoint.spec.storage_root))
+
+
 class Cycle006DurableActivityTests(unittest.TestCase):
     def test_allocated_runs_do_not_count_without_exact_turn_start_milestones(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2178,7 +2335,11 @@ class Cycle006ProtectedBindingTests(unittest.TestCase):
     def test_launch_binding_is_deterministic_content_free_and_non_ranking(self) -> None:
         entrypoint = CreatorLiveCycle006Entrypoint(
             object(),
-            spec=CreatorLiveCycle006Spec(repository=ROOT, runtime_root=ROOT),
+            spec=CreatorLiveCycle006Spec(
+                repository=ROOT,
+                runtime_root=ROOT,
+                live_start_authorization_observed_at="2026-08-06T02:00:00Z",
+            ),
             runtime_version_probe=lambda _path: (
                 cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
             ),
@@ -2209,22 +2370,24 @@ class Cycle006ProtectedBindingTests(unittest.TestCase):
         }
         base = {"repository": {"path": str(ROOT)}}
         with (
+            patch.object(cycle006, "EXPECTED_REPOSITORY", ROOT),
             patch.object(cycle006, "_run_git", side_effect=git_value),
             patch.object(cycle006, "_git_diff_clean", return_value=True),
             patch.object(cycle006, "repository_id", return_value="repository-id"),
             patch.object(cycle006, "product_tree_sha256", return_value="c" * 64),
             patch.object(entrypoint, "_git_common_dir", return_value=ROOT / ".git"),
+            patch.object(entrypoint, "_require_storage_boundary"),
             patch.object(entrypoint, "_contract_binding", return_value=contract),
             patch.object(entrypoint, "_historical_binding", return_value=historical),
             patch.object(entrypoint, "_candidate_binding", return_value=candidate),
         ):
             first = entrypoint._p0(base)
             second = entrypoint._p0(base)
-        self.assertTrue(first.ready)
+        self.assertTrue(first.ready, first.failure_code)
         self.assertEqual(first.launch_binding_sha256, second.launch_binding_sha256)
         self.assertRegex(first.launch_binding_sha256 or "", r"^[0-9a-f]{64}$")
         binding = first.binding or {}
-        self.assertEqual(binding["cycle"]["live_start_authorization"], "ABSENT")
+        self.assertEqual(binding["cycle"]["live_start_authorization"], "PRESENT")
         self.assertEqual(binding["attempt_policy"]["retry_count"], 0)
         self.assertEqual(binding["attempt_policy"]["replacement_count"], 0)
         self.assertEqual(
