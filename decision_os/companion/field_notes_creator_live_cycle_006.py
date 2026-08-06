@@ -15,8 +15,12 @@ import time
 from typing import Any, Callable, Mapping, Protocol
 
 from decision_os.acceleration.codex_adapter import (
-    BUNDLED_CODEX_PATH,
+    CYCLE_006_CODEX_CLI_VERSION,
+    CYCLE_006_CODEX_PATH,
+    CYCLE_006_CODEX_RECOVERY_RECEIPT,
+    CYCLE_006_CODEX_SHA256,
     CodexRuntimeIdentity,
+    verify_cycle_006_codex_runtime_artifact,
 )
 from decision_os.acceleration.model import git_output
 from decision_os.acceleration.model import repository_id
@@ -143,6 +147,13 @@ EXPECTED_INTERPRETATION_SHA256 = (
 EXPECTED_EXECUTION_AUTHORITY = "INTERPRETATION_ONLY"
 EXPECTED_FREEZE_AUTHORITY = "IMMUTABLE_INTERPRETATION_ONLY"
 EXPECTED_GATE = "CLEAR ENOUGH TO FREEZE"
+RUNTIME_MIGRATION_AS_OF = "2026-08-07"
+FORWARD_RUNTIME_CHARTER_PATH = (
+    "validation/a7_creator_live_whole_flow_reentry_charter_delta_v1_1.md"
+)
+FORWARD_RUNTIME_CHARTER_SHA256 = (
+    "dade3a6994e0814ae50cba7b412726e9d4a65f94c5c214b1d62bc32c3a89203d"
+)
 
 EXPECTED_RUNTIME = {
     "provider": "openai",
@@ -150,7 +161,10 @@ EXPECTED_RUNTIME = {
     "model": "gpt-5.6-sol",
     "reasoning_effort": "ultra",
     "service_tier": "priority",
-    "codex_cli_version": "0.146.0-alpha.3.1",
+    "codex_cli_version": CYCLE_006_CODEX_CLI_VERSION,
+    "codex_binary_sha256": CYCLE_006_CODEX_SHA256,
+    "runtime_as_of": RUNTIME_MIGRATION_AS_OF,
+    "artifact_custody": "PRESERVED_CONTENT_ADDRESSED",
     "sandbox": "read-only",
     "model_sandbox_network": False,
     "provider_transport_required": True,
@@ -296,6 +310,7 @@ class CreatorLiveCycle006Spec:
     repository: Path = EXPECTED_REPOSITORY
     remote: str = EXPECTED_REMOTE
     runtime_root: Path | None = None
+    codex_executable: Path = CYCLE_006_CODEX_PATH
     live_start_authorization_observed_at: str | None = (
         LIVE_START_AUTHORIZATION_OBSERVED_AT
     )
@@ -318,30 +333,10 @@ def _sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _bundled_codex_cli_version(executable: Path) -> str:
-    """Read the local CLI identity without starting app-server or a model."""
+def _cycle_006_codex_cli_version(executable: Path) -> str:
+    """Verify the fixed artifact without starting app-server or a model."""
 
-    target = executable.resolve(strict=True)
-    if not target.is_file():
-        raise ValueError("P0_CODEX_CLI_UNAVAILABLE")
-    try:
-        completed = subprocess.run(
-            (str(target), "--version"),
-            capture_output=True,
-            check=False,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise ValueError("P0_CODEX_CLI_UNAVAILABLE") from exc
-    prefix = "codex-cli "
-    observed = completed.stdout.strip()
-    if completed.returncode != 0 or not observed.startswith(prefix):
-        raise ValueError("P0_CODEX_CLI_UNAVAILABLE")
-    version = observed.removeprefix(prefix).strip()
-    if not version or "\n" in version or "\r" in version:
-        raise ValueError("P0_CODEX_CLI_UNAVAILABLE")
-    return version
+    return verify_cycle_006_codex_runtime_artifact(executable)
 
 
 def _strict_object(raw: bytes, label: str) -> dict[str, Any]:
@@ -755,7 +750,7 @@ class CreatorLiveCycle006Entrypoint:
         ),
         worker_factory: Callable[..., Any] = threading.Thread,
         runtime_version_probe: Callable[[Path], str] = (
-            _bundled_codex_cli_version
+            _cycle_006_codex_cli_version
         ),
         timeout_seconds: float = 900.0,
     ) -> None:
@@ -782,6 +777,9 @@ class CreatorLiveCycle006Entrypoint:
         self._manifest_sha256: str | None = None
         self._post_a1_readback_sha256: str | None = None
         self._a3_overlay_sha256: str | None = None
+        self._runtime_verification_cache: tuple[
+            tuple[Any, ...], str | None
+        ] | None = None
 
     @property
     def mutation_blocked(self) -> bool:
@@ -789,18 +787,58 @@ class CreatorLiveCycle006Entrypoint:
             return self._starting or self._active
 
     def _require_runtime_binary_identity(self) -> None:
-        failure_code = self._runtime_binary_failure_code()
+        # Status polling may reuse evidence while the complete stat identity is
+        # unchanged.  Proof opening never does: re-read and re-probe here.
+        failure_code = self._runtime_binary_failure_code(force=True)
         if failure_code is not None:
             raise CreatorLiveCycle006Error(failure_code)
 
-    def _runtime_binary_failure_code(self) -> str | None:
+    def _runtime_binary_cache_key(self) -> tuple[Any, ...]:
         try:
-            observed = self.runtime_version_probe(BUNDLED_CODEX_PATH)
+            observed = self.spec.codex_executable.lstat()
+        except OSError:
+            return (str(self.spec.codex_executable), "UNAVAILABLE")
+        return (
+            str(self.spec.codex_executable),
+            observed.st_dev,
+            observed.st_ino,
+            observed.st_mode,
+            observed.st_nlink,
+            observed.st_size,
+            observed.st_mtime_ns,
+            observed.st_ctime_ns,
+        )
+
+    def _runtime_binary_failure_code(self, *, force: bool = False) -> str | None:
+        before_key = self._runtime_binary_cache_key()
+        with self._lock:
+            if (
+                not force
+                and self._runtime_verification_cache is not None
+                and self._runtime_verification_cache[0] == before_key
+            ):
+                return self._runtime_verification_cache[1]
+        try:
+            observed = self.runtime_version_probe(self.spec.codex_executable)
+        except ValueError as exc:
+            code = str(exc)
+            failure_code = (
+                code if code.startswith("P0_") else "P0_CODEX_CLI_UNAVAILABLE"
+            )
         except Exception:
-            return "P0_CODEX_CLI_UNAVAILABLE"
-        if observed != self.spec.runtime.codex_cli_version:
-            return "P0_CODEX_CLI_VERSION_MISMATCH"
-        return None
+            failure_code = "P0_CODEX_CLI_UNAVAILABLE"
+        else:
+            failure_code = (
+                "P0_CODEX_CLI_VERSION_MISMATCH"
+                if observed != self.spec.runtime.codex_cli_version
+                else None
+            )
+        after_key = self._runtime_binary_cache_key()
+        if after_key != before_key:
+            return "P0_CODEX_CLI_IDENTITY_CHANGED"
+        with self._lock:
+            self._runtime_verification_cache = (after_key, failure_code)
+        return failure_code
 
     def _outer_gate_failure_code(self) -> str | None:
         """Validate non-proof outer gates in their required fail-closed order."""
@@ -1579,6 +1617,7 @@ class CreatorLiveCycle006Entrypoint:
                 repository != EXPECTED_REPOSITORY.resolve(strict=True)
                 or self.spec.remote != EXPECTED_REMOTE
                 or self.spec.runtime != EXPECTED_CODEX_RUNTIME
+                or self.spec.codex_executable != CYCLE_006_CODEX_PATH
             ):
                 raise ValueError("P0_FIXED_EXECUTION_IDENTITY_MISMATCH")
             outer_gate_failure = self._outer_gate_failure_code()
@@ -1633,6 +1672,21 @@ class CreatorLiveCycle006Entrypoint:
                 for item in charter_lineage
             ):
                 raise ValueError("P0_CHARTER_V1_0_MISSING")
+            forward_charter = repository / FORWARD_RUNTIME_CHARTER_PATH
+            if (
+                not forward_charter.is_file()
+                or forward_charter.is_symlink()
+                or _sha256(forward_charter.read_bytes())
+                != FORWARD_RUNTIME_CHARTER_SHA256
+                or not any(
+                    item == {
+                        "path": FORWARD_RUNTIME_CHARTER_PATH,
+                        "sha256": FORWARD_RUNTIME_CHARTER_SHA256,
+                    }
+                    for item in charter_lineage
+                )
+            ):
+                raise ValueError("P0_FORWARD_RUNTIME_CHARTER_MISMATCH")
             tasks = {
                 "run_1": {
                     "path": FIXED_TASK_IDENTITIES[0].path,
@@ -1734,6 +1788,22 @@ class CreatorLiveCycle006Entrypoint:
                         "project_document_injection",
                         "arbitrary_write_edit_delete",
                     ],
+                },
+                "runtime_artifact": {
+                    "configured_path": str(self.spec.codex_executable),
+                    "expected_path": str(CYCLE_006_CODEX_PATH),
+                    "binary_sha256": CYCLE_006_CODEX_SHA256,
+                    "recovery_receipt_path": str(
+                        CYCLE_006_CODEX_RECOVERY_RECEIPT
+                    ),
+                    "version_stdout": (
+                        f"codex-cli {CYCLE_006_CODEX_CLI_VERSION}\n"
+                    ),
+                    "regular_file_required": True,
+                    "executable_required": True,
+                    "symlink_permitted": False,
+                    "path_fallback_permitted": False,
+                    "chatgpt_app_fallback_permitted": False,
                 },
                 "historical_boundary": historical,
                 "comparison": {

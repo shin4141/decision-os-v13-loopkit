@@ -15,6 +15,7 @@ import unittest
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
+from decision_os.acceleration import codex_adapter as codex_module
 from decision_os.acceleration.codex_adapter import (
     ADAPTER_NAME,
     CODEX_CLI_VERSION,
@@ -33,6 +34,7 @@ from decision_os.companion.field_notes_adapter import (
 from decision_os.companion.field_notes_controller import (
     FieldNoteError,
     FieldNotesCompanionController,
+    _field_notes_adapter_factory,
 )
 from decision_os.companion.field_notes_creator_live_entrypoint import (
     CreatorLiveEntrypointError,
@@ -59,13 +61,13 @@ from decision_os.companion.field_notes_reconnect import (
 )
 from decision_os.companion.server import CompanionServer
 from tests.test_acceleration_codex_adapter import (
-    FakeTransportFactory,
+    FakeTransportFactory as AdapterFakeTransportFactory,
     approval_request,
     change,
     completed_agent_message,
     completed_item,
     completed_turn,
-    handshake_messages,
+    handshake_messages as adapter_handshake_messages,
     resolved_request,
     started_item,
 )
@@ -78,6 +80,38 @@ _STALE = "7" * 64
 _RUN_CANONICAL = (
     os.environ.get("DECISION_OS_RUN_CYCLE_006_CANONICAL_TESTS") == "1"
 )
+
+
+class FakeTransportFactory(AdapterFakeTransportFactory):
+    """Cycle 006 fake transport with the Forward-only CLI identity."""
+
+    def __init__(
+        self,
+        scripts: list[list[dict[str, object]]],
+        *,
+        versions: list[str] | None = None,
+    ) -> None:
+        super().__init__(
+            scripts,  # type: ignore[arg-type]
+            versions=versions
+            or [codex_module.CYCLE_006_CODEX_CLI_VERSION] * len(scripts),
+        )
+
+
+def handshake_messages(
+    repository: Path,
+    **kwargs: object,
+) -> list[dict[str, object]]:
+    """Build one fake transcript carrying the Cycle 006 CLI identity."""
+
+    kwargs.setdefault(
+        "cli_version",
+        codex_module.CYCLE_006_CODEX_CLI_VERSION,
+    )
+    return adapter_handshake_messages(  # type: ignore[return-value]
+        repository,
+        **kwargs,  # type: ignore[arg-type]
+    )
 
 
 def _candidate_proposal() -> dict[str, object]:
@@ -374,13 +408,38 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
                 "model": "gpt-5.6-sol",
                 "reasoning_effort": "ultra",
                 "service_tier": "priority",
-                "codex_cli_version": "0.146.0-alpha.3.1",
+                "codex_cli_version": "0.147.0-alpha.1.2",
+                "codex_binary_sha256": (
+                    "9f6748b4ab10ffc92c28b9ccedae89e61a302bbc011df7d276ee38f55906e481"
+                ),
+                "runtime_as_of": "2026-08-07",
+                "artifact_custody": "PRESERVED_CONTENT_ADDRESSED",
                 "sandbox": "read-only",
                 "model_sandbox_network": False,
                 "provider_transport_required": True,
                 "fresh_ephemeral_thread_per_run": True,
                 "repository_cwd": "canonical-selected-repository",
             },
+        )
+        self.assertEqual(codex_module.CODEX_CLI_VERSION, "0.146.0-alpha.3.1")
+        self.assertEqual(
+            cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version,
+            codex_module.CYCLE_006_CODEX_CLI_VERSION,
+        )
+        self.assertEqual(
+            self.spec.codex_executable,
+            codex_module.CYCLE_006_CODEX_PATH,
+        )
+        self.assertNotEqual(
+            codex_module.BUNDLED_CODEX_PATH,
+            codex_module.CYCLE_006_CODEX_PATH,
+        )
+        charter = ROOT / cycle006.FORWARD_RUNTIME_CHARTER_PATH
+        self.assertTrue(charter.is_file())
+        self.assertFalse(charter.is_symlink())
+        self.assertEqual(
+            cycle006._sha256(charter.read_bytes()),
+            cycle006.FORWARD_RUNTIME_CHARTER_SHA256,
         )
         identity = future_proof_identity(_DIGEST)
         self.assertEqual(
@@ -414,6 +473,8 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
             "PRIVATE_PREPARATION",
             "PRIVATE_DERIVATION",
             "proof_a7_creator_live_cycle_006_" + _DIGEST,
+            str(codex_module.CYCLE_006_CODEX_PATH),
+            str(codex_module.CYCLE_006_CODEX_RECOVERY_RECEIPT),
         ):
             self.assertNotIn(private, encoded)
 
@@ -647,7 +708,7 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
             model="other-model",
             reasoning_effort="ultra",
             service_tier="priority",
-            codex_cli_version="0.146.0-alpha.3.1",
+            codex_cli_version="0.147.0-alpha.1.2",
             account_type="chatgpt",
         )
         result = CreatorLiveCycle006Entrypoint(
@@ -656,6 +717,19 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         )._p0(_Controller(ROOT).snapshot())
         self.assertFalse(result.ready)
         self.assertEqual(result.failure_code, "P0_FIXED_EXECUTION_IDENTITY_MISMATCH")
+
+        mutable_app_result = CreatorLiveCycle006Entrypoint(
+            _Controller(ROOT),
+            spec=CreatorLiveCycle006Spec(
+                repository=ROOT,
+                codex_executable=codex_module.BUNDLED_CODEX_PATH,
+            ),
+        )._p0(_Controller(ROOT).snapshot())
+        self.assertFalse(mutable_app_result.ready)
+        self.assertEqual(
+            mutable_app_result.failure_code,
+            "P0_FIXED_EXECUTION_IDENTITY_MISMATCH",
+        )
 
         target = self.repository.parent / "alternate-storage"
         target.mkdir()
@@ -670,7 +744,7 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         entrypoint = CreatorLiveCycle006Entrypoint(
             _Controller(self.repository),
             spec=CreatorLiveCycle006Spec(repository=self.repository),
-            runtime_version_probe=lambda _path: "0.147.0-alpha.1.2",
+            runtime_version_probe=lambda _path: "0.147.0-alpha.1.3",
         )
         with self.assertRaisesRegex(
             CreatorLiveCycle006Error,
@@ -678,6 +752,295 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         ):
             entrypoint._require_runtime_binary_identity()
         self.assertFalse(os.path.lexists(self.spec.storage_root))
+
+    def test_runtime_polling_reuses_stable_evidence_but_preproof_rechecks(
+        self,
+    ) -> None:
+        executable = self.repository.parent / "preserved-codex"
+        executable.write_bytes(b"fixed-runtime")
+        executable.chmod(0o755)
+        calls: list[Path] = []
+
+        def probe(path: Path) -> str:
+            calls.append(path)
+            return cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
+
+        entrypoint = CreatorLiveCycle006Entrypoint(
+            _Controller(self.repository),
+            spec=CreatorLiveCycle006Spec(
+                repository=self.repository,
+                codex_executable=executable,
+            ),
+            runtime_version_probe=probe,
+        )
+        self.assertIsNone(entrypoint._runtime_binary_failure_code())
+        self.assertIsNone(entrypoint._runtime_binary_failure_code())
+        self.assertEqual(calls, [executable])
+
+        entrypoint._require_runtime_binary_identity()
+        self.assertEqual(calls, [executable, executable])
+
+        def mutating_probe(path: Path) -> str:
+            path.write_bytes(b"changed-runtime-bytes")
+            path.chmod(0o755)
+            return cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
+
+        drifting = CreatorLiveCycle006Entrypoint(
+            _Controller(self.repository),
+            spec=CreatorLiveCycle006Spec(
+                repository=self.repository,
+                codex_executable=executable,
+            ),
+            runtime_version_probe=mutating_probe,
+        )
+        with self.assertRaisesRegex(
+            CreatorLiveCycle006Error,
+            "P0_CODEX_CLI_IDENTITY_CHANGED",
+        ):
+            drifting._require_runtime_binary_identity()
+
+    def test_runtime_verification_precedes_proof_and_model_transmission(
+        self,
+    ) -> None:
+        binding = deepcopy(_full_fixture_binding())
+        repository_identity = "repo:v1:" + "c" * 64
+        head = "b" * 40
+        binding["repository"]["repository_id"] = repository_identity
+        binding["repository"]["head"] = head
+        calls: list[str] = []
+
+        class AuthorizedReady(CreatorLiveCycle006Entrypoint):
+            def _p0(self, _base_snapshot: object) -> CreatorLiveCycle006P0Result:
+                return CreatorLiveCycle006P0Result(
+                    True,
+                    None,
+                    deepcopy(binding),
+                    _DIGEST,
+                )
+
+        def failed_verification(_path: Path) -> str:
+            calls.append("verify")
+            raise ValueError("P0_CODEX_CLI_SHA256_MISMATCH")
+
+        entrypoint = AuthorizedReady(
+            _Controller(self.repository),
+            spec=CreatorLiveCycle006Spec(
+                repository=self.repository,
+                live_start_authorization_observed_at="2026-08-07T00:00:00Z",
+            ),
+            runtime_version_probe=failed_verification,
+            runtime_opener=lambda *_args, **_kwargs: calls.append("proof"),
+            worker_factory=lambda *_args, **_kwargs: calls.append("worker"),
+        )
+        with (
+            patch.object(cycle006, "repository_id", return_value=repository_identity),
+            patch.object(cycle006, "git_output", return_value=head),
+            patch.object(
+                entrypoint,
+                "_load_fixed_task",
+                side_effect=AssertionError("task must not be loaded"),
+            ),
+            self.assertRaisesRegex(
+                CreatorLiveCycle006Error,
+                "P0_CODEX_CLI_SHA256_MISMATCH",
+            ),
+        ):
+            entrypoint.start(_DIGEST)
+
+        self.assertEqual(calls, ["verify"])
+        self.assertFalse(os.path.lexists(entrypoint.spec.storage_root))
+        self.assertFalse(entrypoint.mutation_blocked)
+
+    def test_production_factory_selects_preserved_runtime_only_for_cycle_006(
+        self,
+    ) -> None:
+        factory_repository = create_repository(
+            Path(self.temporary.name),
+            "factory-repository",
+        )
+
+        def reconnect_target(
+            runtime: codex_module.CodexRuntimeIdentity,
+        ) -> exact_a2.FieldNoteCreatorLiveA2ReconnectTarget:
+            return exact_a2.FieldNoteCreatorLiveA2ReconnectTarget._issue(
+                authority=exact_a2._A2_TARGET_AUTHORITY,
+                proof_attempt_id="proof-factory",
+                run_1_id="run-a1",
+                run_2_id="run-a2",
+                field_note_id="fn-factory",
+                note_relative_path=".decision-os/field-notes/fn-factory.md",
+                note_sha256="a" * 64,
+                note_byte_count=1,
+                source_repository_id="repo:v1:" + "b" * 64,
+                source_commit="c" * 40,
+                expected_runtime_identity=runtime,
+            )
+
+        candidate_a1 = FieldNoteCreatorLiveCandidateV02A1Config(
+            run_id="run-cycle-006",
+            expected_runtime_identity=cycle006.EXPECTED_CODEX_RUNTIME,
+            contract_identity_sha256="c" * 64,
+        )
+        capture_a1 = FieldNoteCreatorLiveA1CaptureConfig(
+            run_id=candidate_a1.run_id,
+            expected_runtime_identity=cycle006.EXPECTED_CODEX_RUNTIME,
+        )
+        candidate_a2 = FieldNoteCreatorLiveCandidateV02A2Config(
+            readback_path="/fixed/readback.json",
+            readback_sha256="d" * 64,
+        )
+        target_a2 = reconnect_target(cycle006.EXPECTED_CODEX_RUNTIME)
+        for label, capture, target, a1, a2 in (
+            ("run-1", capture_a1, None, candidate_a1, None),
+            ("run-2", None, target_a2, None, candidate_a2),
+        ):
+            with self.subTest(label=label):
+                calls = {"capture": 0, "target": 0, "a1": 0, "a2": 0}
+
+                def stateful(name: str, value: object) -> Callable[[], object | None]:
+                    def provider() -> object | None:
+                        calls[name] += 1
+                        return value if calls[name] == 1 else None
+
+                    return provider
+
+                engine = AccelerationEngine(
+                    factory_repository,
+                    adapter=ADAPTER_NAME,
+                    adapter_version=CODEX_CLI_VERSION,
+                )
+                adapter = _field_notes_adapter_factory(
+                    engine,
+                    lambda _approval: None,
+                    lambda _event: None,
+                    creator_live_a1_capture_provider=(
+                        stateful("capture", capture) if capture is not None else None
+                    ),
+                    creator_live_a2_reconnect_provider=(
+                        stateful("target", target) if target is not None else None
+                    ),
+                    candidate_v0_2_a1_provider=(
+                        stateful("a1", a1) if a1 is not None else None
+                    ),
+                    candidate_v0_2_a2_provider=(
+                        stateful("a2", a2) if a2 is not None else None
+                    ),
+                )
+                with patch.object(
+                    adapter_module,
+                    "prepare_creator_live_a2_reconnect",
+                    return_value=SimpleNamespace(plan=None),
+                ), patch.object(
+                    candidate_v02,
+                    "read_post_a1_readback_v0_2",
+                    return_value=SimpleNamespace(),
+                ), patch.object(
+                    candidate_v02,
+                    "require_post_a1_gate_for_a2",
+                ):
+                    adapter._reset_run()
+                self.assertEqual(
+                    adapter.executable,
+                    codex_module.CYCLE_006_CODEX_PATH,
+                )
+                self.assertEqual(
+                    adapter.expected_cli_version,
+                    codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                )
+                self.assertIs(
+                    adapter.transport_factory,
+                    codex_module._Cycle006SubprocessTransport,
+                )
+                self.assertEqual(
+                    engine.adapter_version,
+                    codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                )
+                self.assertEqual(
+                    {name: count for name, count in calls.items() if count},
+                    {
+                        name: 1
+                        for name, value in (
+                            ("capture", capture),
+                            ("target", target),
+                            ("a1", a1),
+                            ("a2", a2),
+                        )
+                        if value is not None
+                    },
+                )
+                self.assertIs(adapter._candidate_v0_2_a1, a1)
+                self.assertIs(adapter._candidate_v0_2_a2, a2)
+
+        historical_runtime = codex_module.CodexRuntimeIdentity(
+            model=codex_module.CODEX_MODEL,
+            reasoning_effort=codex_module.CODEX_REASONING_EFFORT,
+            service_tier=codex_module.CODEX_SERVICE_TIER,
+            codex_cli_version=codex_module.CODEX_CLI_VERSION,
+            account_type="chatgpt",
+        )
+        ordinary_cases = (
+            ("no-provider", None, None),
+            (
+                "historical-a1",
+                FieldNoteCreatorLiveA1CaptureConfig(
+                    run_id="historical-a1",
+                    expected_runtime_identity=historical_runtime,
+                ),
+                None,
+            ),
+            ("historical-a2", None, reconnect_target(historical_runtime)),
+        )
+        for label, capture, target in ordinary_cases:
+            with self.subTest(label=label):
+                engine = AccelerationEngine(
+                    factory_repository,
+                    adapter=ADAPTER_NAME,
+                    adapter_version=CODEX_CLI_VERSION,
+                )
+                ordinary = _field_notes_adapter_factory(
+                    engine,
+                    lambda _approval: None,
+                    lambda _event: None,
+                    creator_live_a1_capture_provider=(
+                        (lambda value=capture: value)
+                        if capture is not None
+                        else None
+                    ),
+                    creator_live_a2_reconnect_provider=(
+                        (lambda value=target: value)
+                        if target is not None
+                        else None
+                    ),
+                )
+                with patch.object(
+                    adapter_module,
+                    "prepare_creator_live_a2_reconnect",
+                    return_value=SimpleNamespace(plan=None),
+                ), patch.object(
+                    candidate_v02,
+                    "read_post_a1_readback_v0_2",
+                    return_value=SimpleNamespace(),
+                ), patch.object(
+                    candidate_v02,
+                    "require_post_a1_gate_for_a2",
+                ):
+                    ordinary._reset_run()
+                self.assertEqual(
+                    ordinary.executable,
+                    codex_module.BUNDLED_CODEX_PATH,
+                )
+                self.assertEqual(
+                    ordinary.expected_cli_version,
+                    codex_module.CODEX_CLI_VERSION,
+                )
+                self.assertIs(
+                    ordinary.transport_factory,
+                    codex_module._SubprocessTransport,
+                )
+                self.assertEqual(
+                    engine.adapter_version,
+                    codex_module.CODEX_CLI_VERSION,
+                )
 
 
 class Cycle006OuterGateProofAccessTests(unittest.TestCase):
@@ -722,7 +1085,7 @@ class Cycle006OuterGateProofAccessTests(unittest.TestCase):
         )
 
     def test_cli_mismatch_returns_before_historical_proof_access(self) -> None:
-        entrypoint, activity = self._entrypoint(runtime_version="0.147.0-alpha.1.2")
+        entrypoint, activity = self._entrypoint(runtime_version="0.147.0-alpha.1.3")
         with (
             patch.object(cycle006, "EXPECTED_REPOSITORY", self.repository),
             patch.object(
@@ -948,7 +1311,7 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
             AccelerationEngine(
                 self.repository,
                 adapter=ADAPTER_NAME,
-                adapter_version=CODEX_CLI_VERSION,
+                adapter_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             ),
             input_func=lambda: self.fail("no public input permitted"),
             stdout=io.StringIO(),
@@ -956,6 +1319,7 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
                 "no public approval permitted"
             ),
             transport_factory=factory,
+            expected_cli_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             creator_live_a1_capture_provider=lambda: (
                 FieldNoteCreatorLiveA1CaptureConfig(
                     run_id=run_id,
@@ -1013,12 +1377,13 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
             AccelerationEngine(
                 self.repository,
                 adapter=ADAPTER_NAME,
-                adapter_version=CODEX_CLI_VERSION,
+                adapter_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             ),
             input_func=lambda: self.fail("no public input permitted"),
             stdout=io.StringIO(),
             approval_provider=lambda approval: approvals.append(approval) or "deny",
             transport_factory=factory,
+            expected_cli_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             creator_live_a2_reconnect_provider=lambda: target,
             candidate_v0_2_a2_provider=lambda: (
                 FieldNoteCreatorLiveCandidateV02A2Config(
@@ -2110,12 +2475,13 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
             AccelerationEngine(
                 self.repository,
                 adapter=ADAPTER_NAME,
-                adapter_version=CODEX_CLI_VERSION,
+                adapter_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             ),
             input_func=lambda: self.fail("no public input permitted"),
             stdout=io.StringIO(),
             approval_provider=lambda approval: approvals.append(approval) or "deny",
             transport_factory=factory,
+            expected_cli_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             creator_live_a2_reconnect_provider=lambda: target,
             candidate_v0_2_a2_provider=lambda: (
                 FieldNoteCreatorLiveCandidateV02A2Config(
@@ -2227,7 +2593,7 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
             AccelerationEngine(
                 self.repository,
                 adapter=ADAPTER_NAME,
-                adapter_version=CODEX_CLI_VERSION,
+                adapter_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             ),
             input_func=lambda: self.fail("no public input permitted"),
             stdout=io.StringIO(),
@@ -2235,6 +2601,7 @@ class Cycle006CandidateAdapterIsolationTests(unittest.IsolatedAsyncioTestCase):
                 "no public approval permitted"
             ),
             transport_factory=factory,
+            expected_cli_version=codex_module.CYCLE_006_CODEX_CLI_VERSION,
             creator_live_a2_reconnect_provider=lambda: target,
             candidate_v0_2_a2_provider=lambda: (
                 FieldNoteCreatorLiveCandidateV02A2Config(
@@ -2407,6 +2774,26 @@ class Cycle006ProtectedBindingTests(unittest.TestCase):
         self.assertIn(
             "project_document_injection",
             binding["runtime"]["disabled_capabilities"],
+        )
+        self.assertEqual(
+            binding["runtime_artifact"],
+            {
+                "configured_path": str(codex_module.CYCLE_006_CODEX_PATH),
+                "expected_path": str(codex_module.CYCLE_006_CODEX_PATH),
+                "binary_sha256": codex_module.CYCLE_006_CODEX_SHA256,
+                "recovery_receipt_path": str(
+                    codex_module.CYCLE_006_CODEX_RECOVERY_RECEIPT
+                ),
+                "version_stdout": (
+                    "codex-cli "
+                    f"{codex_module.CYCLE_006_CODEX_CLI_VERSION}\n"
+                ),
+                "regular_file_required": True,
+                "executable_required": True,
+                "symlink_permitted": False,
+                "path_fallback_permitted": False,
+                "chatgpt_app_fallback_permitted": False,
+            },
         )
         self.assertEqual(binding["comparison"]["result_before_execution"], "NOT_ESTABLISHED")
         self.assertFalse(binding["comparison"]["lane_b_human_ai_manual"]["candidate_visible"])
@@ -3359,30 +3746,20 @@ class Cycle006ExactFinalP0Tests(unittest.TestCase):
             )
             state = controller.select_repository(repository)
             snapshot = state["creator_live_cycle_006"]
-        observed_cli = cycle006._bundled_codex_cli_version(
-            cycle006.BUNDLED_CODEX_PATH
+        observed_cli = cycle006._cycle_006_codex_cli_version(
+            cycle006.CYCLE_006_CODEX_PATH
         )
         exact_cli = cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
-        if observed_cli == exact_cli:
-            self.assertEqual(
-                (snapshot["state"], snapshot["stage"]),
-                ("NOT_READY", "P0"),
-            )
-            self.assertFalse(snapshot["p0"]["ready"])
-            self.assertEqual(
-                snapshot["p0"]["failure_code"],
-                "LIVE_START_AUTHORIZATION_ABSENT",
-            )
-        else:
-            self.assertEqual(
-                (snapshot["state"], snapshot["stage"]),
-                ("NOT_READY", "P0"),
-            )
-            self.assertFalse(snapshot["p0"]["ready"])
-            self.assertEqual(
-                snapshot["p0"]["failure_code"],
-                "P0_CODEX_CLI_VERSION_MISMATCH",
-            )
+        self.assertEqual(observed_cli, exact_cli)
+        self.assertEqual(
+            (snapshot["state"], snapshot["stage"]),
+            ("NOT_READY", "P0"),
+        )
+        self.assertFalse(snapshot["p0"]["ready"])
+        self.assertEqual(
+            snapshot["p0"]["failure_code"],
+            "LIVE_START_AUTHORIZATION_ABSENT",
+        )
         self.assertIsNone(snapshot["binding"])
         self.assertIsNone(snapshot["launch_binding_sha256"])
         self.assertEqual(snapshot["live_start_authorization"], "ABSENT")
