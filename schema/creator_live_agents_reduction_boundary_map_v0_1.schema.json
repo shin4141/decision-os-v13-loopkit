@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-os.reduction-boundary-map.v0.1",
+  "title": "Reduction Boundary Positioning Map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "core_statement", "entries", "rules"],
+  "properties": {
+    "schema": {"const": "decision-os.reduction-boundary-map.v0.1"},
+    "core_statement": {"const": "These systems are not competitors on one compression axis. They remove waste from different operational surfaces."},
+    "entries": {"const": [
+      {"system": "RTK", "surface": "tool-output surface", "proposed_removal_boundary": "unnecessary payload after tool execution", "preserved_boundary": "necessary tool result and evidence", "combination_position": "may precede output/handoff and V13 governance", "verification_status": "LATER_WEB_VERIFICATION_REQUIRED"},
+      {"system": "Ponytail", "surface": "implementation surface", "proposed_removal_boundary": "unnecessary implementation bulk or repetition", "preserved_boundary": "specified contracts and behavior", "combination_position": "may coexist with instruction and output reduction", "verification_status": "LATER_WEB_VERIFICATION_REQUIRED"},
+      {"system": "Compactor", "surface": "persistent-instruction surface", "proposed_removal_boundary": "always-loaded instruction burden or duplication", "preserved_boundary": "mandatory instructions and recallability", "combination_position": "may feed output/handoff and V13 governance", "verification_status": "LATER_WEB_VERIFICATION_REQUIRED"},
+      {"system": "OSI", "surface": "output / handoff surface", "proposed_removal_boundary": "repetitive or non-actionable output and handoff material", "preserved_boundary": "restart state and actionable evidence", "combination_position": "may sit downstream of other reductions", "verification_status": "LATER_WEB_VERIFICATION_REQUIRED"},
+      {"system": "V13", "surface": "iteration / authority surface", "proposed_removal_boundary": "unnecessary or unauthorized repeated loops and ambiguous authority transitions", "preserved_boundary": "human Seat, evidence, rollback, and re-entry capacity", "combination_position": "may govern compatible combinations across surfaces", "verification_status": "INTERNAL_POSITIONING_STATEMENT"}
+    ]},
+    "rules": {"const": ["Higher percentage does not imply cross-layer superiority.", "Combinations are allowed only when preserved boundaries remain compatible.", "No external performance number is included.", "Cross-layer ranking and superiority claims are prohibited."]}
+  }
+}

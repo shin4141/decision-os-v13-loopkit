@@ -1,0 +1,21 @@
+{
+  "schema": "decision-os.creator-live-agents-source-isolation-fixtures.v0.1",
+  "cases": [
+    {"case_id": "PASS_EXACT", "overrides": {}, "expected": "PASS"},
+    {"case_id": "FAIL_MISSING_SOURCE", "overrides": {"source_call_count": 0, "semantic_disclosure_count": 0, "distinct_exposed_source_count": 0}, "expected": "FAIL"},
+    {"case_id": "FAIL_SECOND_DISTINCT_SOURCE", "overrides": {"source_call_count": 2}, "expected": "FAIL"},
+    {"case_id": "FAIL_REPOSITORY_READ", "overrides": {"repository_read_count": 1}, "expected": "FAIL"},
+    {"case_id": "FAIL_CURRENT_AFTER", "overrides": {"current_after_access_count": 1}, "expected": "FAIL"},
+    {"case_id": "FAIL_GIT_HISTORY", "overrides": {"git_access_count": 1}, "expected": "FAIL"},
+    {"case_id": "FAIL_SHELL", "overrides": {"prohibited_capability_event_count": 1, "event_reason_codes": ["SHELL_EVENT"]}, "expected": "FAIL"},
+    {"case_id": "FAIL_WEB", "overrides": {"prohibited_capability_event_count": 1, "event_reason_codes": ["WEB_EVENT"]}, "expected": "FAIL"},
+    {"case_id": "FAIL_MCP_PLUGIN_ATTACHMENT", "overrides": {"prohibited_capability_event_count": 1, "event_reason_codes": ["MCP_PLUGIN_ATTACHMENT_EVENT"]}, "expected": "FAIL"},
+    {"case_id": "FAIL_PROPOSAL_BEFORE_SOURCE", "overrides": {"proposal_after_source": false}, "expected": "FAIL"},
+    {"case_id": "FAIL_DUPLICATE_PROPOSAL", "overrides": {"proposal_call_count": 2}, "expected": "FAIL"},
+    {"case_id": "FAIL_NOT_TERMINAL", "overrides": {"normal_terminal": false}, "expected": "FAIL"},
+    {"case_id": "FAIL_MANUAL_AFTER", "overrides": {"manual_after_exposure_codes": ["MANUAL_AFTER_IDENTITY_EXPOSED"]}, "expected": "FAIL"},
+    {"case_id": "NOT_ESTABLISHED_CAPABILITY", "overrides": {"capability_surface_complete": false}, "expected": "NOT_ESTABLISHED"},
+    {"case_id": "NOT_ESTABLISHED_NATIVE_READER", "overrides": {"native_or_implicit_reader_absent": false}, "expected": "NOT_ESTABLISHED"},
+    {"case_id": "NOT_ESTABLISHED_RUNTIME", "overrides": {"runtime_identity_sha256": null}, "expected": "NOT_ESTABLISHED"}
+  ]
+}

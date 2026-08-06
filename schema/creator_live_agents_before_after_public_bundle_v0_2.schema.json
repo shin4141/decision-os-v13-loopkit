@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-os.creator-live-agents-before-after-public-bundle.v0.2",
+  "title": "Creator-Live AGENTS Before/After Public Bundle v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "assembler", "candidate_id", "before", "after", "compression", "safety", "source_isolation", "independence", "behavior", "boundary_ids", "receipt_hashes", "output_artifact", "a3", "comparison_schema", "reduction_map_schema", "claims", "non_claims", "source_recovery", "files"],
+  "properties": {
+    "schema": {"const": "decision-os.creator-live-agents-before-after-public-bundle.v0.2"},
+    "assembler": {"const": "decision-os.creator-live-agents-before-after-public-bundle-assembler.v0.2"},
+    "candidate_id": {"const": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2"},
+    "before": {
+      "const": {
+        "logical_artifact": "AGENTS.md",
+        "virtual_path": "before/AGENTS.md",
+        "source_revision": "21cd88d4efb378a60cd08a28712083d9d4a8bc19",
+        "git_blob": "f85b0d9b17a8f90a7128ea96d9c8f63a88022128",
+        "utf8_byte_count": 20705,
+        "line_count": 517,
+        "sha256": "e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db"
+      }
+    },
+    "after": {"type": "object", "additionalProperties": false, "required": ["schema", "utf8_byte_count", "line_count", "sha256"], "properties": {"schema": {"const": "decision-os.creator-live-agents-after-projection.v0.1"}, "utf8_byte_count": {"type": "integer", "minimum": 1, "maximum": 20704}, "line_count": {"type": "integer", "minimum": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "compression": {"type": "object", "properties": {"schema": {"const": "decision-os.creator-live-agents-compression.v0.2"}, "result": {"const": "PASS"}, "before_byte_count": {"const": 20705}}, "required": ["schema", "result", "before_byte_count"]},
+    "safety": {"type": "object", "properties": {"schema": {"const": "decision-os.creator-live-agents-public-safety.v0.1"}, "result": {"const": "PASS"}}, "required": ["schema", "result"]},
+    "source_isolation": {"type": "object", "additionalProperties": false, "required": ["result", "receipt_sha256"], "properties": {"result": {"const": "PASS"}, "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "independence": {"type": "object", "additionalProperties": false, "required": ["result", "receipt_sha256", "latent_model_memory_excluded"], "properties": {"result": {"const": "PASS"}, "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "latent_model_memory_excluded": {"const": false}}},
+    "behavior": {"type": "object", "additionalProperties": false, "required": ["suite_schema", "suite_sha256", "harness_qualification", "artifact_behavior_qualification"], "properties": {"suite_schema": {"const": "decision-os.creator-live-agents-behavior-suite.v0.1"}, "suite_sha256": {"const": "655fab6e1de937cc0057af2e5236ce38f07bb19deeb97143655082b2d45522b6"}, "harness_qualification": {"const": "PASS"}, "artifact_behavior_qualification": {"const": "NOT_RUN"}}},
+    "boundary_ids": {"const": ["B01_HUMAN_SEAT", "B02_AUTHORITY", "B03_GUARD_SAFETY", "B04_RESPONSIBILITY_TRANSFER", "B05_STOP_CONDITIONS", "B06_EVIDENCE_PROVENANCE", "B07_HANDOFF_COMPLETION", "B08_AGENT_HUMAN_ROLES", "B09_ROUTINE_CLEANUP", "B10_FORWARD_ROLLBACK"]},
+    "receipt_hashes": {"type": "object", "additionalProperties": false, "required": ["a1_capture_sha256", "a2_reconnect_sha256"], "properties": {"a1_capture_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "a2_reconnect_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "output_artifact": {"type": "object", "additionalProperties": false, "required": ["artifact_id", "media_type", "byte_count", "sha256"], "properties": {"artifact_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "media_type": {"const": "text/plain; charset=utf-8"}, "byte_count": {"type": "integer", "minimum": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "a3": {"type": "object", "additionalProperties": false, "required": ["compiler_version", "compiler_branch", "audit_sha256", "exact_reuse"], "properties": {"compiler_version": {"const": "decision-os.creator-live-a3-exact-output-artifact-compiler.v0.1"}, "compiler_branch": {"const": "EXACT_UTF8_NON_WHOLE_UNIQUE_SOURCE_UNIQUE_OUTPUT"}, "audit_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "exact_reuse": {"const": "PASS"}}},
+    "comparison_schema": {"const": "decision-os.creator-live-agents-common-before-comparison.v0.1"},
+    "reduction_map_schema": {"const": "decision-os.reduction-boundary-map.v0.1"},
+    "claims": {"type": "array", "minItems": 6, "items": {"type": "string"}},
+    "non_claims": {"type": "array", "minItems": 8, "items": {"type": "string"}},
+    "source_recovery": {"type": "string", "minLength": 1},
+    "files": {"const": ["before/AGENTS.md", "after/AGENTS.md", "manifest.json", "diff.patch", "boundary-checklist.json", "source-isolation.json", "independence-qualification.json", "behavior-qualification.json", "comparison-manifest.json", "reduction-boundary-map.json", "proof-summary.json", "README.md"]}
+  },
+  "$defs": {
+    "source_isolation_public_projection": {
+      "$anchor": "source-isolation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "candidate_id", "result", "source_identity", "receipt_sha256"],
+      "properties": {
+        "schema": {"const": "decision-os.creator-live-agents-before-after-public-bundle.v0.2#source-isolation"},
+        "candidate_id": {"const": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2"},
+        "result": {"const": "PASS"},
+        "source_identity": {"const": {"virtual_path": "before/AGENTS.md", "source_revision": "21cd88d4efb378a60cd08a28712083d9d4a8bc19", "git_blob": "f85b0d9b17a8f90a7128ea96d9c8f63a88022128", "utf8_byte_count": 20705, "line_count": 517, "sha256": "e856160413a9d47622779dede6a2eeca9fd027284d815b155ab6e323a74863db"}},
+        "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "independence_public_projection": {
+      "$anchor": "independence-qualification",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "candidate_id", "result", "source_isolation_receipt_sha256", "latent_model_memory_excluded", "receipt_sha256"],
+      "properties": {
+        "schema": {"const": "decision-os.creator-live-agents-before-after-public-bundle.v0.2#independence-qualification"},
+        "candidate_id": {"const": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2"},
+        "result": {"const": "PASS"},
+        "source_isolation_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "latent_model_memory_excluded": {"const": false},
+        "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

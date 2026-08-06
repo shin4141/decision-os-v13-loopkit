@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision-os.creator-live-agents-independence.v0.1",
+  "title": "Creator-Live AGENTS Independence Receipt v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "candidate_id", "result", "reason_codes", "source_isolation_receipt_sha256", "contract_identity_sha256", "run_1_task_sha256", "developer_instructions_sha256", "runtime_identity_sha256", "candidate_visible_input_set_sha256", "manual_after_exposure_codes", "proposal_call_count", "proposal_after_source", "normal_terminal", "latent_model_memory_excluded", "receipt_sha256"],
+  "properties": {
+    "schema": {"const": "decision-os.creator-live-agents-independence.v0.1"},
+    "candidate_id": {"const": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2"},
+    "result": {"enum": ["PASS", "FAIL", "NOT_ESTABLISHED"]},
+    "reason_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "source_isolation_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "contract_identity_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "run_1_task_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "developer_instructions_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "runtime_identity_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "candidate_visible_input_set_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "manual_after_exposure_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "proposal_call_count": {"type": "integer", "minimum": 0},
+    "proposal_after_source": {"type": "boolean"},
+    "normal_terminal": {"type": "boolean"},
+    "latent_model_memory_excluded": {"const": false},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"result": {"const": "PASS"}}, "required": ["result"]},
+      "then": {
+        "properties": {
+          "reason_codes": {"maxItems": 0},
+          "contract_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "run_1_task_sha256": {"const": "2ed80098fb169313b13c36dddfd69a3ab487a4fe31d8474889cff7ba441b09e2"},
+          "developer_instructions_sha256": {"const": "1d13f34ed21947eac04b40cbee88b058e758760f0e2d9f0e265325d017b5fa20"},
+          "runtime_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "candidate_visible_input_set_sha256": {"const": "117213fe7c94fceae3580d32759a129ab88ea65816ed877d9cfda18154e88b50"},
+          "manual_after_exposure_codes": {"maxItems": 0},
+          "proposal_call_count": {"const": 1},
+          "proposal_after_source": {"const": true},
+          "normal_terminal": {"const": true}
+        }
+      }
+    }
+  ]
+}
