@@ -802,6 +802,16 @@ class CreatorLiveCycle006Entrypoint:
             return "P0_CODEX_CLI_VERSION_MISMATCH"
         return None
 
+    def _outer_gate_failure_code(self) -> str | None:
+        """Validate non-proof outer gates in their required fail-closed order."""
+
+        runtime_failure = self._runtime_binary_failure_code()
+        if runtime_failure is not None:
+            return runtime_failure
+        if self.spec.live_start_authorization_observed_at is None:
+            return "LIVE_START_AUTHORIZATION_ABSENT"
+        return None
+
     @staticmethod
     def _git_common_dir(repository: Path) -> Path:
         value = _run_git(repository, "rev-parse", "--git-common-dir")
@@ -1571,6 +1581,14 @@ class CreatorLiveCycle006Entrypoint:
                 or self.spec.runtime != EXPECTED_CODEX_RUNTIME
             ):
                 raise ValueError("P0_FIXED_EXECUTION_IDENTITY_MISMATCH")
+            outer_gate_failure = self._outer_gate_failure_code()
+            if outer_gate_failure is not None:
+                return CreatorLiveCycle006P0Result(
+                    False,
+                    outer_gate_failure,
+                    None,
+                    None,
+                )
             selected = base_snapshot.get("repository")
             if not isinstance(selected, Mapping) or Path(
                 str(selected.get("path", ""))
