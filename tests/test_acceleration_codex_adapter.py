@@ -4,6 +4,7 @@ from collections import deque
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -11,6 +12,7 @@ import unittest
 from typing import Any
 from unittest.mock import patch
 
+from decision_os.acceleration import codex_adapter as codex_module
 from decision_os.acceleration.codex_adapter import (
     ADAPTER_NAME,
     CODEX_CLI_VERSION,
@@ -87,6 +89,7 @@ def handshake_messages(
     *,
     thread_id: str,
     turn_id: str,
+    cli_version: str = CODEX_CLI_VERSION,
     model: str = CODEX_MODEL,
     effort: str = CODEX_REASONING_EFFORT,
     service_tier: str = CODEX_SERVICE_TIER,
@@ -110,7 +113,7 @@ def handshake_messages(
                 "codexHome": "/tmp/codex-home",
                 "platformFamily": "unix",
                 "platformOs": "macos",
-                "userAgent": f"codex_cli_rs/{CODEX_CLI_VERSION}",
+                "userAgent": f"codex_cli_rs/{cli_version}",
             },
         },
         {
@@ -163,7 +166,7 @@ def handshake_messages(
                 },
                 "serviceTier": service_tier,
                 "thread": {
-                    "cliVersion": CODEX_CLI_VERSION,
+                    "cliVersion": cli_version,
                     "cwd": cwd,
                     "ephemeral": ephemeral,
                     "id": thread_id,
@@ -588,8 +591,10 @@ class FakeTransportFactory:
         self.scripts = deque(scripts)
         self.versions = deque(versions or [CODEX_CLI_VERSION] * len(scripts))
         self.transports: list[FakeTransport] = []
+        self.executables: list[Path] = []
 
-    def __call__(self, _executable: Path) -> FakeTransport:
+    def __call__(self, executable: Path) -> FakeTransport:
+        self.executables.append(executable)
         transport = FakeTransport(
             self.scripts.popleft(),
             version=self.versions.popleft(),
@@ -650,6 +655,29 @@ def adapter_for(
 
 
 class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
+    @staticmethod
+    def _write_cycle_runtime(
+        target: Path,
+        *,
+        version: str | None = None,
+        exit_code: int = 0,
+        mark_use: bool = False,
+    ) -> str:
+        observed_version = version or codex_module.CYCLE_006_CODEX_CLI_VERSION
+        lines = ["#!/bin/sh"]
+        if mark_use:
+            lines.append(f"printf 'used\\n' > '{target}.used'")
+        lines.extend(
+            (
+                f"printf 'codex-cli {observed_version}\\n'",
+                f"exit {exit_code}",
+                "",
+            )
+        )
+        target.write_text("\n".join(lines), encoding="utf-8")
+        target.chmod(0o755)
+        return hashlib.sha256(target.read_bytes()).hexdigest()
+
     def test_untrusted_failure_diagnostics_are_canonically_rebuilt(self) -> None:
         private = "PRIVATE raw exception, source, prompt, and secret"
 
@@ -4401,6 +4429,423 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 catalog_requests[1]["params"]["cursor"],
             )
 
+    def test_cycle_006_preserved_artifact_is_accepted_and_launched_exactly(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            preserved = root / "preserved-codex"
+            digest = self._write_cycle_runtime(preserved, mark_use=True)
+            hostile_directory = root / "hostile-path"
+            hostile_directory.mkdir()
+            hostile = hostile_directory / "codex"
+            self._write_cycle_runtime(hostile, mark_use=True)
+            process = FakeProcess("")
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    preserved,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    digest,
+                ),
+                patch.object(
+                    codex_module,
+                    "BUNDLED_CODEX_PATH",
+                    hostile,
+                ),
+                patch.dict(os.environ, {"PATH": str(hostile_directory)}),
+            ):
+                completed = subprocess.CompletedProcess(
+                    args=(str(preserved), "--version"),
+                    returncode=0,
+                    stdout=(
+                        f"codex-cli {codex_module.CYCLE_006_CODEX_CLI_VERSION}\n"
+                    ).encode("ascii"),
+                    stderr=b"",
+                )
+                with (
+                    patch.object(
+                        codex_module.subprocess,
+                        "run",
+                        return_value=completed,
+                    ) as version_probe,
+                    patch.object(
+                        codex_module.subprocess,
+                        "Popen",
+                        return_value=process,
+                    ) as popen,
+                ):
+                    transport = codex_module._Cycle006SubprocessTransport(
+                        preserved
+                    )
+                    transport.start()
+                    transport.close()
+
+                observed = codex_module.verify_cycle_006_codex_runtime_artifact(
+                    preserved
+                )
+
+            self.assertEqual(
+                codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                observed,
+            )
+            command = popen.call_args.args[0]
+            self.assertEqual(str(preserved), command[0])
+            self.assertNotEqual(str(hostile), command[0])
+            for call in version_probe.call_args_list:
+                self.assertEqual(str(preserved), call.args[0][0])
+            self.assertFalse(Path(f"{hostile}.used").exists())
+
+    def test_cycle_006_version_stdout_is_byte_exact(self) -> None:
+        cases = (
+            b"codex-cli 0.147.0-alpha.1.2\r\n",
+            b"codex-cli 0.147.0-alpha.1.2\r",
+            b"codex-cli 0.147.0-alpha.1.2\nextra",
+        )
+        for stdout in cases:
+            with self.subTest(stdout=stdout), tempfile.TemporaryDirectory() as directory:
+                executable = Path(directory).resolve() / "codex"
+                digest = self._write_cycle_runtime(executable)
+                completed = subprocess.CompletedProcess(
+                    args=(str(executable), "--version"),
+                    returncode=0,
+                    stdout=stdout,
+                    stderr=b"",
+                )
+                with (
+                    patch.object(
+                        codex_module,
+                        "CYCLE_006_CODEX_PATH",
+                        executable,
+                    ),
+                    patch.object(
+                        codex_module,
+                        "CYCLE_006_CODEX_SHA256",
+                        digest,
+                    ),
+                    patch.object(
+                        codex_module.subprocess,
+                        "run",
+                        return_value=completed,
+                    ),
+                    self.assertRaisesRegex(
+                        ValueError,
+                        "P0_CODEX_CLI_VERSION_MISMATCH",
+                    ),
+                ):
+                    codex_module.verify_cycle_006_codex_runtime_artifact(
+                        executable
+                    )
+
+    def test_cycle_006_wrong_sha_and_modified_bytes_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory).resolve() / "codex"
+            original_sha = self._write_cycle_runtime(executable)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    executable,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    "0" * 64,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_SHA256_MISMATCH",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    executable
+                )
+
+            oversized = Path(directory).resolve() / "oversized-codex"
+            oversized.write_bytes(b"#!/bin/sh\n")
+            oversized.chmod(0o755)
+            with oversized.open("r+b") as stream:
+                stream.truncate(codex_module._CYCLE_006_CODEX_MAX_BYTES + 1)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    oversized,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_SHA256_MISMATCH",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    oversized
+                )
+
+            executable.write_bytes(executable.read_bytes() + b"# modified\n")
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    executable,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    original_sha,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_SHA256_MISMATCH",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    executable
+                )
+
+    def test_cycle_006_missing_and_symlink_artifacts_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            missing = root / "missing-codex"
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    missing,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_UNAVAILABLE",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(missing)
+
+            nonexecutable = root / "nonexecutable-codex"
+            nonexecutable.write_text(
+                "#!/bin/sh\nprintf 'codex-cli 0.147.0-alpha.1.2\\n'\n",
+                encoding="utf-8",
+            )
+            nonexecutable.chmod(0o644)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    nonexecutable,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_NOT_REGULAR_EXECUTABLE",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    nonexecutable
+                )
+
+            nonexecutable.chmod(0o777)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    nonexecutable,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    hashlib.sha256(nonexecutable.read_bytes()).hexdigest(),
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_NOT_REGULAR_EXECUTABLE",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    nonexecutable
+                )
+
+            target = root / "target-codex"
+            digest = self._write_cycle_runtime(target)
+            linked = root / "linked-codex"
+            linked.symlink_to(target)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    linked,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    digest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_SYMLINK",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(linked)
+
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            nested_target = real_parent / "codex"
+            nested_digest = self._write_cycle_runtime(nested_target)
+            linked_parent = root / "linked-parent"
+            linked_parent.symlink_to(real_parent, target_is_directory=True)
+            nested_link = linked_parent / "codex"
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    nested_link,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    nested_digest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_SYMLINK",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    nested_link
+                )
+
+    def test_cycle_006_wrong_version_and_nonzero_probe_are_rejected(self) -> None:
+        cases = (
+            (
+                "wrong-version",
+                "0.147.0-alpha.1.3",
+                0,
+                "P0_CODEX_CLI_VERSION_MISMATCH",
+            ),
+            (
+                "nonzero",
+                codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                9,
+                "P0_CODEX_CLI_VERSION_PROBE_FAILED",
+            ),
+        )
+        for label, version, exit_code, expected in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                executable = Path(directory).resolve() / "codex"
+                digest = self._write_cycle_runtime(
+                    executable,
+                    version=version,
+                    exit_code=exit_code,
+                )
+                with (
+                    patch.object(
+                        codex_module,
+                        "CYCLE_006_CODEX_PATH",
+                        executable,
+                    ),
+                    patch.object(
+                        codex_module,
+                        "CYCLE_006_CODEX_SHA256",
+                        digest,
+                    ),
+                    self.assertRaisesRegex(ValueError, expected),
+                ):
+                    codex_module.verify_cycle_006_codex_runtime_artifact(
+                        executable
+                    )
+
+    def test_cycle_006_configured_path_and_prelaunch_verification_fail_closed(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            preserved = root / "preserved-codex"
+            digest = self._write_cycle_runtime(preserved)
+            mutable_chatgpt = root / "ChatGPT.app" / "codex"
+            mutable_chatgpt.parent.mkdir()
+            self._write_cycle_runtime(mutable_chatgpt)
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    preserved,
+                ),
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_SHA256",
+                    digest,
+                ),
+                self.assertRaisesRegex(
+                    ValueError,
+                    "P0_CODEX_CLI_PATH_MISMATCH",
+                ),
+            ):
+                codex_module.verify_cycle_006_codex_runtime_artifact(
+                    mutable_chatgpt
+                )
+
+            missing = root / "missing-preserved"
+            with (
+                patch.object(
+                    codex_module,
+                    "CYCLE_006_CODEX_PATH",
+                    missing,
+                ),
+                patch.object(
+                    codex_module.subprocess,
+                    "Popen",
+                ) as popen,
+                self.assertRaises(CodexAdapterFailure),
+            ):
+                codex_module._Cycle006SubprocessTransport(missing).start()
+            popen.assert_not_called()
+
+    def test_cycle_006_identity_drift_cannot_launch_or_continue(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory).resolve() / "codex"
+            self._write_cycle_runtime(executable)
+            identity = codex_module._runtime_stat_identity(executable.lstat())
+            stale = (*identity[:-1], identity[-1] - 1)
+            with (
+                patch.object(
+                    codex_module,
+                    "_verify_cycle_006_codex_runtime_identity",
+                    return_value=(
+                        codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                        stale,
+                    ),
+                ),
+                patch.object(codex_module.subprocess, "Popen") as popen,
+                self.assertRaises(CodexAdapterFailure),
+            ):
+                codex_module._Cycle006SubprocessTransport(executable).start()
+            popen.assert_not_called()
+
+            process = FakeProcess("")
+            verifier = patch.object(
+                codex_module,
+                "_verify_cycle_006_codex_runtime_identity",
+                side_effect=(
+                    (
+                        codex_module.CYCLE_006_CODEX_CLI_VERSION,
+                        identity,
+                    ),
+                    ValueError("P0_CODEX_CLI_IDENTITY_CHANGED"),
+                ),
+            )
+            with (
+                verifier,
+                patch.object(
+                    codex_module.subprocess,
+                    "Popen",
+                    return_value=process,
+                ) as popen,
+                self.assertRaises(CodexAdapterFailure),
+            ):
+                codex_module._Cycle006SubprocessTransport(executable).start()
+            popen.assert_called_once()
+            self.assertTrue(process.terminated)
+
     def test_subprocess_transport_frames_jsonl_and_isolates_tools(
         self,
     ) -> None:
@@ -4440,6 +4885,7 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual({"id": 1, "result": {"ok": True}}, received)
             command = popen.call_args.args[0]
+            self.assertEqual(str(executable), command[0])
             self.assertEqual("app-server", command[-1])
             self.assertIn("features.hooks=false", command)
             self.assertIn("features.shell_tool=false", command)

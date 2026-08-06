@@ -15,6 +15,8 @@ from typing import Any, Callable
 from decision_os.acceleration.codex_adapter import (
     ADAPTER_NAME,
     CODEX_CLI_VERSION,
+    CYCLE_006_CODEX_CLI_VERSION,
+    CYCLE_006_CODEX_PATH,
     CodexApproval,
     CodexLifecycleEvent,
     CodexReadEvidence,
@@ -22,6 +24,7 @@ from decision_os.acceleration.codex_adapter import (
     CodexRuntimeIdentity,
     _READ_MAX_BYTES,
     _READ_MAX_DISTINCT_PATHS,
+    _Cycle006SubprocessTransport,
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.companion.controller import (
@@ -68,6 +71,49 @@ def _field_notes_adapter_factory(
     candidate_v0_2_a1_provider: Any = None,
     candidate_v0_2_a2_provider: Any = None,
 ) -> FieldNotesCodexAdapter:
+    # The controller creates a fresh adapter for one worker.  Snapshot the
+    # four paired values once so route selection and the adapter's run reset
+    # cannot observe different Candidate/capture state.
+    provider_values = {
+        "creator_live_a1_capture": (
+            creator_live_a1_capture_provider()
+            if creator_live_a1_capture_provider is not None
+            else None
+        ),
+        "creator_live_a2_reconnect": (
+            creator_live_a2_reconnect_provider()
+            if creator_live_a2_reconnect_provider is not None
+            else None
+        ),
+        "candidate_v0_2_a1": (
+            candidate_v0_2_a1_provider()
+            if candidate_v0_2_a1_provider is not None
+            else None
+        ),
+        "candidate_v0_2_a2": (
+            candidate_v0_2_a2_provider()
+            if candidate_v0_2_a2_provider is not None
+            else None
+        ),
+    }
+
+    def fixed_provider(name: str, original: Any) -> Any:
+        if original is None:
+            return None
+        return lambda value=provider_values[name]: value
+
+    cycle_006_selected = bool(
+        provider_values["candidate_v0_2_a1"] is not None
+        or provider_values["candidate_v0_2_a2"] is not None
+    )
+    runtime_options: dict[str, Any] = {}
+    if cycle_006_selected:
+        engine.adapter_version = CYCLE_006_CODEX_CLI_VERSION
+        runtime_options = {
+            "executable": CYCLE_006_CODEX_PATH,
+            "expected_cli_version": CYCLE_006_CODEX_CLI_VERSION,
+            "transport_factory": _Cycle006SubprocessTransport,
+        }
     return FieldNotesCodexAdapter(
         engine,
         input_func=lambda: None,
@@ -76,12 +122,25 @@ def _field_notes_adapter_factory(
         lifecycle_sink=lifecycle_sink,
         trusted_source_model_class=trusted_source_model_class,
         trusted_target_model_class=trusted_target_model_class,
-        creator_live_a1_capture_provider=creator_live_a1_capture_provider,
-        creator_live_a2_reconnect_provider=(
-            creator_live_a2_reconnect_provider
+        creator_live_a1_capture_provider=fixed_provider(
+            "creator_live_a1_capture",
+            creator_live_a1_capture_provider,
         ),
-        candidate_v0_2_a1_provider=candidate_v0_2_a1_provider,
-        candidate_v0_2_a2_provider=candidate_v0_2_a2_provider,
+        creator_live_a2_reconnect_provider=(
+            fixed_provider(
+                "creator_live_a2_reconnect",
+                creator_live_a2_reconnect_provider,
+            )
+        ),
+        candidate_v0_2_a1_provider=fixed_provider(
+            "candidate_v0_2_a1",
+            candidate_v0_2_a1_provider,
+        ),
+        candidate_v0_2_a2_provider=fixed_provider(
+            "candidate_v0_2_a2",
+            candidate_v0_2_a2_provider,
+        ),
+        **runtime_options,
     )
 
 
