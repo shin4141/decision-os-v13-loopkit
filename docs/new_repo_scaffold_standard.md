@@ -83,7 +83,30 @@ The audit must distinguish:
 The Fit Audit is mandatory even when the destination appears simple. It is
 also mandatory when an existing short universal capsule is available.
 
-### 4. Place Each Selected Guard Deliberately
+### 4. Record the Fit Audit in Its Durable Canonical Home
+
+Every New Repo Capsule must create `docs/capsule_fit_audit.md`. It is the one
+canonical durable record of that capsule's Fit Audit. `README.md`,
+`AGENTS.md`, and handoffs may summarize or link to it, but must not replace it
+with another canonical audit record.
+
+The record must preserve, at minimum:
+
+- Destination / Purpose;
+- Active guards, with the destination risk or reason for each;
+- Conditional guards, with each guard's exact reconnect trigger and its
+  destination risk or reason;
+- Excluded guards, with the reason each is not needed for this destination;
+- `UNKNOWN`, including what evidence or review is missing; and
+- source pointers to the relevant V13 Field Notes, documentation, templates,
+  or operational rules for every material selection, exclusion, or `UNKNOWN`.
+
+This record makes an intentional exclusion distinguishable from a guard that
+was simply omitted. The next chat or AI must be able to reconstruct the current
+selection and its reasoning from this file without relying on transient chat
+history.
+
+### 5. Place Each Selected Guard Deliberately
 
 | Disposition | Placement | Required explanation |
 | --- | --- | --- |
@@ -96,11 +119,11 @@ exactly when to read it. Exclusion is intentional scope control, not a silent
 loss of knowledge. Do not place a destination-specific guard in the universal
 core merely because it was selected for one prior repository.
 
-### 5. Create the Minimum Restartability Scaffold
+### 6. Create the Minimum Restartability Scaffold
 
-After the destination, universal core, and Fit Audit are recorded, create the
-required files and any narrowly necessary support documents selected by the
-audit.
+After the destination, universal core, and durable Fit Audit record are
+created, create the required files and any narrowly necessary support documents
+selected by the audit.
 
 ## Required Files
 
@@ -108,6 +131,7 @@ audit.
 - `AGENTS.md`
 - `handoff/current_handoff.md`
 - `docs/handoff_command.md`
+- `docs/capsule_fit_audit.md`
 
 If the Fit Audit finds that the repo may involve external contact, also
 include:
@@ -121,6 +145,23 @@ If the Fit Audit finds that the repo may involve audit work, also include:
 Additional files are justified only when a selected guard needs them. A file
 does not substitute for an active instruction, a reconnect trigger, or an
 exclusion reason.
+
+## Fit Audit Re-evaluation Trigger
+
+Re-run the Repo-specific Capsule Fit Audit and update
+`docs/capsule_fit_audit.md` whenever the declared Destination / Purpose or a
+material operating surface changes. Record the re-evaluation trigger and
+current selection in that same canonical file; do not start a parallel audit
+record.
+
+Examples include a change from docs-only to runtime work, local-only to a
+public surface, no API to API use, no external contact to external contact, or
+manual work to automation. These examples explain the trigger; they are not a
+fixed taxonomy.
+
+Re-evaluate before authorizing work that relies on the changed purpose or
+surface. An earlier Fit Audit does not automatically authorize the changed
+operation.
 
 ## Compactor Regression Case
 
@@ -189,9 +230,12 @@ Before calling the scaffold ready, verify that:
 
 - the destination/purpose is recorded;
 - the Universal Core and destination-specific selected guards are distinct;
-- the Fit Audit records active, conditional, and excluded dispositions;
+- `docs/capsule_fit_audit.md` is the single durable Fit Audit record and
+  preserves active, conditional, excluded, and `UNKNOWN` dispositions;
 - conditional guidance has an exact reconnect trigger;
 - exclusions are explained rather than silently dropped; and
+- a changed destination/purpose or material operating surface would require a
+  re-run of the Fit Audit before the changed work is authorized; and
 - the resulting handoff semantics remain consistent with
   [`docs/handoff_command.md`](handoff_command.md) and restartability guidance
   in [`docs/context_compression.md`](context_compression.md).
