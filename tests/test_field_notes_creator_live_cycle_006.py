@@ -3338,25 +3338,26 @@ class Cycle006ExactFinalP0Tests(unittest.TestCase):
                 f"expected installed module provenance under {runtime_root}, got {module_path}",
             )
 
-        root = ROOT / ".decision-os/field-notes/proofs/cycle-006"
+        repository = cycle006.EXPECTED_REPOSITORY.resolve(strict=True)
+        root = repository / ".decision-os/field-notes/proofs/cycle-006"
         self.assertFalse(os.path.lexists(root))
         with tempfile.TemporaryDirectory() as temporary:
             temporary_root = Path(temporary)
             controller = FieldNotesCompanionController(
                 state_path=temporary_root / "state.json",
                 picker_script=temporary_root / "picker.applescript",
-                picker_runner=lambda _script: str(ROOT),
+                picker_runner=lambda _script: str(repository),
                 creator_live_cycle_006_entrypoint_factory=lambda owner: (
                     CreatorLiveCycle006Entrypoint(
                         owner,
                         spec=CreatorLiveCycle006Spec(
-                            repository=ROOT,
+                            repository=repository,
                             runtime_root=runtime_root,
                         ),
                     )
                 ),
             )
-            state = controller.select_repository(ROOT)
+            state = controller.select_repository(repository)
             snapshot = state["creator_live_cycle_006"]
         observed_cli = cycle006._bundled_codex_cli_version(
             cycle006.BUNDLED_CODEX_PATH
@@ -3365,10 +3366,13 @@ class Cycle006ExactFinalP0Tests(unittest.TestCase):
         if observed_cli == exact_cli:
             self.assertEqual(
                 (snapshot["state"], snapshot["stage"]),
-                ("READY", "P0"),
+                ("NOT_READY", "P0"),
             )
-            self.assertTrue(snapshot["p0"]["ready"])
-            self.assertIsNone(snapshot["p0"]["failure_code"])
+            self.assertFalse(snapshot["p0"]["ready"])
+            self.assertEqual(
+                snapshot["p0"]["failure_code"],
+                "LIVE_START_AUTHORIZATION_ABSENT",
+            )
         else:
             self.assertEqual(
                 (snapshot["state"], snapshot["stage"]),
@@ -3379,8 +3383,8 @@ class Cycle006ExactFinalP0Tests(unittest.TestCase):
                 snapshot["p0"]["failure_code"],
                 "P0_CODEX_CLI_VERSION_MISMATCH",
             )
-        self.assertIsInstance(snapshot["binding"], dict)
-        self.assertRegex(snapshot["launch_binding_sha256"], r"^[0-9a-f]{64}$")
+        self.assertIsNone(snapshot["binding"])
+        self.assertIsNone(snapshot["launch_binding_sha256"])
         self.assertEqual(snapshot["live_start_authorization"], "ABSENT")
         self.assertFalse(snapshot["start_allowed"])
         self.assertFalse(snapshot["storage_occupied"])
