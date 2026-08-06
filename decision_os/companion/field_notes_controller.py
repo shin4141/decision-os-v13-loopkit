@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, replace
 from functools import partial
 import hashlib
@@ -30,6 +31,8 @@ from decision_os.companion.controller import (
 from decision_os.companion.field_notes_adapter import (
     FieldNoteA1ProposalDiagnostic,
     FieldNoteCreatorLiveA1CaptureConfig,
+    FieldNoteCreatorLiveCandidateV02A1Config,
+    FieldNoteCreatorLiveCandidateV02A2Config,
     FieldNoteCodexRunResult,
     FieldNotesCodexAdapter,
 )
@@ -62,6 +65,8 @@ def _field_notes_adapter_factory(
     trusted_target_model_class: str = "UNKNOWN",
     creator_live_a1_capture_provider: Any = None,
     creator_live_a2_reconnect_provider: Any = None,
+    candidate_v0_2_a1_provider: Any = None,
+    candidate_v0_2_a2_provider: Any = None,
 ) -> FieldNotesCodexAdapter:
     return FieldNotesCodexAdapter(
         engine,
@@ -75,6 +80,8 @@ def _field_notes_adapter_factory(
         creator_live_a2_reconnect_provider=(
             creator_live_a2_reconnect_provider
         ),
+        candidate_v0_2_a1_provider=candidate_v0_2_a1_provider,
+        candidate_v0_2_a2_provider=candidate_v0_2_a2_provider,
     )
 
 
@@ -84,6 +91,15 @@ class _PendingSave:
     repository_identity: tuple[int, int]
     decision_directory_identity: tuple[int, int] | None
     field_notes_directory_identity: tuple[int, int] | None
+
+
+class _ExactCreatorLiveTask(str):
+    """Preserve fixed task bytes through the ordinary controller worker seam."""
+
+    def strip(self, chars: str | None = None) -> str:
+        if chars is not None:
+            return str(self).strip(chars)
+        return str(self)
 
 
 @dataclass(frozen=True)
@@ -181,6 +197,12 @@ class FieldNotesCompanionController(CompanionController):
             "creator_live_entrypoint_factory",
             None,
         )
+        creator_live_cycle_006_entrypoint_factory: (
+            Callable[[Any], Any] | None
+        ) = kwargs.pop(
+            "creator_live_cycle_006_entrypoint_factory",
+            None,
+        )
         self._field_note_draft: FieldNoteDraft | None = None
         self._field_note_pending: _PendingSave | None = None
         self._creator_live_a1_capture_config: (
@@ -206,6 +228,13 @@ class FieldNotesCompanionController(CompanionController):
             FieldNoteCreatorLiveA2RunCompletion | None
         ) = None
         self._creator_live_a2_failure_reason: str | None = None
+        self._candidate_v0_2_a1_config: (
+            FieldNoteCreatorLiveCandidateV02A1Config | None
+        ) = None
+        self._candidate_v0_2_a2_config: (
+            FieldNoteCreatorLiveCandidateV02A2Config | None
+        ) = None
+        self._candidate_v0_2_isolation_evidence: Any = None
         trusted_source_model_class = configured_model_class(
             kwargs.pop("trusted_source_model_class", "UNKNOWN")
         )
@@ -223,6 +252,12 @@ class FieldNotesCompanionController(CompanionController):
                 creator_live_a2_reconnect_provider=(
                     self._active_creator_live_a2_reconnect
                 ),
+                candidate_v0_2_a1_provider=(
+                    self._active_candidate_v0_2_a1
+                ),
+                candidate_v0_2_a2_provider=(
+                    self._active_candidate_v0_2_a2
+                ),
             )
         super().__init__(**kwargs)
         if creator_live_entrypoint_factory is None:
@@ -232,6 +267,17 @@ class FieldNotesCompanionController(CompanionController):
 
             creator_live_entrypoint_factory = CreatorLiveCycle005Entrypoint
         self._creator_live_cycle_005 = creator_live_entrypoint_factory(self)
+        if creator_live_cycle_006_entrypoint_factory is None:
+            from decision_os.companion.field_notes_creator_live_cycle_006 import (
+                CreatorLiveCycle006Entrypoint,
+            )
+
+            creator_live_cycle_006_entrypoint_factory = (
+                CreatorLiveCycle006Entrypoint
+            )
+        self._creator_live_cycle_006 = (
+            creator_live_cycle_006_entrypoint_factory(self)
+        )
 
     def _active_creator_live_a1_capture(
         self,
@@ -244,6 +290,18 @@ class FieldNotesCompanionController(CompanionController):
     ) -> FieldNoteCreatorLiveA2ReconnectTarget | None:
         with self._condition:
             return self._creator_live_a2_reconnect_target
+
+    def _active_candidate_v0_2_a1(
+        self,
+    ) -> FieldNoteCreatorLiveCandidateV02A1Config | None:
+        with self._condition:
+            return self._candidate_v0_2_a1_config
+
+    def _active_candidate_v0_2_a2(
+        self,
+    ) -> FieldNoteCreatorLiveCandidateV02A2Config | None:
+        with self._condition:
+            return self._candidate_v0_2_a2_config
 
     @staticmethod
     def _empty_run() -> dict[str, Any]:
@@ -264,15 +322,93 @@ class FieldNotesCompanionController(CompanionController):
         self._creator_live_a2_completed_run_id = None
         self._creator_live_a2_run_completion = None
         self._creator_live_a2_failure_reason = None
+        self._candidate_v0_2_a2_config = None
+
+    def _clear_candidate_v0_2_a1_locked(self) -> None:
+        self._candidate_v0_2_a1_config = None
+        self._candidate_v0_2_isolation_evidence = None
+
+    def _require_cycle_006_mutation_allowed_locked(self) -> None:
+        if self.creator_live_cycle_006_mutation_blocked():
+            raise FieldNoteError("CREATOR_LIVE_CYCLE_006_ACTIVE")
+
+    def _require_cycle_006_field_note_authority_locked(
+        self,
+        authority: object | None,
+    ) -> None:
+        if authority is None:
+            self._require_cycle_006_mutation_allowed_locked()
+            return
+        if (
+            authority is not self._creator_live_cycle_006
+            or not self.creator_live_cycle_006_mutation_blocked()
+        ):
+            raise FieldNoteError(
+                "CREATOR_LIVE_CYCLE_006_INTERNAL_AUTHORITY_INVALID"
+            )
+
+    @contextmanager
+    def _cycle_006_guarded_operation(self, operation: Any) -> Any:
+        stack = ExitStack()
+        with self._condition:
+            self._require_cycle_006_mutation_allowed_locked()
+            value = stack.enter_context(operation)
+        with stack:
+            yield value
+
+    @contextmanager
+    def _bridge_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._bridge_operation()
+        ) as value:
+            yield value
+
+    @contextmanager
+    def _guided_intake_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._guided_intake_operation()
+        ) as value:
+            yield value
+
+    @contextmanager
+    def _ordinary_user_path_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._ordinary_user_path_operation()
+        ) as value:
+            yield value
+
+    @contextmanager
+    def _guided_intake_bridge_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._guided_intake_bridge_operation()
+        ) as value:
+            yield value
+
+    @contextmanager
+    def _intelligence_transplant_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._intelligence_transplant_operation()
+        ) as value:
+            yield value
+
+    @contextmanager
+    def _guided_intake_transplant_operation(self) -> Any:
+        with self._cycle_006_guarded_operation(
+            super()._guided_intake_transplant_operation()
+        ) as value:
+            yield value
 
     def start_run(self, task: str, *, task_mode: str = "manual") -> dict[str, Any]:
         with self._condition:
             if self.creator_live_cycle_005_mutation_blocked():
                 raise FieldNoteError("CREATOR_LIVE_CYCLE_005_ACTIVE")
+            if self.creator_live_cycle_006_mutation_blocked():
+                raise FieldNoteError("CREATOR_LIVE_CYCLE_006_ACTIVE")
             self._require_no_active_run()
             self._clear_field_note_locked()
+            self._clear_candidate_v0_2_a1_locked()
             self._clear_creator_live_a2_locked()
-        return super().start_run(task, task_mode=task_mode)
+            return super().start_run(task, task_mode=task_mode)
 
     def start_creator_live_a1_capture(
         self,
@@ -290,6 +426,7 @@ class FieldNotesCompanionController(CompanionController):
         with self._condition:
             self._require_no_active_run()
             self._clear_field_note_locked()
+            self._clear_candidate_v0_2_a1_locked()
             if self._creator_live_a2_reconnect_target is not None:
                 raise FieldNoteError("Creator-live A2 reconnect is active.")
             self._clear_creator_live_a2_locked()
@@ -305,6 +442,69 @@ class FieldNotesCompanionController(CompanionController):
         except Exception:
             with self._condition:
                 self._creator_live_a1_capture_config = None
+            raise
+
+    def start_creator_live_candidate_v0_2_a1(
+        self,
+        task: str,
+        *,
+        run_id: str,
+        expected_runtime_identity: CodexRuntimeIdentity,
+        contract_identity_sha256: str,
+        turn_start_intent_observer: Callable[[str], None] | None = None,
+        turn_started_observer: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        """Start the fixed Candidate v0.2 Run 1 without normalizing bytes."""
+
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            RUN_1_BYTE_COUNT,
+            RUN_1_SHA256,
+        )
+
+        if not isinstance(task, str):
+            raise FieldNoteError("A1_TASK_IDENTITY_MISMATCH")
+        try:
+            task_bytes = task.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise FieldNoteError("A1_TASK_IDENTITY_MISMATCH") from exc
+        if (
+            len(task_bytes) != RUN_1_BYTE_COUNT
+            or hashlib.sha256(task_bytes).hexdigest() != RUN_1_SHA256
+        ):
+            raise FieldNoteError("A1_TASK_IDENTITY_MISMATCH")
+        capture = FieldNoteCreatorLiveA1CaptureConfig(
+            run_id=run_id,
+            expected_runtime_identity=expected_runtime_identity,
+        )
+        candidate = FieldNoteCreatorLiveCandidateV02A1Config(
+            run_id=run_id,
+            expected_runtime_identity=expected_runtime_identity,
+            contract_identity_sha256=contract_identity_sha256,
+            turn_start_intent_observer=turn_start_intent_observer,
+            turn_started_observer=turn_started_observer,
+        )
+        with self._condition:
+            self._require_no_active_run()
+            self._clear_field_note_locked()
+            self._clear_creator_live_a2_locked()
+            self._creator_live_a1_capture_config = capture
+            self._candidate_v0_2_a1_config = candidate
+            self._candidate_v0_2_isolation_evidence = None
+            self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_run_completion = None
+            self._creator_live_a1_completed_draft = None
+            self._creator_live_a1_failure_reason = None
+            self._creator_live_a1_direct_write_identity = None
+            self._creator_live_a1_proposal_diagnostic = None
+        try:
+            return super().start_run(
+                _ExactCreatorLiveTask(task),
+                task_mode="manual",
+            )
+        except Exception:
+            with self._condition:
+                self._creator_live_a1_capture_config = None
+                self._clear_candidate_v0_2_a1_locked()
             raise
 
     def start_creator_live_a2_reconnect(
@@ -345,9 +545,69 @@ class FieldNotesCompanionController(CompanionController):
                 self._clear_creator_live_a2_locked()
             raise
 
+    def start_creator_live_candidate_v0_2_a2(
+        self,
+        task: str,
+        *,
+        target: FieldNoteCreatorLiveA2ReconnectTarget,
+        post_a1_readback_path: Path,
+        post_a1_readback_sha256: str,
+        turn_start_intent_observer: Callable[[str], None] | None = None,
+        turn_started_observer: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        """Start fixed exact A2 with no dynamic tools or task normalization."""
+
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            RUN_2_BYTE_COUNT,
+            RUN_2_SHA256,
+        )
+
+        if not isinstance(target, FieldNoteCreatorLiveA2ReconnectTarget):
+            raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+        if not isinstance(task, str):
+            raise FieldNoteError("A2_TASK_IDENTITY_MISMATCH")
+        try:
+            task_bytes = task.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise FieldNoteError("A2_TASK_IDENTITY_MISMATCH") from exc
+        if (
+            len(task_bytes) != RUN_2_BYTE_COUNT
+            or hashlib.sha256(task_bytes).hexdigest() != RUN_2_SHA256
+        ):
+            raise FieldNoteError("A2_TASK_IDENTITY_MISMATCH")
+        candidate = FieldNoteCreatorLiveCandidateV02A2Config(
+            readback_path=str(Path(post_a1_readback_path)),
+            readback_sha256=post_a1_readback_sha256,
+            turn_start_intent_observer=turn_start_intent_observer,
+            turn_started_observer=turn_started_observer,
+        )
+        with self._condition:
+            self._require_no_active_run()
+            if self._creator_live_a1_capture_config is not None:
+                raise FieldNoteCreatorLiveA2ReconnectError("A2_TARGET_INVALID")
+            self._clear_field_note_locked()
+            self._clear_creator_live_a2_locked()
+            self._creator_live_a2_reconnect_target = target
+            self._candidate_v0_2_a2_config = candidate
+            self._creator_live_a2_task_byte_count = len(task_bytes)
+            self._creator_live_a2_task_sha256 = hashlib.sha256(
+                task_bytes
+            ).hexdigest()
+        try:
+            return super().start_run(
+                _ExactCreatorLiveTask(task),
+                task_mode="manual",
+            )
+        except Exception:
+            with self._condition:
+                self._clear_creator_live_a2_locked()
+            raise
+
     def new_run(self) -> dict[str, Any]:
         with self._condition:
+            self._require_cycle_006_mutation_allowed_locked()
             self._clear_field_note_locked()
+            self._clear_candidate_v0_2_a1_locked()
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
@@ -356,12 +616,14 @@ class FieldNotesCompanionController(CompanionController):
             self._creator_live_a1_direct_write_identity = None
             self._creator_live_a1_proposal_diagnostic = None
             self._clear_creator_live_a2_locked()
-        return super().new_run()
+            return super().new_run()
 
     def select_repository(self, candidate: str | Path) -> dict[str, Any]:
-        super().select_repository(candidate)
         with self._condition:
+            self._require_cycle_006_mutation_allowed_locked()
+            super().select_repository(candidate)
             self._clear_field_note_locked()
+            self._clear_candidate_v0_2_a1_locked()
             self._creator_live_a1_capture_config = None
             self._creator_live_a1_completed_run_id = None
             self._creator_live_a1_run_completion = None
@@ -494,6 +756,8 @@ class FieldNotesCompanionController(CompanionController):
     ) -> None:
         capture = self._creator_live_a1_capture_config
         reconnect_target = self._creator_live_a2_reconnect_target
+        candidate_a1 = self._candidate_v0_2_a1_config
+        candidate_a2 = self._candidate_v0_2_a2_config
         capture_failure = getattr(
             result,
             "creator_live_a1_failure_reason",
@@ -603,6 +867,29 @@ class FieldNotesCompanionController(CompanionController):
                     ),
                     successful_read_count=len(result.read_evidence),
                 )
+            if candidate_a1 is not None:
+                from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+                    IsolationEvidence,
+                    qualify_independence,
+                )
+
+                candidate_evidence = getattr(
+                    result,
+                    "candidate_v0_2_isolation_evidence",
+                    None,
+                )
+                if not isinstance(candidate_evidence, IsolationEvidence):
+                    capture_failure = "A1_CANDIDATE_EVIDENCE_MISSING"
+                    completion = None
+                    draft = None
+                else:
+                    isolation, independence = qualify_independence(
+                        candidate_evidence
+                    )
+                    if isolation.result != "PASS" or independence.result != "PASS":
+                        capture_failure = "A1_CANDIDATE_INDEPENDENCE_NOT_PASS"
+                        completion = None
+                        draft = None
         elif reconnect_target is not None:
             draft = None
             reconnect_receipt = getattr(result, "reconnect_receipt", None)
@@ -639,6 +926,7 @@ class FieldNotesCompanionController(CompanionController):
                 reconnect_receipt.state
                 not in {"INJECTED", "ACTIVATION_UNKNOWN"}
                 or reconnect_receipt.full_notes_injected != 1
+                or reconnect_receipt.ordinary_distinct_paths_consumed != 0
                 or reconnect_receipt.failure_reason is not None
             ):
                 reconnect_failure = "A2_TARGET_INVALID"
@@ -660,6 +948,7 @@ class FieldNotesCompanionController(CompanionController):
                         is not None
                         or result.file_actions
                         or result.checkpoint_outcomes
+                        or result.read_evidence
                         or not final_output_bytes
                         or len(final_output_bytes) > 65_536
                     )
@@ -710,11 +999,16 @@ class FieldNotesCompanionController(CompanionController):
             if capture is not None:
                 self._creator_live_a1_completed_run_id = capture.run_id
                 self._creator_live_a1_capture_config = None
+                self._candidate_v0_2_a1_config = None
+                self._candidate_v0_2_isolation_evidence = (
+                    candidate_evidence if candidate_a1 is not None else None
+                )
             if reconnect_target is not None:
                 self._creator_live_a2_completed_run_id = (
                     reconnect_target.run_2_id
                 )
                 self._creator_live_a2_reconnect_target = None
+                self._candidate_v0_2_a2_config = None
                 self._creator_live_a2_run_completion = reconnect_completion
                 self._creator_live_a2_failure_reason = reconnect_failure
                 self._run["result"] = ""
@@ -734,7 +1028,11 @@ class FieldNotesCompanionController(CompanionController):
 
     def _approval_provider(self, approval: CodexApproval) -> str | None:
         with self._condition:
-            capture_active = self._creator_live_a1_capture_config is not None
+            capture_active = bool(
+                self._creator_live_a1_capture_config is not None
+                or self._candidate_v0_2_a1_config is not None
+                or self._candidate_v0_2_a2_config is not None
+            )
         if not capture_active:
             return super()._approval_provider(approval)
         if not isinstance(approval, CodexApproval):
@@ -855,6 +1153,28 @@ class FieldNotesCompanionController(CompanionController):
                 raise FieldNoteError("Creator-live A1 capture is still running.")
             return self._creator_live_a1_failure_reason
 
+    def creator_live_candidate_v0_2_isolation_evidence(
+        self,
+        *,
+        expected_run_id: str,
+    ) -> Any:
+        """Return the private fixed-source evidence for the completed Run 1."""
+
+        from decision_os.companion.field_notes_creator_live_candidate_v0_2 import (
+            IsolationEvidence,
+        )
+
+        with self._condition:
+            if (
+                self._creator_live_a1_completed_run_id != expected_run_id
+                or not isinstance(
+                    self._candidate_v0_2_isolation_evidence,
+                    IsolationEvidence,
+                )
+            ):
+                raise FieldNoteError("A1_CANDIDATE_EVIDENCE_MISSING")
+            return self._candidate_v0_2_isolation_evidence
+
     def creator_live_a2_run_completion(
         self,
         *,
@@ -926,6 +1246,8 @@ class FieldNotesCompanionController(CompanionController):
                 self._creator_live_a1_run_completion = None
                 self._creator_live_a1_completed_draft = None
                 self._creator_live_a1_proposal_diagnostic = None
+                self._candidate_v0_2_a1_config = None
+                self._candidate_v0_2_isolation_evidence = None
             if self._creator_live_a2_reconnect_target is not None:
                 self._creator_live_a2_completed_run_id = (
                     self._creator_live_a2_reconnect_target.run_2_id
@@ -940,6 +1262,7 @@ class FieldNotesCompanionController(CompanionController):
                     else "A2_TARGET_INVALID"
                 )
                 self._creator_live_a2_run_completion = None
+                self._candidate_v0_2_a2_config = None
             self._clear_field_note_locked()
             self._condition.notify_all()
 
@@ -994,8 +1317,15 @@ class FieldNotesCompanionController(CompanionController):
             "A collision-free Field Note path could not be prepared."
         )
 
-    def field_note_save(self) -> dict[str, Any]:
+    def field_note_save(
+        self,
+        *,
+        _cycle_006_authority: object | None = None,
+    ) -> dict[str, Any]:
         with self._condition:
+            self._require_cycle_006_field_note_authority_locked(
+                _cycle_006_authority
+            )
             if (
                 self._run.get("state") != "completed"
                 or self._field_note_draft is None
@@ -1044,6 +1374,7 @@ class FieldNotesCompanionController(CompanionController):
 
     def field_note_skip(self) -> dict[str, Any]:
         with self._condition:
+            self._require_cycle_006_mutation_allowed_locked()
             if self._field_note_draft is None:
                 raise FieldNoteError("No Field Note candidate is available.")
             self._field_note_draft = None
@@ -1538,8 +1869,16 @@ class FieldNotesCompanionController(CompanionController):
                 if descriptor is not None:
                     os.close(descriptor)
 
-    def field_note_approval(self, choice: str) -> dict[str, Any]:
+    def field_note_approval(
+        self,
+        choice: str,
+        *,
+        _cycle_006_authority: object | None = None,
+    ) -> dict[str, Any]:
         with self._condition:
+            self._require_cycle_006_field_note_authority_locked(
+                _cycle_006_authority
+            )
             pending = self._field_note_pending
             if (
                 pending is None
@@ -1584,9 +1923,45 @@ class FieldNotesCompanionController(CompanionController):
         self._creator_live_cycle_005.start(launch_binding_sha256)
         return self.snapshot()
 
+    def creator_live_cycle_006_start(
+        self,
+        launch_binding_sha256: str,
+    ) -> dict[str, Any]:
+        """Enter only the dedicated, currently non-live Cycle 006 boundary."""
+
+        from decision_os.companion.field_notes_creator_live_cycle_006 import (
+            CreatorLiveCycle006Error,
+        )
+
+        with self._condition:
+            ordinary_active = bool(
+                self._ordinary_user_path is not None
+                and self._ordinary_user_path.mutation_active
+            )
+            if (
+                self._run.get("state") in {"running", "active"}
+                or self._repository_selection_active
+                or self._active_bridge_operations
+                or self._active_guided_intake_operations
+                or self._active_intelligence_transplant_operations
+                or ordinary_active
+            ):
+                raise CreatorLiveCycle006Error(
+                    "CYCLE_006_CONTROLLER_BUSY"
+                )
+            self._creator_live_cycle_006.start(launch_binding_sha256)
+            return self._snapshot_locked()
+
     def creator_live_cycle_005_mutation_blocked(self) -> bool:
         entrypoint = getattr(self, "_creator_live_cycle_005", None)
         return bool(entrypoint is not None and entrypoint.mutation_blocked)
+
+    def creator_live_cycle_006_mutation_blocked(self) -> bool:
+        entrypoint = getattr(self, "_creator_live_cycle_006", None)
+        return bool(
+            entrypoint is not None
+            and getattr(entrypoint, "mutation_blocked", False)
+        )
 
     @staticmethod
     def creator_live_cycle_005_public_projection(
@@ -1637,6 +2012,29 @@ class FieldNotesCompanionController(CompanionController):
                 "state": "UNAVAILABLE",
                 "p0": {"ready": False, "failure_code": "ENTRYPOINT_UNAVAILABLE"},
                 "launch_binding_sha256": None,
+            }
+        )
+        cycle_006 = getattr(self, "_creator_live_cycle_006", None)
+        snapshot["creator_live_cycle_006"] = (
+            cycle_006.snapshot(snapshot)
+            if cycle_006 is not None
+            else {
+                "cycle_key": "cycle-006",
+                "cycle_number": "006",
+                "state": "UNAVAILABLE",
+                "stage": "P0",
+                "p0": {
+                    "ready": False,
+                    "failure_code": "ENTRYPOINT_UNAVAILABLE",
+                },
+                "launch_binding_sha256": None,
+                "live_start_authorization": "ABSENT",
+                "start_allowed": False,
+                "proof_identity": None,
+                "model_invocation_count": 0,
+                "task_transmission_count": 0,
+                "artifact_behavior": "NOT_RUN",
+                "comparison_result": "NOT_ESTABLISHED",
             }
         )
         return snapshot

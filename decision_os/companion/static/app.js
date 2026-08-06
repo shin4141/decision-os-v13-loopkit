@@ -1825,6 +1825,90 @@ function renderBridge(bridge, repository) {
   byId("bridge-record-intervention").disabled = !hasSession;
 }
 
+function renderCreatorLiveCycle006(value) {
+  if (!optionalById("creator-live-cycle-006-start")) {
+    return;
+  }
+  const cycle = value && typeof value === "object" ? value : null;
+  const binding = cycle?.binding;
+  const candidate = binding?.candidate;
+  const before = candidate?.common_before;
+  const run1 = binding?.tasks?.run_1;
+  const run2 = binding?.tasks?.run_2;
+  const runtime = binding?.runtime;
+  const history = binding?.historical_boundary?.cycle_005;
+  const state = cycle?.state || "UNAVAILABLE";
+  const formatTask = (task) =>
+    task
+      ? `${task.utf8_byte_count} bytes · ${task.sha256} · ${task.lane}`
+      : "Unavailable";
+  setText("creator-live-cycle-006-status", state.replaceAll("_", " "));
+  setText(
+    "creator-live-cycle-006-candidate",
+    cycle?.candidate_id ?? candidate?.candidate_id ?? "Unavailable",
+  );
+  setText(
+    "creator-live-cycle-006-revision",
+    binding?.repository?.head ?? "Unavailable",
+  );
+  setText(
+    "creator-live-cycle-006-before",
+    before
+      ? `${before.utf8_byte_count} bytes · ${before.sha256}`
+      : "Unavailable",
+  );
+  setText("creator-live-cycle-006-run-1", formatTask(run1));
+  setText("creator-live-cycle-006-run-2", formatTask(run2));
+  setText(
+    "creator-live-cycle-006-runtime",
+    runtime
+      ? `${runtime.provider} · ${runtime.account} · ${runtime.model} · ${runtime.reasoning_effort} · ${runtime.service_tier} · CLI ${runtime.codex_cli_version} · sandbox ${runtime.sandbox} · model network ${runtime.model_sandbox_network} · provider transport ${runtime.provider_transport_required ? "required" : "not required"} · ${runtime.fresh_ephemeral_thread_per_run ? "fresh ephemeral thread per Run" : "thread policy unavailable"} · cwd ${runtime.repository_cwd}`
+      : "Unavailable",
+  );
+  setText(
+    "creator-live-cycle-006-attempt-policy",
+    `${cycle?.one_attempt === true ? "One attempt" : "Policy unavailable"} · retry ${cycle?.retry_count ?? 0} · replacement ${cycle?.replacement_count ?? 0}`,
+  );
+  setText(
+    "creator-live-cycle-006-history",
+    history
+      ? `${history.cycle_key} · ${history.state} / ${history.failure_boundary} / ${history.failure_code}`
+      : "Unavailable",
+  );
+  setText(
+    "creator-live-cycle-006-behavior",
+    cycle?.artifact_behavior ?? "NOT_RUN",
+  );
+  setText(
+    "creator-live-cycle-006-comparison",
+    cycle?.comparison_result ?? "NOT_ESTABLISHED",
+  );
+  setText(
+    "creator-live-cycle-006-authorization",
+    cycle?.live_start_authorization ?? "ABSENT",
+  );
+  setText(
+    "creator-live-cycle-006-p0",
+    cycle?.p0?.ready
+      ? "PASS"
+      : cycle?.p0?.failure_code || "Unavailable",
+  );
+  setText(
+    "creator-live-cycle-006-binding-sha256",
+    cycle?.launch_binding_sha256 ?? "Unavailable",
+  );
+  const start = byId("creator-live-cycle-006-start");
+  const startAllowed =
+    cycle?.start_allowed === true &&
+    cycle?.live_start_authorization === "PRESENT" &&
+    cycle?.storage_occupied === false &&
+    state === "READY" &&
+    cycle?.p0?.ready === true &&
+    typeof cycle?.launch_binding_sha256 === "string";
+  start.disabled = !startAllowed;
+  byId("creator-live-cycle-006-disabled-label").hidden = startAllowed;
+}
+
 function renderCreatorLiveCycle005(value) {
   if (!optionalById("creator-live-start")) {
     return;
@@ -2105,6 +2189,7 @@ function render(state) {
   renderOrdinaryContract(state.ordinary_contract, repository);
   renderGuidedIntake(state.guided_intake, repository);
   renderBridge(state.manual_bridge, repository);
+  renderCreatorLiveCycle006(state.creator_live_cycle_006);
   renderCreatorLiveCycle005(state.creator_live_cycle_005);
   if (state.creator_live_cycle_005?.state === "RUNNING") {
     disableStateChangingControls();
@@ -2120,6 +2205,12 @@ function render(state) {
 }
 
 function disableStateChangingControls() {
+  const creatorLiveCycle006Start = optionalById(
+    "creator-live-cycle-006-start",
+  );
+  if (creatorLiveCycle006Start) {
+    creatorLiveCycle006Start.disabled = true;
+  }
   const creatorLiveStart = optionalById("creator-live-start");
   if (creatorLiveStart) {
     creatorLiveStart.disabled = true;
@@ -2205,6 +2296,7 @@ function enterDisconnected() {
   renderOrdinaryContract(null, null);
   renderGuidedIntake(null, null);
   renderBridge(null, null);
+  renderCreatorLiveCycle006(null);
   renderCreatorLiveCycle005(null);
 
   setText("global-error", DISCONNECTED_MESSAGE);
@@ -2661,6 +2753,32 @@ optionalById("creator-live-start")?.addEventListener("click", async () => {
     render(state);
   }
 });
+
+optionalById("creator-live-cycle-006-start")?.addEventListener(
+  "click",
+  async () => {
+    const cycle = latestState?.creator_live_cycle_006;
+    const digest = cycle?.launch_binding_sha256;
+    if (
+      byId("creator-live-cycle-006-start").disabled ||
+      requestActive ||
+      cycle?.live_start_authorization !== "PRESENT" ||
+      cycle?.storage_occupied !== false ||
+      cycle?.start_allowed !== true ||
+      cycle?.state !== "READY" ||
+      cycle?.p0?.ready !== true ||
+      typeof digest !== "string"
+    ) {
+      return;
+    }
+    const state = await postJSON("/api/creator-live/cycles/006/start", {
+      launch_binding_sha256: digest,
+    });
+    if (state) {
+      render(state);
+    }
+  },
+);
 
 byId("new-run").addEventListener("click", async () => {
   const state = await postJSON("/api/new-run", {});
