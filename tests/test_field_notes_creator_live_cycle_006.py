@@ -250,7 +250,9 @@ def _canonical_ordinary_contract_snapshot(
     }
 
 
-def _full_fixture_binding() -> dict[str, object]:
+def _full_fixture_binding(
+    live_start_authorization_observed_at: str | None = None,
+) -> dict[str, object]:
     return {
         "schema": "decision-os.creator-live-cycle-006-launch-binding.v0.1",
         "cycle": {
@@ -258,7 +260,14 @@ def _full_fixture_binding() -> dict[str, object]:
             "cycle_key": "cycle-006",
             "candidate_id": "CREATOR_LIVE_AGENTS_BEFORE_AFTER_V0_2",
             "implementation_authorization_observed_at": "2026-08-06T00:50:00Z",
-            "live_start_authorization": "ABSENT",
+            "live_start_authorization": (
+                "PRESENT"
+                if live_start_authorization_observed_at is not None
+                else "ABSENT"
+            ),
+            "live_start_authorization_observed_at": (
+                live_start_authorization_observed_at
+            ),
         },
         "attempt_policy": {
             "attempt_count": 1,
@@ -372,7 +381,9 @@ class _ReadyEntrypoint(CreatorLiveCycle006Entrypoint):
         return CreatorLiveCycle006P0Result(
             True,
             None,
-            _full_fixture_binding(),
+            _full_fixture_binding(
+                self.spec.live_start_authorization_observed_at
+            ),
             _DIGEST,
         )
 
@@ -385,7 +396,10 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.repository = Path(self.temporary.name) / "repository"
         self.repository.mkdir()
-        self.spec = CreatorLiveCycle006Spec(repository=self.repository)
+        self.spec = CreatorLiveCycle006Spec(
+            repository=self.repository,
+            live_start_authorization_observed_at=None,
+        )
         self.entrypoint = _ReadyEntrypoint(
             _Controller(self.repository),
             spec=self.spec,
@@ -455,6 +469,7 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
 
     def test_snapshot_is_ready_but_start_disabled_and_private_values_redacted(self) -> None:
         snapshot = self.entrypoint.snapshot(_Controller(self.repository).snapshot())
+        self.assertIsNone(self.spec.live_start_authorization_observed_at)
         self.assertEqual((snapshot["state"], snapshot["stage"]), ("READY", "P0"))
         self.assertTrue(snapshot["p0"]["ready"])
         self.assertEqual(snapshot["live_start_authorization"], "ABSENT")
@@ -477,6 +492,58 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
             str(codex_module.CYCLE_006_CODEX_RECOVERY_RECEIPT),
         ):
             self.assertNotIn(private, encoded)
+
+    def test_default_authorization_is_ready_without_consuming_attempt(self) -> None:
+        activity: list[str] = []
+
+        def runtime_opener(*_args: object, **_kwargs: object) -> object:
+            activity.append("proof")
+            raise AssertionError("readiness must not open proof")
+
+        def worker_factory(*_args: object, **_kwargs: object) -> object:
+            activity.append("worker")
+            raise AssertionError("readiness must not allocate a worker")
+
+        spec = CreatorLiveCycle006Spec(repository=self.repository)
+        entrypoint = _ReadyEntrypoint(
+            _Controller(self.repository),
+            spec=spec,
+            runtime_opener=runtime_opener,
+            worker_factory=worker_factory,
+        )
+
+        with patch.object(
+            entrypoint,
+            "_load_fixed_task",
+            side_effect=AssertionError("readiness must not load a fixed task"),
+        ):
+            snapshot = entrypoint.snapshot(_Controller(self.repository).snapshot())
+
+        self.assertEqual(
+            cycle006.LIVE_START_AUTHORIZATION_OBSERVED_AT,
+            "2026-08-06T21:10:00Z",
+        )
+        self.assertEqual(
+            spec.live_start_authorization_observed_at,
+            "2026-08-06T21:10:00Z",
+        )
+        self.assertEqual(
+            snapshot["binding"]["cycle"][
+                "live_start_authorization_observed_at"
+            ],
+            "2026-08-06T21:10:00Z",
+        )
+        self.assertEqual(snapshot["live_start_authorization"], "PRESENT")
+        self.assertTrue(snapshot["start_allowed"])
+        self.assertTrue(snapshot["one_attempt"])
+        self.assertEqual(snapshot["retry_count"], 0)
+        self.assertEqual(snapshot["replacement_count"], 0)
+        self.assertFalse(snapshot["storage_occupied"])
+        self.assertIsNone(snapshot["proof_identity"])
+        self.assertEqual(snapshot["model_invocation_count"], 0)
+        self.assertEqual(snapshot["task_transmission_count"], 0)
+        self.assertEqual(activity, [])
+        self.assertFalse(os.path.lexists(spec.storage_root))
 
     def test_stale_then_matching_start_fail_before_storage_or_activity(self) -> None:
         with self.assertRaisesRegex(
@@ -2705,7 +2772,6 @@ class Cycle006ProtectedBindingTests(unittest.TestCase):
             spec=CreatorLiveCycle006Spec(
                 repository=ROOT,
                 runtime_root=ROOT,
-                live_start_authorization_observed_at="2026-08-06T02:00:00Z",
             ),
             runtime_version_probe=lambda _path: (
                 cycle006.EXPECTED_CODEX_RUNTIME.codex_cli_version
@@ -2755,6 +2821,12 @@ class Cycle006ProtectedBindingTests(unittest.TestCase):
         self.assertRegex(first.launch_binding_sha256 or "", r"^[0-9a-f]{64}$")
         binding = first.binding or {}
         self.assertEqual(binding["cycle"]["live_start_authorization"], "PRESENT")
+        self.assertEqual(
+            binding["cycle"]["live_start_authorization_observed_at"],
+            "2026-08-06T21:10:00Z",
+        )
+        self.assertEqual(binding["attempt_policy"]["attempt_count"], 1)
+        self.assertTrue(binding["attempt_policy"]["one_attempt"])
         self.assertEqual(binding["attempt_policy"]["retry_count"], 0)
         self.assertEqual(binding["attempt_policy"]["replacement_count"], 0)
         self.assertEqual(
@@ -3753,17 +3825,22 @@ class Cycle006ExactFinalP0Tests(unittest.TestCase):
         self.assertEqual(observed_cli, exact_cli)
         self.assertEqual(
             (snapshot["state"], snapshot["stage"]),
-            ("NOT_READY", "P0"),
+            ("READY", "P0"),
         )
-        self.assertFalse(snapshot["p0"]["ready"])
+        self.assertTrue(snapshot["p0"]["ready"])
+        self.assertIsNone(snapshot["p0"]["failure_code"])
         self.assertEqual(
-            snapshot["p0"]["failure_code"],
-            "LIVE_START_AUTHORIZATION_ABSENT",
+            snapshot["binding"]["cycle"][
+                "live_start_authorization_observed_at"
+            ],
+            "2026-08-06T21:10:00Z",
         )
-        self.assertIsNone(snapshot["binding"])
-        self.assertIsNone(snapshot["launch_binding_sha256"])
-        self.assertEqual(snapshot["live_start_authorization"], "ABSENT")
-        self.assertFalse(snapshot["start_allowed"])
+        self.assertRegex(snapshot["launch_binding_sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(snapshot["live_start_authorization"], "PRESENT")
+        self.assertTrue(snapshot["start_allowed"])
+        self.assertTrue(snapshot["one_attempt"])
+        self.assertEqual(snapshot["retry_count"], 0)
+        self.assertEqual(snapshot["replacement_count"], 0)
         self.assertFalse(snapshot["storage_occupied"])
         self.assertIsNone(snapshot["proof_identity"])
         self.assertEqual(snapshot["model_invocation_count"], 0)

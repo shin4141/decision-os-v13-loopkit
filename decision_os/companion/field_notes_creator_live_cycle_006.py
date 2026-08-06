@@ -123,7 +123,7 @@ from decision_os.companion.guided_intake import (
 CYCLE_NUMBER = "006"
 CYCLE_KEY = "cycle-006"
 IMPLEMENTATION_AUTHORIZATION_OBSERVED_AT = "2026-08-06T00:50:00Z"
-LIVE_START_AUTHORIZATION_OBSERVED_AT: None = None
+LIVE_START_AUTHORIZATION_OBSERVED_AT = "2026-08-06T21:10:00Z"
 
 EXPECTED_REPOSITORY = Path("/Users/sn/Documents/v13/decision-os-v13-loopkit")
 EXPECTED_REMOTE = "https://github.com/shin4141/decision-os-v13-loopkit.git"
