@@ -955,7 +955,97 @@ class CreatorLiveHTTPTests(unittest.TestCase):
         self.assertNotIn("PRIVATE MODEL OUTPUT", encoded)
         self.assertNotIn("PRIVATE NOTE", encoded)
         self.assertNotIn("PRIVATE", encoded)
+        self.assertEqual("creator_live_cycle_005", projected["run"]["run_type"])
+        self.assertEqual("running", projected["run"]["state"])
         self.assertEqual(["A2"], projected["run"]["progress"])
+        self.assertEqual("", projected["run"]["result"])
+        self.assertEqual([], projected["run"]["file_actions"])
+        self.assertEqual([], projected["run"]["read_evidence"])
+        self.assertIsNone(projected["run"]["runtime"])
+        self.assertIsNone(projected["run"]["approval"])
+
+    def test_terminal_projection_preserves_evidence_and_restores_safe_idle(
+        self,
+    ) -> None:
+        for terminal_state in (
+            "FAILED",
+            "TRACE_COMPLETE",
+            "PASS",
+            "OPEN_UNRESUMABLE",
+            "INTEGRITY_FAILURE",
+        ):
+            with self.subTest(terminal_state=terminal_state):
+                cycle = {
+                    "cycle_key": "cycle-005",
+                    "state": terminal_state,
+                    "stage": "A3",
+                    "failure_code": "HISTORICAL_FAILURE",
+                    "identities": {
+                        "proof_attempt_id": "cycle-005-attempt-001",
+                        "journal_sha256": "1" * 64,
+                        "anchor_sha256": "2" * 64,
+                    },
+                }
+                cycle_before = json.loads(json.dumps(cycle, sort_keys=True))
+                snapshot = {
+                    "creator_live_cycle_005": cycle,
+                    "run": {
+                        "run_type": "bounded_task",
+                        "state": "completed",
+                        "task": RUN_2_TASK,
+                        "result": "PRIVATE MODEL OUTPUT",
+                        "field_note": {"markdown": "PRIVATE NOTE"},
+                        "runtime": {"model": "PRIVATE MODEL"},
+                        "approval": {"hidden": "PRIVATE APPROVAL"},
+                    },
+                }
+
+                projected = self.controller.creator_live_cycle_005_public_projection(
+                    snapshot
+                )
+
+                self.assertEqual(cycle_before, projected["creator_live_cycle_005"])
+                self.assertEqual(
+                    {
+                        "run_type": "bounded_task",
+                        "task_mode": None,
+                        "state": "idle",
+                        "progress": [],
+                        "result": "",
+                        "file_actions": [],
+                        "read_evidence": [],
+                        "outcomes": {
+                            "execution": {
+                                "state": "not_started",
+                                "label": "Not started",
+                            },
+                            "file_change": {
+                                "state": "none",
+                                "label": "No file was modified",
+                            },
+                            "verification": {
+                                "state": "not_started",
+                                "label": "Not started",
+                                "reason": None,
+                            },
+                        },
+                        "runtime": None,
+                        "receipt_delta": None,
+                        "approval": None,
+                        "error": None,
+                        "failure": None,
+                    },
+                    projected["run"],
+                )
+                encoded_run = json.dumps(projected["run"], sort_keys=True)
+                for private in (
+                    RUN_2_TASK,
+                    "PRIVATE MODEL OUTPUT",
+                    "PRIVATE NOTE",
+                    "PRIVATE MODEL",
+                    "PRIVATE APPROVAL",
+                ):
+                    self.assertNotIn(private, encoded_run)
 
     def test_terminal_http_state_is_allowlisted_and_duplicate_start_is_409(
         self,
@@ -971,11 +1061,21 @@ class CreatorLiveHTTPTests(unittest.TestCase):
             content_type=None,
         )
         self.assertEqual(200, status)
-        cycle = json.loads(raw)["creator_live_cycle_005"]
+        state = json.loads(raw)
+        cycle = state["creator_live_cycle_005"]
+        run = state["run"]
         encoded = json.dumps(cycle, sort_keys=True)
         self.assertEqual("FAILED", cycle["state"])
         self.assertIsNone(cycle["binding"])
         self.assertFalse(cycle["start_allowed"])
+        self.assertEqual("bounded_task", run["run_type"])
+        self.assertEqual("idle", run["state"])
+        self.assertIsNone(run["task_mode"])
+        self.assertEqual("", run["result"])
+        self.assertEqual([], run["file_actions"])
+        self.assertEqual([], run["read_evidence"])
+        self.assertIsNone(run["runtime"])
+        self.assertIsNone(run["approval"])
         for private in (
             RUN_1_TASK,
             RUN_2_TASK,
@@ -986,6 +1086,20 @@ class CreatorLiveHTTPTests(unittest.TestCase):
             "/Users/sn/Documents/v13/decision-os-v13-loopkit",
         ):
             self.assertNotIn(private, encoded)
+        terminal_evidence = json.loads(json.dumps(cycle, sort_keys=True))
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/new-run",
+            payload=b"{}",
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status)
+        refreshed = json.loads(raw)
+        self.assertEqual(terminal_evidence, refreshed["creator_live_cycle_005"])
+        self.assertEqual("bounded_task", refreshed["run"]["run_type"])
+        self.assertEqual("idle", refreshed["run"]["state"])
         status, _headers, body = self.request(
             "POST",
             "/api/creator-live/cycles/005/start",
