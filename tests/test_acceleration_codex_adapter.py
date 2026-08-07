@@ -3658,9 +3658,21 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 choice=lambda: self.fail("must not prompt"),
             )
 
-            with self.assertRaises(CodexAdapterFailure):
+            with self.assertRaises(CodexAdapterFailure) as captured:
                 await adapter.run("version mismatch")
 
+            diagnostic = captured.exception.diagnostic
+            self.assertIsNotNone(diagnostic)
+            assert diagnostic is not None
+            self.assertEqual(
+                "codex_version_verification_failed",
+                diagnostic.code,
+            )
+            self.assertEqual("version_verification", diagnostic.protocol_phase)
+            self.assertEqual(
+                "The bounded Codex Run failed closed while verifying the runtime version.",
+                diagnostic.reason,
+            )
             self.assertEqual([], factory.transports[0].sent)
             self.assertTrue(factory.transports[0].closed)
 

@@ -17,6 +17,8 @@ from decision_os.acceleration.codex_adapter import (
     CODEX_CLI_VERSION,
     CYCLE_006_CODEX_CLI_VERSION,
     CYCLE_006_CODEX_PATH,
+    ORDINARY_COMPANION_CODEX_CLI_VERSION,
+    ORDINARY_COMPANION_CODEX_PATH,
     CodexApproval,
     CodexLifecycleEvent,
     CodexReadEvidence,
@@ -102,6 +104,10 @@ def _field_notes_adapter_factory(
             return None
         return lambda value=provider_values[name]: value
 
+    creator_live_cycle_005_selected = bool(
+        provider_values["creator_live_a1_capture"] is not None
+        or provider_values["creator_live_a2_reconnect"] is not None
+    )
     cycle_006_selected = bool(
         provider_values["candidate_v0_2_a1"] is not None
         or provider_values["candidate_v0_2_a2"] is not None
@@ -112,6 +118,15 @@ def _field_notes_adapter_factory(
         runtime_options = {
             "executable": CYCLE_006_CODEX_PATH,
             "expected_cli_version": CYCLE_006_CODEX_CLI_VERSION,
+            "transport_factory": _Cycle006SubprocessTransport,
+        }
+    elif not creator_live_cycle_005_selected:
+        # Forward-only: the current ordinary route uses the already-preserved
+        # verified artifact. Historical Cycle 005 runs retain CODEX_CLI_VERSION.
+        engine.adapter_version = ORDINARY_COMPANION_CODEX_CLI_VERSION
+        runtime_options = {
+            "executable": ORDINARY_COMPANION_CODEX_PATH,
+            "expected_cli_version": ORDINARY_COMPANION_CODEX_CLI_VERSION,
             "transport_factory": _Cycle006SubprocessTransport,
         }
     return FieldNotesCodexAdapter(
@@ -2043,6 +2058,9 @@ class FieldNotesCompanionController(CompanionController):
             "OPEN_UNRESUMABLE",
             "INTEGRITY_FAILURE",
         }:
+            run = snapshot.get("run")
+            if isinstance(run, dict) and run.get("run_type") == "bounded_task":
+                return snapshot
             snapshot["run"] = CompanionController._empty_run()
             return snapshot
         public_state = (

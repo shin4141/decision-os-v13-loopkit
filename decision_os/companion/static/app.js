@@ -6,6 +6,7 @@ const DISCONNECTED_MESSAGE =
 let csrfToken = "";
 let latestState = null;
 let requestActive = false;
+let requestRejectedMessage = null;
 let connected = false;
 let connectionGeneration = 0;
 let bridgeRepositoryPath = null;
@@ -2312,8 +2313,13 @@ function enterDisconnected() {
 function renderAuthenticatedState(state) {
   connected = true;
   render(state);
-  setText("global-error", "");
-  setHidden("global-error", true);
+  if (requestRejectedMessage !== null) {
+    setText("global-error", requestRejectedMessage);
+    setHidden("global-error", false);
+  } else {
+    setText("global-error", "");
+    setHidden("global-error", true);
+  }
 }
 
 async function readResponse(response) {
@@ -2352,6 +2358,8 @@ async function postJSON(path, value) {
   }
   connectionGeneration += 1;
   requestActive = true;
+  requestRejectedMessage = null;
+  setText("global-error", "");
   setHidden("global-error", true);
   try {
     const response = await fetch(path, {
@@ -2369,6 +2377,7 @@ async function postJSON(path, value) {
     return state;
   } catch (error) {
     if (error instanceof RequestRejectedError) {
+      requestRejectedMessage = error.message;
       setText("global-error", error.message);
       setHidden("global-error", false);
     } else {
