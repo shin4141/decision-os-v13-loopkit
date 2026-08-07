@@ -36,6 +36,169 @@
       </p>
     </section>
 
+    <section id="bounded-task-card" class="card" aria-labelledby="task-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">2</p>
+          <h2 id="task-heading" tabindex="-1">Task</h2>
+        </div>
+      </div>
+      <label class="visually-hidden" for="task">Task</label>
+      <textarea
+        id="task"
+        rows="7"
+        maxlength="20000"
+        placeholder="Example: Read docs/guide.md and improve one unclear paragraph. Modify that file only."
+      ></textarea>
+      <p class="boundary">
+        Paste or write one bounded task, then select Run. Contract fixation is
+        optional and is available under Advanced workflows.
+      </p>
+      <p class="boundary">
+        v0.1 supports read-only work or one exact typed single-file create or
+        modify. No shell, dependencies, deletes, renames, MCP, or subagents.
+      </p>
+      <button id="run" class="primary" type="button" disabled>Run</button>
+    </section>
+
+    <aside
+      id="operation-awareness"
+      class="operation-awareness"
+      aria-labelledby="operation-awareness-heading"
+    >
+      <div class="operation-awareness-heading">
+        <div>
+          <p class="eyebrow">OPERATION AWARENESS</p>
+          <h2 id="operation-awareness-heading">Current operation</h2>
+        </div>
+        <p id="operation-current" class="operation-current" aria-live="polite">
+          Choose repository
+        </p>
+      </div>
+      <nav aria-label="Operation stages">
+        <ol class="operation-rail">
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="task"
+              aria-controls="bounded-task-card"
+            >
+              <span>Task</span>
+              <span id="operation-task-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="run"
+              aria-controls="progress-card"
+            >
+              <span>Run</span>
+              <span id="operation-run-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="approval"
+              aria-controls="approval-overlay"
+            >
+              <span>Approval</span>
+              <span id="operation-approval-status">Not started</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="operation-stage"
+              type="button"
+              data-operation-stage="result"
+              aria-controls="result-card"
+            >
+              <span>Result</span>
+              <span id="operation-result-status">Not started</span>
+            </button>
+          </li>
+        </ol>
+      </nav>
+      <dl class="operation-summary" aria-live="polite">
+        <div>
+          <dt>What is happening</dt>
+          <dd id="operation-happening">Choose one local Git repository.</dd>
+        </div>
+        <div>
+          <dt>What you need to do</dt>
+          <dd id="operation-action">Choose one repository.</dd>
+        </div>
+        <div>
+          <dt>What happens next</dt>
+          <dd id="operation-next">The Task field is ready for one bounded task.</dd>
+        </div>
+      </dl>
+    </aside>
+
+    <section id="progress-card" class="card hidden" aria-labelledby="progress-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">3</p>
+          <h2 id="progress-heading" tabindex="-1">Run progress</h2>
+        </div>
+        <span id="run-state" class="status">Idle</span>
+      </div>
+      <ol id="progress" class="progress-list"></ol>
+      <p id="run-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <section id="result-card" class="card hidden" aria-labelledby="result-heading">
+      <div class="section-heading">
+        <div>
+          <p class="step">5</p>
+          <h2 id="result-heading" tabindex="-1">Result</h2>
+        </div>
+        <span id="result-state" class="status">Result available</span>
+      </div>
+      <dl class="result-outcomes">
+        <div>
+          <dt>Run execution</dt>
+          <dd id="result-execution">Not started</dd>
+        </div>
+        <div>
+          <dt>File change</dt>
+          <dd id="result-file-change">No file was modified</dd>
+        </div>
+        <div>
+          <dt>Run verification</dt>
+          <dd id="result-verification">Not started</dd>
+          <dd id="result-verification-reason" class="path-value hidden"></dd>
+        </div>
+      </dl>
+      <div class="response-heading">
+        <h3>Codex response</h3>
+        <button
+          id="copy-response"
+          class="secondary compact-action hidden"
+          type="button"
+          disabled
+        >Copy response</button>
+      </div>
+      <p
+        id="copy-response-status"
+        class="visually-hidden"
+        role="status"
+        aria-live="polite"
+      ></p>
+      <pre id="result" class="result-text"></pre>
+      <div id="file-actions" class="file-actions"></div>
+      <dl id="runtime" class="runtime-grid"></dl>
+      <button id="new-run" class="primary" type="button">New Run</button>
+    </section>
+
+    <details id="advanced-research-mode" class="advanced-audit-mode">
+      <summary>Advanced / Research workflows</summary>
+      <div id="advanced-research-content" class="advanced-audit-content" inert>
+
     <section
       id="creator-live-cycle-006-card"
       class="card creator-live-card"
@@ -175,94 +338,12 @@
       </p>
     </section>
 
-    <aside
-      id="operation-awareness"
-      class="operation-awareness"
-      aria-labelledby="operation-awareness-heading"
-    >
-      <div class="operation-awareness-heading">
-        <div>
-          <p class="eyebrow">OPERATION AWARENESS</p>
-          <h2 id="operation-awareness-heading">Current operation</h2>
-        </div>
-        <p id="operation-current" class="operation-current" aria-live="polite">
-          Choose repository
-        </p>
       </div>
-      <nav aria-label="Operation stages">
-        <ol class="operation-rail">
-          <li>
-            <button
-              class="operation-stage"
-              type="button"
-              data-operation-stage="contract"
-              aria-controls="ordinary-contract-card"
-            >
-              <span>Contract</span>
-              <span id="operation-contract-status">Not started</span>
-            </button>
-          </li>
-          <li>
-            <button
-              class="operation-stage"
-              type="button"
-              data-operation-stage="task"
-              aria-controls="bounded-task-card"
-            >
-              <span>Task</span>
-              <span id="operation-task-status">Not started</span>
-            </button>
-          </li>
-          <li>
-            <button
-              class="operation-stage"
-              type="button"
-              data-operation-stage="run"
-              aria-controls="progress-card"
-            >
-              <span>Run</span>
-              <span id="operation-run-status">Not started</span>
-            </button>
-          </li>
-          <li>
-            <button
-              class="operation-stage"
-              type="button"
-              data-operation-stage="approval"
-              aria-controls="approval-overlay"
-            >
-              <span>Approval</span>
-              <span id="operation-approval-status">Not started</span>
-            </button>
-          </li>
-          <li>
-            <button
-              class="operation-stage"
-              type="button"
-              data-operation-stage="result"
-              aria-controls="result-card"
-            >
-              <span>Result</span>
-              <span id="operation-result-status">Not started</span>
-            </button>
-          </li>
-        </ol>
-      </nav>
-      <dl class="operation-summary" aria-live="polite">
-        <div>
-          <dt>What is happening</dt>
-          <dd id="operation-happening">Choose one local Git repository.</dd>
-        </div>
-        <div>
-          <dt>What you need to do</dt>
-          <dd id="operation-action">Choose one repository.</dd>
-        </div>
-        <div>
-          <dt>What happens next</dt>
-          <dd id="operation-next">The Contract stage will become available.</dd>
-        </div>
-      </dl>
-    </aside>
+    </details>
+
+    <details id="advanced-contract-mode" class="advanced-audit-mode">
+      <summary>Advanced / Contract fixation</summary>
+      <div id="advanced-contract-content" class="advanced-audit-content" inert>
 
     <section
       id="ordinary-contract-card"
@@ -398,82 +479,8 @@
       >Reading the review does not change the preserved Contract.</p>
     </section>
 
-    <section id="bounded-task-card" class="card" aria-labelledby="task-heading">
-      <div class="section-heading">
-        <div>
-          <p class="step">2</p>
-          <h2 id="task-heading" tabindex="-1">Bounded task</h2>
-        </div>
       </div>
-      <label class="visually-hidden" for="task">Bounded task</label>
-      <textarea
-        id="task"
-        rows="7"
-        maxlength="20000"
-        placeholder="Example: Read docs/guide.md and improve one unclear paragraph. Modify that file only."
-      ></textarea>
-      <p class="boundary">
-        v0.1 supports read-only work or one exact typed single-file create or
-        modify. No shell, dependencies, deletes, renames, MCP, or subagents.
-      </p>
-      <button id="run" class="primary" type="button">Run</button>
-    </section>
-
-    <section id="progress-card" class="card hidden" aria-labelledby="progress-heading">
-      <div class="section-heading">
-        <div>
-          <p class="step">3</p>
-          <h2 id="progress-heading" tabindex="-1">Run progress</h2>
-        </div>
-        <span id="run-state" class="status">Idle</span>
-      </div>
-      <ol id="progress" class="progress-list"></ol>
-      <p id="run-error" class="error hidden" role="alert"></p>
-    </section>
-
-    <section id="result-card" class="card hidden" aria-labelledby="result-heading">
-      <div class="section-heading">
-        <div>
-          <p class="step">5</p>
-          <h2 id="result-heading" tabindex="-1">Result</h2>
-        </div>
-        <span id="result-state" class="status">Result available</span>
-      </div>
-      <dl class="result-outcomes">
-        <div>
-          <dt>Run execution</dt>
-          <dd id="result-execution">Not started</dd>
-        </div>
-        <div>
-          <dt>File change</dt>
-          <dd id="result-file-change">No file was modified</dd>
-        </div>
-        <div>
-          <dt>Run verification</dt>
-          <dd id="result-verification">Not started</dd>
-          <dd id="result-verification-reason" class="path-value hidden"></dd>
-        </div>
-      </dl>
-      <div class="response-heading">
-        <h3>Codex response</h3>
-        <button
-          id="copy-response"
-          class="secondary compact-action hidden"
-          type="button"
-          disabled
-        >Copy response</button>
-      </div>
-      <p
-        id="copy-response-status"
-        class="visually-hidden"
-        role="status"
-        aria-live="polite"
-      ></p>
-      <pre id="result" class="result-text"></pre>
-      <div id="file-actions" class="file-actions"></div>
-      <dl id="runtime" class="runtime-grid"></dl>
-      <button id="new-run" class="primary" type="button">New Run</button>
-    </section>
+    </details>
 
     <details id="additional-evidence" class="additional-evidence">
       <summary>Additional evidence</summary>
