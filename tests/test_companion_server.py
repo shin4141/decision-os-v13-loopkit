@@ -3358,11 +3358,33 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   },
                 },
               };
+              const terminalCycle005 = {
+                cycle_key: "cycle-005",
+                state: "FAILED",
+                stage: "A3",
+                failure_code: "SYNTHETIC_TERMINAL_EVIDENCE",
+                storage_occupied: true,
+                start_allowed: false,
+                p0: {
+                  ready: true,
+                  failure_code: null,
+                },
+                launch_binding_sha256: "5".repeat(64),
+                identities: {
+                  proof_attempt_id: "cycle-005-attempt-001",
+                  terminal_stage: "A3",
+                  failure_code: "SYNTHETIC_TERMINAL_EVIDENCE",
+                  journal_sha256: "6".repeat(64),
+                  anchor_sha256: "7".repeat(64),
+                  readback_sha256: "8".repeat(64),
+                },
+              };
               function state(run, ordinaryContract = interpretationOnly) {
                 return {
                   csrf: "browser-csrf",
                   repository: { name: "repo", path: "/tmp/repo" },
                   run,
+                  creator_live_cycle_005: terminalCycle005,
                   ordinary_contract: ordinaryContract,
                   guided_intake: null,
                   manual_bridge: {
@@ -3665,6 +3687,24 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     advancedContractContent.inert &&
                     !advanced.open &&
                     document.getElementById("advanced-audit-content").inert
+                  );
+                  const boundedTaskCard = document.getElementById(
+                    "bounded-task-card",
+                  );
+                  document.body.dataset.creatorTerminalOrdinaryEntry = String(
+                    !boundedTaskCard.hidden &&
+                    task.disabled === false &&
+                    !document.getElementById("run").disabled &&
+                    document.getElementById("creator-live-cycle-005-status").textContent ===
+                      "FAILED" &&
+                    document.getElementById("creator-live-failure-code").textContent ===
+                      "SYNTHETIC_TERMINAL_EVIDENCE" &&
+                    document.getElementById("creator-live-start").hidden &&
+                    !document.getElementById("creator-live-terminal-label").hidden &&
+                    !advancedResearch.open &&
+                    advancedResearchContent.inert &&
+                    !advancedContract.open &&
+                    advancedContractContent.inert
                   );
                   document.getElementById("run").click();
                   document.body.dataset.startImmediate = String(
@@ -3969,6 +4009,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "context-ready",
             "context-switch-blocked",
             "ordinary-entry-ready",
+            "creator-terminal-ordinary-entry",
             "ordinary-run-request",
             "no-contract-guided-route",
             "working",

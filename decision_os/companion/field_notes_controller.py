@@ -2036,6 +2036,15 @@ class FieldNotesCompanionController(CompanionController):
         }:
             return snapshot
         state = cycle.get("state")
+        if state in {
+            "FAILED",
+            "TRACE_COMPLETE",
+            "PASS",
+            "OPEN_UNRESUMABLE",
+            "INTEGRITY_FAILURE",
+        }:
+            snapshot["run"] = CompanionController._empty_run()
+            return snapshot
         public_state = (
             "running"
             if state == "RUNNING"
