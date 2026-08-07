@@ -121,9 +121,8 @@ function statusLabel(state) {
   }[state] || "Needs attention";
 }
 
-const OPERATION_STAGES = ["contract", "task", "run", "approval", "result"];
+const OPERATION_STAGES = ["task", "run", "approval", "result"];
 const OPERATION_TARGETS = {
-  contract: ["ordinary-contract-card", "ordinary-contract-heading"],
   task: ["bounded-task-card", "task-heading"],
   run: ["progress-card", "progress-heading"],
   approval: ["approval-overlay", "approval-heading"],
@@ -437,7 +436,18 @@ function operationPresentation(
       current: "Choose repository",
       happening: "Choose one local Git repository.",
       action: "Choose one repository.",
-      next: "The Contract stage will become available.",
+      next: "The Task field is ready for one bounded task.",
+    };
+  }
+  if (task.mode === "empty") {
+    statuses.task = "Current";
+    return {
+      currentStage: "task",
+      statuses,
+      current: "Enter a task",
+      happening: "The repository is ready for one bounded task.",
+      action: "Paste or write one bounded task.",
+      next: "Run becomes available when the task is ready.",
     };
   }
   if (task.mode === "manual" && task.runnable) {
@@ -467,35 +477,31 @@ function operationPresentation(
       ? "Needs attention"
       : "Not started";
     return {
-      currentStage: "contract",
+      currentStage: "task",
       statuses,
-      current: "Contract needs attention",
-      happening: "The prior fixed Contract context is not current for this repository.",
-      action: "Select and fix this Contract for the current repository.",
-      next: "A current server-verified Contract context will then become available.",
+      current: "Prepared task needs attention",
+      happening: "The prepared Contract context is not current for this repository.",
+      action: "Clear the Task field before writing a manual task.",
+      next: "Contract fixation remains available separately under Advanced workflows.",
     };
   }
   if (!fixed) {
     return {
-      currentStage: "contract",
+      currentStage: "task",
       statuses,
-      current: "Contract",
-      happening: "The Contract stage is ready for one supported local Contract.",
-      action: "Select one Contract.",
-      next: "You will review its interpretation before fixing it.",
+      current: "Enter a task",
+      happening: "The repository is ready for one bounded task.",
+      action: "Paste or write one bounded task.",
+      next: "Run becomes available when the task is ready.",
     };
   }
   if (!contractExecutionAuthorized(ordinary)) {
     return {
-      currentStage: "contract",
+      currentStage: "task",
       statuses,
-      current:
-        ordinary?.execution_authority ===
-        EXECUTION_AUTHORITY_INTERPRETATION_ONLY
-          ? "Interpretation only"
-          : "Execution authority unknown",
-      happening: contractAuthorityMessage(ordinary),
-      action: "Write a manual bounded task if one is needed.",
+      current: "Enter a task",
+      happening: "The fixed Contract is separate from ordinary task execution.",
+      action: "Paste or write one bounded task.",
       next: "A manual task remains independent of the fixed Contract artifact.",
     };
   }
@@ -3257,11 +3263,31 @@ function syncAdvancedAuditContainment() {
   byId("advanced-audit-content").inert = !byId("advanced-audit-mode").open;
 }
 
+function syncResearchWorkflowContainment() {
+  byId("advanced-research-content").inert =
+    !byId("advanced-research-mode").open;
+}
+
+function syncContractWorkflowContainment() {
+  byId("advanced-contract-content").inert =
+    !byId("advanced-contract-mode").open;
+}
+
 byId("advanced-audit-mode").addEventListener(
   "toggle",
   syncAdvancedAuditContainment,
 );
+byId("advanced-research-mode").addEventListener(
+  "toggle",
+  syncResearchWorkflowContainment,
+);
+byId("advanced-contract-mode").addEventListener(
+  "toggle",
+  syncContractWorkflowContainment,
+);
 syncAdvancedAuditContainment();
+syncResearchWorkflowContainment();
+syncContractWorkflowContainment();
 
 async function refresh() {
   if (!requestActive) {

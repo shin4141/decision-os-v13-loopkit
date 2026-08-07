@@ -1371,25 +1371,61 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn(b"max-height: 18rem", stylesheet)
         self.assertIn(b"overflow-wrap: anywhere", stylesheet)
 
-    def test_ordinary_contract_dom_precedes_collapsed_advanced_mode(self) -> None:
+    def test_ordinary_task_precedes_collapsed_advanced_workflows(self) -> None:
         cookie, _csrf = self.bootstrap()
         status, _headers, html = self.request("GET", "/", cookie=cookie)
         self.assertEqual(200, status)
         text = html.decode("utf-8")
-        ordinary_start = text.index('id="ordinary-contract-card"')
+        repository_start = text.index('id="repository-heading"')
         bounded_start = text.index('id="bounded-task-card"')
-        advanced_start = text.index('id="advanced-audit-mode"')
+        rail_start = text.index('id="operation-awareness"')
+        progress_start = text.index('id="progress-card"')
+        result_start = text.index('id="result-card"')
+        research_start = text.index('id="advanced-research-mode"')
+        contract_mode_start = text.index('id="advanced-contract-mode"')
+        ordinary_start = text.index('id="ordinary-contract-card"')
+        evidence_start = text.index('id="additional-evidence"')
+        audit_start = text.index('id="advanced-audit-mode"')
         guided_start = text.index('id="guided-intake-card"')
         bridge_start = text.index('id="bridge-heading"')
         global_error_start = text.index('id="global-error"')
-        self.assertLess(ordinary_start, bounded_start)
-        self.assertLess(ordinary_start, advanced_start)
-        self.assertLess(advanced_start, guided_start)
+        self.assertLess(repository_start, bounded_start)
+        self.assertLess(bounded_start, rail_start)
+        self.assertLess(rail_start, progress_start)
+        self.assertLess(progress_start, result_start)
+        self.assertLess(result_start, research_start)
+        self.assertLess(research_start, contract_mode_start)
+        self.assertLess(contract_mode_start, ordinary_start)
+        self.assertLess(ordinary_start, evidence_start)
+        self.assertLess(evidence_start, audit_start)
+        self.assertLess(audit_start, guided_start)
         self.assertLess(guided_start, bridge_start)
         self.assertLess(bridge_start, global_error_start)
-        advanced_tag = text[advanced_start : text.index(">", advanced_start)]
-        self.assertNotIn(" open", advanced_tag)
-        ordinary_card = text[ordinary_start:bounded_start]
+        task_card = text[bounded_start:rail_start]
+        self.assertIn('id="task"', task_card)
+        self.assertIn('id="run"', task_card)
+        self.assertIn("Paste or write one bounded task", task_card)
+        self.assertIn("Contract fixation is", task_card)
+        self.assertNotIn('id="ordinary-contract-card"', task_card)
+
+        for details_id, content_id in (
+            ("advanced-research-mode", "advanced-research-content"),
+            ("advanced-contract-mode", "advanced-contract-content"),
+            ("advanced-audit-mode", "advanced-audit-content"),
+        ):
+            details_start = text.index(f'id="{details_id}"')
+            details_tag = text[details_start : text.index(">", details_start)]
+            self.assertNotIn(" open", details_tag)
+            content_start = text.index(f'id="{content_id}"')
+            content_tag = text[content_start : text.index(">", content_start)]
+            self.assertIn(" inert", content_tag)
+
+        research_workflow = text[research_start:contract_mode_start]
+        self.assertIn('id="creator-live-cycle-006-card"', research_workflow)
+        self.assertIn('id="creator-live-cycle-005-card"', research_workflow)
+        contract_workflow = text[contract_mode_start:evidence_start]
+        self.assertIn('id="ordinary-contract-card"', contract_workflow)
+        ordinary_card = text[ordinary_start:evidence_start]
         for element_id in (
             "ordinary-contract-status",
             "ordinary-contract-file",
@@ -1437,8 +1473,8 @@ class CompanionServerTest(unittest.TestCase):
             "Draft JSON",
         ):
             self.assertNotIn(internal_term, ordinary_card)
-        self.assertIn("Producer label", text[advanced_start:])
-        self.assertIn("Draft JSON", text[advanced_start:])
+        self.assertIn("Producer label", text[audit_start:])
+        self.assertIn("Draft JSON", text[audit_start:])
 
         status, _headers, javascript = self.request(
             "GET", "/app.js", cookie=cookie
@@ -1471,32 +1507,61 @@ class CompanionServerTest(unittest.TestCase):
         status, _headers, html = self.request("GET", "/", cookie=cookie)
         self.assertEqual(200, status)
         text = html.decode("utf-8")
-        rail_start = text.index('id="operation-awareness"')
-        contract_start = text.index('id="ordinary-contract-card"')
+        repository_start = text.index('id="repository-heading"')
         task_start = text.index('id="bounded-task-card"')
+        rail_start = text.index('id="operation-awareness"')
         progress_start = text.index('id="progress-card"')
         result_start = text.index('id="result-card"')
+        research_start = text.index('id="advanced-research-mode"')
+        contract_mode_start = text.index('id="advanced-contract-mode"')
+        contract_start = text.index('id="ordinary-contract-card"')
         evidence_start = text.index('id="additional-evidence"')
         transplant_start = text.index('id="intelligence-transplant-card"')
         advanced_start = text.index('id="advanced-audit-mode"')
         bridge_start = text.index('id="bridge-heading"')
-        self.assertLess(rail_start, contract_start)
-        self.assertLess(contract_start, task_start)
-        self.assertLess(task_start, progress_start)
+        self.assertLess(repository_start, task_start)
+        self.assertLess(task_start, rail_start)
+        self.assertLess(rail_start, progress_start)
         self.assertLess(progress_start, result_start)
-        self.assertLess(result_start, evidence_start)
+        self.assertLess(result_start, research_start)
+        self.assertLess(research_start, contract_mode_start)
+        self.assertLess(contract_mode_start, contract_start)
+        self.assertLess(contract_start, evidence_start)
         self.assertLess(evidence_start, transplant_start)
         self.assertLess(transplant_start, advanced_start)
         self.assertLess(advanced_start, bridge_start)
-        main_operation = text[contract_start:evidence_start]
+        main_operation = text[repository_start:research_start]
         self.assertNotIn("Intelligence Transplant Run", main_operation)
+        self.assertNotIn('id="ordinary-contract-card"', main_operation)
+        self.assertNotIn("Import Contract", main_operation)
+        self.assertNotIn("Guided Intake", main_operation)
         evidence_tag = text[evidence_start : text.index(">", evidence_start)]
         self.assertNotIn(" open", evidence_tag)
-        advanced_tag = text[advanced_start : text.index(">", advanced_start)]
-        self.assertNotIn(" open", advanced_tag)
-        for stage in ("contract", "task", "run", "approval", "result"):
+        for details_id, content_id in (
+            ("advanced-research-mode", "advanced-research-content"),
+            ("advanced-contract-mode", "advanced-contract-content"),
+            ("advanced-audit-mode", "advanced-audit-content"),
+        ):
+            details_start = text.index(f'id="{details_id}"')
+            details_tag = text[details_start : text.index(">", details_start)]
+            self.assertNotIn(" open", details_tag)
+            content_start = text.index(f'id="{content_id}"')
+            content_tag = text[content_start : text.index(">", content_start)]
+            self.assertIn(" inert", content_tag)
+        stages = re.findall(r'data-operation-stage="([^"]+)"', text)
+        self.assertEqual(["task", "run", "approval", "result"], stages)
+        for stage in stages:
             self.assertIn(f'data-operation-stage="{stage}"', text)
             self.assertIn(f'id="operation-{stage}-status"', text)
+        self.assertNotIn('data-operation-stage="contract"', text)
+        self.assertNotIn('id="operation-contract-status"', text)
+        contract_workflow = text[contract_mode_start:evidence_start]
+        self.assertIn('id="ordinary-contract-card"', contract_workflow)
+        self.assertNotIn("Import Contract", contract_workflow)
+        audit_workflow = text[advanced_start:]
+        self.assertIn("Import Contract", audit_workflow)
+        self.assertIn("Guided Intake", audit_workflow)
+        self.assertIn('id="bridge-heading"', audit_workflow)
         for element_id in (
             "operation-current",
             "operation-happening",
@@ -1536,6 +1601,7 @@ class CompanionServerTest(unittest.TestCase):
         self.assertIn(b".operation-awareness", stylesheet)
         self.assertIn(b"position: sticky", stylesheet)
         self.assertIn(b'.operation-stage[aria-current="step"]', stylesheet)
+        self.assertIn(b"grid-template-columns: repeat(4, minmax(0, 1fr))", stylesheet)
 
     def test_ordinary_contract_endpoints_are_private_and_strict(self) -> None:
         for path in ORDINARY_CONTRACT_POST_ROUTES:
@@ -2364,11 +2430,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               replaceChildren(...children) { this.children = children; }
             }
 
-            const stages = ["contract", "task", "run", "approval", "result"];
+            const stages = ["task", "run", "approval", "result"];
             const ids = [
               "approval-heading", "approval-overlay", "bounded-task-card",
               "new-run",
-              "ordinary-contract-card", "ordinary-contract-heading",
               "operation-action", "operation-current", "operation-happening",
               "operation-next", "progress", "progress-card", "progress-heading",
               "result", "result-card", "result-execution", "result-file-change",
@@ -2385,6 +2450,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               button.dataset.operationStage = stage;
               return button;
             });
+            assert.deepStrictEqual(
+              stageButtons.map((button) => button.dataset.operationStage),
+              ["task", "run", "approval", "result"],
+            );
+            assert.strictEqual(elements.has("operation-contract-status"), false);
             let reducedMotion = false;
             const sandbox = {
               console,
@@ -2472,6 +2542,17 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             let view = sandbox.operationPresentation(idle, null, emptyTask, null, {});
             assert.strictEqual(view.currentStage, null);
             assert.strictEqual(view.statuses.run, "Not started");
+            view = sandbox.operationPresentation(
+              idle,
+              null,
+              emptyTask,
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.statuses.task, "Current");
+            assert.strictEqual(view.current, "Enter a task");
+            assert.strictEqual(view.action, "Paste or write one bounded task.");
             view = sandbox.operationPresentation(idle, fixed, manualTask, repository, {});
             assert.strictEqual(view.currentStage, "task");
             assert.strictEqual(view.statuses.contract, "Not used");
@@ -2598,12 +2679,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               repository,
               {},
             );
-            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.currentStage, "task");
             assert.strictEqual(view.statuses.contract, "Needs attention");
             assert.notStrictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(view.statuses.task, "Current");
+            assert.strictEqual(view.current, "Enter a task");
             assert.strictEqual(
               view.action,
-              "Select and fix this Contract for the current repository.",
+              "Paste or write one bounded task.",
             );
 
             const interpretationOnly = {
@@ -2618,11 +2701,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               {},
             );
             assert.strictEqual(view.statuses.contract, "Complete");
-            assert.strictEqual(view.current, "Interpretation only");
+            assert.strictEqual(view.statuses.task, "Current");
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.current, "Enter a task");
             assert.strictEqual(
               view.happening,
-              "This Contract is fixed for interpretation only. It cannot authorize a Run.",
+              "The repository is ready for one bounded task.",
             );
+            assert.strictEqual(view.action, "Paste or write one bounded task.");
 
             const unknownAuthority = {
               ...fixed,
@@ -2636,9 +2722,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               {},
             );
             assert.strictEqual(view.statuses.contract, "Complete");
+            assert.strictEqual(view.statuses.task, "Current");
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.current, "Enter a task");
             assert.strictEqual(
               view.happening,
-              "Execution authority is not established for this Contract.",
+              "The repository is ready for one bounded task.",
             );
 
             view = sandbox.operationPresentation(
@@ -2663,11 +2752,35 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               repository,
               {},
             );
-            assert.strictEqual(view.currentStage, "contract");
+            assert.strictEqual(view.currentStage, "task");
             assert.strictEqual(view.statuses.task, "Needs attention");
+            assert.strictEqual(view.current, "Prepared task needs attention");
             assert.strictEqual(
               view.action,
-              "Select and fix this Contract for the current repository.",
+              "Clear the Task field before writing a manual task.",
+            );
+            view = sandbox.operationPresentation(
+              idle,
+              interpretationOnly,
+              {
+                mode: "contract",
+                runnable: false,
+                contextInserted: true,
+                stalePreparedContext: true,
+                authorityBlocked: true,
+              },
+              repository,
+              {},
+            );
+            assert.strictEqual(view.currentStage, "task");
+            assert.strictEqual(view.statuses.task, "Needs attention");
+            assert.strictEqual(
+              view.current,
+              "Prepared context cannot authorize a Run",
+            );
+            assert.strictEqual(
+              view.action,
+              "Clear the bounded task field before writing a manual task.",
             );
 
             elements.get("task").value = "one bounded task";
@@ -2679,10 +2792,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("operation-action").textContent,
               "Wait — no action is needed.",
             );
-            assert.strictEqual(
-              elements.get("operation-contract-status").textContent,
-              "Not used",
-            );
+            assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("progress-card").classList.contains("hidden"), false);
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, 1);
 
@@ -2696,7 +2806,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.coordinateOperationTransition(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "Codex is working");
-            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
+            assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("operation-run-status").textContent, "Waiting for system");
             const progressFocusAfterWorking = elements.get("progress-heading").focusCalls.length;
             sandbox.coordinateOperationTransition(working);
@@ -2720,7 +2830,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.renderOperationAwareness(approval, fixed, repository);
             assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
             assert.strictEqual(elements.get("operation-current").textContent, "Approval required");
-            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
+            assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("operation-approval-status").textContent, "Waiting for you");
             assert.strictEqual(
               elements.get("operation-happening").textContent,
@@ -2733,7 +2843,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             sandbox.coordinateOperationTransition(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "The Run is continuing");
-            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
+            assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
             sandbox.coordinateOperationTransition(working);
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, progressFocusAfterWorking + 1);
@@ -2767,7 +2877,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "unsupported_request_method:commandExecution",
             );
             assert.strictEqual(elements.get("operation-current").textContent, "Run needs attention");
-            assert.strictEqual(elements.get("operation-contract-status").textContent, "Not used");
+            assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             sandbox.coordinateOperationTransition(terminal);
             assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
 
@@ -2781,8 +2891,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               };
               sandbox.renderOperationAwareness(manualTerminal, fixed, repository);
               assert.strictEqual(
-                elements.get("operation-contract-status").textContent,
-                "Not used",
+                elements.get("operation-task-status").textContent,
+                "Complete",
                 `manual terminal DOM: ${state}`,
               );
             }
@@ -2793,9 +2903,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               repository,
             );
             assert.strictEqual(
-              elements.get("operation-contract-status").textContent,
-              "Not used",
-              "clearing the editor must not relabel a completed manual Run",
+              elements.get("operation-task-status").textContent,
+              "Complete",
+              "clearing the editor must not relabel a completed manual Task",
             );
             elements.get("task").value = [
               sandbox.CONTRACT_TASK_PREFIX,
@@ -2811,9 +2921,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               repository,
             );
             assert.strictEqual(
-              elements.get("operation-contract-status").textContent,
-              "Not used",
-              "editing the editor must not relabel a completed manual Run",
+              elements.get("operation-task-status").textContent,
+              "Complete",
+              "editing the editor must not relabel a completed manual Task",
             );
 
             reducedMotion = true;
@@ -3094,6 +3204,15 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         html = (static_root / "index.html").read_text(encoding="utf-8")
         stylesheet = (static_root / "app.css").read_text(encoding="utf-8")
         javascript = (static_root / "app.js").read_text(encoding="utf-8")
+        shin_task = (
+            Path(__file__).resolve().parent
+            / "fixtures"
+            / "ordinary_entry_ux_v0_1"
+            / "shin_readme_task.txt"
+        ).read_text(encoding="utf-8")
+        shin_task_script = (
+            f"<script>window.__shinTask = {json.dumps(shin_task)};</script>"
+        )
         html = html.replace(
             '<link rel="stylesheet" href="/app.css">',
             f"<style>{stylesheet}</style>",
@@ -3126,6 +3245,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 },
                 repository_identity: "browser-fixture",
               };
+              const interpretationOnly = {
+                ...ordinary,
+                execution_authority: "INTERPRETATION_ONLY",
+                execution_authority_reason:
+                  "Synthetic interpretation-only browser fixture.",
+              };
               const baseRun = {
                 run_type: "bounded_task",
                 state: "idle",
@@ -3142,6 +3267,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               const workingRun = {
                 ...baseRun,
                 state: "running",
+                task_mode: "manual",
                 progress: ["Starting the private Codex runtime."],
               };
               const approvalRun = {
@@ -3168,6 +3294,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               const terminalRun = {
                 ...baseRun,
                 state: "unsupported",
+                task_mode: "manual",
                 progress: ["Finalizing the local Receipt."],
                 result: "Guarded prefix\n[Repository source content withheld.]\n日本語 🌐\nGuarded suffix",
                 file_actions: [{
@@ -3205,6 +3332,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               const failureRun = {
                 ...baseRun,
                 state: "needs_attention",
+                task_mode: "manual",
                 progress: ["Starting the private Codex runtime."],
                 result: "PRIVATE incomplete model text",
                 error: failureResponse,
@@ -3230,12 +3358,12 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   },
                 },
               };
-              function state(run) {
+              function state(run, ordinaryContract = interpretationOnly) {
                 return {
                   csrf: "browser-csrf",
                   repository: { name: "repo", path: "/tmp/repo" },
                   run,
-                  ordinary_contract: ordinary,
+                  ordinary_contract: ordinaryContract,
                   guided_intake: null,
                   manual_bridge: {
                     state: "BOUNDARY_INCOMPLETE",
@@ -3257,6 +3385,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               }
               let serverPhase = "idle";
               let reducedMotion = false;
+              window.__requests = [];
               window.__clipboardWrites = [];
               window.__clipboardFail = false;
               Object.defineProperty(navigator, "clipboard", {
@@ -3293,6 +3422,19 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 };
               }
               window.fetch = async (path, options = {}) => {
+                let body = null;
+                if (typeof options.body === "string") {
+                  try {
+                    body = JSON.parse(options.body);
+                  } catch (_error) {
+                    body = options.body;
+                  }
+                }
+                window.__requests.push({
+                  path,
+                  method: options.method || "GET",
+                  body,
+                });
                 if (path === "/api/run") {
                   serverPhase = "working";
                   return new Promise((resolve) => {
@@ -3341,14 +3483,36 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               let probePhase = "idle";
               const probe = window.setInterval(() => {
                 const current = document.getElementById("operation-current");
-                if (probePhase === "idle" && current.textContent === "Contract fixed") {
+                if (probePhase === "idle" && current.textContent === "Enter a task") {
                   const task = document.getElementById("task");
                   const advanced = document.getElementById("advanced-audit-mode");
+                  const advancedResearch = document.getElementById(
+                    "advanced-research-mode",
+                  );
+                  const advancedResearchContent = document.getElementById(
+                    "advanced-research-content",
+                  );
+                  const advancedContract = document.getElementById(
+                    "advanced-contract-mode",
+                  );
+                  const advancedContractContent = document.getElementById(
+                    "advanced-contract-content",
+                  );
+                  const ordinaryCard = document.getElementById(
+                    "ordinary-contract-card",
+                  );
                   const bridge = document.getElementById("bridge-heading").closest("section");
                   const bridgeAction = document.getElementById("bridge-start");
                   const additionalEvidence = document.getElementById("additional-evidence");
                   bridgeAction.focus();
-                  document.body.dataset.advancedClosed = String(!advanced.open);
+                  document.body.dataset.advancedClosed = String(
+                    !advancedResearch.open &&
+                    advancedResearchContent.inert &&
+                    !advancedContract.open &&
+                    advancedContractContent.inert &&
+                    !advanced.open &&
+                    document.getElementById("advanced-audit-content").inert
+                  );
                   document.body.dataset.evidenceClosed = String(!additionalEvidence.open);
                   document.body.dataset.copyHiddenEmpty = String(
                     document.getElementById("copy-response").classList.contains("hidden") &&
@@ -3364,6 +3528,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.activeElement !== bridgeAction
                   );
                   document.body.dataset.disclosureContainment = String(
+                    !advancedResearch.open &&
+                    advancedResearchContent.inert &&
+                    !advancedContract.open &&
+                    advancedContractContent.inert &&
+                    advancedContract.contains(ordinaryCard) &&
                     !advanced.open &&
                     !additionalEvidence.open &&
                     advanced.contains(bridge) &&
@@ -3371,6 +3540,17 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                       ? !bridge.checkVisibility()
                       : bridge.getClientRects().length === 0) &&
                     document.activeElement !== bridgeAction
+                  );
+                  document.body.dataset.ordinaryEntryRoute = String(
+                    current.textContent === "Enter a task" &&
+                    document.getElementById("operation-task-status").textContent ===
+                      "Current" &&
+                    document.querySelector('[data-operation-stage="contract"]') === null &&
+                    document.getElementById("operation-contract-status") === null &&
+                    advancedContract.contains(ordinaryCard) &&
+                    advancedContractContent.inert &&
+                    advanced.contains(document.getElementById("guided-intake-card")) &&
+                    document.getElementById("advanced-audit-content").inert
                   );
                   advanced.open = true;
                   syncAdvancedAuditContainment();
@@ -3389,6 +3569,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   );
                   advanced.open = false;
                   syncAdvancedAuditContainment();
+                  render(state(baseRun, ordinary));
                   document.body.dataset.contractDensity = String(
                     !document.getElementById("ordinary-contract-review").open &&
                     document.getElementById("ordinary-contract-summary").textContent ===
@@ -3397,12 +3578,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                       "Bounded execution authorized" &&
                     document.getElementById("ordinary-contract-can-run").textContent === "Yes"
                   );
-
                   const interpretationState = state(baseRun);
-                  interpretationState.ordinary_contract = {
-                    ...ordinary,
-                    execution_authority: "INTERPRETATION_ONLY",
-                  };
                   render(interpretationState);
                   task.value = "One manually written bounded task.";
                   task.dispatchEvent(new Event("input", { bubbles: true }));
@@ -3414,22 +3590,25 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.getElementById("ordinary-contract-authority-message").textContent ===
                       "This Contract is fixed for interpretation only. It cannot authorize a Run." &&
                     document.getElementById("ordinary-contract-can-run").textContent === "No" &&
+                    current.textContent === "Enter a task" &&
+                    document.getElementById("operation-task-status").textContent === "Current" &&
                     manualRunnable
                   );
 
-                  const unknownState = state(baseRun);
-                  unknownState.ordinary_contract = {
+                  const unknownState = state(baseRun, {
                     ...ordinary,
                     execution_authority: "UNKNOWN",
-                  };
+                  });
                   render(unknownState);
                   document.body.dataset.unknownAuthority = String(
                     document.getElementById("ordinary-contract-prepare-task") === null &&
                     document.getElementById("ordinary-contract-authority-message").textContent ===
-                      "Execution authority is not established for this Contract."
+                      "Execution authority is not established for this Contract." &&
+                    current.textContent === "Enter a task" &&
+                    document.getElementById("operation-task-status").textContent === "Current"
                   );
 
-                  render(state(baseRun));
+                  render(state(baseRun, ordinary));
                   document.getElementById("ordinary-contract-prepare-task").click();
                   preparedContractTaskBinding = null;
                   render(interpretationState);
@@ -3441,7 +3620,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   );
                   task.value = "";
                   task.dispatchEvent(new Event("input", { bubbles: true }));
-                  render(state(baseRun));
+                  render(state(baseRun, ordinary));
                   document.getElementById("ordinary-contract-prepare-task").click();
                   document.body.dataset.contextIncomplete = String(
                     task.value.endsWith("Task to perform:") &&
@@ -3462,7 +3641,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.getElementById("operation-action").textContent ===
                       "Select Run to start this bounded task."
                   );
-                  const switched = state(baseRun);
+                  const switched = state(baseRun, ordinary);
                   switched.repository = {
                     name: "other-repo",
                     path: "/tmp/other-repo",
@@ -3473,7 +3652,20 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.getElementById("operation-task-status").textContent ===
                       "Needs attention"
                   );
-                  render(state(baseRun));
+                  render(interpretationState);
+                  task.value = window.__shinTask;
+                  task.dispatchEvent(new Event("input", { bubbles: true }));
+                  document.body.dataset.ordinaryEntryReady = String(
+                    task.value === window.__shinTask &&
+                    !document.getElementById("run").disabled &&
+                    current.textContent === "Task ready" &&
+                    document.getElementById("operation-task-status").textContent ===
+                      "Current" &&
+                    !advancedContract.open &&
+                    advancedContractContent.inert &&
+                    !advanced.open &&
+                    document.getElementById("advanced-audit-content").inert
+                  );
                   document.getElementById("run").click();
                   document.body.dataset.startImmediate = String(
                     current.textContent === "Starting Run" &&
@@ -3486,6 +3678,24 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   return;
                 }
                 if (probePhase === "working" && current.textContent === "Codex is working") {
+                  const runRequests = window.__requests.filter(
+                    (request) => request.path === "/api/run",
+                  );
+                  const runRequest = runRequests.at(-1);
+                  const usedContractOrGuidedRoute = window.__requests.some(
+                    (request) =>
+                      request.path.startsWith("/api/ordinary-contract/") ||
+                      request.path.startsWith("/api/guided-intake/"),
+                  );
+                  document.body.dataset.ordinaryRunRequest = String(
+                    runRequests.length === 1 &&
+                    runRequest.method === "POST" &&
+                    runRequest.body?.task_mode === "manual" &&
+                    runRequest.body?.task === window.__shinTask
+                  );
+                  document.body.dataset.noContractGuidedRoute = String(
+                    !usedContractOrGuidedRoute
+                  );
                   document.body.dataset.working = String(
                     document.getElementById("operation-run-status").textContent ===
                       "Waiting for system" &&
@@ -3557,13 +3767,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   );
                   taskStage.click();
                   const lastScroll = window.__scrollRecords.at(-1);
-                  const contractStage = document.querySelector(
-                    '[data-operation-stage="contract"]'
+                  const resultStage = document.querySelector(
+                    '[data-operation-stage="result"]'
                   );
-                  contractStage.focus();
-                  contractStage.dispatchEvent(new KeyboardEvent("keydown", {
+                  resultStage.focus();
+                  resultStage.dispatchEvent(new KeyboardEvent("keydown", {
                     bubbles: true,
-                    key: "ArrowRight",
+                    key: "Home",
                   }));
                   document.body.dataset.manualNavigation = String(
                     lastScroll.id === "bounded-task-card" &&
@@ -3682,7 +3892,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
         ).strip()
         html = html.replace(
             '<script src="/app.js" defer></script>',
-            f"{browser_state}\n<script>{javascript}</script>\n{probe}",
+            (
+                f"{shin_task_script}\n{browser_state}\n"
+                f"<script>{javascript}</script>\n{probe}"
+            ),
         )
 
         with tempfile.TemporaryDirectory() as temporary:
@@ -3744,6 +3957,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "bridge-hidden",
             "bridge-not-focused",
             "disclosure-containment",
+            "ordinary-entry-route",
             "operational-open",
             "operational-not-inert",
             "operational-focused",
@@ -3754,6 +3968,9 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             "context-incomplete",
             "context-ready",
             "context-switch-blocked",
+            "ordinary-entry-ready",
+            "ordinary-run-request",
+            "no-contract-guided-route",
             "working",
             "approval",
             "approval-answered-immediate",
@@ -4482,6 +4699,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             const ids = [
               "advanced-audit-content",
               "advanced-audit-mode",
+              "advanced-contract-content",
+              "advanced-contract-mode",
+              "advanced-research-content",
+              "advanced-research-mode",
               "approval-action",
               "approval-diff",
               "approval-overlay",
@@ -4649,7 +4870,6 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "new-run",
               "operation-action",
               "operation-approval-status",
-              "operation-contract-status",
               "operation-current",
               "operation-happening",
               "operation-next",
