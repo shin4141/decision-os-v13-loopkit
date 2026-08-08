@@ -481,6 +481,13 @@ class FieldNotesCompanionController(CompanionController):
             self._require_no_active_run()
             self._clear_field_note_locked()
             self._clear_candidate_v0_2_a1_locked()
+            self._creator_live_a1_capture_config = None
+            self._creator_live_a1_completed_run_id = None
+            self._creator_live_a1_run_completion = None
+            self._creator_live_a1_completed_draft = None
+            self._creator_live_a1_failure_reason = None
+            self._creator_live_a1_direct_write_identity = None
+            self._creator_live_a1_proposal_diagnostic = None
             self._clear_creator_live_a2_locked()
             return super().start_run(task, task_mode=task_mode)
 
@@ -2037,8 +2044,8 @@ class FieldNotesCompanionController(CompanionController):
             and getattr(entrypoint, "mutation_blocked", False)
         )
 
-    @staticmethod
     def creator_live_cycle_005_public_projection(
+        self,
         snapshot: dict[str, Any],
     ) -> dict[str, Any]:
         """Redact private coordinator Runs from every HTTP projection."""
@@ -2059,7 +2066,18 @@ class FieldNotesCompanionController(CompanionController):
             "INTEGRITY_FAILURE",
         }:
             run = snapshot.get("run")
-            if isinstance(run, dict) and run.get("run_type") == "bounded_task":
+            with self._condition:
+                creator_live_owned = bool(
+                    self._creator_live_a1_capture_config is not None
+                    or self._creator_live_a2_reconnect_target is not None
+                    or self._creator_live_a1_completed_run_id is not None
+                    or self._creator_live_a2_completed_run_id is not None
+                )
+            if (
+                not creator_live_owned
+                and isinstance(run, dict)
+                and run.get("run_type") == "bounded_task"
+            ):
                 return snapshot
             snapshot["run"] = CompanionController._empty_run()
             return snapshot

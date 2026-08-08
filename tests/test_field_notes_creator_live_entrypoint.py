@@ -1045,7 +1045,29 @@ class CreatorLiveHTTPTests(unittest.TestCase):
                     )
                     self.assertEqual(run_before, projected["run"])
 
-    def test_terminal_projection_redacts_private_creator_live_run(self) -> None:
+    def test_ordinary_start_supersedes_transient_cycle_ownership(self) -> None:
+        self.controller._creator_live_a1_completed_run_id = "cycle-005-run-1"
+        self.controller._creator_live_a2_completed_run_id = "cycle-005-run-2"
+
+        snapshot = self.controller.start_run("Synthetic ordinary task.")
+        snapshot["creator_live_cycle_005"] = {
+            "cycle_key": "cycle-005",
+            "state": "FAILED",
+            "stage": "A3",
+            "failure_code": "HISTORICAL_FAILURE",
+        }
+        projected = self.controller.creator_live_cycle_005_public_projection(
+            snapshot
+        )
+
+        self.assertIsNone(self.controller._creator_live_a1_completed_run_id)
+        self.assertIsNone(self.controller._creator_live_a2_completed_run_id)
+        self.assertEqual("bounded_task", projected["run"]["run_type"])
+        self.assertEqual("running", projected["run"]["state"])
+
+    def test_terminal_projection_redacts_private_bounded_creator_live_run(
+        self,
+    ) -> None:
         cycle = {
             "cycle_key": "cycle-005",
             "state": "FAILED",
@@ -1061,7 +1083,7 @@ class CreatorLiveHTTPTests(unittest.TestCase):
         snapshot = {
             "creator_live_cycle_005": cycle,
             "run": {
-                "run_type": "creator_live_cycle_005",
+                "run_type": "bounded_task",
                 "state": "completed",
                 "task": RUN_2_TASK,
                 "result": "PRIVATE MODEL OUTPUT",
@@ -1070,6 +1092,8 @@ class CreatorLiveHTTPTests(unittest.TestCase):
                 "approval": {"hidden": "PRIVATE APPROVAL"},
             },
         }
+        self.controller._creator_live_a1_completed_run_id = "cycle-005-run-1"
+        self.controller._creator_live_a2_completed_run_id = "cycle-005-run-2"
 
         projected = self.controller.creator_live_cycle_005_public_projection(
             snapshot
