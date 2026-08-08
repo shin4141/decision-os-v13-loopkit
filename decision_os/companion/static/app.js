@@ -412,20 +412,49 @@ function operationPresentation(
 
   if (TERMINAL_RUN_STATES.includes(state)) {
     const needsAttention = ["unsupported", "needs_attention"].includes(state);
+    const approvedMutation = (run?.file_actions || []).some(
+      (fileAction) =>
+        fileAction?.status === "approved" &&
+        ["create", "modify"].includes((fileAction?.action || "").toLowerCase()),
+    );
+    const changeAppliedVerificationNeedsReview =
+      needsAttention &&
+      run?.outcomes?.execution?.state === "completed" &&
+      ["created", "modified"].includes(run?.outcomes?.file_change?.state) &&
+      ["unsupported", "needs_attention"].includes(
+        run?.outcomes?.verification?.state,
+      ) &&
+      approvedMutation;
     statuses.contract = contractStatus;
     statuses.task = "Complete";
-    statuses.run = needsAttention ? "Needs attention" : "Complete";
-    statuses.result = needsAttention ? "Needs attention" : "Current";
+    statuses.run = changeAppliedVerificationNeedsReview
+      ? "Complete"
+      : needsAttention
+        ? "Needs attention"
+        : "Complete";
+    statuses.result = changeAppliedVerificationNeedsReview
+      ? "Needs review"
+      : needsAttention
+        ? "Needs attention"
+        : "Current";
     return {
       currentStage: "result",
       statuses,
-      current: needsAttention ? "Run needs attention" : "Run finished",
-      happening: needsAttention
-        ? "The Run finished with a verification outcome that needs review."
-        : "The bounded Run reached its terminal result.",
-      action: needsAttention
-        ? "Review the Run verification outcome."
-        : "Nothing — this Run is complete.",
+      current: changeAppliedVerificationNeedsReview
+        ? "Change applied — verification needs review"
+        : needsAttention
+          ? "Run needs attention"
+          : "Run finished",
+      happening: changeAppliedVerificationNeedsReview
+        ? "The approved file change was applied, but verification did not complete."
+        : needsAttention
+          ? "The Run finished with a verification outcome that needs review."
+          : "The bounded Run reached its terminal result.",
+      action: changeAppliedVerificationNeedsReview
+        ? "Review why verification did not complete."
+        : needsAttention
+          ? "Review the Run verification outcome."
+          : "Nothing — this Run is complete.",
       next: "A new Run will not start automatically.",
     };
   }
