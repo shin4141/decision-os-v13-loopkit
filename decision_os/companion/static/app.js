@@ -34,6 +34,11 @@ let preparedContractTaskStarter = null;
 let ordinaryReviewDisclosureIdentity = null;
 let currentCodexResponse = "";
 let copyResponseResetTimer = null;
+let runObservedStartedAt = null;
+let runObservedProgressAt = null;
+let runObservedProgressSignature = null;
+let runObservedLatestProgress = "";
+let runActivityVisible = false;
 
 const MAX_BRIDGE_ARTIFACT_BYTES = 1024 * 1024;
 const CONTRACT_PREVIEW_CHARACTERS = 4096;
@@ -597,6 +602,69 @@ function renderOperationAwareness(run, ordinary, repository) {
   }
 }
 
+function formatObservedDuration(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pairs = hours > 0 ? [hours, minutes, seconds] : [minutes, seconds];
+  return pairs.map((value) => String(value).padStart(2, "0")).join(":");
+}
+
+function updateRunActivityClock(now = Date.now()) {
+  if (!runActivityVisible || runObservedStartedAt === null) {
+    return;
+  }
+  setText(
+    "run-activity-status",
+    `Working · ${formatObservedDuration(now - runObservedStartedAt)}`,
+  );
+  setText(
+    "run-activity-progress",
+    runObservedLatestProgress || "No progress message reported yet.",
+  );
+  if (runObservedProgressAt === null) {
+    setText("run-activity-age", "No progress update has been observed yet");
+    return;
+  }
+  const ageMilliseconds = Math.max(0, now - runObservedProgressAt);
+  const ageSeconds = Math.floor(ageMilliseconds / 1000);
+  setText(
+    "run-activity-age",
+    ageSeconds >= 30
+      ? `No new progress update for ${formatObservedDuration(ageMilliseconds)}`
+      : ageSeconds === 0
+        ? "Last progress update just now"
+        : `Last progress update ${ageSeconds}s ago`,
+  );
+}
+
+function renderRunActivity(run, now = Date.now()) {
+  if (run?.state !== "running") {
+    runObservedStartedAt = null;
+    runObservedProgressAt = null;
+    runObservedProgressSignature = null;
+    runObservedLatestProgress = "";
+    runActivityVisible = false;
+    setHidden("run-activity", true);
+    return;
+  }
+  if (runObservedStartedAt === null) {
+    runObservedStartedAt = now;
+  }
+  const progress = Array.isArray(run.progress) ? run.progress : [];
+  const progressSignature = JSON.stringify(progress);
+  if (progressSignature !== runObservedProgressSignature) {
+    runObservedProgressSignature = progressSignature;
+    runObservedProgressAt = now;
+    runObservedLatestProgress = progress.at(-1) || "";
+  }
+  const approval = operationApprovalResponsePending ? null : run.approval;
+  runActivityVisible = !approval;
+  setHidden("run-activity", !runActivityVisible);
+  updateRunActivityClock(now);
+}
+
 function resetOperationTransitionMemory() {
   operationApprovalResponsePending = false;
   operationApprovalWasVisible = false;
@@ -653,6 +721,11 @@ function beginOperationRun(taskMode) {
   const item = document.createElement("li");
   item.textContent = "Starting Run";
   progress.replaceChildren(item);
+  renderRunActivity({
+    state: "running",
+    progress: ["Starting Run"],
+    approval: null,
+  });
   renderOperationAwareness(
     {
       state: "running",
@@ -2186,6 +2259,7 @@ function render(state) {
   byId("task").disabled = !boundedRun || running;
 
   renderProgress(boundedRunView);
+  renderRunActivity(boundedRunView);
   renderResult(boundedRunView);
   renderApproval(
     operationApprovalResponsePending ? null : boundedRunView.approval,
@@ -2310,6 +2384,7 @@ function enterDisconnected() {
     error: null,
   };
   renderProgress(emptyRun);
+  renderRunActivity(emptyRun);
   renderResult(emptyRun);
   setText("run-state", "");
   setText("result-state", "");
@@ -3326,6 +3401,7 @@ byId("advanced-contract-mode").addEventListener(
 syncAdvancedAuditContainment();
 syncResearchWorkflowContainment();
 syncContractWorkflowContainment();
+window.setInterval?.(updateRunActivityClock, 1000);
 
 async function refresh() {
   if (!requestActive) {

@@ -780,6 +780,35 @@ dd {
   display: none;
 }
 
+.run-activity {
+  background: var(--soft-blue);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 12px;
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+}
+
+.run-activity p {
+  margin: 0;
+}
+
+.run-activity-status {
+  color: var(--accent-dark);
+  font-size: 1.05rem;
+  font-weight: 780;
+}
+
+.run-activity-progress {
+  font-weight: 650;
+  margin-top: 0.35rem !important;
+}
+
+.run-activity-age {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 0.25rem !important;
+}
+
 .visually-hidden {
   clip: rect(0 0 0 0);
   clip-path: inset(50%);

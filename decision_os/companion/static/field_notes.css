@@ -15,6 +15,10 @@
   box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 0.2);
 }
 
+#field-notes-lite.field-note-reconnect-dismissed {
+  width: auto;
+}
+
 #field-notes-lite h2,
 #field-notes-lite h3,
 #field-notes-lite p {
@@ -61,6 +65,29 @@
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+.field-note-reconnect-heading {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.field-note-reconnect-heading h2 {
+  margin-bottom: 0 !important;
+}
+
+.field-note-reconnect-close {
+  font-size: 1.35rem;
+  line-height: 1;
+  min-height: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0.35rem;
+}
+
+.field-note-reconnect-reopen {
+  min-height: 2.5rem;
 }
 
 .field-note-reconnect-values {
