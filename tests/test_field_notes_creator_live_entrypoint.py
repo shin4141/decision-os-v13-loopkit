@@ -964,9 +964,48 @@ class CreatorLiveHTTPTests(unittest.TestCase):
         self.assertIsNone(projected["run"]["runtime"])
         self.assertIsNone(projected["run"]["approval"])
 
-    def test_terminal_projection_preserves_evidence_and_restores_safe_idle(
+    def test_terminal_projection_preserves_legitimate_bounded_run_states(
         self,
     ) -> None:
+        empty = self.controller._empty_run()
+        bounded_runs = {
+            "idle": empty,
+            "running": {
+                **empty,
+                "task_mode": "manual",
+                "state": "running",
+                "progress": ["Starting one fresh bounded Run."],
+            },
+            "approval": {
+                **empty,
+                "task_mode": "manual",
+                "state": "running",
+                "approval": {
+                    "repository": "repository",
+                    "action": "Modify",
+                    "path": "one.txt",
+                    "diff": "@@ -1 +1 @@\n-one\n+two\n",
+                    "reason": "One bounded change.",
+                },
+            },
+            "result": {
+                **empty,
+                "task_mode": "manual",
+                "state": "completed",
+                "result": "Bounded completion result.",
+            },
+            "failure": {
+                **empty,
+                "task_mode": "manual",
+                "state": "needs_attention",
+                "error": "The bounded Run failed closed.",
+                "failure": {
+                    "code": "bounded_failure",
+                    "reason": "The bounded Run failed closed.",
+                    "action": "recheck_runtime",
+                },
+            },
+        }
         for terminal_state in (
             "FAILED",
             "TRACE_COMPLETE",
@@ -974,78 +1013,104 @@ class CreatorLiveHTTPTests(unittest.TestCase):
             "OPEN_UNRESUMABLE",
             "INTEGRITY_FAILURE",
         ):
-            with self.subTest(terminal_state=terminal_state):
-                cycle = {
-                    "cycle_key": "cycle-005",
-                    "state": terminal_state,
-                    "stage": "A3",
-                    "failure_code": "HISTORICAL_FAILURE",
-                    "identities": {
-                        "proof_attempt_id": "cycle-005-attempt-001",
-                        "journal_sha256": "1" * 64,
-                        "anchor_sha256": "2" * 64,
-                    },
-                }
-                cycle_before = json.loads(json.dumps(cycle, sort_keys=True))
-                snapshot = {
-                    "creator_live_cycle_005": cycle,
-                    "run": {
-                        "run_type": "bounded_task",
-                        "state": "completed",
-                        "task": RUN_2_TASK,
-                        "result": "PRIVATE MODEL OUTPUT",
-                        "field_note": {"markdown": "PRIVATE NOTE"},
-                        "runtime": {"model": "PRIVATE MODEL"},
-                        "approval": {"hidden": "PRIVATE APPROVAL"},
-                    },
-                }
-
-                projected = self.controller.creator_live_cycle_005_public_projection(
-                    snapshot
-                )
-
-                self.assertEqual(cycle_before, projected["creator_live_cycle_005"])
-                self.assertEqual(
-                    {
-                        "run_type": "bounded_task",
-                        "task_mode": None,
-                        "state": "idle",
-                        "progress": [],
-                        "result": "",
-                        "file_actions": [],
-                        "read_evidence": [],
-                        "outcomes": {
-                            "execution": {
-                                "state": "not_started",
-                                "label": "Not started",
-                            },
-                            "file_change": {
-                                "state": "none",
-                                "label": "No file was modified",
-                            },
-                            "verification": {
-                                "state": "not_started",
-                                "label": "Not started",
-                                "reason": None,
-                            },
+            for label, run in bounded_runs.items():
+                with self.subTest(terminal_state=terminal_state, run=label):
+                    cycle = {
+                        "cycle_key": "cycle-005",
+                        "state": terminal_state,
+                        "stage": "A3",
+                        "failure_code": "HISTORICAL_FAILURE",
+                        "identities": {
+                            "proof_attempt_id": "cycle-005-attempt-001",
+                            "journal_sha256": "1" * 64,
+                            "anchor_sha256": "2" * 64,
                         },
-                        "runtime": None,
-                        "receipt_delta": None,
-                        "approval": None,
-                        "error": None,
-                        "failure": None,
-                    },
-                    projected["run"],
-                )
-                encoded_run = json.dumps(projected["run"], sort_keys=True)
-                for private in (
-                    RUN_2_TASK,
-                    "PRIVATE MODEL OUTPUT",
-                    "PRIVATE NOTE",
-                    "PRIVATE MODEL",
-                    "PRIVATE APPROVAL",
-                ):
-                    self.assertNotIn(private, encoded_run)
+                    }
+                    cycle_before = json.loads(json.dumps(cycle, sort_keys=True))
+                    run_before = json.loads(json.dumps(run, sort_keys=True))
+                    snapshot = {
+                        "creator_live_cycle_005": cycle,
+                        "run": json.loads(json.dumps(run, sort_keys=True)),
+                    }
+
+                    projected = (
+                        self.controller.creator_live_cycle_005_public_projection(
+                            snapshot
+                        )
+                    )
+
+                    self.assertEqual(
+                        cycle_before,
+                        projected["creator_live_cycle_005"],
+                    )
+                    self.assertEqual(run_before, projected["run"])
+
+    def test_ordinary_start_supersedes_transient_cycle_ownership(self) -> None:
+        self.controller._creator_live_a1_completed_run_id = "cycle-005-run-1"
+        self.controller._creator_live_a2_completed_run_id = "cycle-005-run-2"
+
+        snapshot = self.controller.start_run("Synthetic ordinary task.")
+        snapshot["creator_live_cycle_005"] = {
+            "cycle_key": "cycle-005",
+            "state": "FAILED",
+            "stage": "A3",
+            "failure_code": "HISTORICAL_FAILURE",
+        }
+        projected = self.controller.creator_live_cycle_005_public_projection(
+            snapshot
+        )
+
+        self.assertIsNone(self.controller._creator_live_a1_completed_run_id)
+        self.assertIsNone(self.controller._creator_live_a2_completed_run_id)
+        self.assertEqual("bounded_task", projected["run"]["run_type"])
+        self.assertEqual("running", projected["run"]["state"])
+
+    def test_terminal_projection_redacts_private_bounded_creator_live_run(
+        self,
+    ) -> None:
+        cycle = {
+            "cycle_key": "cycle-005",
+            "state": "FAILED",
+            "stage": "A3",
+            "failure_code": "HISTORICAL_FAILURE",
+            "identities": {
+                "proof_attempt_id": "cycle-005-attempt-001",
+                "journal_sha256": "1" * 64,
+                "anchor_sha256": "2" * 64,
+            },
+        }
+        cycle_before = json.loads(json.dumps(cycle, sort_keys=True))
+        snapshot = {
+            "creator_live_cycle_005": cycle,
+            "run": {
+                "run_type": "bounded_task",
+                "state": "completed",
+                "task": RUN_2_TASK,
+                "result": "PRIVATE MODEL OUTPUT",
+                "field_note": {"markdown": "PRIVATE NOTE"},
+                "runtime": {"model": "PRIVATE MODEL"},
+                "approval": {"hidden": "PRIVATE APPROVAL"},
+            },
+        }
+        self.controller._creator_live_a1_completed_run_id = "cycle-005-run-1"
+        self.controller._creator_live_a2_completed_run_id = "cycle-005-run-2"
+
+        projected = self.controller.creator_live_cycle_005_public_projection(
+            snapshot
+        )
+
+        self.assertEqual(cycle_before, projected["creator_live_cycle_005"])
+        self.assertEqual("bounded_task", projected["run"]["run_type"])
+        self.assertEqual("idle", projected["run"]["state"])
+        encoded_run = json.dumps(projected["run"], sort_keys=True)
+        for private in (
+            RUN_2_TASK,
+            "PRIVATE MODEL OUTPUT",
+            "PRIVATE NOTE",
+            "PRIVATE MODEL",
+            "PRIVATE APPROVAL",
+        ):
+            self.assertNotIn(private, encoded_run)
 
     def test_terminal_http_state_is_allowlisted_and_duplicate_start_is_409(
         self,

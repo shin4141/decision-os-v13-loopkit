@@ -5440,6 +5440,25 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 burden: {},
               },
             };
+            const runtimeMismatchState = {
+              ...recoveredState,
+              csrf: "csrf-runtime-mismatch",
+              run: emptyRun({
+                state: "needs_attention",
+                error:
+                  "The bounded Codex Run failed closed while verifying the runtime version.",
+                failure: {
+                  code: "codex_version_verification_failed",
+                  protocol_phase: "version_verification",
+                  reason:
+                    "The bounded Codex Run failed closed while verifying the runtime version.",
+                  action: "recheck_runtime",
+                  category: "unknown",
+                  jsonrpc_code: null,
+                  protocol_method: null,
+                },
+              }),
+            };
             const switchedRepositoryState = {
               ...recoveredState,
               csrf: "csrf-switched",
@@ -7066,6 +7085,36 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 "FRESH_REPOSITORY_NAME",
               );
               assert.strictEqual(elements.get("choose-repository").disabled, false);
+
+              fetchQueue.push(() => Promise.resolve(response(recoveredState)));
+              await runNextTimer();
+              assert.strictEqual(
+                elements.get("global-error").textContent,
+                "One bounded Run is already active.",
+              );
+              assert.strictEqual(hidden("global-error"), false);
+              assert.strictEqual(elements.get("task").disabled, false);
+
+              fetchQueue.push(() => Promise.resolve(response(recoveredState)));
+              await elements.get("run").dispatch("click");
+              await settle();
+              assert.strictEqual(fetchCalls.at(-1).path, "/api/run");
+              assert.strictEqual(hidden("global-error"), true);
+
+              for (let index = 0; index < 2; index += 1) {
+                fetchQueue.push(() =>
+                  Promise.resolve(response(runtimeMismatchState)),
+                );
+                await runNextTimer();
+                assert.strictEqual(
+                  elements.get("run-error").textContent,
+                  "The bounded Codex Run failed closed while verifying the runtime version.",
+                );
+                assert.strictEqual(hidden("progress-card"), false);
+              }
+
+              fetchQueue.push(() => Promise.resolve(response(recoveredState)));
+              await runNextTimer();
 
               const oldState = deferred();
               fetchQueue.push(() => oldState.promise);

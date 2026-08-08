@@ -444,6 +444,18 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
             self.spec.codex_executable,
             codex_module.CYCLE_006_CODEX_PATH,
         )
+        self.assertEqual(
+            codex_module.ORDINARY_COMPANION_CODEX_CLI_VERSION,
+            codex_module.CYCLE_006_CODEX_CLI_VERSION,
+        )
+        self.assertEqual(
+            codex_module.ORDINARY_COMPANION_CODEX_SHA256,
+            codex_module.CYCLE_006_CODEX_SHA256,
+        )
+        self.assertEqual(
+            codex_module.ORDINARY_COMPANION_CODEX_PATH,
+            codex_module.CYCLE_006_CODEX_PATH,
+        )
         self.assertNotEqual(
             codex_module.BUNDLED_CODEX_PATH,
             codex_module.CYCLE_006_CODEX_PATH,
@@ -918,7 +930,7 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         self.assertFalse(os.path.lexists(entrypoint.spec.storage_root))
         self.assertFalse(entrypoint.mutation_blocked)
 
-    def test_production_factory_selects_preserved_runtime_only_for_cycle_006(
+    def test_production_factory_selects_forward_runtime_without_rewriting_history(
         self,
     ) -> None:
         factory_repository = create_repository(
@@ -1046,7 +1058,14 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
             account_type="chatgpt",
         )
         ordinary_cases = (
-            ("no-provider", None, None),
+            (
+                "current-ordinary",
+                None,
+                None,
+                codex_module.ORDINARY_COMPANION_CODEX_PATH,
+                codex_module.ORDINARY_COMPANION_CODEX_CLI_VERSION,
+                codex_module._Cycle006SubprocessTransport,
+            ),
             (
                 "historical-a1",
                 FieldNoteCreatorLiveA1CaptureConfig(
@@ -1054,10 +1073,27 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
                     expected_runtime_identity=historical_runtime,
                 ),
                 None,
+                codex_module.BUNDLED_CODEX_PATH,
+                codex_module.CODEX_CLI_VERSION,
+                codex_module._SubprocessTransport,
             ),
-            ("historical-a2", None, reconnect_target(historical_runtime)),
+            (
+                "historical-a2",
+                None,
+                reconnect_target(historical_runtime),
+                codex_module.BUNDLED_CODEX_PATH,
+                codex_module.CODEX_CLI_VERSION,
+                codex_module._SubprocessTransport,
+            ),
         )
-        for label, capture, target in ordinary_cases:
+        for (
+            label,
+            capture,
+            target,
+            expected_path,
+            expected_version,
+            expected_transport,
+        ) in ordinary_cases:
             with self.subTest(label=label):
                 engine = AccelerationEngine(
                     factory_repository,
@@ -1094,19 +1130,19 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
                     ordinary._reset_run()
                 self.assertEqual(
                     ordinary.executable,
-                    codex_module.BUNDLED_CODEX_PATH,
+                    expected_path,
                 )
                 self.assertEqual(
                     ordinary.expected_cli_version,
-                    codex_module.CODEX_CLI_VERSION,
+                    expected_version,
                 )
                 self.assertIs(
                     ordinary.transport_factory,
-                    codex_module._SubprocessTransport,
+                    expected_transport,
                 )
                 self.assertEqual(
                     engine.adapter_version,
-                    codex_module.CODEX_CLI_VERSION,
+                    expected_version,
                 )
 
 

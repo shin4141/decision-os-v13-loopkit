@@ -40,6 +40,14 @@ CYCLE_006_CODEX_RECOVERY_RECEIPT = CYCLE_006_CODEX_PATH.with_name(
     "recovery-receipt.json"
 )
 _CYCLE_006_CODEX_MAX_BYTES = 275_653_216
+
+# The current ordinary Companion route advances independently of the
+# historical/default identity above. Reuse the already-qualified Forward-only
+# artifact and its strict verifier without discovering or trusting a mutable
+# executable at runtime.
+ORDINARY_COMPANION_CODEX_CLI_VERSION = CYCLE_006_CODEX_CLI_VERSION
+ORDINARY_COMPANION_CODEX_SHA256 = CYCLE_006_CODEX_SHA256
+ORDINARY_COMPANION_CODEX_PATH = CYCLE_006_CODEX_PATH
 CODEX_MODEL = "gpt-5.6-sol"
 CODEX_REASONING_EFFORT = "ultra"
 CODEX_SERVICE_TIER = "priority"
