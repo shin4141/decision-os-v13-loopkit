@@ -404,6 +404,17 @@ In one bounded private-repository evidence path, fresh AI contexts selected rele
 
 This is bounded evidence, not proof across all models or repositories. Final adoption authority remains with the Decision Owner.
 
+The current separate creator-live Cycle 006 record is bounded terminal failure
+evidence: one authorized attempt reached `A1_CAPTURE` and stopped with
+`A1_CANDIDATE_INDEPENDENCE_NOT_PASS`. No Note was saved or durably captured,
+no real After was produced, and Run 2 and A2–A7 were not run.
+
+This establishes only that terminal boundary. It does not establish A1–A7
+success, Compactor success, successful reconnect or reuse, behavior
+preservation or `10/10`, generalization, superiority, or external-user
+validation. [Read the Cycle 006 terminal public
+evidence.](validation/a7_creator_live_cycle_006_terminal_public_evidence_001.md)
+
 Example prompt:
 
 > Review my repository's current operational problem. Use V13 only where relevant. Identify the Field Notes that directly apply, explain what may be worth adopting, and state what should not be imported. Do not modify files or start execution.
