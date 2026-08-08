@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -892,6 +893,14 @@ class Element {
     this.listeners.set(name, listeners);
   }
 
+  dispatch(name, event = {}) {
+    for (const callback of this.listeners.get(name) || []) callback(event);
+  }
+
+  focus() {
+    document.activeElement = this;
+  }
+
   querySelector(selector) {
     return this.querySelectorAll(selector)[0] || null;
   }
@@ -915,14 +924,26 @@ class Element {
   }
 }
 
+const documentListeners = new Map();
 const document = {
   body: new Element("body"),
+  activeElement: null,
   createElement(tagName) {
     return new Element(tagName);
   },
+  addEventListener(name, callback) {
+    const listeners = documentListeners.get(name) || [];
+    listeners.push(callback);
+    documentListeners.set(name, listeners);
+  },
+  dispatch(name, event = {}) {
+    for (const callback of documentListeners.get(name) || []) callback(event);
+  },
 };
 const fetchQueue = [];
+let fetchCount = 0;
 async function fetchMock(path, options = {}) {
+  fetchCount += 1;
   assert.strictEqual(path, "/api/state");
   assert.strictEqual(options.credentials, "same-origin");
   assert(fetchQueue.length > 0, `Unexpected fetch: ${path}`);
@@ -1038,10 +1059,181 @@ main().catch((error) => {
     receipt.querySelectorAll("dd").map((node) => node.textContent),
     ["NO_MATCH", "NONE", "NONE", "0", "NONE", "7", "2", "321", "0", "4", "run_no_match"],
   );
-  assert.strictEqual(receipt.querySelectorAll("button").length, 0);
+  const close = receipt.querySelector(".field-note-reconnect-close");
+  assert(close);
+  assert.strictEqual(close.textContent, "×");
+  assert.strictEqual(close.getAttribute("aria-label"), "Close Field Note reconnect receipt");
   assert(!receipt.textContent.includes("fn_bounded"));
 ''',
         )
+
+    def test_receipt_close_escape_and_reopen_are_presentation_only(self) -> None:
+        initial_state = self._state(self._no_match_receipt())
+        self._run_ui_harness(
+            initial_state,
+            r'''
+  const root = document.body.children[0];
+  const originalSnapshot = JSON.stringify(initialState);
+  const originalValues = root.querySelectorAll("dd").map((node) => node.textContent);
+  const close = root.querySelector(".field-note-reconnect-close");
+  assert(close);
+  close.dispatch("click");
+  assert.strictEqual(root.querySelector(".field-note-reconnect-receipt"), null);
+  assert.strictEqual(root.className, "field-note-reconnect-dismissed");
+  assert.strictEqual(root.hidden, false);
+  const reopen = root.querySelector(".field-note-reconnect-reopen");
+  assert(reopen);
+  assert.strictEqual(reopen.textContent, "View receipt");
+  assert.strictEqual(document.activeElement, reopen);
+  assert.strictEqual(fetchCount, 1, "close must not call an API");
+  assert.strictEqual(JSON.stringify(initialState), originalSnapshot);
+
+  reopen.dispatch("click");
+  const reopened = root.querySelector(".field-note-reconnect-receipt");
+  assert(reopened);
+  assert.deepStrictEqual(
+    reopened.querySelectorAll("dd").map((node) => node.textContent),
+    originalValues,
+  );
+  assert.strictEqual(
+    document.activeElement,
+    reopened.querySelector(".field-note-reconnect-close"),
+  );
+  assert.strictEqual(fetchCount, 1, "reopen must not call an API");
+
+  document.dispatch("keydown", { key: "Escape" });
+  assert.strictEqual(root.querySelector(".field-note-reconnect-receipt"), null);
+  assert(root.querySelector(".field-note-reconnect-reopen"));
+  assert.strictEqual(fetchCount, 1, "Escape must not call an API");
+  assert.strictEqual(JSON.stringify(initialState), originalSnapshot);
+''',
+        )
+
+    def test_receipt_close_escape_and_reopen_browser(self) -> None:
+        chrome_candidates = (
+            shutil.which("google-chrome"),
+            shutil.which("chromium"),
+            shutil.which("chromium-browser"),
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        )
+        chrome = next(
+            (
+                candidate
+                for candidate in chrome_candidates
+                if candidate and Path(candidate).is_file()
+            ),
+            None,
+        )
+        if chrome is None:
+            self.skipTest("Chrome or Chromium is unavailable for browser qualification.")
+
+        static_root = (
+            Path(__file__).resolve().parents[1]
+            / "decision_os"
+            / "companion"
+            / "static"
+        )
+        stylesheet = (static_root / "field_notes.css").read_text(encoding="utf-8")
+        javascript = (static_root / "field_notes.js").read_text(encoding="utf-8")
+        initial_state = self._state(self._no_match_receipt())
+        fixture_html = f'''<!doctype html>
+<html><head><meta charset="utf-8"><style>{stylesheet}</style></head>
+<body><button id="ordinary-control" type="button">Ordinary control</button>
+<script>
+window.__snapshot = {json.dumps(initial_state)};
+window.__requests = [];
+window.__nativeSetInterval = window.setInterval;
+window.setInterval = (callback, milliseconds) => {{
+  if (milliseconds === 1000) return 1;
+  return window.__nativeSetInterval(callback, milliseconds);
+}};
+window.fetch = async (path, options = {{}}) => {{
+  window.__requests.push({{ path, method: options.method || "GET" }});
+  return {{ ok: true, json: async () => structuredClone(window.__snapshot) }};
+}};
+</script>
+<script>{javascript}</script>
+<script>
+window.setInterval = window.__nativeSetInterval;
+let ordinaryClicks = 0;
+document.getElementById("ordinary-control").addEventListener(
+  "click",
+  () => ordinaryClicks += 1,
+);
+const probe = window.setInterval(() => {{
+  const root = document.getElementById("field-notes-lite");
+  const receipt = root?.querySelector(".field-note-reconnect-receipt");
+  if (!receipt) return;
+  const originalSnapshot = JSON.stringify(window.__snapshot);
+  const postCount = () => window.__requests.filter(
+    (request) => request.method === "POST",
+  ).length;
+  receipt.querySelector(".field-note-reconnect-close").click();
+  document.getElementById("ordinary-control").click();
+  document.body.dataset.close = String(
+    !root.querySelector(".field-note-reconnect-receipt") &&
+    root.querySelector(".field-note-reconnect-reopen")?.textContent === "View receipt" &&
+    ordinaryClicks === 1 &&
+    postCount() === 0 &&
+    JSON.stringify(window.__snapshot) === originalSnapshot
+  );
+  root.querySelector(".field-note-reconnect-reopen").click();
+  document.body.dataset.reopen = String(
+    root.querySelector(".field-note-reconnect-receipt")?.textContent.includes("NO_MATCH") &&
+    postCount() === 0
+  );
+  document.dispatchEvent(new KeyboardEvent("keydown", {{ key: "Escape" }}));
+  document.body.dataset.escape = String(
+    !root.querySelector(".field-note-reconnect-receipt") &&
+    Boolean(root.querySelector(".field-note-reconnect-reopen")) &&
+    postCount() === 0 &&
+    JSON.stringify(window.__snapshot) === originalSnapshot
+  );
+  document.body.dataset.qualified = "true";
+  window.clearInterval(probe);
+}}, 20);
+</script></body></html>'''
+
+        with tempfile.TemporaryDirectory() as temporary:
+            temporary_root = Path(temporary)
+            fixture = temporary_root / "field-note-receipt-browser.html"
+            fixture.write_text(fixture_html, encoding="utf-8")
+            chrome_process = subprocess.Popen(
+                [
+                    chrome,
+                    "--headless=new",
+                    "--disable-background-networking",
+                    "--disable-component-update",
+                    "--disable-gpu",
+                    "--disable-sync",
+                    "--no-default-browser-check",
+                    "--no-first-run",
+                    f"--user-data-dir={temporary_root / 'profile'}",
+                    "--virtual-time-budget=2000",
+                    "--dump-dom",
+                    fixture.as_uri(),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            chrome_finished = True
+            try:
+                chrome_stdout, chrome_stderr = chrome_process.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                chrome_finished = False
+                chrome_process.kill()
+                chrome_stdout, chrome_stderr = chrome_process.communicate()
+        if chrome_finished:
+            self.assertEqual(0, chrome_process.returncode, chrome_stderr)
+        self.assertTrue(chrome_stdout.strip(), chrome_stderr)
+        body_match = re.search(r"<body ([^>]*)>", chrome_stdout)
+        self.assertIsNotNone(body_match, "Field Note receipt browser body missing.")
+        attributes = dict(
+            re.findall(r'data-([a-z-]+)="([^"]*)"', body_match.group(1))
+        )
+        for name in ("close", "reopen", "escape", "qualified"):
+            self.assertEqual("true", attributes.get(name), name)
 
     def test_activation_unknown_with_one_injected_note_renders_exactly(self) -> None:
         self._run_ui_harness(
@@ -1130,7 +1322,10 @@ main().catch((error) => {
   for (const forbidden of ["ACTIVATED", "REUSED", "PROMOTABLE", "success", "useful", "savings"]) {
     assert(!receipt.textContent.includes(forbidden));
   }
-  assert.strictEqual(receipt.querySelectorAll("button").length, 0);
+  assert.deepStrictEqual(
+    receipt.querySelectorAll("button").map((button) => button.textContent),
+    ["×"],
+  );
 ''',
         )
 

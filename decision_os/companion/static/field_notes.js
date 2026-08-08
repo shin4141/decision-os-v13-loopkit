@@ -8,6 +8,8 @@
 
   let csrf = "";
   let lastSignature = "";
+  let lastSnapshot = null;
+  let dismissedReconnectSignature = null;
   let actionPending = false;
   const reconnectFields = [
     "state",
@@ -153,10 +155,46 @@
     }
   }
 
+  function reconnectSignature(receipt) {
+    return JSON.stringify(receipt || null);
+  }
+
+  function dismissReconnectReceipt(receipt) {
+    dismissedReconnectSignature = reconnectSignature(receipt);
+    const visibleReceipt = root.querySelector(".field-note-reconnect-receipt");
+    if (visibleReceipt) root.removeChild(visibleReceipt);
+    renderReconnectReceipt(receipt);
+    const reopen = root.querySelector(".field-note-reconnect-reopen");
+    root.className = root.children.length === 1
+      ? "field-note-reconnect-dismissed"
+      : "";
+    reopen?.focus();
+  }
+
   function renderReconnectReceipt(receipt) {
+    if (dismissedReconnectSignature === reconnectSignature(receipt)) {
+      const reopen = button("View receipt", () => {
+        dismissedReconnectSignature = null;
+        root.removeChild(reopen);
+        root.className = "";
+        renderReconnectReceipt(receipt);
+        root.querySelector(".field-note-reconnect-close")?.focus();
+      });
+      reopen.className = "field-note-reconnect-reopen";
+      root.appendChild(reopen);
+      return;
+    }
     const section = document.createElement("section");
     section.className = "field-note-reconnect-receipt";
-    section.appendChild(text("h2", "Field Note reconnect receipt"));
+    const heading = document.createElement("div");
+    heading.className = "field-note-reconnect-heading";
+    heading.appendChild(text("h2", "Field Note reconnect receipt"));
+    const close = button("×", () => dismissReconnectReceipt(receipt));
+    close.className = "field-note-reconnect-close";
+    close.setAttribute("aria-label", "Close Field Note reconnect receipt");
+    close.setAttribute("title", "Close");
+    heading.appendChild(close);
+    section.appendChild(heading);
 
     const values = document.createElement("dl");
     values.className = "field-note-reconnect-values";
@@ -171,6 +209,7 @@
   }
 
   function render(snapshot) {
+    lastSnapshot = snapshot;
     csrf = snapshot.csrf || csrf;
     const run = snapshot.run || null;
     const field = run && run.field_note;
@@ -193,9 +232,26 @@
       return;
     }
     root.hidden = false;
+    root.className =
+      !fieldVisible &&
+      reconnect &&
+      dismissedReconnectSignature === reconnectSignature(reconnect)
+        ? "field-note-reconnect-dismissed"
+        : "";
     if (fieldVisible) renderFieldNote(field);
     if (reconnect) renderReconnectReceipt(reconnect);
   }
+
+  document.addEventListener?.("keydown", (event) => {
+    if (event.key !== "Escape" || !lastSnapshot) return;
+    const reconnect = lastSnapshot.run?.field_note_reconnect;
+    if (
+      reconnect &&
+      dismissedReconnectSignature !== reconnectSignature(reconnect)
+    ) {
+      dismissReconnectReceipt(reconnect);
+    }
+  });
 
   async function refresh() {
     try {

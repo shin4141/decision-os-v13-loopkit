@@ -2436,6 +2436,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "new-run",
               "operation-action", "operation-current", "operation-happening",
               "operation-next", "progress", "progress-card", "progress-heading",
+              "run-activity", "run-activity-age", "run-activity-progress",
+              "run-activity-status",
               "result", "result-card", "result-execution", "result-file-change",
               "result-heading", "result-state", "result-verification",
               "result-verification-reason", "run", "run-state", "task", "task-heading",
@@ -2456,8 +2458,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             );
             assert.strictEqual(elements.has("operation-contract-status"), false);
             let reducedMotion = false;
+            let now = 100000;
             const sandbox = {
               console,
+              Date: { now: () => now },
               document: {
                 createElement: () => new Element(),
                 querySelectorAll: (selector) =>
@@ -2476,6 +2480,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               operationLastApprovalKey: null,
               operationStartPending: false,
               operationTerminalTransitioned: false,
+              runObservedStartedAt: null,
+              runObservedProgressAt: null,
+              runObservedProgressSignature: null,
+              runObservedLatestProgress: "",
+              runActivityVisible: false,
               CONTRACT_TASK_MARKER: "Task to perform:",
               CONTRACT_TASK_PREFIX:
                 "Perform only the bounded task defined by this fixed ordinary Contract context.",
@@ -2505,6 +2514,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 "\nthis.coordinateOperationTransition = coordinateOperationTransition;" +
                 "\nthis.moveToOperationStage = moveToOperationStage;" +
                 "\nthis.beginOperationRun = beginOperationRun;" +
+                "\nthis.renderRunActivity = renderRunActivity;" +
+                "\nthis.updateRunActivityClock = updateRunActivityClock;" +
                 "\nthis.renderResult = renderResult;",
               sandbox,
             );
@@ -2795,6 +2806,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("progress-card").classList.contains("hidden"), false);
             assert.strictEqual(elements.get("progress-heading").focusCalls.length, 1);
+            assert.strictEqual(elements.get("run-activity").classList.contains("hidden"), false);
+            assert.strictEqual(elements.get("run-activity-status").textContent, "Working · 00:00");
+            assert.strictEqual(elements.get("run-activity-progress").textContent, "Starting Run");
+            assert.strictEqual(elements.get("run-activity-age").textContent, "Last progress update just now");
 
             sandbox.operationStartPending = false;
             const working = {
@@ -2803,11 +2818,29 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               progress: ["Starting the private Codex runtime."],
               approval: null,
             };
+            now += 2000;
+            sandbox.renderRunActivity(working);
             sandbox.coordinateOperationTransition(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "Codex is working");
             assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
             assert.strictEqual(elements.get("operation-run-status").textContent, "Waiting for system");
+            assert.strictEqual(elements.get("run-activity-status").textContent, "Working · 00:02");
+            assert.strictEqual(
+              elements.get("run-activity-progress").textContent,
+              "Starting the private Codex runtime.",
+            );
+            now += 6000;
+            sandbox.renderRunActivity(working);
+            assert.strictEqual(elements.get("run-activity-status").textContent, "Working · 00:08");
+            assert.strictEqual(elements.get("run-activity-age").textContent, "Last progress update 6s ago");
+            now += 28000;
+            sandbox.updateRunActivityClock();
+            assert.strictEqual(
+              elements.get("run-activity-age").textContent,
+              "No new progress update for 00:34",
+              "unchanged polling must not create a progress event",
+            );
             const progressFocusAfterWorking = elements.get("progress-heading").focusCalls.length;
             sandbox.coordinateOperationTransition(working);
             assert.strictEqual(
@@ -2826,6 +2859,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                 path: "decision_os/companion/static/app.js",
               },
             };
+            sandbox.renderRunActivity(approval);
             sandbox.coordinateOperationTransition(approval);
             sandbox.renderOperationAwareness(approval, fixed, repository);
             assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
@@ -2836,11 +2870,17 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               elements.get("operation-happening").textContent,
               "Modify is requested for decision_os/companion/static/app.js.",
             );
+            assert.strictEqual(
+              elements.get("run-activity").classList.contains("hidden"),
+              true,
+              "approval must replace generic working presentation",
+            );
             sandbox.coordinateOperationTransition(approval);
             assert.strictEqual(elements.get("approval-heading").focusCalls.length, 1);
 
             elements.get("approval-overlay").classList.toggle("hidden", true);
             sandbox.coordinateOperationTransition(working);
+            sandbox.renderRunActivity(working);
             sandbox.renderOperationAwareness(working, fixed, repository);
             assert.strictEqual(elements.get("operation-current").textContent, "The Run is continuing");
             assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
@@ -2867,6 +2907,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             };
             sandbox.coordinateOperationTransition(terminal);
             sandbox.renderOperationAwareness(terminal, fixed, repository);
+            sandbox.renderRunActivity(terminal);
             sandbox.renderResult(terminal);
             assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
             assert.strictEqual(elements.get("result-state").textContent, "Review required");
@@ -2890,6 +2931,11 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(
               elements.get("operation-action").textContent,
               "Review why verification did not complete.",
+            );
+            assert.strictEqual(
+              elements.get("run-activity").classList.contains("hidden"),
+              true,
+              "terminal state must stop the activity presentation",
             );
 
             const mutationFailure = {
@@ -3805,7 +3851,13 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.getElementById("operation-run-status").textContent ===
                       "Waiting for system" &&
                     document.getElementById("operation-action").textContent ===
-                      "Wait — no action is needed."
+                      "Wait — no action is needed." &&
+                    !document.getElementById("run-activity").classList.contains("hidden") &&
+                    document.getElementById("run-activity-status").textContent.startsWith(
+                      "Working · ",
+                    ) &&
+                    document.getElementById("run-activity-progress").textContent ===
+                      "Starting the private Codex runtime."
                   );
                   probePhase = "approval";
                   return;
@@ -3821,7 +3873,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                       "Save this exact permission" &&
                     document.querySelector('[data-choice="deny"]').textContent.trim() ===
                       "Deny and stop this Run" &&
-                    approvalFocusBefore === 1
+                    approvalFocusBefore === 1 &&
+                    document.getElementById("run-activity").classList.contains("hidden")
                   );
                   document.querySelector('[data-choice="allow_once"]').click();
                   document.body.dataset.approvalAnsweredImmediate = String(
@@ -3854,7 +3907,8 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.getElementById("result-verification-reason").textContent ===
                       "unsupported_request_method:commandExecution" &&
                     focusCounts["approval-heading"] === 1 &&
-                    focusCounts["result-heading"] === 1
+                    focusCounts["result-heading"] === 1 &&
+                    document.getElementById("run-activity").classList.contains("hidden")
                   );
                   const readEvidence = document.getElementById("read-evidence-card");
                   const readEvidenceText = document.getElementById(
@@ -5004,6 +5058,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "result-verification",
               "result-verification-reason",
               "run",
+              "run-activity",
+              "run-activity-age",
+              "run-activity-progress",
+              "run-activity-status",
               "run-error",
               "run-receipt",
               "run-state",
@@ -5034,6 +5092,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               "guided-intake-error",
               "intelligence-transplant-card",
               "intelligence-transplant-error",
+              "run-activity",
               "ordinary-contract-clarification",
               "ordinary-contract-error",
               "ordinary-contract-meaning",
