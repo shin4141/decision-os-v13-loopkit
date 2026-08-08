@@ -2854,14 +2854,14 @@ class CompanionClientBehaviorTest(unittest.TestCase):
               task_mode: "manual",
               progress: ["Finalizing the local Receipt."],
               result: "The requested file was modified.",
-              file_actions: [{ action: "Modify", path: "app.js", status: "approved", access: "one-time" }],
+              file_actions: [{ action: "Modify", path: "README.md", status: "approved", access: "one-time" }],
               outcomes: {
                 execution: { state: "completed", label: "Codex turn completed" },
                 file_change: { state: "modified", label: "Modified successfully" },
                 verification: {
                   state: "unsupported",
                   label: "Unsupported — review required",
-                  reason: "unsupported_request_method:commandExecution",
+                  reason: "read_file_too_large",
                 },
               },
             };
@@ -2874,10 +2874,75 @@ class CompanionClientBehaviorTest(unittest.TestCase):
             assert.strictEqual(elements.get("result-verification").textContent, "Unsupported — review required");
             assert.strictEqual(
               elements.get("result-verification-reason").textContent,
-              "unsupported_request_method:commandExecution",
+              "read_file_too_large",
             );
-            assert.strictEqual(elements.get("operation-current").textContent, "Run needs attention");
+            assert.strictEqual(
+              elements.get("operation-current").textContent,
+              "Change applied — verification needs review",
+            );
             assert.strictEqual(elements.get("operation-task-status").textContent, "Complete");
+            assert.strictEqual(elements.get("operation-run-status").textContent, "Complete");
+            assert.strictEqual(elements.get("operation-result-status").textContent, "Needs review");
+            assert.strictEqual(
+              elements.get("operation-happening").textContent,
+              "The approved file change was applied, but verification did not complete.",
+            );
+            assert.strictEqual(
+              elements.get("operation-action").textContent,
+              "Review why verification did not complete.",
+            );
+
+            const mutationFailure = {
+              ...terminal,
+              state: "needs_attention",
+              outcomes: {
+                execution: { state: "failed", label: "Execution failed" },
+                file_change: { state: "failed", label: "Modification failed" },
+                verification: {
+                  state: "needs_attention",
+                  label: "Needs attention",
+                  reason: "mutation_failed",
+                },
+              },
+            };
+            let preserved = sandbox.operationPresentation(
+              mutationFailure,
+              fixed,
+              { mode: "manual" },
+              repository,
+            );
+            assert.strictEqual(preserved.current, "Run needs attention");
+            assert.strictEqual(preserved.statuses.run, "Needs attention");
+
+            preserved = sandbox.operationPresentation(
+              { ...terminal, file_actions: [], outcomes: {
+                ...terminal.outcomes,
+                file_change: { state: "none", label: "No file change" },
+              } },
+              fixed,
+              { mode: "manual" },
+              repository,
+            );
+            assert.strictEqual(preserved.current, "Run needs attention");
+
+            preserved = sandbox.operationPresentation(
+              { ...terminal, state: "denied" },
+              fixed,
+              { mode: "manual" },
+              repository,
+            );
+            assert.strictEqual(preserved.current, "Run finished");
+
+            preserved = sandbox.operationPresentation(
+              { ...terminal, state: "completed", outcomes: {
+                ...terminal.outcomes,
+                verification: { state: "verified", label: "Verified" },
+              } },
+              fixed,
+              { mode: "manual" },
+              repository,
+            );
+            assert.strictEqual(preserved.current, "Run finished");
             sandbox.coordinateOperationTransition(terminal);
             assert.strictEqual(elements.get("result-heading").focusCalls.length, 1);
 
@@ -3774,7 +3839,10 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                   probePhase = "terminal";
                   return;
                 }
-                if (probePhase === "terminal" && current.textContent === "Run needs attention") {
+                if (
+                  probePhase === "terminal" &&
+                  current.textContent === "Change applied — verification needs review"
+                ) {
                   const focusCounts = window.__focusCounts;
                   document.body.dataset.terminal = String(
                     document.getElementById("result-state").textContent ===
