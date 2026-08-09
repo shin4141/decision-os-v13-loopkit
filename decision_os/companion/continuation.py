@@ -672,7 +672,7 @@ def _validate_supervisor(value: Any, run_1: Mapping[str, Any]) -> None:
         )
 
 
-def _validate_record(value: Any) -> None:
+def _validate_stage_b_record(value: Any) -> None:
     if not isinstance(value, dict) or set(value) != _RECORD_FIELDS:
         raise ContinuationIntegrityError("Persisted Stage B fields are invalid.")
     if value["schema"] != STAGE_B_SCHEMA or value["state"] not in _RECORD_STATES:
@@ -806,8 +806,23 @@ def _validate_record(value: Any) -> None:
         raise ContinuationIntegrityError("Persisted Stage B record is too large.")
 
 
+def _validate_record(value: Any) -> None:
+    if (
+        isinstance(value, dict)
+        and value.get("schema")
+        == "decision-os-stage-c-small-compound-loop-v0.1"
+    ):
+        from decision_os.companion.small_compound_loop import (
+            validate_stage_c_record,
+        )
+
+        validate_stage_c_record(value, maximum_bytes=_MAX_RECORD_BYTES)
+        return
+    _validate_stage_b_record(value)
+
+
 class StageBContinuationStore:
-    """One strict, atomic, hash-bound reconnectable Stage B record."""
+    """One strict, atomic, hash-bound reconnectable continuation record."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -866,6 +881,26 @@ class StageBContinuationStore:
         if value is None:
             raise ContinuationIntegrityError("Persisted Stage B record is absent.")
         return value
+
+    def schema_hint(self) -> str | None:
+        """Return only a bounded display hint; never grant authority from it."""
+
+        try:
+            raw = self.path.read_bytes()
+            if len(raw) > _MAX_RECORD_BYTES:
+                return None
+            value = json.loads(raw)
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        if not isinstance(value, dict):
+            return None
+        schema = value.get("schema")
+        if schema in {
+            STAGE_B_SCHEMA,
+            "decision-os-stage-c-small-compound-loop-v0.1",
+        }:
+            return schema
+        return None
 
 
 __all__ = [
