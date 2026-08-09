@@ -48,6 +48,19 @@ from tests.test_companion_controller import ScriptedFactory, create_repository
 
 
 _DIGEST = "a4" * 32
+ROOT = Path(__file__).resolve().parents[1]
+_CREATOR_LOCAL_CYCLE_005_PROOF_ROOT = (
+    ROOT / ".decision-os/field-notes/proofs/cycle-005"
+)
+
+
+def _require_creator_local_cycle_005_proof(test: unittest.TestCase) -> None:
+    if not _CREATOR_LOCAL_CYCLE_005_PROOF_ROOT.exists():
+        test.skipTest(
+            "Creator-local Cycle 005 durable proof storage is absent; "
+            "terminal projection qualification requires the preserved local "
+            "v0.2 journal and anchor."
+        )
 
 
 class _NoopWorker:
@@ -719,6 +732,7 @@ class CreatorLiveAttemptIdentityTests(unittest.TestCase):
 
 class CreatorLiveCycle005BackwardProjectionTests(unittest.TestCase):
     def test_cycle_005_projects_only_exact_v2_durable_values(self) -> None:
+        _require_creator_local_cycle_005_proof(self)
         entrypoint = CreatorLiveCycle005Entrypoint(object())
         snapshot = entrypoint.snapshot({})
         identities = snapshot["identities"]
@@ -760,6 +774,7 @@ class CreatorLiveCycle005BackwardProjectionTests(unittest.TestCase):
         self.assertEqual("A3_EXACT_STRUCTURE_MISSING", identities["failure_code"])
 
     def test_cycle_005_never_reconstructs_from_contemporary_constants(self) -> None:
+        _require_creator_local_cycle_005_proof(self)
         spec = CreatorLiveCycle005Spec(
             run_1_task="CONTEMPORARY_PRIVATE_RUN_1_TASK",
             run_2_task="CONTEMPORARY_PRIVATE_RUN_2_TASK",
@@ -1115,6 +1130,7 @@ class CreatorLiveHTTPTests(unittest.TestCase):
     def test_terminal_http_state_is_allowlisted_and_duplicate_start_is_409(
         self,
     ) -> None:
+        _require_creator_local_cycle_005_proof(self)
         cookie, csrf = self.bootstrap()
         self.controller._creator_live_cycle_005 = CreatorLiveCycle005Entrypoint(
             self.controller
