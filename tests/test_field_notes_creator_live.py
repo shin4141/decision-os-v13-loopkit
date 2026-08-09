@@ -1977,6 +1977,12 @@ class CreatorLiveV3PersistenceTests(CreatorLiveTestCase):
         )
         journal = root / creator_live.CREATOR_LIVE_JOURNAL_FILENAME_V2
         anchor = root / creator_live.CREATOR_LIVE_ANCHOR_FILENAME_V2
+        if not root.exists():
+            self.skipTest(
+                "Creator-local Cycle 005 proof storage is absent; fixed "
+                "creator execution identity qualification requires the "
+                "preserved local proof journal and anchor."
+            )
         before = (
             hashlib.sha256(journal.read_bytes()).hexdigest(),
             hashlib.sha256(anchor.read_bytes()).hexdigest(),
