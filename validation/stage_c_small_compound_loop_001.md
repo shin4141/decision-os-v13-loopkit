@@ -376,6 +376,10 @@ count and SHA-256.
 - The proof establishes real local repository I/O and causal control behavior;
   it makes no claim that an external model saw or interpreted repository file
   content.
+- The canonical current Gate changed from the active Stage C build `GO` to the
+  completed Stage C `HOLD`. Its one-line CLI expectation and corresponding
+  protected blob identity are co-updated as one valid Forward-only closure
+  delta; test structure and production scan behavior are unchanged.
 - The numeric cap cannot be increased, silently reset, or renewed for the
   unchanged Goal. A later cap change requires a separate Forward-only decision.
 - Stage D leave-the-desk dogfood is not implemented or started.
@@ -386,16 +390,17 @@ count and SHA-256.
 
 ```text
 Focused Stage C compound loop:
-PASS
+PASS — 10 tests
 
 Stage A / Stage B / controller / process / server-client regression:
-PASS
+PASS — 80 tests / 2 expected skips, plus 38 server-client tests
 
 Canonical-state and handoff regression:
-PASS
+PASS — 132 tests after the one Chrome probe used normal GUI permissions
 
 Full repository regression:
-PASS
+PASS — 1440 tests / 15 expected environment skips from a clean detached
+worktree
 
 Repository validation:
 python -B -m decision_os check . — PASS
