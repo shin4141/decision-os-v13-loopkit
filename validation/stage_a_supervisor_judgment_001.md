@@ -137,9 +137,60 @@ The Stage A tests separately establish both required sides of the contract:
 - A correct `HOLD`, `CAP`, `BLOCK`, or Human Seat return remains successful
   governance behavior.
 
+## Verification
+
+```text
+Focused Supervisor and controller integration:
+PASS — 13 of 13
+
+Full Companion controller regression:
+PASS — 28 of 28
+
+Controller and process qualification regression:
+PASS — 44 of 44 / 2 skipped
+
+Companion server regression:
+PASS — 36 of 36
+
+Final Stage A and canonical closure regression:
+PASS — 57 of 57
+
+Repository full regression at fca8d0c:
+1413 of 1414 passed / 15 skipped / 1 timing-threshold failure
+
+Isolated rerun of the sole failure:
+PASS — 1 of 1
+
+Sole full-run failure detail:
+The pre-existing manual bridge lock-contention test measured 207.8 ms against
+a 200 ms scheduler-sensitive threshold. Its isolated rerun passed in 0.558 s
+for the complete test, and no Stage A assertion failed.
+
+Repository validation:
+python -B -m decision_os check . — PASS
+
+Patch hygiene:
+git diff --check — PASS
+```
+
+The one full-suite failure is recorded rather than upgraded to a clean full
+pass. It is an isolated timing variance in a pre-existing bounded-latency test,
+not a Stage A semantic or controller failure.
+
 ## Completion Line
 
 Stage A consumes one real bounded Run result, produces the required structured
 Supervisor judgment, distinguishes routine AI-owned continuation from a
 genuine Human Seat return, fails closed on insufficient evidence or authority,
 and never starts Run 2.
+
+```text
+Stage A Completion Line:
+PASS
+
+Remaining Missing Closure:
+Stage B — One Automatic Continuation
+
+Stage B Authorized:
+YES — as the next engineering phase under Companion Product Roadmap v0.3
+```
