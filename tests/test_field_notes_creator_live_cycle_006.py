@@ -80,6 +80,27 @@ _STALE = "7" * 64
 _RUN_CANONICAL = (
     os.environ.get("DECISION_OS_RUN_CYCLE_006_CANONICAL_TESTS") == "1"
 )
+_CREATOR_LOCAL_CYCLE_006_PROOF_ROOT = (
+    ROOT / ".decision-os/field-notes/proofs/cycle-006"
+)
+
+
+def _require_creator_local_cycle_006_identity(test: unittest.TestCase) -> None:
+    try:
+        cycle006.EXPECTED_REPOSITORY.resolve(strict=True)
+        codex_module.CYCLE_006_CODEX_PATH.resolve(strict=True)
+    except OSError:
+        test.skipTest(
+            "Creator-local Cycle 006 fixed execution identity is absent; "
+            "noncanonical-spec P0 qualification requires the preserved "
+            "repository and content-addressed runtime."
+        )
+    if not _CREATOR_LOCAL_CYCLE_006_PROOF_ROOT.exists():
+        test.skipTest(
+            "Creator-local Cycle 006 durable proof storage is absent; "
+            "noncanonical-spec P0 qualification requires the preserved local "
+            "fixed execution evidence."
+        )
 
 
 class FakeTransportFactory(AdapterFakeTransportFactory):
@@ -783,6 +804,7 @@ class Cycle006IdentityAndBoundaryTests(unittest.TestCase):
         self.assertFalse(os.path.lexists(self.spec.storage_root))
 
     def test_noncanonical_spec_and_symlinked_storage_parent_fail_p0(self) -> None:
+        _require_creator_local_cycle_006_identity(self)
         other_runtime = cycle006.CodexRuntimeIdentity(
             model="other-model",
             reasoning_effort="ultra",
