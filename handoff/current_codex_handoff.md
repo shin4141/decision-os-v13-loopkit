@@ -1,6 +1,6 @@
 # Current Codex Handoff - V13 LoopKit
 
-## Canonical Current State — V13 Leave-the-Desk Dogfood
+## Canonical Current State — V13 Leave-the-Desk Dogfood Closure
 
 ```text
 Current Layer:
@@ -22,10 +22,10 @@ F3 CLOSED
 REPAIR CLOSURE PASS
 
 Current Gate:
-GO — STAGE D LEAVE-THE-DESK DOGFOOD
+HOLD — STAGE D DOGFOOD COMPLETE / NO NEXT AUTHORITY
 
 Build Scope:
-Stage A → Stage B → Stage C COMPLETE / Stage D ACTIVE
+Stage A → Stage B → Stage C → Stage D COMPLETE
 
 Real Goal:
 Review recent Field Notes and promote at most one verified candidate into an
@@ -64,14 +64,23 @@ PASS
 Stage C Evidence:
 validation/stage_c_small_compound_loop_001.md
 
+Stage D Leave-the-Desk Dogfood:
+PASS
+
+Stage D Evidence:
+validation/stage_d_leave_the_desk_dogfood_001.md
+
+Promotion Result:
+Field Note 129 → Field Note 125 exact-artifact-identity Canon section
+
 Current Missing Closure:
-Stage D — Leave-the-Desk Dogfood
+Next post-dogfood product decision (NOT AUTHORIZED)
 
 Stage C Authorization:
 CONSUMED — COMPLETE
 
 Stage D Authorization:
-YES
+CONSUMED — COMPLETE
 
 Release Authority:
 NONE
@@ -80,8 +89,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Execute the authorized Stage D Field Note promotion dogfood under the hard
-three-Run cap. Release and publication remain unauthorized.
+None. Preserve the Stage D evidence and promoted rule. Any next product loop,
+release, or publication requires a separate new Gate.
 ```
 
 Everything below this boundary is preserved historical material as of its own
