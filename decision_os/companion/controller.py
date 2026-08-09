@@ -6,6 +6,8 @@ import asyncio
 from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import replace
+import hashlib
 import io
 import json
 import os
@@ -28,7 +30,11 @@ from decision_os.acceleration.codex_adapter import (
     canonical_failure_diagnostic,
 )
 from decision_os.acceleration.engine import AccelerationEngine
-from decision_os.acceleration.model import RepositoryIdentityError, git_root
+from decision_os.acceleration.model import (
+    RepositoryIdentityError,
+    git_root,
+    normalize_scope,
+)
 from decision_os.acceleration.store import (
     AccelerationStore,
     ActiveDefaultRecord,
@@ -44,6 +50,16 @@ from decision_os.companion.guided_intake import (
     GuidedIntakeBusyError,
     GuidedIntakeController,
     GuidedIntakeIntegrityError,
+)
+from decision_os.companion.continuation import (
+    ContinuationIntegrityError,
+    StageBContinuationRequest,
+    StageBContinuationStore,
+    automatic_task_from_persisted_run,
+    governed_stop,
+    new_record,
+    result_evidence,
+    supervisor_context_from_persisted_run,
 )
 from decision_os.companion.intelligence_transplant import (
     IntelligenceTransplantBusyError,
@@ -95,6 +111,10 @@ class LifecycleEventError(CompanionError):
 
 class SupervisorStateError(CompanionError):
     """A Supervisor judgment has no exact completed Worker result."""
+
+
+class ContinuationStateError(CompanionError):
+    """A Stage B continuation request cannot be started safely."""
 
 
 class AdapterFactory(Protocol):
@@ -213,6 +233,13 @@ class CompanionController:
         self._run: dict[str, Any] = self._empty_run()
         self._last_run_result: CodexRunResult | None = None
         self._last_supervisor_context: SupervisorContext | None = None
+        self._continuation_store = StageBContinuationStore(
+            self.state_path.with_name("stage-b-continuation.json")
+        )
+        self._compound_loop: dict[str, Any] | None = None
+        self._compound_active = False
+        self._compound_recovery_required = False
+        self._compound_allowed_mutation_paths: tuple[str, ...] = ()
         self._approval_choice: str | None = None
         self._default_handles: dict[str, str] = {}
         self._worker: threading.Thread | None = None
@@ -227,6 +254,7 @@ class CompanionController:
         self._active_intelligence_transplant_operations = 0
         self._repository_selection_active = False
         self._load_last_repository()
+        self._load_compound_loop()
         if self._repository is not None:
             self._bridge = BridgeSessionController(self._repository)
             self._guided_intake = GuidedIntakeController(self._repository)
@@ -270,6 +298,7 @@ class CompanionController:
             "runtime": None,
             "receipt_delta": None,
             "supervisor": None,
+            "continuation": None,
             "approval": None,
             "error": None,
             "failure": None,
@@ -325,6 +354,46 @@ class CompanionController:
         except Exception:
             temporary.unlink(missing_ok=True)
             raise
+
+    def _load_compound_loop(self) -> None:
+        try:
+            value = self._continuation_store.load()
+            if value is not None and self._repository is not None:
+                expected = AccelerationStore(self._repository).repository_id
+                if value["repository_id"] != expected:
+                    if value.get("state") in {
+                        "RUN_1_ACTIVE",
+                        "RUN_1_COMPLETE",
+                        "RUN_2_ACTIVE",
+                    }:
+                        raise ContinuationIntegrityError(
+                            "Persisted Stage B repository identity mismatches."
+                        )
+                    value = None
+            self._compound_loop = value
+            self._compound_recovery_required = bool(
+                value is not None
+                and value.get("state")
+                in {"RUN_1_ACTIVE", "RUN_1_COMPLETE", "RUN_2_ACTIVE"}
+            )
+        except (ContinuationIntegrityError, OSError):
+            self._compound_recovery_required = True
+            self._compound_loop = {
+                "schema": "decision-os-stage-b-continuation-view-v0.1",
+                "state": "BLOCKED_CORRUPT",
+                "gate": "BLOCK",
+                "decision_route": "EVIDENCE-RECOVERY",
+                "automatic_continuations_started": 0,
+                "automatic_continuation_limit": 1,
+                "error": (
+                    "Stage B continuation state is not reconnectable from "
+                    "verified persisted evidence."
+                ),
+                "next_bounded_action": (
+                    "Recover the exact persisted Stage B record under current "
+                    "repository authority."
+                ),
+            }
 
     @staticmethod
     def _validated_repository(candidate: Path) -> Path:
@@ -383,6 +452,7 @@ class CompanionController:
                     )
                 self._write_last_repository(repository)
                 self._repository = repository
+                self._load_compound_loop()
                 self._bridge = BridgeSessionController(repository)
                 self._guided_intake = GuidedIntakeController(repository)
                 self._ordinary_user_path = OrdinaryUserPathCoordinator(
@@ -400,6 +470,8 @@ class CompanionController:
                 self._run = self._empty_run()
                 self._last_run_result = None
                 self._last_supervisor_context = None
+                self._compound_active = False
+                self._compound_allowed_mutation_paths = ()
                 return self._snapshot_locked()
         finally:
             with self._condition:
@@ -418,7 +490,11 @@ class CompanionController:
         return self._repository
 
     def _require_no_active_run(self) -> None:
-        if self._run["state"] == "running":
+        if (
+            self._run["state"] == "running"
+            or self._compound_active
+            or self._compound_recovery_required
+        ):
             raise RunConflictError("One bounded Run is already active.")
 
     def _require_bridge(self) -> BridgeSessionController:
@@ -1152,24 +1228,11 @@ class CompanionController:
                 raise RunConflictError(
                     "An Intelligence Transplant action is already active."
                 )
-            before = self._safe_receipt(repository)
-            self._run = self._empty_run()
-            self._run["task_mode"] = task_mode
-            self._run["state"] = "running"
-            self._run["progress"] = ["Preparing the bounded task."]
-            self._run["outcomes"]["execution"] = {
-                "state": "running",
-                "label": "Codex is working",
-            }
-            self._run["outcomes"]["verification"] = {
-                "state": "pending",
-                "label": "Pending",
-                "reason": None,
-            }
-            self._run["receipt_before"] = before
-            self._last_run_result = None
-            self._last_supervisor_context = None
-            self._approval_choice = None
+            self._prepare_bounded_run_locked(
+                repository,
+                task.strip(),
+                task_mode=task_mode,
+            )
             self._worker = threading.Thread(
                 target=self._run_worker,
                 args=(repository, task.strip()),
@@ -1178,6 +1241,36 @@ class CompanionController:
             )
             self._worker.start()
             return self._snapshot_locked()
+
+    def _prepare_bounded_run_locked(
+        self,
+        repository: Path,
+        task: str,
+        *,
+        task_mode: str,
+        continuation: Mapping[str, Any] | None = None,
+    ) -> None:
+        before = self._safe_receipt(repository)
+        self._run = self._empty_run()
+        self._run["task_mode"] = task_mode
+        self._run["state"] = "running"
+        self._run["progress"] = ["Preparing the bounded task."]
+        self._run["outcomes"]["execution"] = {
+            "state": "running",
+            "label": "Codex is working",
+        }
+        self._run["outcomes"]["verification"] = {
+            "state": "pending",
+            "label": "Pending",
+            "reason": None,
+        }
+        self._run["receipt_before"] = before
+        self._run["continuation"] = (
+            None if continuation is None else deepcopy(dict(continuation))
+        )
+        self._last_run_result = None
+        self._last_supervisor_context = None
+        self._approval_choice = None
 
     def _lifecycle_sink(self, event: CodexLifecycleEvent) -> None:
         if (
@@ -1206,6 +1299,12 @@ class CompanionController:
             raise ApprovalStateError("Malformed file approval request.")
         with self._condition:
             if self._run["state"] != "running":
+                return "3"
+            if (
+                self._compound_active
+                and approval.normalized_scope
+                not in self._compound_allowed_mutation_paths
+            ):
                 return "3"
             self._run["approval"] = {
                 "repository": approval.repository_name,
@@ -1247,21 +1346,28 @@ class CompanionController:
             return self._snapshot_locked()
 
     def _run_worker(self, repository: Path, task: str) -> None:
+        try:
+            result = self._execute_worker_run(repository, task)
+            self._complete_run(repository, result)
+        except Exception as exc:
+            self._fail_run(repository, exc)
+
+    def _execute_worker_run(
+        self,
+        repository: Path,
+        task: str,
+    ) -> CodexRunResult:
         engine = AccelerationEngine(
             repository,
             adapter=ADAPTER_NAME,
             adapter_version=CODEX_CLI_VERSION,
         )
-        try:
-            adapter = self.adapter_factory(
-                engine,
-                self._approval_provider,
-                self._lifecycle_sink,
-            )
-            result = asyncio.run(adapter.run(task))
-            self._complete_run(repository, result)
-        except Exception as exc:
-            self._fail_run(repository, exc)
+        adapter = self.adapter_factory(
+            engine,
+            self._approval_provider,
+            self._lifecycle_sink,
+        )
+        return asyncio.run(adapter.run(task))
 
     @staticmethod
     def _public_runtime(result: CodexRunResult) -> dict[str, str] | None:
@@ -1550,6 +1656,360 @@ class CompanionController:
             self._run["supervisor"] = judgment.as_dict()
             self._last_supervisor_context = context
             return self._snapshot_locked()
+
+    def start_one_automatic_continuation(
+        self,
+        request: StageBContinuationRequest,
+    ) -> dict[str, Any]:
+        """Start Run 1 and permit exactly one persisted GO continuation."""
+
+        if not isinstance(request, StageBContinuationRequest):
+            raise ContinuationStateError(
+                "Stage B requires one explicit continuation authority envelope."
+            )
+        with self._condition:
+            repository = self._require_repository()
+            self._require_no_active_run()
+            if self._active_intelligence_transplant_operations:
+                raise RunConflictError(
+                    "An Intelligence Transplant action is already active."
+                )
+            persisted: dict[str, Any] | None = None
+            try:
+                normalized_paths = tuple(
+                    normalize_scope(repository, path)
+                    for path in request.allowed_mutation_paths
+                )
+                normalized_request = replace(
+                    request,
+                    allowed_mutation_paths=normalized_paths,
+                )
+                repository_identity = AccelerationStore(
+                    repository
+                ).repository_id
+                chain_id = secrets.token_hex(16)
+                persisted = self._continuation_store.save(
+                    new_record(
+                        normalized_request,
+                        chain_id=chain_id,
+                        repository_id=repository_identity,
+                    )
+                )
+                self._prepare_bounded_run_locked(
+                    repository,
+                    normalized_request.run_1_task.strip(),
+                    task_mode="contract",
+                    continuation={
+                        "schema": (
+                            "decision-os-bounded-run-continuation-v0.1"
+                        ),
+                        "chain_id": chain_id,
+                        "run_number": 1,
+                        "automatic": False,
+                        "source_run_id": None,
+                        "source_evidence_sha256": None,
+                        "task_sha256": hashlib.sha256(
+                            normalized_request.run_1_task.strip().encode(
+                                "utf-8"
+                            )
+                        ).hexdigest(),
+                    },
+                )
+            except (
+                ContinuationIntegrityError,
+                OSError,
+                RepositoryIdentityError,
+                StateIntegrityError,
+                ValueError,
+            ) as exc:
+                try:
+                    if persisted is not None:
+                        persisted["state"] = "BLOCKED"
+                        persisted["governed_stop"] = governed_stop(
+                            gate="BLOCK",
+                            route="EVIDENCE-RECOVERY",
+                            reason=(
+                                "Stage B Run 1 could not start from verified "
+                                "persisted authority and Receipt state."
+                            ),
+                            next_action=(
+                                "Recover the exact persisted Stage B authority "
+                                "and pre-Run Receipt under the unchanged Goal."
+                            ),
+                        )
+                        self._compound_loop = self._continuation_store.save(
+                            persisted
+                        )
+                except (ContinuationIntegrityError, OSError, ValueError):
+                    self._set_stage_b_blocked_view()
+                raise ContinuationStateError(
+                    "Stage B authority or persistence could not be established."
+                ) from exc
+            assert persisted is not None
+            self._compound_loop = persisted
+            self._compound_active = True
+            self._compound_recovery_required = False
+            self._compound_allowed_mutation_paths = normalized_paths
+            self._worker = threading.Thread(
+                target=self._stage_b_worker,
+                args=(repository, normalized_request),
+                name="decision-os-companion-stage-b",
+                daemon=True,
+            )
+            self._worker.start()
+            return self._snapshot_locked()
+
+    def _stage_b_worker(
+        self,
+        repository: Path,
+        request: StageBContinuationRequest,
+    ) -> None:
+        try:
+            run_1 = self._execute_worker_run(
+                repository,
+                request.run_1_task.strip(),
+            )
+            self._complete_run(repository, run_1)
+        except Exception as exc:
+            self._fail_run(repository, exc)
+            self._stage_b_execution_stop(run_number=1)
+            return
+        try:
+            task_2 = self._stage_b_prepare_run_2(repository, run_1)
+        except (
+            ContinuationIntegrityError,
+            OSError,
+            RepositoryIdentityError,
+            StateIntegrityError,
+            ValueError,
+        ):
+            self._stage_b_integrity_stop()
+            return
+        if task_2 is None:
+            return
+
+        try:
+            run_2 = self._execute_worker_run(repository, task_2)
+            self._complete_run(repository, run_2)
+        except Exception as exc:
+            self._fail_run(repository, exc)
+            self._stage_b_execution_stop(run_number=2)
+            return
+        try:
+            self._stage_b_finish_run_2(run_2)
+        except (ContinuationIntegrityError, OSError, ValueError):
+            self._stage_b_integrity_stop()
+
+    def _stage_b_prepare_run_2(
+        self,
+        repository: Path,
+        run_1: CodexRunResult,
+    ) -> str | None:
+        with self._condition:
+            record = self._continuation_store.load_required()
+            if (
+                record.get("state") != "RUN_1_ACTIVE"
+                or record.get("repository_id")
+                != AccelerationStore(repository).repository_id
+                or record.get("runs")
+                or record.get("automatic_continuations_started") != 0
+                or self._run.get("continuation", {}).get("chain_id")
+                != record.get("chain_id")
+            ):
+                raise ContinuationIntegrityError(
+                    "Run 1 does not match the persisted Stage B chain."
+                )
+            receipt_delta = self._run.get("receipt_delta")
+            if not isinstance(receipt_delta, dict):
+                raise ContinuationIntegrityError(
+                    "Run 1 Receipt delta is not established."
+                )
+            record["runs"] = [
+                result_evidence(
+                    run_1,
+                    run_number=1,
+                    receipt_delta=receipt_delta,
+                )
+            ]
+            record["state"] = "RUN_1_COMPLETE"
+            record = self._continuation_store.save(record)
+            context = supervisor_context_from_persisted_run(record)
+            judgment = judge_continuation(run_1, context)
+            self._run["supervisor"] = judgment.as_dict()
+            self._last_supervisor_context = context
+            record["supervisor"] = judgment.as_dict()
+
+            if (
+                judgment.gate.value != "GO"
+                or judgment.decision_route.value != "AI-OWNED"
+            ):
+                next_action = (
+                    judgment.next_bounded_action
+                    if judgment.next_bounded_action is not None
+                    else judgment.human_seat_return
+                )
+                assert next_action is not None
+                record["state"] = "STOPPED"
+                record["governed_stop"] = governed_stop(
+                    gate=judgment.gate.value,
+                    route=judgment.decision_route.value,
+                    reason=judgment.reason,
+                    next_action=next_action,
+                )
+                self._compound_loop = self._continuation_store.save(record)
+                self._compound_active = False
+                self._compound_allowed_mutation_paths = ()
+                self._condition.notify_all()
+                return None
+
+            record = self._continuation_store.save(record)
+            automatic_task = automatic_task_from_persisted_run(record)
+            record["automatic_task"] = automatic_task
+            record["automatic_continuations_started"] = 1
+            record["state"] = "RUN_2_ACTIVE"
+            persisted = self._continuation_store.save(record)
+            persisted_task = persisted.get("automatic_task")
+            if (
+                not isinstance(persisted_task, dict)
+                or persisted_task != automatic_task
+            ):
+                raise ContinuationIntegrityError(
+                    "Persisted automatic Task 2 read-back mismatches."
+                )
+            self._compound_loop = persisted
+            self._prepare_bounded_run_locked(
+                repository,
+                automatic_task["task"],
+                task_mode="contract",
+                continuation={
+                    "schema": "decision-os-bounded-run-continuation-v0.1",
+                    "chain_id": record["chain_id"],
+                    "run_number": 2,
+                    "automatic": True,
+                    "source_run_id": automatic_task["source_run_id"],
+                    "source_evidence_sha256": automatic_task[
+                        "source_evidence_sha256"
+                    ],
+                    "task_sha256": automatic_task["task_sha256"],
+                },
+            )
+            self._condition.notify_all()
+            return automatic_task["task"]
+
+    def _stage_b_finish_run_2(self, run_2: CodexRunResult) -> None:
+        with self._condition:
+            record = self._continuation_store.load_required()
+            if (
+                record.get("state") != "RUN_2_ACTIVE"
+                or record.get("automatic_continuations_started") != 1
+                or len(record.get("runs", [])) != 1
+                or self._run.get("continuation", {}).get("run_number") != 2
+                or self._run.get("continuation", {}).get("source_run_id")
+                != record["runs"][0]["run_id"]
+            ):
+                raise ContinuationIntegrityError(
+                    "Run 2 does not match the persisted Stage B causal chain."
+                )
+            receipt_delta = self._run.get("receipt_delta")
+            if not isinstance(receipt_delta, dict):
+                raise ContinuationIntegrityError(
+                    "Run 2 Receipt delta is not established."
+                )
+            record["runs"].append(
+                result_evidence(
+                    run_2,
+                    run_number=2,
+                    receipt_delta=receipt_delta,
+                )
+            )
+            record["state"] = "COMPLETE"
+            if (
+                not run_2.normal_terminal
+                or run_2.turn_status != "completed"
+                or run_2.status
+                not in {"NORMAL_TERMINAL", "VERIFIED_SAVE", "VERIFIED_REUSE"}
+            ):
+                record["governed_stop"] = governed_stop(
+                    gate="HOLD",
+                    route="STOP",
+                    reason=(
+                        "Automatic Worker Run 2 did not establish a clean "
+                        "normal-terminal result."
+                    ),
+                    next_action=(
+                        "Preserve both Run records and recover bounded Run 2 "
+                        "evidence under the unchanged Goal."
+                    ),
+                )
+            self._compound_loop = self._continuation_store.save(record)
+            self._compound_active = False
+            self._compound_allowed_mutation_paths = ()
+            self._condition.notify_all()
+
+    def _stage_b_execution_stop(self, *, run_number: int) -> None:
+        with self._condition:
+            try:
+                record = self._continuation_store.load_required()
+                record["state"] = "STOPPED"
+                record["governed_stop"] = governed_stop(
+                    gate="HOLD",
+                    route="EVIDENCE-RECOVERY",
+                    reason=(
+                        f"Automatic compound Worker Run {run_number} could not "
+                        "complete safely."
+                    ),
+                    next_action=(
+                        f"Recover bounded Worker Run {run_number} execution "
+                        "evidence under the unchanged persisted authority."
+                    ),
+                )
+                self._compound_loop = self._continuation_store.save(record)
+                self._compound_recovery_required = False
+            except (ContinuationIntegrityError, OSError, ValueError):
+                self._set_stage_b_blocked_view()
+            self._compound_active = False
+            self._compound_allowed_mutation_paths = ()
+            self._condition.notify_all()
+
+    def _stage_b_integrity_stop(self) -> None:
+        with self._condition:
+            try:
+                record = self._continuation_store.load_required()
+                record["state"] = "BLOCKED"
+                record["governed_stop"] = governed_stop(
+                    gate="BLOCK",
+                    route="EVIDENCE-RECOVERY",
+                    reason=(
+                        "The causal Stage B continuation proof is not intact."
+                    ),
+                    next_action=(
+                        "Recover the exact persisted Goal, authority, Run 1 "
+                        "evidence, Supervisor judgment, and Task 2 binding."
+                    ),
+                )
+                self._compound_loop = self._continuation_store.save(record)
+                self._compound_recovery_required = False
+            except (ContinuationIntegrityError, OSError, ValueError):
+                self._set_stage_b_blocked_view()
+            self._compound_active = False
+            self._compound_allowed_mutation_paths = ()
+            self._condition.notify_all()
+
+    def _set_stage_b_blocked_view(self) -> None:
+        self._compound_loop = {
+            "schema": "decision-os-stage-b-continuation-view-v0.1",
+            "state": "BLOCKED_CORRUPT",
+            "gate": "BLOCK",
+            "decision_route": "EVIDENCE-RECOVERY",
+            "automatic_continuations_started": 0,
+            "automatic_continuation_limit": 1,
+            "error": "The causal Stage B continuation proof is not intact.",
+            "next_bounded_action": (
+                "Recover the exact persisted Goal, authority, Run evidence, "
+                "Supervisor judgment, and Task 2 binding."
+            ),
+        }
+        self._compound_recovery_required = True
 
     def new_run(self) -> dict[str, Any]:
         with self._condition:
@@ -1881,6 +2341,7 @@ class CompanionController:
         return {
             "repository": repository_view,
             "run": run,
+            "compound_loop": deepcopy(self._compound_loop),
             "receipt": receipt,
             "defaults": defaults,
             "manual_bridge": bridge,

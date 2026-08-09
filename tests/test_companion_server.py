@@ -33,6 +33,7 @@ from tests.test_companion_controller import (
     create_repository,
     pro_design_metadata,
 )
+from tests.test_companion_continuation import stage_b_request
 
 
 BRIDGE_POST_ROUTES = (
@@ -2155,6 +2156,57 @@ class CompanionServerTest(unittest.TestCase):
             origin=self.server.origin,
         )
         self.assertEqual(200, status)
+
+    def test_authenticated_stage_b_route_runs_exactly_one_continuation(
+        self,
+    ) -> None:
+        self.controller.adapter_factory = ScriptedFactory(
+            "read_only",
+            "read_only",
+        )
+        cookie, csrf = self.bootstrap()
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/compound-run",
+            body={"request": stage_b_request().as_dict()},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+
+        deadline = time.monotonic() + 5
+        snapshot = None
+        while time.monotonic() < deadline:
+            status, _headers, raw = self.request(
+                "GET",
+                "/api/state",
+                cookie=cookie,
+            )
+            self.assertEqual(200, status)
+            snapshot = json.loads(raw)
+            if snapshot["compound_loop"]["state"] == "COMPLETE":
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(snapshot)
+        self.assertEqual("COMPLETE", snapshot["compound_loop"]["state"])
+        self.assertEqual(2, len(snapshot["compound_loop"]["runs"]))
+        self.assertEqual(
+            1,
+            snapshot["compound_loop"]["automatic_continuations_started"],
+        )
+        self.assertEqual(2, snapshot["run"]["continuation"]["run_number"])
+
+        status, _headers, _raw = self.request(
+            "POST",
+            "/api/compound-run",
+            body={"request": stage_b_request().as_dict(), "extra": True},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(400, status)
 
     def test_public_state_exposes_opaque_default_handle_only(self) -> None:
         self.server.close()

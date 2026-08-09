@@ -23,6 +23,10 @@ from .controller import (
     RepositorySelectionError,
     RunConflictError,
 )
+from .continuation import (
+    ContinuationIntegrityError,
+    StageBContinuationRequest,
+)
 from .guided_intake import (
     GuidedIntakeBusyError,
     GuidedIntakeConflictError,
@@ -80,6 +84,7 @@ _ORDINARY_CONTRACT_POST_ROUTES = frozenset(
         "/api/ordinary-contract/error/dismiss",
     }
 )
+_STAGE_B_POST_ROUTES = frozenset({"/api/compound-run"})
 _STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
@@ -508,6 +513,7 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
             strict=(
                 path in _INTELLIGENCE_TRANSPLANT_POST_ROUTES
                 or path in _ORDINARY_CONTRACT_POST_ROUTES
+                or path in _STAGE_B_POST_ROUTES
             ),
             ordinary=path in _ORDINARY_CONTRACT_POST_ROUTES,
         )
@@ -528,6 +534,27 @@ class CompanionRequestHandler(BaseHTTPRequestHandler):
                     )
                 else:
                     snapshot = self.server.controller.start_run(value["task"])
+            elif path == "/api/compound-run":
+                if set(value) != {"request"} or not isinstance(
+                    value["request"],
+                    dict,
+                ):
+                    raise CompanionError(
+                        "Stage B continuation request fields are invalid."
+                    )
+                try:
+                    request = StageBContinuationRequest.from_dict(
+                        value["request"]
+                    )
+                except ContinuationIntegrityError as exc:
+                    raise CompanionError(
+                        "Stage B continuation request fields are invalid."
+                    ) from exc
+                snapshot = (
+                    self.server.controller.start_one_automatic_continuation(
+                        request
+                    )
+                )
             elif path == "/api/approval":
                 if set(value) != {"choice"}:
                     raise CompanionError("Approval request fields are invalid.")
