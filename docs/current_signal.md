@@ -1,10 +1,16 @@
 # Current Signal
 
-## Canonical Current State — V13 Post-Audit Product Gate
+## Canonical Current State — V13 Compound Loop Build
 
 ```text
 Current Layer:
-V13 — Post-Audit Product Gate
+V13 — Compound Loop Build
+
+Product Roadmap:
+Companion Product Roadmap v0.3 FIXED
+
+Product Direction:
+Human-Seat-Preserving Autonomous Compounding
 
 V12 State:
 PASS
@@ -16,20 +22,25 @@ F3 CLOSED
 REPAIR CLOSURE PASS
 
 Current Gate:
-HOLD — PRODUCT VALUE GAP
+GO — BOUNDED COMPOUND LOOP PROOF
+
+Build Scope:
+Stage A → Stage B → Stage C in order
+
+First Live Cap:
+3 total bounded Runs
 
 Repository:
 shin4141/decision-os-v13-loopkit
 
 Active Branch:
-main after repair merge
+main
 
 Pre-Public Technical Repair:
 COMPLETE
 
-Established Product Gap:
-The current Companion can safely execute one bounded Run, but Shin has not
-established that it provides enough value to prefer using it over direct Codex.
+Public Core / Private Operator Boundary:
+FIXED
 
 Release Authority:
 NONE
@@ -38,8 +49,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Evaluate the minimum Compound Loop capability required for V13 to become
-meaningfully preferable to direct Codex for its intended use.
+Implement and verify Stage A Supervisor Judgment, then continue to Stage B
+and Stage C only after each prior Completion Line is satisfied.
 ```
 
 Everything below this boundary is preserved historical material as of its own
