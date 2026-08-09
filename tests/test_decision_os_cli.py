@@ -174,7 +174,7 @@ class DecisionOsCliTest(unittest.TestCase):
 
         self.assertEqual(0, completed.returncode)
         payload = decoded(completed)
-        self.assertEqual("PASS", payload["v12_state"])
+        self.assertEqual("BLOCK", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         required = next(
             item

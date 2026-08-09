@@ -1,49 +1,39 @@
 # Current Signal
 
-## Canonical Current State — V13-S5-FR-001 Pre-Merge Public-Release Scrub
+## Canonical Current State — V13 Pre-Public Blind Audit Repair
 
 ```text
 Current Layer:
-V13 Stage 5 — Pre-Merge Public-Release Cleanup
+V13 — Pre-Public Blind Audit Repair
 
 V12 State:
-PASS
+BLOCK — CURRENT CANONICAL RESTART STATE WAS STALE
+
+Independent Audit Result:
+FAIL — CURRENT CANONICAL RESTART STATE WAS STALE
 
 Current Gate:
-HOLD — GENERALIZED_TRANSPLANT_NOT_ESTABLISHED / NO MERGE AUTHORITY
+HOLD — PRE-PUBLIC AUDIT REPAIRS REQUIRED
 
 Repository:
 shin4141/decision-os-v13-loopkit
 
-Formal Run Implementation/Repair Evidence HEAD:
-5f3a2673d0d34e6498be29b977450c286e1608c8
-
 Active Branch:
-feat/v13-s5-fr-001-public-claim-guard-v0-1
+main after repair merge
 
 PR #48:
-OPEN / DRAFT / UNMERGED
+MERGED
 
-Current Native State:
-ACTIVE / REUSED / HOLD
+Established Blockers:
+- stale canonical restart state
+- README role-contract hash mismatch
 
-Missing Evidence:
-GENERALIZED_TRANSPLANT_NOT_ESTABLISHED
-
-Authority:
-MANUAL OWNER ATTESTED
-
-Provenance:
-NON-CRYPTOGRAPHIC / CRYPTOGRAPHIC IDENTITY NOT ESTABLISHED
-
-Cleanup Boundary:
-The containing commit is a forward-only public presentation scrub. It does not
-replace or reinterpret the Formal Run implementation/repair evidence HEAD,
-native E1–E5 identities, Lower Run lineage, sidecar, completion receipt, event
-count, chain head, or anchor.
+Material Closure In This Repair:
+- creator-local tests must not fail a normal third-party clone merely because
+  creator proof storage is absent
 
 Merge Authority:
-NONE
+Decision Owner only
 
 Release Authority:
 NONE
@@ -52,8 +42,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Keep PR #48 Draft and obtain a separate Decision Owner merge decision after
-the cleanup receipt and PR body are reconciled.
+Complete F1–F3, establish a green fresh-clone test result, then perform a new
+independent pre-public review against the successor commit.
 ```
 
 Everything below this boundary is preserved historical material as of its own

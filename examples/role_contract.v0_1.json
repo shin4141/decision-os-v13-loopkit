@@ -2,7 +2,7 @@
   "contract_identity": {
     "contract_id": "stage4-example-builder-001",
     "version": "0.1",
-    "contract_hash": "2a12469766b09ba4b4593b90c77990b83f251ad9044488312103d15607276267"
+    "contract_hash": "62edabea259a6d53710b3d8773ba22b692c631ed7c89b6a81dfa196f97afa502"
   },
   "assignment": {
     "task_id": "stage4-example-task-001",
@@ -48,7 +48,7 @@
       "README.md"
     ],
     "artifact_hashes": {
-      "README.md": "decc254e317b693604084ecdc1e9bfe034b8d6b69b32a70404fc63d64055ad39"
+      "README.md": "37e0a17c9c0238f125d365b2fe8d80fc31463de0397e9b32a7bae472af260d83"
     },
     "as_of": "2026-07-29T00:00:00Z"
   },
