@@ -311,6 +311,20 @@ class CompanionSupervisorTest(unittest.TestCase):
             judgment.human_seat_return,
         )
 
+    def test_exceeded_run_cap_still_returns_structured_cap_decision(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(completed_runs=4),
+        )
+
+        self.assertEqual(SupervisorGate.CAP, judgment.gate)
+        self.assertEqual(DecisionRoute.HUMAN_SEAT, judgment.decision_route)
+        self.assertIn("4/3 total Runs", judgment.reason)
+        self.assertEqual(
+            "Decide whether to extend the 3-Run cap for the unchanged Goal.",
+            judgment.human_seat_return,
+        )
+
     def test_completed_goal_stops_without_second_run_or_human_return(self) -> None:
         judgment = judge_continuation(
             completed_result(),

@@ -108,8 +108,6 @@ class SupervisorContext:
             or not 1 <= self.max_runs <= FIRST_LIVE_MAX_RUNS
         ):
             raise ValueError("The first live Run cap must be between 1 and 3.")
-        if self.completed_runs > self.max_runs:
-            raise ValueError("Completed Runs cannot exceed the authorized cap.")
         if (
             not isinstance(self.evidence_refs, tuple)
             or any(

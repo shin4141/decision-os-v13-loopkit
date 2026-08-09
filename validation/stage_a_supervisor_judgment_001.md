@@ -141,7 +141,7 @@ The Stage A tests separately establish both required sides of the contract:
 
 ```text
 Focused Supervisor and controller integration:
-PASS — 13 of 13
+PASS — 14 of 14
 
 Full Companion controller regression:
 PASS — 28 of 28
@@ -153,7 +153,7 @@ Companion server regression:
 PASS — 36 of 36
 
 Final Stage A and canonical closure regression:
-PASS — 57 of 57
+PASS — 58 of 58
 
 Repository full regression at fca8d0c:
 1413 of 1414 passed / 15 skipped / 1 timing-threshold failure

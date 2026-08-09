@@ -1558,7 +1558,7 @@ class CompanionController:
             if self._active_intelligence_transplant_operations:
                 raise RunConflictError(
                     "An Intelligence Transplant action is already active."
-            )
+                )
             self._run = self._empty_run()
             self._last_run_result = None
             self._last_supervisor_context = None
