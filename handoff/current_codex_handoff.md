@@ -22,10 +22,10 @@ F3 CLOSED
 REPAIR CLOSURE PASS
 
 Current Gate:
-GO — BOUNDED COMPOUND LOOP PROOF
+HOLD — STAGE C COMPLETE / STAGE D NOT AUTHORIZED
 
 Build Scope:
-Stage A → Stage B → Stage C in order
+Stage A → Stage B → Stage C COMPLETE
 
 First Live Cap:
 3 total bounded Runs
@@ -54,11 +54,20 @@ PASS
 Stage B Evidence:
 validation/stage_b_one_automatic_continuation_001.md
 
+Stage C Small Compound Loop:
+PASS
+
+Stage C Evidence:
+validation/stage_c_small_compound_loop_001.md
+
 Current Missing Closure:
-Stage C — Small Compound Loop
+Stage D — Leave-the-Desk Dogfood (NOT AUTHORIZED)
 
 Stage C Authorization:
-YES — NEXT ENGINEERING PHASE
+CONSUMED — COMPLETE
+
+Stage D Authorization:
+NO
 
 Release Authority:
 NONE
@@ -67,8 +76,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Implement and verify Stage C — Small Compound Loop under the unchanged
-three-Run cap. Stage D, release, and publication remain unauthorized.
+None. Preserve the Stage C terminal evidence and hard three-Run cap. Stage D,
+release, and publication require a separate new Gate.
 ```
 
 Everything below this boundary is preserved historical material as of its own

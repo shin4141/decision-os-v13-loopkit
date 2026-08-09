@@ -7,6 +7,10 @@ from .continuation import (
 )
 from .controller import CompanionController, ContinuationStateError
 from .server import CompanionServer
+from .small_compound_loop import (
+    StageCCompletionRequirement,
+    StageCContinuationRequest,
+)
 from .supervisor import (
     ContractFact,
     DecisionRoute,
@@ -28,6 +32,8 @@ __all__ = [
     "SupervisorGate",
     "SupervisorJudgment",
     "StageBContinuationRequest",
+    "StageCCompletionRequirement",
+    "StageCContinuationRequest",
     "judge_continuation",
 ]
 __version__ = "0.1.0"

@@ -34,6 +34,7 @@ from tests.test_companion_controller import (
     pro_design_metadata,
 )
 from tests.test_companion_continuation import stage_b_request
+from tests.test_companion_small_compound_loop import stage_c_request
 
 
 BRIDGE_POST_ROUTES = (
@@ -2202,6 +2203,55 @@ class CompanionServerTest(unittest.TestCase):
             "POST",
             "/api/compound-run",
             body={"request": stage_b_request().as_dict(), "extra": True},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(400, status)
+
+    def test_authenticated_stage_c_route_enforces_three_run_cap(self) -> None:
+        self.controller.adapter_factory = ScriptedFactory(
+            "read_only",
+            "read_only",
+            "read_only",
+            "read_only",
+        )
+        cookie, csrf = self.bootstrap()
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/compound-loop",
+            body={"request": stage_c_request().as_dict()},
+            cookie=cookie,
+            csrf=csrf,
+            origin=self.server.origin,
+        )
+        self.assertEqual(200, status, raw.decode("utf-8", errors="replace"))
+
+        deadline = time.monotonic() + 5
+        snapshot = None
+        while time.monotonic() < deadline:
+            status, _headers, raw = self.request(
+                "GET",
+                "/api/state",
+                cookie=cookie,
+            )
+            self.assertEqual(200, status)
+            snapshot = json.loads(raw)
+            if snapshot["compound_loop"]["state"] == "TERMINAL":
+                break
+            time.sleep(0.01)
+        self.assertIsNotNone(snapshot)
+        self.assertEqual("CAP", snapshot["compound_loop"]["outcome"])
+        self.assertEqual(3, len(snapshot["compound_loop"]["runs"]))
+        self.assertEqual(2, len(snapshot["compound_loop"]["automatic_tasks"]))
+        self.assertEqual(3, snapshot["run"]["continuation"]["run_number"])
+        self.assertEqual(1, len(self.controller.adapter_factory.modes))
+
+        status, _headers, _raw = self.request(
+            "POST",
+            "/api/compound-loop",
+            body={"request": stage_c_request().as_dict(), "extra": True},
             cookie=cookie,
             csrf=csrf,
             origin=self.server.origin,
