@@ -1,19 +1,22 @@
 # Current Signal
 
-## Canonical Current State — V13 Pre-Public Blind Audit Repair
+## Canonical Current State — V13 Post-Audit Product Gate
 
 ```text
 Current Layer:
-V13 — Pre-Public Blind Audit Repair
+V13 — Post-Audit Product Gate
 
 V12 State:
-BLOCK — CURRENT CANONICAL RESTART STATE WAS STALE
+PASS
 
-Independent Audit Result:
-FAIL — CURRENT CANONICAL RESTART STATE WAS STALE
+Independent Audit Repair:
+F1 CLOSED
+F2 CLOSED
+F3 CLOSED
+REPAIR CLOSURE PASS
 
 Current Gate:
-HOLD — PRE-PUBLIC AUDIT REPAIRS REQUIRED
+HOLD — PRODUCT VALUE GAP
 
 Repository:
 shin4141/decision-os-v13-loopkit
@@ -21,19 +24,12 @@ shin4141/decision-os-v13-loopkit
 Active Branch:
 main after repair merge
 
-PR #48:
-MERGED
+Pre-Public Technical Repair:
+COMPLETE
 
-Established Blockers:
-- stale canonical restart state
-- README role-contract hash mismatch
-
-Material Closure In This Repair:
-- creator-local tests must not fail a normal third-party clone merely because
-  creator proof storage is absent
-
-Merge Authority:
-Decision Owner only
+Established Product Gap:
+The current Companion can safely execute one bounded Run, but Shin has not
+established that it provides enough value to prefer using it over direct Codex.
 
 Release Authority:
 NONE
@@ -42,8 +38,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Complete F1–F3, establish a green fresh-clone test result, then perform a new
-independent pre-public review against the successor commit.
+Evaluate the minimum Compound Loop capability required for V13 to become
+meaningfully preferable to direct Codex for its intended use.
 ```
 
 Everything below this boundary is preserved historical material as of its own
