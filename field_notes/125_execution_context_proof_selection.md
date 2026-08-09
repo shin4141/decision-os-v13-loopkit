@@ -190,6 +190,28 @@ Artifact existence alone never grants execution authority.
 
 This rule does not authorize broad path guessing, fuzzy matching as authority, cross-repository substitution, or version substitution.
 
+### Exact Artifact Identity and Mutable Paths
+
+When exact artifact identity matters, do not treat a mutable path or an
+observed version as durable identity. Establish evidence proportional to the
+claim, such as a preserved or currently qualified artifact, content identity
+or SHA-256 where applicable, an exact version probe, and a recoverable or
+reinstallable source when rerun identity is required.
+
+If historical artifact equality cannot be established, do not silently
+substitute the current occupant of a path or another version. Use a new
+Forward-only As-of qualification and preserve the historical identity as
+`UNKNOWN` where its bytes or custody cannot be recovered.
+
+A path can contribute to identity when an authoritative custody system makes
+it immutable or separately binds it to exact content. This rule is therefore
+not a universal hashing requirement for ordinary files or executable use where
+exact artifact identity is not part of the claim.
+
+Origin and promotion evidence:
+[`Field Note 129`](129_mutable_path_is_not_artifact_identity.md) and
+[`Stage D dogfood 001`](../validation/stage_d_leave_the_desk_dogfood_001.md).
+
 ### Transport Clarification
 
 Transport failure is not evidence failure.

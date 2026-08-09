@@ -2,7 +2,7 @@
 
 Date: 2026-08-07
 
-Lifecycle status: Verification pending
+Lifecycle status: Canon-promoted
 
 Primary layer: V13
 
@@ -10,7 +10,44 @@ Supporting layers: V9 / V11 / V12 / V14
 
 Evidence class: Pre-Cycle operational incident / local verification completed
 
-Canon promotion: HOLD
+Canon promotion: PASS — `field_notes/125_execution_context_proof_selection.md`, Exact Artifact Identity and Mutable Paths
+
+## Lifecycle Closure — 2026-08-09
+
+The verified residue was promoted into the already-routed Canon operating
+reference `field_notes/125_execution_context_proof_selection.md`, section
+Exact Artifact Identity and Mutable Paths. Root `AGENTS.md` remains the fixed
+Cycle candidate artifact and continues to route detailed continuation-proof
+selection to Field Note 125.
+
+Promoted residue:
+
+> When exact artifact identity matters, a mutable path or observed version is
+> not durable identity. Use evidence proportional to the claim, and use a new
+> Forward-only As-of qualification when historical artifact equality cannot be
+> established.
+
+The re-evaluation trigger was satisfied by the preserved content-addressed
+runtime, exact binary SHA-256 and version probe, recovery receipt, and bounded
+Forward-only compatibility assessment recorded in
+`validation/a7_creator_live_whole_flow_reentry_charter_delta_v1_1.md`. Stage D
+independently rechecked the preserved artifact's type, size, mode, SHA-256,
+version output, and receipt.
+
+Countercondition: a path can contribute to identity when an authoritative
+custody system makes that path immutable or separately binds it to exact
+content; ordinary use that makes no exact-byte or rerun-identity claim does not
+require this control.
+
+Rollback or downgrade: if the custody evidence, exact identity checks, or
+bounded compatibility assessment is shown invalid or materially overbroad,
+remove or narrow the promoted paragraph through a Forward-only change and
+return this Note to `Verification pending`, preserving this closure and all
+historical incident evidence.
+
+All later `Verification pending` and `HOLD` wording below is the preserved
+pre-promotion disposition as of the original incident. It remains historical
+evidence and does not override this current lifecycle status.
 
 ## Classification
 
