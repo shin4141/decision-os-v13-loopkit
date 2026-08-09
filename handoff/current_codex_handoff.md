@@ -1,3 +1,66 @@
+# Current Codex Handoff — Compound Evidence Meter v0.1 Closure
+
+## Canonical Current State — V13 Post-Dogfood Measurement
+
+```text
+Current Layer:
+V13 — Post-Dogfood Measurement
+
+V12 State:
+PASS
+
+Current Gate:
+HOLD — COMPOUND EVIDENCE METER V0.1 COMPLETE / NO NEXT AUTHORITY
+
+Canonical Starting Main:
+084a1779792abd959c48a86f0ad183231c03526f
+
+Active Branch:
+main
+
+Completed Scope:
+Compound Evidence Meter v0.1 only
+
+Meter Ledger:
+evidence/compound_evidence_meter_v0_1.jsonl
+
+Meter Specification and Snapshot:
+docs/compound_evidence_meter_v0_1.md
+
+Verified Baseline:
+3 bounded Goals / 8 Worker Runs / 5 causal continuations /
+1 structure extracted / 1 verified reuse / 1 Canon promotion /
+0 Human Seat returns / 0 paired efficiency comparisons
+
+Unknown Baseline:
+Operational Assists — NOT BACKFILLED
+
+Measured Resource Deltas:
+UNKNOWN — no admitted paired efficiency comparison
+
+Current Missing Closure:
+None for v0.1. A future comparison requires a separately authorized real task.
+
+Next Authorized Action:
+None. Preserve the completed meter. The next measurement trigger is the first
+suitable real task with comparable autonomous and bounded-assist routes, only
+after that task is independently authorized.
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Completion Line:
+PASS — every derived count is traceable to an exact source identity and no
+inferred efficiency metric entered the meter.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff - V13 LoopKit
 
 ## Canonical Current State — V13 Leave-the-Desk Dogfood Closure
