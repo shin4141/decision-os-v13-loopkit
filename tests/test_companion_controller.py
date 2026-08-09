@@ -39,6 +39,7 @@ from decision_os.companion.controller import (
     CompanionStateError,
     RepositorySelectionError,
     RunConflictError,
+    SupervisorStateError,
 )
 from decision_os.companion.guided_intake import (
     GuidedIntakeBusyError,
@@ -49,6 +50,7 @@ from decision_os.companion.intelligence_transplant import (
     IntelligenceTransplantValidationError,
 )
 from decision_os.companion.manual_bridge import ManualBridgeIntegrityError
+from decision_os.companion.supervisor import ContractFact, SupervisorContext
 
 
 EVIDENCE_COMMIT = "970ae5e24e59dada54e1b829229360d9945a0910"
@@ -57,6 +59,34 @@ EVIDENCE_SHA256 = (
     "847c344508763a83d0368f0d1336f07a0022598a9db07078f7dfc99e918f7aab"
 )
 PRODUCT_AS_OF_COMMIT = "63eb260a94595298e2b07b476f7f9d8572c9ef09"
+
+
+def routine_supervisor_context() -> SupervisorContext:
+    satisfied = ContractFact.SATISFIED
+    return SupervisorContext(
+        goal="Inspect one bounded repository surface and close routine follow-up.",
+        established_state="The exact read completed with content-free evidence.",
+        remaining_gap="Verify the already-read identity against the fixed source.",
+        next_bounded_action="Verify the recorded hash without mutation.",
+        evidence_recovery_action="Recover the missing bounded read evidence.",
+        irreducible_human_decision=None,
+        evidence_refs=("controller:read-evidence",),
+        completed_runs=1,
+        max_runs=3,
+        goal_complete=ContractFact.NOT_SATISFIED,
+        continuation_proof_sufficient=satisfied,
+        goal_unchanged=satisfied,
+        authority_sufficient=satisfied,
+        blast_radius_bounded=satisfied,
+        action_reversible_or_authorized=satisfied,
+        evidence_sufficient=satisfied,
+        no_material_human_preference_required=satisfied,
+        no_external_or_irreversible_commitment=satisfied,
+        cost_boundary_intact=satisfied,
+        protected_object_and_ownership_unchanged=satisfied,
+        no_authoritative_conflict=satisfied,
+        no_truly_unanswered_human_question=satisfied,
+    )
 
 
 def intelligence_transplant_projection(
@@ -687,6 +717,56 @@ class CompanionControllerTest(unittest.TestCase):
                 },
                 snapshot["run"]["outcomes"]["file_change"],
             )
+
+    def test_stage_a_consumes_one_real_run_without_starting_run_two(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = ScriptedFactory("read_only")
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+
+            controller.start_run(
+                "Read the target without changing it.",
+            )
+            snapshot = wait_for(
+                controller,
+                lambda state: state["run"]["state"] == "completed",
+            )
+            self.assertIsNone(snapshot["run"]["supervisor"])
+
+            context = routine_supervisor_context()
+            snapshot = controller.supervise_last_run(context)
+
+            self.assertEqual("GO", snapshot["run"]["supervisor"]["gate"])
+            self.assertEqual(
+                "AI-OWNED",
+                snapshot["run"]["supervisor"]["decision_route"],
+            )
+            self.assertEqual(
+                "Verify the recorded hash without mutation.",
+                snapshot["run"]["supervisor"]["next_bounded_action"],
+            )
+            self.assertIsNone(
+                snapshot["run"]["supervisor"]["human_seat_return"]
+            )
+            self.assertFalse(
+                snapshot["run"]["supervisor"][
+                    "automatic_second_run_started"
+                ]
+            )
+            self.assertEqual(0, len(factory.modes))
+            self.assertEqual("completed", controller.snapshot()["run"]["state"])
+            self.assertEqual(snapshot, controller.supervise_last_run(context))
+            with self.assertRaises(SupervisorStateError):
+                controller.supervise_last_run(
+                    SupervisorContext(
+                        **{
+                            **context.__dict__,
+                            "remaining_gap": "A different claimed gap.",
+                        }
+                    )
+                )
 
     def test_allow_once_deny_and_repository_default_choices(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

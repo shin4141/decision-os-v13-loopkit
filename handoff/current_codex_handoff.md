@@ -42,6 +42,18 @@ COMPLETE
 Public Core / Private Operator Boundary:
 FIXED
 
+Stage A Supervisor Judgment:
+PASS
+
+Stage A Evidence:
+validation/stage_a_supervisor_judgment_001.md
+
+Current Missing Closure:
+Stage B — One Automatic Continuation
+
+Stage B Authorization:
+YES — NEXT ENGINEERING PHASE
+
 Release Authority:
 NONE
 
@@ -49,8 +61,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Implement and verify Stage A Supervisor Judgment, then continue to Stage B
-and Stage C only after each prior Completion Line is satisfied.
+Implement and verify Stage B — One Automatic Continuation. Stage C remains
+blocked until the Stage B Completion Line is satisfied.
 ```
 
 Everything below this boundary is preserved historical material as of its own
