@@ -48,10 +48,16 @@ PASS
 Stage A Evidence:
 validation/stage_a_supervisor_judgment_001.md
 
-Current Missing Closure:
-Stage B — One Automatic Continuation
+Stage B One Automatic Continuation:
+PASS
 
-Stage B Authorization:
+Stage B Evidence:
+validation/stage_b_one_automatic_continuation_001.md
+
+Current Missing Closure:
+Stage C — Small Compound Loop
+
+Stage C Authorization:
 YES — NEXT ENGINEERING PHASE
 
 Release Authority:
@@ -61,8 +67,8 @@ Publication Authority:
 NONE
 
 Next Authorized Action:
-Implement and verify Stage B — One Automatic Continuation. Stage C remains
-blocked until the Stage B Completion Line is satisfied.
+Implement and verify Stage C — Small Compound Loop under the unchanged
+three-Run cap. Stage D, release, and publication remain unauthorized.
 ```
 
 Everything below this boundary is preserved historical material as of its own
