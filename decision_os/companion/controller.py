@@ -63,6 +63,10 @@ from decision_os.companion.ordinary_user_path import (
     OrdinaryUserPathError,
     UNKNOWN_EXECUTION_AUTHORITY_REASON,
 )
+from decision_os.companion.supervisor import (
+    SupervisorContext,
+    judge_continuation,
+)
 
 
 class CompanionError(RuntimeError):
@@ -87,6 +91,10 @@ class ApprovalStateError(CompanionError):
 
 class LifecycleEventError(CompanionError):
     """An adapter attempted to emit a malformed presentation event."""
+
+
+class SupervisorStateError(CompanionError):
+    """A Supervisor judgment has no exact completed Worker result."""
 
 
 class AdapterFactory(Protocol):
@@ -203,6 +211,8 @@ class CompanionController:
         self._condition = threading.Condition(threading.RLock())
         self._repository: Path | None = None
         self._run: dict[str, Any] = self._empty_run()
+        self._last_run_result: CodexRunResult | None = None
+        self._last_supervisor_context: SupervisorContext | None = None
         self._approval_choice: str | None = None
         self._default_handles: dict[str, str] = {}
         self._worker: threading.Thread | None = None
@@ -259,6 +269,7 @@ class CompanionController:
             },
             "runtime": None,
             "receipt_delta": None,
+            "supervisor": None,
             "approval": None,
             "error": None,
             "failure": None,
@@ -387,6 +398,8 @@ class CompanionController:
                 )
                 self._default_handles = {}
                 self._run = self._empty_run()
+                self._last_run_result = None
+                self._last_supervisor_context = None
                 return self._snapshot_locked()
         finally:
             with self._condition:
@@ -1154,6 +1167,8 @@ class CompanionController:
                 "reason": None,
             }
             self._run["receipt_before"] = before
+            self._last_run_result = None
+            self._last_supervisor_context = None
             self._approval_choice = None
             self._worker = threading.Thread(
                 target=self._run_worker,
@@ -1414,6 +1429,9 @@ class CompanionController:
             self._run["outcomes"] = outcomes
             self._run["runtime"] = self._public_runtime(result)
             self._run["receipt_delta"] = self._receipt_delta(before, after)
+            self._run["supervisor"] = None
+            self._last_run_result = result
+            self._last_supervisor_context = None
             self._run["approval"] = None
             self._run["error"] = (
                 diagnostic.reason if diagnostic is not None else None
@@ -1493,6 +1511,9 @@ class CompanionController:
                 if before is not None and after is not None
                 else None
             )
+            self._run["supervisor"] = None
+            self._last_run_result = None
+            self._last_supervisor_context = None
             self._run["approval"] = None
             self._run["error"] = self._safe_error(exc)
             self._run["failure"] = (
@@ -1501,6 +1522,35 @@ class CompanionController:
             self._approval_choice = "3"
             self._condition.notify_all()
 
+    def supervise_last_run(
+        self,
+        context: SupervisorContext,
+    ) -> dict[str, Any]:
+        if not isinstance(context, SupervisorContext):
+            raise SupervisorStateError("Supervisor context is invalid.")
+        with self._condition:
+            self._require_repository()
+            self._require_no_active_run()
+            if (
+                self._run.get("run_type") != "bounded_task"
+                or self._run.get("state") not in _TERMINAL_STATES
+                or self._last_run_result is None
+            ):
+                raise SupervisorStateError(
+                    "No exact completed bounded Worker Run is available."
+                )
+            if self._run.get("supervisor") is not None:
+                if context != self._last_supervisor_context:
+                    raise SupervisorStateError(
+                        "The completed Worker Run already has a different "
+                        "Supervisor context."
+                    )
+                return self._snapshot_locked()
+            judgment = judge_continuation(self._last_run_result, context)
+            self._run["supervisor"] = judgment.as_dict()
+            self._last_supervisor_context = context
+            return self._snapshot_locked()
+
     def new_run(self) -> dict[str, Any]:
         with self._condition:
             self._require_repository()
@@ -1508,8 +1558,10 @@ class CompanionController:
             if self._active_intelligence_transplant_operations:
                 raise RunConflictError(
                     "An Intelligence Transplant action is already active."
-                )
+            )
             self._run = self._empty_run()
+            self._last_run_result = None
+            self._last_supervisor_context = None
             self._approval_choice = None
             return self._snapshot_locked()
 
