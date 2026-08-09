@@ -232,6 +232,35 @@ not persisted; only their byte counts and SHA-256 identities are retained.
 - No cross-vendor supervision, Canon modification, self-modification, release,
   publication, or paid-tier behavior is added.
 
+## Verification
+
+```text
+Focused Stage B continuation:
+PASS — 13 tests
+
+Supervisor, Stage B, controller, and process qualification:
+PASS — 70 tests run / 2 expected environment skips
+
+Companion server and client behavior:
+PASS — 37 tests
+
+Canonical-state and handoff regression:
+PASS — 94 tests
+
+Clean-worktree repository full regression at 14005d1:
+PASS — 1429 tests run / 15 expected environment skips
+
+Persisted real-proof reload under final implementation:
+PASS — COMPLETE / 2 Runs / 1 automatic continuation /
+record SHA-256 fada414d4f667eefbc7f6e73f62c8fcc641221c623e9c73773ca2df7458e5c6d
+
+Repository validation:
+python -B -m decision_os check . — PASS
+
+Patch hygiene:
+git diff --check — PASS
+```
+
 ## Completion Line
 
 One user Goal produced two causally connected real bounded Runs without manual
