@@ -158,13 +158,13 @@ PASS — 57 of 57
 Repository full regression at fca8d0c:
 1413 of 1414 passed / 15 skipped / 1 timing-threshold failure
 
-Isolated rerun of the sole failure:
-PASS — 1 of 1
+Consecutive isolated reruns of the sole failure:
+PASS — 10 of 10
 
 Sole full-run failure detail:
 The pre-existing manual bridge lock-contention test measured 207.8 ms against
-a 200 ms scheduler-sensitive threshold. Its isolated rerun passed in 0.558 s
-for the complete test, and no Stage A assertion failed.
+a 200 ms scheduler-sensitive threshold. Ten consecutive isolated reruns passed,
+and no Stage A assertion failed.
 
 Repository validation:
 python -B -m decision_os check . — PASS
