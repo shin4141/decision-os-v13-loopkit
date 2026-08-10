@@ -274,7 +274,7 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Preserve the integrated narrow stop",
+            "Preserve the exact temporal-evidence claim boundary",
             payload["next_authorized_action"],
         )
         for relative_path in (
@@ -289,14 +289,27 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     maxsplit=1,
                 )[0]
                 self.assertIn(
-                    "V13 — Post Self-Selected Capability Integration",
+                    "V13 — Post V8-Derived Temporal Evidence Integration",
                     current,
                 )
                 self.assertIn(
-                    "Stage C zero-declared-progress stop",
+                    "13-106 zero-declared-progress stop:\nINTEGRATED",
                     current,
                 )
-                self.assertIn("Capability Status:\nINTEGRATED", current)
+                self.assertIn(
+                    "13-110 V8-derived temporal evidence invalidation:\n"
+                    "INTEGRATED only after this focused branch merges into main",
+                    current,
+                )
+                self.assertIn(
+                    "13-108 repository-identity candidate:\n"
+                    "NONCANONICAL / NOT INTEGRATED",
+                    current,
+                )
+                self.assertIn(
+                    "strictly later approved Modify of that same declared path",
+                    current,
+                )
                 self.assertIn(
                     "Field Note 132:\nunchanged / Verification pending",
                     current,
