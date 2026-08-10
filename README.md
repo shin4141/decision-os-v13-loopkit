@@ -6,7 +6,34 @@
 ![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
 ![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
-## Your coding agent asks once. The next Run remembers.
+## Stop after “done” long enough to decide what happens next
+
+Decision-OS V13 LoopKit is a no-install exit gate for AI coding work. It makes
+the agent separate two decisions that are easy to blur together:
+
+1. Is the current task actually complete and restartable?
+2. Should the next loop `GO`, `HOLD`, run under a `CAP`, or `BLOCK`?
+
+Try it after your next AI-assisted task:
+
+```text
+Before starting another task, report:
+
+- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
+- Should the next loop run? GO / HOLD / CAP / BLOCK
+- Why?
+- What is the one allowed next action?
+- What must not happen next?
+
+Do not start the next task automatically. Stop after the report.
+```
+
+That is the smallest trial: no install, fork, or repository change required.
+If it helps, use the full [Next-Action Confidence
+Check](copy-paste/next-action-confidence-check.md), then consider the
+[Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
+
+## Optional Companion: your coding agent asks once. The next Run remembers.
 
 1. The agent asks whether it may modify a file.
 2. You choose **Use for this repository**.
