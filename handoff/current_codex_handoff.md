@@ -1,3 +1,89 @@
+# Current Codex Handoff — V8-Derived Temporal Evidence Integration
+
+## Canonical Current State — V13 Post V8-Derived Temporal Evidence Integration
+
+```text
+Current Layer:
+V13 — Post V8-Derived Temporal Evidence Integration
+
+V12 State:
+PASS
+
+13-106 zero-declared-progress stop:
+INTEGRATED
+
+13-110 V8-derived temporal evidence invalidation:
+INTEGRATED only after this focused branch merges into main
+
+Claim:
+A matching read of a declared evidence path supports its completion requirement.
+A strictly later approved Modify of that same declared path invalidates the
+earlier current support until a strictly later matching read with the expected
+SHA-256 re-establishes it.
+
+Claim Boundary:
+Stage C uses persisted Run ordering, the exact declared evidence path, the exact
+expected hash/read evidence, and an exact approved same-path Modify action. This
+does not establish generic drift detection, semantic progress, arbitrary
+mutation history, within-Run ordering, generic Time-Tube, trajectory scores,
+dependency or Guardian models, optimal freshness, or efficiency improvement.
+
+Source Lineage:
+One V8-derived temporal-validity structure produced one bounded Stage C
+behavioral delta. This is not a claim that V8 is integrated into V13.
+
+Historical Evidence:
+Historical matching reads remain preserved. Only their current completion
+support changes after a strictly later approved same-path Modify.
+
+13-108 repository-identity candidate:
+NONCANONICAL / NOT INTEGRATED
+
+Capability Commit:
+21b402ef2bd1b28f18c5585663aa67b16b4d6b41
+
+Canonical Starting Main:
+b72ccf6fd788fef242bd23684a909960db7e34d6
+
+Active Branch:
+main
+
+Field Note 132:
+unchanged / Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+None after the focused capability and this canonical synchronization merge.
+
+Next Authorized Action:
+None. Preserve the exact temporal-evidence claim boundary. Do not start another
+V8 transplant, self-diagnosis, release, or publication action.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact V8-derived Stage C temporal-evidence invalidation is integrated
+without deleting or rewriting historical evidence and without changing the
+zero-progress stop, Run-3 CAP, Human Seat, authority, protected objects, or
+Compound Evidence Meter.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff — V13 Self-Selected Capability Integration
 
 ## Canonical Current State — V13 Post Self-Selected Capability Integration

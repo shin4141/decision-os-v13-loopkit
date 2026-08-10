@@ -64,6 +64,10 @@ _REQUEST_FIELDS = frozenset(
 _REQUIREMENT_FIELDS = frozenset(
     {"requirement_id", "description", "evidence_path", "expected_sha256"}
 )
+_FILE_ACTION_FIELDS = frozenset({"action", "path", "access", "status"})
+_FILE_ACTION_ACCESS = frozenset(
+    {"denied", "matched-not-verified", "newly-saved", "one-time", "reused"}
+)
 _RECORD_FIELDS = frozenset(
     {
         "schema",
@@ -374,27 +378,118 @@ def _requirements(record: Mapping[str, Any]) -> tuple[dict[str, str], ...]:
     return tuple(item.as_dict() for item in request.completion_requirements)
 
 
+def _matching_read_run_numbers(
+    runs: list[Any],
+    requirement: Mapping[str, str],
+) -> tuple[int, ...]:
+    return tuple(
+        run_number
+        for run_number, run in enumerate(runs, start=1)
+        if isinstance(run, dict)
+        and any(
+            read.get("status") == "succeeded"
+            and read.get("path") == requirement["evidence_path"]
+            and read.get("sha256") == requirement["expected_sha256"]
+            for read in run.get("read_evidence", [])
+            if isinstance(read, dict)
+        )
+    )
+
+
+def _authorized_modify_run_numbers(
+    record: Mapping[str, Any],
+    runs: list[Any],
+    evidence_path: str,
+) -> tuple[int, ...]:
+    request = StageCContinuationRequest.from_dict(record.get("request"))
+    allowed_paths = set(request.allowed_mutation_paths)
+    modified: list[int] = []
+    for run_number, run in enumerate(runs, start=1):
+        if not isinstance(run, dict) or not isinstance(
+            run.get("file_actions"),
+            list,
+        ):
+            raise ContinuationIntegrityError("Stage C Run evidence is invalid.")
+        for action in run["file_actions"]:
+            if not isinstance(action, dict) or action.get("action") != "Modify":
+                continue
+            if (
+                set(action) != _FILE_ACTION_FIELDS
+                or not isinstance(action.get("path"), str)
+                or not action["path"]
+                or action.get("access") not in _FILE_ACTION_ACCESS
+                or action.get("status") not in {"approved", "denied"}
+                or (
+                    (action["status"] == "denied")
+                    != (action["access"] == "denied")
+                )
+            ):
+                raise ContinuationIntegrityError(
+                    "Persisted Stage C mutation evidence is invalid."
+                )
+            if (
+                action["status"] == "approved"
+                and action["path"] not in allowed_paths
+            ):
+                raise ContinuationIntegrityError(
+                    "Persisted Stage C mutation evidence exceeds authority."
+                )
+            if (
+                action["action"] == "Modify"
+                and action["status"] == "approved"
+                and action["path"] == evidence_path
+            ):
+                modified.append(run_number)
+    return tuple(modified)
+
+
+def _requirement_temporal_state(
+    record: Mapping[str, Any],
+    requirement: Mapping[str, str],
+) -> tuple[bool, bool]:
+    runs = record.get("runs")
+    if not isinstance(runs, list):
+        raise ContinuationIntegrityError("Stage C Run evidence is invalid.")
+    matching_reads = _matching_read_run_numbers(runs, requirement)
+    if not matching_reads:
+        return False, False
+    authorized_modifies = _authorized_modify_run_numbers(
+        record,
+        runs,
+        requirement["evidence_path"],
+    )
+    invalidating_modifies = tuple(
+        modify_run
+        for modify_run in authorized_modifies
+        if any(read_run < modify_run for read_run in matching_reads)
+    )
+    if not invalidating_modifies:
+        return True, False
+    last_invalidation = max(invalidating_modifies)
+    if any(read_run > last_invalidation for read_run in matching_reads):
+        return True, False
+    return False, True
+
+
 def satisfied_requirement_ids(
     record: Mapping[str, Any],
 ) -> tuple[str, ...]:
     requirements = _requirements(record)
-    runs = record.get("runs")
-    if not isinstance(runs, list):
-        raise ContinuationIntegrityError("Stage C Run evidence is invalid.")
-    satisfied: list[str] = []
-    for requirement in requirements:
-        matched = any(
-            read.get("status") == "succeeded"
-            and read.get("path") == requirement["evidence_path"]
-            and read.get("sha256") == requirement["expected_sha256"]
-            for run in runs
-            if isinstance(run, dict)
-            for read in run.get("read_evidence", [])
-            if isinstance(read, dict)
-        )
-        if matched:
-            satisfied.append(requirement["requirement_id"])
-    return tuple(satisfied)
+    return tuple(
+        requirement["requirement_id"]
+        for requirement in requirements
+        if _requirement_temporal_state(record, requirement)[0]
+    )
+
+
+def _stale_requirement_ids(
+    record: Mapping[str, Any],
+) -> tuple[str, ...]:
+    return tuple(
+        requirement["requirement_id"]
+        for requirement in _requirements(record)
+        if _requirement_temporal_state(record, requirement)[1]
+    )
 
 
 def remaining_requirements(
@@ -472,6 +567,12 @@ def stage_c_supervisor_context(
     current = runs[-1]
     current_residue = residues[-1]
     made_progress = bool(current_residue["new_requirement_ids"])
+    stale_requirement_ids = _stale_requirement_ids(record)
+    stale_requirements = tuple(
+        requirement
+        for requirement in remaining
+        if requirement["requirement_id"] in stale_requirement_ids
+    )
     evidence_ref = (
         f"stage-c:{record['chain_id']}:run-{len(runs)}:"
         f"evidence-sha256={current['evidence_sha256']}"
@@ -488,7 +589,11 @@ def stage_c_supervisor_context(
         next_bounded_action=(
             None if not remaining else _next_action(remaining[0])
         ),
-        evidence_recovery_action=request.evidence_recovery_action,
+        evidence_recovery_action=(
+            _next_action(stale_requirements[0])
+            if stale_requirements
+            else request.evidence_recovery_action
+        ),
         irreducible_human_decision=request.irreducible_human_decision,
         evidence_refs=(*request.authority_evidence_refs, evidence_ref),
         completed_runs=len(runs),
@@ -502,9 +607,12 @@ def stage_c_supervisor_context(
         evidence_sufficient=(
             ContractFact.SATISFIED
             if (
-                made_progress
-                or not remaining
-                or len(runs) >= STAGE_C_TOTAL_RUN_CAP
+                not stale_requirements
+                and (
+                    made_progress
+                    or not remaining
+                    or len(runs) >= STAGE_C_TOTAL_RUN_CAP
+                )
             )
             else ContractFact.NOT_SATISFIED
         ),
