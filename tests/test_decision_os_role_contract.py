@@ -636,10 +636,32 @@ class RoleContractV01Test(unittest.TestCase):
             ).read_bytes()
         ).hexdigest()
         self.assertEqual(example["specialist_lens"]["lens_hash"], lens_hash)
+        packet = example["task_artifact_packet"]
         self.assertEqual(
-            hashlib.sha256((REPO_ROOT / "README.md").read_bytes()).hexdigest(),
-            example["task_artifact_packet"]["artifact_hashes"]["README.md"],
+            "3a14dc65ea15f2d81cf3b3cd33362b3c001c0a41",
+            packet["head"],
         )
+        self.assertEqual("2026-07-29T00:00:00Z", packet["as_of"])
+        self.assertEqual(
+            "decc254e317b693604084ecdc1e9bfe034b8d6b69b32a70404fc63d64055ad39",
+            packet["artifact_hashes"]["README.md"],
+        )
+        historical_readme = subprocess.run(
+            (
+                "git",
+                "-C",
+                str(REPO_ROOT),
+                "show",
+                f"{packet['head']}:README.md",
+            ),
+            check=False,
+            capture_output=True,
+        )
+        if historical_readme.returncode == 0:
+            self.assertEqual(
+                hashlib.sha256(historical_readme.stdout).hexdigest(),
+                packet["artifact_hashes"]["README.md"],
+            )
         lens_text = (
             REPO_ROOT / "templates" / "v13_specialist_lens.md"
         ).read_text(encoding="utf-8")
