@@ -225,6 +225,145 @@ class CompanionSupervisorTest(unittest.TestCase):
             judgment.human_seat_return,
         )
 
+    def test_simultaneous_goal_and_authority_failures_commit_block(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(
+                goal_unchanged=NO,
+                authority_sufficient=NO,
+            ),
+        )
+
+        self.assertEqual(SupervisorGate.BLOCK, judgment.gate)
+        self.assertEqual(DecisionRoute.HUMAN_SEAT, judgment.decision_route)
+        self.assertEqual(
+            "Decide whether to authorize the proposed next bounded action.",
+            judgment.human_seat_return,
+        )
+        self.assertIn(
+            "Simultaneous failed Human Seat conditions: "
+            "goal_unchanged, authority_sufficient.",
+            judgment.reason,
+        )
+        self.assertFalse(judgment.automatic_second_run_started)
+
+    def test_cost_cap_cannot_hide_later_protected_object_block(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(
+                cost_boundary_intact=NO,
+                protected_object_and_ownership_unchanged=NO,
+            ),
+        )
+
+        self.assertEqual(SupervisorGate.BLOCK, judgment.gate)
+        self.assertEqual(DecisionRoute.HUMAN_SEAT, judgment.decision_route)
+        self.assertEqual(
+            "Decide whether to change the Protected Object or ownership boundary.",
+            judgment.human_seat_return,
+        )
+        self.assertIn(
+            "cost_boundary_intact, "
+            "protected_object_and_ownership_unchanged",
+            judgment.reason,
+        )
+        self.assertFalse(judgment.automatic_second_run_started)
+
+    def test_block_primary_cannot_be_replaced_by_lower_failure_override(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(
+                goal_unchanged=NO,
+                authority_sufficient=NO,
+                irreducible_human_decision=(
+                    "Decide only whether to change the declared Goal."
+                ),
+            ),
+        )
+
+        self.assertEqual(SupervisorGate.BLOCK, judgment.gate)
+        self.assertEqual(
+            "Decide whether to authorize the proposed next bounded action.",
+            judgment.human_seat_return,
+        )
+
+    def test_multiple_blocks_use_first_canonical_block_and_preserve_all(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(
+                authority_sufficient=NO,
+                blast_radius_bounded=NO,
+                no_authoritative_conflict=NO,
+            ),
+        )
+
+        self.assertEqual(SupervisorGate.BLOCK, judgment.gate)
+        self.assertEqual(DecisionRoute.HUMAN_SEAT, judgment.decision_route)
+        self.assertEqual(
+            "Decide whether to authorize the proposed next bounded action.",
+            judgment.human_seat_return,
+        )
+        self.assertIn(
+            "authority_sufficient, blast_radius_bounded, "
+            "no_authoritative_conflict",
+            judgment.reason,
+        )
+        self.assertFalse(judgment.automatic_second_run_started)
+
+    def test_multiple_holds_keep_first_canonical_human_seat_action(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(
+                goal_unchanged=NO,
+                no_material_human_preference_required=NO,
+            ),
+        )
+
+        self.assertEqual(SupervisorGate.HOLD, judgment.gate)
+        self.assertEqual(
+            "Decide whether to change the declared Goal or Aspire direction.",
+            judgment.human_seat_return,
+        )
+        self.assertIn(
+            "goal_unchanged, no_material_human_preference_required",
+            judgment.reason,
+        )
+
+    def test_cap_and_hold_keep_existing_canonical_order_without_block(self) -> None:
+        cases = (
+            (
+                {
+                    "goal_unchanged": NO,
+                    "cost_boundary_intact": NO,
+                },
+                SupervisorGate.HOLD,
+                "Decide whether to change the declared Goal or Aspire direction.",
+                "goal_unchanged, cost_boundary_intact",
+            ),
+            (
+                {
+                    "cost_boundary_intact": NO,
+                    "no_truly_unanswered_human_question": NO,
+                },
+                SupervisorGate.CAP,
+                "Decide whether to expand the authorized cost boundary.",
+                (
+                    "cost_boundary_intact, "
+                    "no_truly_unanswered_human_question"
+                ),
+            ),
+        )
+        for overrides, gate, human_return, failed_names in cases:
+            with self.subTest(gate=gate.value, failed_names=failed_names):
+                judgment = judge_continuation(
+                    completed_result(),
+                    context(**overrides),
+                )
+
+                self.assertEqual(gate, judgment.gate)
+                self.assertEqual(human_return, judgment.human_seat_return)
+                self.assertIn(failed_names, judgment.reason)
+
     def test_known_authority_expansion_returns_to_human_seat(self) -> None:
         judgment = judge_continuation(
             completed_result(),
@@ -254,6 +393,41 @@ class CompanionSupervisorTest(unittest.TestCase):
             "Recover the missing evidence from the bounded Run and retry judgment.",
             judgment.next_bounded_action,
         )
+
+    def test_unknown_and_not_satisfied_remain_separate_fail_closed_paths(self) -> None:
+        cases = (
+            (
+                {
+                    "goal_unchanged": UNKNOWN,
+                    "authority_sufficient": NO,
+                },
+                SupervisorGate.HOLD,
+                "goal_unchanged",
+            ),
+            (
+                {
+                    "goal_unchanged": NO,
+                    "authority_sufficient": UNKNOWN,
+                },
+                SupervisorGate.BLOCK,
+                "authority_sufficient",
+            ),
+        )
+        for overrides, gate, unknown_name in cases:
+            with self.subTest(unknown_name=unknown_name):
+                judgment = judge_continuation(
+                    completed_result(),
+                    context(**overrides),
+                )
+
+                self.assertEqual(gate, judgment.gate)
+                self.assertEqual(
+                    DecisionRoute.EVIDENCE_RECOVERY,
+                    judgment.decision_route,
+                )
+                self.assertIn(unknown_name, judgment.reason)
+                self.assertNotIn("Simultaneous failed", judgment.reason)
+                self.assertIsNone(judgment.human_seat_return)
 
     def test_insufficient_evidence_holds_without_human_question(self) -> None:
         judgment = judge_continuation(
@@ -322,6 +496,19 @@ class CompanionSupervisorTest(unittest.TestCase):
         self.assertIn("4/3 total Runs", judgment.reason)
         self.assertEqual(
             "Decide whether to extend the 3-Run cap for the unchanged Goal.",
+            judgment.human_seat_return,
+        )
+
+    def test_cost_boundary_exhaustion_keeps_existing_cap_decision(self) -> None:
+        judgment = judge_continuation(
+            completed_result(),
+            context(cost_boundary_intact=NO),
+        )
+
+        self.assertEqual(SupervisorGate.CAP, judgment.gate)
+        self.assertEqual(DecisionRoute.HUMAN_SEAT, judgment.decision_route)
+        self.assertEqual(
+            "Decide whether to expand the authorized cost boundary.",
             judgment.human_seat_return,
         )
 
