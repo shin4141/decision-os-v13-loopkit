@@ -470,6 +470,8 @@ def stage_c_supervisor_context(
         )
     remaining = remaining_requirements(record)
     current = runs[-1]
+    current_residue = residues[-1]
+    made_progress = bool(current_residue["new_requirement_ids"])
     evidence_ref = (
         f"stage-c:{record['chain_id']}:run-{len(runs)}:"
         f"evidence-sha256={current['evidence_sha256']}"
@@ -497,7 +499,15 @@ def stage_c_supervisor_context(
             else ContractFact.NOT_SATISFIED
         ),
         continuation_proof_sufficient=ContractFact.SATISFIED,
-        evidence_sufficient=ContractFact.SATISFIED,
+        evidence_sufficient=(
+            ContractFact.SATISFIED
+            if (
+                made_progress
+                or not remaining
+                or len(runs) >= STAGE_C_TOTAL_RUN_CAP
+            )
+            else ContractFact.NOT_SATISFIED
+        ),
         **{name: fact for name, fact in request.contract_facts()},
     )
 

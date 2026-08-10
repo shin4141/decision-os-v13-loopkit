@@ -273,7 +273,39 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual(EXIT_OK, exit_code)
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
-        self.assertIn("Preserve the completed meter", payload["next_authorized_action"])
+        self.assertIn(
+            "Preserve the integrated narrow stop",
+            payload["next_authorized_action"],
+        )
+        for relative_path in (
+            "docs/current_signal.md",
+            "handoff/current_codex_handoff.md",
+        ):
+            with self.subTest(relative_path=relative_path):
+                current = (REPO_ROOT / relative_path).read_text(
+                    encoding="utf-8"
+                ).split(
+                    "Everything below this boundary is preserved historical",
+                    maxsplit=1,
+                )[0]
+                self.assertIn(
+                    "V13 — Post Self-Selected Capability Integration",
+                    current,
+                )
+                self.assertIn(
+                    "Stage C zero-declared-progress stop",
+                    current,
+                )
+                self.assertIn("Capability Status:\nINTEGRATED", current)
+                self.assertIn(
+                    "Field Note 132:\nunchanged / Verification pending",
+                    current,
+                )
+                self.assertIn(
+                    "Compound Evidence Meter:\nunchanged",
+                    current,
+                )
+                self.assertIn("HOLD — NO NEXT AUTHORITY", current)
 
     def test_historical_surface_tails_are_byte_for_byte_preserved(self) -> None:
         cases = (
