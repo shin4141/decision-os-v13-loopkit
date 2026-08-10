@@ -10,6 +10,7 @@ import unittest
 from typing import Any
 
 from decision_os.acceleration.codex_adapter import (
+    CodexFileAction,
     CodexReadEvidence,
     CodexRunResult,
 )
@@ -21,6 +22,9 @@ from decision_os.companion.controller import (
 from decision_os.companion.small_compound_loop import (
     StageCCompletionRequirement,
     StageCContinuationRequest,
+    remaining_requirements,
+    satisfied_requirement_ids,
+    stage_c_outcome,
 )
 from decision_os.companion.supervisor import ContractFact
 from tests.test_companion_controller import (
@@ -84,6 +88,53 @@ def stage_c_request(**overrides: Any) -> StageCContinuationRequest:
     return StageCContinuationRequest(**values)
 
 
+def temporal_support_record(*plans: dict[str, Any]) -> dict[str, Any]:
+    runs: list[dict[str, Any]] = []
+    for plan in plans:
+        reads = [
+            {
+                "path": f"evidence-{number}.md",
+                "bytes": number,
+                "sha256": str(number) * 64,
+                "repository_identity": "b" * 40,
+                "status": "succeeded",
+                "reason": None,
+            }
+            for number in plan.get("evidence", ())
+        ]
+        reads.extend(
+            {
+                "path": f"evidence-{number}.md",
+                "bytes": number,
+                "sha256": "f" * 64,
+                "repository_identity": "b" * 40,
+                "status": "succeeded",
+                "reason": None,
+            }
+            for number in plan.get("nonmatching_evidence", ())
+        )
+        runs.append(
+            {
+                "read_evidence": reads,
+                "file_actions": [
+                    {
+                        "action": "Modify",
+                        "path": path,
+                        "access": "one-time",
+                        "status": "approved",
+                    }
+                    for path in plan.get("modifies", ())
+                ],
+            }
+        )
+    return {
+        "request": stage_c_request(
+            allowed_mutation_paths=("evidence-1.md",),
+        ).as_dict(),
+        "runs": runs,
+    }
+
+
 class EvidenceFactory:
     """Return one predetermined Worker result per actual dispatch."""
 
@@ -119,6 +170,10 @@ class EvidenceFactory:
                 if plan == "failure":
                     raise RuntimeError("injected bounded execution failure")
                 evidence_ids = tuple(plan.get("evidence", ()))
+                nonmatching_evidence_ids = tuple(
+                    plan.get("nonmatching_evidence", ())
+                )
+                modified_paths = tuple(plan.get("modifies", ()))
                 status = plan.get("status", "NORMAL_TERMINAL")
                 normal = status == "NORMAL_TERMINAL"
                 return CodexRunResult(
@@ -130,15 +185,36 @@ class EvidenceFactory:
                     runtime_identity=runtime_identity(),
                     checkpoint_outcomes=(),
                     final_message=f"Established {evidence_ids!r}.",
-                    read_evidence=tuple(
-                        CodexReadEvidence(
-                            path=f"evidence-{number}.md",
-                            byte_count=number,
-                            sha256=str(number) * 64,
-                            repository_identity="b" * 40,
-                            status="succeeded",
+                    file_actions=tuple(
+                        CodexFileAction(
+                            action="Modify",
+                            normalized_scope=path,
+                            access="one-time",
+                            status="approved",
                         )
-                        for number in evidence_ids
+                        for path in modified_paths
+                    ),
+                    read_evidence=(
+                        tuple(
+                            CodexReadEvidence(
+                                path=f"evidence-{number}.md",
+                                byte_count=number,
+                                sha256=str(number) * 64,
+                                repository_identity="b" * 40,
+                                status="succeeded",
+                            )
+                            for number in evidence_ids
+                        )
+                        + tuple(
+                            CodexReadEvidence(
+                                path=f"evidence-{number}.md",
+                                byte_count=number,
+                                sha256="f" * 64,
+                                repository_identity="b" * 40,
+                                status="succeeded",
+                            )
+                            for number in nonmatching_evidence_ids
+                        )
                     ),
                 )
 
@@ -251,6 +327,198 @@ class StageCSmallCompoundLoopTest(unittest.TestCase):
                 "TERMINAL",
                 controller.snapshot()["compound_loop"]["state"],
             )
+
+    def test_later_authorized_modify_invalidates_historical_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = EvidenceFactory(
+                {"evidence": (1,)},
+                {"evidence": (2,), "modifies": ("evidence-1.md",)},
+                {"evidence": (3,)},
+                {"evidence": (1,)},
+            )
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_small_compound_loop(
+                stage_c_request(
+                    allowed_mutation_paths=("evidence-1.md",),
+                )
+            )
+            chain = self.terminal(controller)["compound_loop"]
+
+            self.assertEqual("HOLD", chain["outcome"])
+            self.assertNotEqual("COMPLETE", chain["outcome"])
+            self.assertEqual(
+                "EVIDENCE-RECOVERY",
+                chain["supervisor_judgments"][-1]["decision_route"],
+            )
+            self.assertEqual(
+                ["REQ-1", "REQ-3"],
+                chain["residues"][-1]["remaining_requirement_ids"],
+            )
+            self.assertEqual(
+                ["REQ-1"],
+                chain["residues"][0]["established_requirement_ids"],
+            )
+            self.assertEqual(
+                ["REQ-2"],
+                chain["residues"][1]["established_requirement_ids"],
+            )
+            self.assertEqual(
+                ["REQ-1", "REQ-3"],
+                chain["residues"][1]["remaining_requirement_ids"],
+            )
+            self.assertEqual(1, len(chain["automatic_tasks"]))
+            self.assertEqual(
+                "REQ-2",
+                chain["automatic_tasks"][0]["selected_requirement_id"],
+            )
+            self.assertIn(
+                "reading evidence-1.md",
+                chain["governed_stop"]["next_action"],
+            )
+            self.assertEqual(2, len(factory.prompts))
+            self.assertEqual(2, len(factory.plans))
+
+            three_run_record = temporal_support_record(
+                {"evidence": (1,)},
+                {"evidence": (2,), "modifies": ("evidence-1.md",)},
+                {"evidence": (3,)},
+            )
+            self.assertEqual(
+                ("REQ-2", "REQ-3"),
+                satisfied_requirement_ids(three_run_record),
+            )
+            self.assertEqual(
+                ("REQ-1",),
+                tuple(
+                    item["requirement_id"]
+                    for item in remaining_requirements(three_run_record)
+                ),
+            )
+            self.assertEqual(
+                "HOLD",
+                stage_c_outcome(three_run_record, {"gate": "HOLD"}),
+            )
+
+    def test_post_mutation_matching_reread_reestablishes_requirement(
+        self,
+    ) -> None:
+        record = temporal_support_record(
+            {"evidence": (1,)},
+            {"evidence": (2,), "modifies": ("evidence-1.md",)},
+            {"evidence": (1, 3)},
+        )
+
+        self.assertEqual(
+            ("REQ-1", "REQ-2", "REQ-3"),
+            satisfied_requirement_ids(record),
+        )
+        self.assertEqual((), remaining_requirements(record))
+
+    def test_modify_of_different_path_does_not_invalidate_requirement(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = EvidenceFactory(
+                {"evidence": (1,)},
+                {"evidence": (2,), "modifies": ("other.txt",)},
+                {"evidence": (3,)},
+            )
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_small_compound_loop(
+                stage_c_request(allowed_mutation_paths=("other.txt",))
+            )
+            chain = self.terminal(controller)["compound_loop"]
+
+            self.assertEqual("COMPLETE", chain["outcome"])
+            self.assertEqual(
+                ["REQ-1", "REQ-2", "REQ-3"],
+                chain["residues"][-1]["established_requirement_ids"],
+            )
+
+    def test_post_mutation_nonmatching_read_does_not_reestablish(
+        self,
+    ) -> None:
+        record = temporal_support_record(
+            {"evidence": (1,)},
+            {"evidence": (2,), "modifies": ("evidence-1.md",)},
+            {"evidence": (3,), "nonmatching_evidence": (1,)},
+        )
+
+        self.assertEqual(
+            ("REQ-2", "REQ-3"),
+            satisfied_requirement_ids(record),
+        )
+        self.assertEqual(
+            ("REQ-1",),
+            tuple(
+                item["requirement_id"]
+                for item in remaining_requirements(record)
+            ),
+        )
+
+    def test_stale_zero_progress_holds_without_dispatching_run_three(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = EvidenceFactory(
+                {"evidence": (1,)},
+                {"evidence": (), "modifies": ("evidence-1.md",)},
+                {"evidence": (1, 2, 3)},
+            )
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_small_compound_loop(
+                stage_c_request(
+                    allowed_mutation_paths=("evidence-1.md",),
+                )
+            )
+            chain = self.terminal(controller)["compound_loop"]
+
+            self.assertEqual("HOLD", chain["outcome"])
+            self.assertEqual(2, len(chain["runs"]))
+            self.assertEqual(1, chain["automatic_continuations_started"])
+            self.assertEqual(2, len(factory.prompts))
+            self.assertEqual(1, len(factory.plans))
+            self.assertEqual(
+                "EVIDENCE-RECOVERY",
+                chain["supervisor_judgments"][-1]["decision_route"],
+            )
+
+    def test_stale_terminal_replay_is_identical_and_dispatch_free(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = EvidenceFactory(
+                {"evidence": (1,)},
+                {"evidence": (2,), "modifies": ("evidence-1.md",)},
+                {"evidence": (3,)},
+            )
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_small_compound_loop(
+                stage_c_request(
+                    allowed_mutation_paths=("evidence-1.md",),
+                )
+            )
+            terminal = self.terminal(controller)["compound_loop"]
+
+            restarted_factory = EvidenceFactory()
+            restarted = self.make_controller(root, restarted_factory)
+            replayed = restarted.snapshot()["compound_loop"]
+            self.assertEqual("HOLD", replayed["outcome"])
+            self.assertEqual(
+                terminal["record_sha256"],
+                replayed["record_sha256"],
+            )
+            self.assertEqual([], restarted_factory.prompts)
 
     def test_early_completion_after_run_one_or_two_preserves_unused_budget(
         self,
@@ -483,6 +751,68 @@ class StageCSmallCompoundLoopTest(unittest.TestCase):
                 self.assertEqual(
                     "BLOCKED_CORRUPT",
                     snapshot["compound_loop"]["state"],
+                )
+                self.assertEqual([], restarted_factory.prompts)
+
+    def test_tampered_run_order_or_mutation_evidence_blocks_replay(
+        self,
+    ) -> None:
+        def wrong_run_order(record: dict[str, Any]) -> None:
+            record["runs"][1]["run_number"] = 1
+
+        def malformed_mutation(record: dict[str, Any]) -> None:
+            record["runs"][1]["file_actions"][0]["status"] = "authorized"
+
+        for label, mutate in (
+            ("run-order", wrong_run_order),
+            ("mutation-evidence", malformed_mutation),
+        ):
+            with (
+                self.subTest(label=label),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                repository = create_repository(root)
+                controller = self.make_controller(
+                    root,
+                    EvidenceFactory(
+                        {"evidence": (1,)},
+                        {
+                            "evidence": (2,),
+                            "modifies": ("evidence-1.md",),
+                        },
+                        {"evidence": (3,)},
+                    ),
+                )
+                controller.select_repository(repository)
+                controller.start_small_compound_loop(
+                    stage_c_request(
+                        allowed_mutation_paths=("evidence-1.md",),
+                    )
+                )
+                self.terminal(controller)
+
+                state_path = (
+                    root / "application-state" / "stage-b-continuation.json"
+                )
+                record = json.loads(state_path.read_text(encoding="utf-8"))
+                mutate(record)
+                for run in record["runs"]:
+                    run_payload = {
+                        key: value
+                        for key, value in run.items()
+                        if key != "evidence_sha256"
+                    }
+                    run["evidence_sha256"] = hash_payload(run_payload)
+                record.pop("record_sha256")
+                record["record_sha256"] = hash_payload(record)
+                state_path.write_text(json.dumps(record), encoding="utf-8")
+
+                restarted_factory = EvidenceFactory()
+                restarted = self.make_controller(root, restarted_factory)
+                self.assertEqual(
+                    "BLOCKED_CORRUPT",
+                    restarted.snapshot()["compound_loop"]["state"],
                 )
                 self.assertEqual([], restarted_factory.prompts)
 
