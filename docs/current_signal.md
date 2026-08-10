@@ -1,3 +1,78 @@
+# Current Signal — V13 Self-Selected Capability Integration
+
+## Canonical Current State — V13 Post Self-Selected Capability Integration
+
+```text
+Current Layer:
+V13 — Post Self-Selected Capability Integration
+
+V12 State:
+PASS
+
+13-104 Autonomous Next-1.01 Selection:
+PASS / integrated
+
+13-106 Missing-Capability Self-Diagnosis:
+PASS
+
+13-106 Selected Capability:
+Stage C zero-declared-progress stop
+
+Capability Status:
+INTEGRATED
+
+Claim Boundary:
+V13 detects only when a clean Stage C Worker Run newly establishes none of its
+declared completion requirements while work remains, then stops automatic
+continuation at HOLD / EVIDENCE-RECOVERY. This is not general semantic progress
+or stagnation detection.
+
+Integration Condition:
+This block becomes canonical only when capability commit
+3bccf213690f855747c0c71631a223d4813a9a35 and this closure-only delta merge
+into main.
+
+Canonical Starting Main:
+937a2ab8bf2fe1b6401485594ae156140cf8b749
+
+Active Branch:
+main
+
+Field Note 132:
+unchanged / Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+None after the focused capability and closure-only deltas merge.
+
+Next Authorized Action:
+None. Preserve the integrated narrow stop and its exact declared-requirement
+claim boundary. Do not start another self-diagnosis or 1.01.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact bounded Stage C zero-declared-progress stop is integrated
+without changing completion, Run-3 CAP, Human Seat, authority, protected-object,
+Supervisor/Worker, historical-evidence, or Meter semantics.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Signal — Compound Evidence Meter v0.1 Closure
 
 ## Canonical Current State — V13 Post-Dogfood Measurement
