@@ -283,6 +283,54 @@ class StageCSmallCompoundLoopTest(unittest.TestCase):
                 )
                 self.assertGreater(len(factory.plans), 0)
 
+    def test_normal_terminal_without_new_evidence_stops_before_retry(self) -> None:
+        cases = (
+            ("run-one", ({"evidence": ()},), 1, 0),
+            (
+                "run-two",
+                ({"evidence": (1,)}, {"evidence": (1,)}),
+                2,
+                1,
+            ),
+        )
+        for label, plans, run_count, continuation_count in cases:
+            with (
+                self.subTest(label=label),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                repository = create_repository(root)
+                factory = EvidenceFactory(*plans, {"evidence": (2,)})
+                controller = self.make_controller(root, factory)
+                controller.select_repository(repository)
+                controller.start_small_compound_loop(stage_c_request())
+                chain = self.terminal(controller)["compound_loop"]
+
+                self.assertEqual("HOLD", chain["outcome"])
+                self.assertEqual(run_count, len(chain["runs"]))
+                self.assertEqual(
+                    run_count,
+                    len(chain["supervisor_judgments"]),
+                )
+                self.assertEqual(
+                    continuation_count,
+                    chain["automatic_continuations_started"],
+                )
+                self.assertEqual(
+                    continuation_count,
+                    len(chain["automatic_tasks"]),
+                )
+                self.assertEqual(run_count, len(factory.prompts))
+                self.assertEqual(1, len(factory.plans))
+                self.assertEqual(
+                    "EVIDENCE-RECOVERY",
+                    chain["supervisor_judgments"][-1]["decision_route"],
+                )
+                self.assertIn(
+                    "not justified by sufficient evidence",
+                    chain["supervisor_judgments"][-1]["reason"],
+                )
+
     def test_non_go_human_seat_and_cap_all_stop_without_run_four(self) -> None:
         cases = (
             (

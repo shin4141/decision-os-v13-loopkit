@@ -2209,7 +2209,7 @@ class CompanionServerTest(unittest.TestCase):
         )
         self.assertEqual(400, status)
 
-    def test_authenticated_stage_c_route_enforces_three_run_cap(self) -> None:
+    def test_authenticated_stage_c_route_stops_after_no_progress(self) -> None:
         self.controller.adapter_factory = ScriptedFactory(
             "read_only",
             "read_only",
@@ -2242,11 +2242,11 @@ class CompanionServerTest(unittest.TestCase):
                 break
             time.sleep(0.01)
         self.assertIsNotNone(snapshot)
-        self.assertEqual("CAP", snapshot["compound_loop"]["outcome"])
-        self.assertEqual(3, len(snapshot["compound_loop"]["runs"]))
-        self.assertEqual(2, len(snapshot["compound_loop"]["automatic_tasks"]))
-        self.assertEqual(3, snapshot["run"]["continuation"]["run_number"])
-        self.assertEqual(1, len(self.controller.adapter_factory.modes))
+        self.assertEqual("HOLD", snapshot["compound_loop"]["outcome"])
+        self.assertEqual(1, len(snapshot["compound_loop"]["runs"]))
+        self.assertEqual(0, len(snapshot["compound_loop"]["automatic_tasks"]))
+        self.assertEqual(1, snapshot["run"]["continuation"]["run_number"])
+        self.assertEqual(3, len(self.controller.adapter_factory.modes))
 
         status, _headers, _raw = self.request(
             "POST",
