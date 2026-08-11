@@ -53,6 +53,8 @@ AUTHORITY_MATCH_TEXT_WITNESSES = (
     ("required_authority", ("Required Authority",)),
     ("authority_held", ("Authority Held",)),
 )
+AUTHORITY_HELD_SUFFIX = " / HELD"
+SUPPORTED_REQUIRED_AUTHORITY_SCOPES = frozenset({"REPOSITORY-LOCAL TEST"})
 AUTHORITY_MATCH_BOOLEAN_WITNESSES = (
     (
         "operational_effect",
@@ -216,22 +218,22 @@ def _same_alias_conflicts(
     return (sources,)
 
 
-def _authority_is_held(value: str | None) -> bool:
-    if not _is_resolved_evidence(value):
-        return False
-    assert value is not None
-    words = tuple(re.findall(r"[A-Z0-9]+", value.upper()))
-    joined = " ".join(words)
-    return not (
-        words == ("NO",)
-        or "NONE" in words
-        or "MISSING" in words
-        or "NOT AUTHORIZED" in joined
-        or "INSUFFICIENT" in words
-        or "UNKNOWN" in words
-        or "PENDING" in words
-        or "TBD" in words
-    )
+def _is_required_authority_scope(value: str) -> bool:
+    return value in SUPPORTED_REQUIRED_AUTHORITY_SCOPES
+
+
+def _nonaffirmative_authority_witnesses(
+    required_authority: str,
+    authority_held: str,
+) -> tuple[str, ...]:
+    if not _is_required_authority_scope(required_authority):
+        return ("required_authority",)
+    if authority_held in {
+        required_authority,
+        required_authority + AUTHORITY_HELD_SUFFIX,
+    }:
+        return ()
+    return ("authority_held",)
 
 
 def _is_resolved_evidence(value: str | None) -> bool:
@@ -455,12 +457,21 @@ def _current_state(
     missing_match_witnesses: list[str] = []
     negative_match_witnesses: list[str] = []
     if explicit_authority_match == "YES":
+        text_witness_values: dict[str, str] = {}
         for name, aliases in AUTHORITY_MATCH_TEXT_WITNESSES:
             value = first_value(surfaces, aliases)
             if not _is_resolved_evidence(value):
                 missing_match_witnesses.append(name)
-            elif not _authority_is_held(value):
-                negative_match_witnesses.append(name)
+            else:
+                assert value is not None
+                text_witness_values[name] = value
+        if len(text_witness_values) == len(AUTHORITY_MATCH_TEXT_WITNESSES):
+            negative_match_witnesses.extend(
+                _nonaffirmative_authority_witnesses(
+                    text_witness_values["required_authority"],
+                    text_witness_values["authority_held"],
+                )
+            )
         for name, aliases in AUTHORITY_MATCH_BOOLEAN_WITNESSES:
             value = first_value(surfaces, aliases)
             token, valid = _parse_token(value, ("YES", "NO"))
