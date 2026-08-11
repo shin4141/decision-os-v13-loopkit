@@ -26,6 +26,7 @@ MANDATORY_NEGATIVE_AUTHORITY_VALUES = (
     "NOT HELD",
     "WITHHELD",
     "NEVER GRANTED",
+    "NO LONGER AUTHORIZED",
 )
 ADVERSARIAL_NEGATIVE_AUTHORITY_VALUES = (
     "REPOSITORY-LOCAL TEST / DENIED BY OWNER",
@@ -38,6 +39,36 @@ ADVERSARIAL_NEGATIVE_AUTHORITY_VALUES = (
     "REPOSITORY-LOCAL TEST / AUTHORITY WAS NEVER FORMALLY GRANTED",
     "REPOSITORY-LOCAL TEST / HELD / REVOKED",
     "GRANTED / REVOKED",
+)
+NEGATIVE_AUTHORITY_VARIANTS = (
+    " denied! ",
+    "No,   Authority!",
+    "reVoked.",
+    "not-granted",
+    "NOT   HELD!",
+    "withheld.",
+    "never\tgranted.",
+    "no   longer authorized.",
+)
+MALFORMED_REQUIRED_AUTHORITY_VALUES = (
+    "GRANTED",
+    "HELD",
+    "YES",
+    "NO",
+    "AUTHORIZED",
+    "REVOKED",
+    "DENIED",
+    "REPOSITORY-LOCAL TEST / HELD",
+    "REPOSITORY-LOCAL TEST/HELD",
+    "APPROVED",
+    "ALLOWED",
+    "PERMITTED",
+    "ACTIVE",
+    "TRUE",
+    "CURRENT",
+    "VALID",
+    "UNAUTHORIZED",
+    "DIFFERENT AUTHORITY",
 )
 
 
@@ -438,6 +469,7 @@ PASS
         negative_families = (
             ("mandatory", MANDATORY_NEGATIVE_AUTHORITY_VALUES),
             ("adversarial", ADVERSARIAL_NEGATIVE_AUTHORITY_VALUES),
+            ("variants", NEGATIVE_AUTHORITY_VARIANTS),
         )
 
         for witness_name, old, field_name in text_witnesses:
@@ -476,10 +508,15 @@ PASS
         negative_values = (
             *MANDATORY_NEGATIVE_AUTHORITY_VALUES,
             *ADVERSARIAL_NEGATIVE_AUTHORITY_VALUES,
+            *NEGATIVE_AUTHORITY_VARIANTS,
         )
 
         for negative_value in negative_values:
-            held_values = ("GRANTED", f"{negative_value} / HELD")
+            held_values = (
+                "GRANTED",
+                negative_value,
+                f"{negative_value} / HELD",
+            )
             for held_value in held_values:
                 with self.subTest(
                     required_authority=negative_value,
@@ -514,37 +551,107 @@ PASS
                             witness_evidence["detail"]["negative_or_invalid"],
                         )
 
+    def test_status_shaped_required_authority_cannot_manufacture_authority(
+        self,
+    ) -> None:
+        status_values = (
+            *MALFORMED_REQUIRED_AUTHORITY_VALUES,
+            " gRaNtEd! ",
+            "YeS.",
+            "authorized?",
+            "repository-local test / held!",
+            "G.R.A.N.T.E.D",
+            "D/E/N/I/E/D",
+            "A U T H O R I Z E D",
+            "Y.E.S",
+            "H-E-L-D",
+            "REPOSITORY-LOCAL TEST / H.E.L.D",
+        )
+
+        for required_authority in status_values:
+            held_values = (
+                "GRANTED",
+                required_authority,
+                f"{required_authority} / HELD",
+            )
+            for authority_held in held_values:
+                with self.subTest(
+                    required_authority=required_authority,
+                    authority_held=authority_held,
+                ):
+                    with tempfile.TemporaryDirectory() as directory:
+                        repository = create_repository(Path(directory), "complete")
+                        replace_in_state_surfaces(
+                            repository,
+                            "Required Authority:\nREPOSITORY-LOCAL TEST",
+                            f"Required Authority:\n{required_authority}",
+                        )
+                        replace_in_state_surfaces(
+                            repository,
+                            "Authority Held:\nREPOSITORY-LOCAL TEST / HELD",
+                            f"Authority Held:\n{authority_held}",
+                        )
+
+                        payload, exit_code = inspect_repository(repository)
+
+                        self.assertEqual(EXIT_CONTRADICTION, exit_code)
+                        self.assertTrue(payload["human_seat_required"])
+                        witness_evidence = next(
+                            item
+                            for item in payload["evidence"]
+                            if item["check"]
+                            == "state.authority_match_witnesses"
+                        )
+                        self.assertEqual("FAIL", witness_evidence["status"])
+                        self.assertEqual(
+                            ["required_authority"],
+                            witness_evidence["detail"]["negative_or_invalid"],
+                        )
+
     def test_held_authority_scope_must_match_required_authority(self) -> None:
+        invalid_held_values = (
+            "DIFFERENT AUTHORITY / HELD",
+            "DIFFERENT AUTHORITY",
+            "GRANTED",
+            "REPOSITORY-LOCAL TEST / HELD / HELD",
+            "REPOSITORY-LOCAL TEST / held",
+            "REPOSITORY-LOCAL TEST /  HELD",
+            "REPOSITORY-LOCAL TEST / HELD.",
+            "REPOSITORY-LOCAL TEST / H.E.L.D",
+        )
+
+        for authority_held in invalid_held_values:
+            with self.subTest(authority_held=authority_held):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory), "complete")
+                    replace_in_state_surfaces(
+                        repository,
+                        "Authority Held:\nREPOSITORY-LOCAL TEST / HELD",
+                        f"Authority Held:\n{authority_held}",
+                    )
+
+                    payload, exit_code = inspect_repository(repository)
+
+                    self.assertEqual(EXIT_CONTRADICTION, exit_code)
+                    self.assertTrue(payload["human_seat_required"])
+                    witness_evidence = next(
+                        item
+                        for item in payload["evidence"]
+                        if item["check"] == "state.authority_match_witnesses"
+                    )
+                    self.assertEqual("FAIL", witness_evidence["status"])
+                    self.assertEqual(
+                        ["authority_held"],
+                        witness_evidence["detail"]["negative_or_invalid"],
+                    )
+
+    def test_template_backed_unsuffixed_authority_list_remains_valid(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = create_repository(Path(directory), "complete")
             replace_in_state_surfaces(
                 repository,
                 "Authority Held:\nREPOSITORY-LOCAL TEST / HELD",
-                "Authority Held:\nDIFFERENT AUTHORITY / HELD",
-            )
-
-            payload, exit_code = inspect_repository(repository)
-
-            self.assertEqual(EXIT_CONTRADICTION, exit_code)
-            self.assertTrue(payload["human_seat_required"])
-            witness_evidence = next(
-                item
-                for item in payload["evidence"]
-                if item["check"] == "state.authority_match_witnesses"
-            )
-            self.assertEqual("FAIL", witness_evidence["status"])
-            self.assertEqual(
-                ["required_authority"],
-                witness_evidence["detail"]["negative_or_invalid"],
-            )
-
-    def test_affirmative_authority_text_witness_remains_valid(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            repository = create_repository(Path(directory), "complete")
-            replace_in_state_surfaces(
-                repository,
-                "Authority Held:\nREPOSITORY-LOCAL TEST / HELD",
-                "Authority Held:\nGRANTED",
+                "Authority Held:\nREPOSITORY-LOCAL TEST",
             )
 
             payload, exit_code = inspect_repository(repository)
