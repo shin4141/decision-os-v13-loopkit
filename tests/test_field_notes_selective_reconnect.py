@@ -287,6 +287,7 @@ class SelectiveReconnectFixtureTests(unittest.TestCase):
     def test_257_valid_notes_fail_broad_reconnect_but_edge_recalls_exact_target(
         self,
     ) -> None:
+        self.assertEqual(256, MAX_DIRECTORY_ENTRIES)
         for index in range(MAX_DIRECTORY_ENTRIES):
             write_note(
                 self.repository,
@@ -1051,6 +1052,7 @@ print(json.dumps({
             "traversal": canonical_json(traversal).encode("utf-8") + b"\n",
             "duplicate_key": duplicate.encode("utf-8") + b"\n",
             "mixed_valid_and_corrupt": valid_line + b"{\n",
+            "deeply_nested": b"[" * 1500 + b"0" + b"]" * 1500 + b"\n",
             "oversized": b"x" * (selective.MAX_EDGE_FILE_BYTES + 1),
         }
         for label, data in variants.items():
@@ -1065,6 +1067,24 @@ print(json.dumps({
                 self.assertEqual("DELAY_HOLD", result.receipt.state)
                 self.assertEqual("CORRUPTED_EDGE", result.receipt.failure_reason)
                 self.assertIsNone(result.structure_bytes)
+
+        self.edge_path.write_bytes(valid_line)
+        with (
+            patch.object(
+                selective.json,
+                "loads",
+                side_effect=RecursionError("decoder nesting limit"),
+            ),
+            patch.object(
+                selective,
+                "read_exact_field_note",
+                side_effect=AssertionError("target opened"),
+            ),
+        ):
+            recursive = self.resolve()
+        self.assertEqual("DELAY_HOLD", recursive.receipt.state)
+        self.assertEqual("CORRUPTED_EDGE", recursive.receipt.failure_reason)
+        self.assertIsNone(recursive.structure_bytes)
 
         outside = self.repository.parent / "outside-edge.jsonl"
         outside.write_bytes(valid_line)

@@ -1204,11 +1204,17 @@ def _parse_edges(data: bytes) -> tuple[SelectiveReconnectEdge, ...]:
                 object_pairs_hook=_strict_pairs,
                 parse_constant=_reject_constant,
             )
-        except (UnicodeDecodeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            if not isinstance(value, dict) or canonical_json(value) != text:
+                raise ValueError("Selective reconnect edge JSON is noncanonical.")
+            result.append(_edge_from_dict(value))
+        except (
+            UnicodeDecodeError,
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+            RecursionError,
+        ) as exc:
             raise ValueError("Selective reconnect edge JSON is invalid.") from exc
-        if not isinstance(value, dict) or canonical_json(value) != text:
-            raise ValueError("Selective reconnect edge JSON is noncanonical.")
-        result.append(_edge_from_dict(value))
     return tuple(result)
 
 
