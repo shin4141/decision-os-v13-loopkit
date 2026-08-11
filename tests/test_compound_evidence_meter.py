@@ -274,7 +274,7 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Preserve the exact BLOCK non-dilution claim boundary",
+            "Preserve the exact addressability-only claim boundary",
             payload["next_authorized_action"],
         )
         for relative_path in (
@@ -289,36 +289,61 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     maxsplit=1,
                 )[0]
                 self.assertIn(
-                    "V13 — Decision Structure Transplant Integration / "
-                    "V6 Safety Non-Dilution",
+                    "V11 → V13 — Reconnectable Forgetting / Selective "
+                    "Reconnect Integration",
                     current,
                 )
                 self.assertIn(
-                    "V6-derived Safety Non-Dilution:\nINTEGRATED",
+                    "V11-derived Selective Reconnect Edge:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
-                    "Existing BLOCK Human Seat failures cannot be diluted by "
-                    "earlier simultaneous\nHOLD/CAP failures.",
+                    "Exact persisted Goal/gap → exact prior Field Note structure "
+                    "addressability, with\nfail-closed validation and no "
+                    "activation semantics.",
                     current,
                 )
                 self.assertIn(
-                    "every failed-condition identity is preserved in\n"
-                    "canonical condition order",
+                    "one bounded scale-addressable reconnect path from an exact "
+                    "current\nGoal/gap to one exact prior Field Note structure "
+                    "without broad historical scan",
                     current,
                 )
                 self.assertIn(
-                    "does not\nestablish a general Gate severity lattice",
+                    "Recall is addressability only. It does not establish "
+                    "present truth, usefulness,\nor validity",
                     current,
                 )
                 self.assertIn(
-                    "V8-derived temporal evidence invalidation:\n"
-                    "unchanged / integrated",
+                    "generalized Outcome-Masked Replay, or full V11 integration",
+                    current,
+                )
+                self.assertIn(
+                    "already-recorded V11 source commit/path/blob identity "
+                    "matches the\nauthoritative "
+                    "`shin4141/decision-os-paper` repository",
+                    current,
+                )
+                self.assertIn(
+                    "Fresh upstream PDF refetch / rehash:\nNOT PERFORMED",
+                    current,
+                )
+                self.assertIn(
+                    "V6 Safety Non-Dilution:\nINTEGRATED",
+                    current,
+                )
+                self.assertIn(
+                    "V8 Temporal Evidence Invalidation:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
                     "V10 Protective Rescale:\n"
                     "HOLD — Carrier observability missing",
+                    current,
+                )
+                self.assertIn(
+                    "Genesis Selection:\n"
+                    "HOLD — typed present-Goal comparison missing",
                     current,
                 )
                 self.assertIn(
