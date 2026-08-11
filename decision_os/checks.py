@@ -53,6 +53,8 @@ AUTHORITY_MATCH_TEXT_WITNESSES = (
     ("required_authority", ("Required Authority",)),
     ("authority_held", ("Authority Held",)),
 )
+AUTHORITY_HELD_SUFFIX = " / HELD"
+AUTHORITY_DENIAL_LEXEMES = frozenset({"DENIED", "REVOKED", "WITHHELD"})
 AUTHORITY_MATCH_BOOLEAN_WITNESSES = (
     (
         "operational_effect",
@@ -216,26 +218,57 @@ def _same_alias_conflicts(
     return (sources,)
 
 
-def _authority_is_held(value: str | None) -> bool:
-    if not _is_resolved_evidence(value):
+def _authority_is_held(
+    required_authority: str | None,
+    authority_held: str | None,
+) -> bool:
+    if not (
+        _is_resolved_evidence(required_authority)
+        and _is_resolved_evidence(authority_held)
+    ):
         return False
-    assert value is not None
+    assert required_authority is not None
+    assert authority_held is not None
+    if _authority_is_explicitly_denied(required_authority):
+        return False
+    return authority_held == "GRANTED" or authority_held == (
+        required_authority + AUTHORITY_HELD_SUFFIX
+    )
+
+
+def _authority_is_explicitly_denied(value: str) -> bool:
     words = tuple(re.findall(r"[A-Z0-9]+", value.upper()))
     joined = " ".join(words)
-    return not (
+    return (
         words == ("NO",)
-        or "DENIED" in words
-        or "REVOKED" in words
-        or "NONE" in words
-        or "MISSING" in words
-        or "NO AUTHORITY" in joined
-        or "NOT AUTHORIZED" in joined
-        or "NOT GRANTED" in joined
-        or "INSUFFICIENT" in words
-        or "UNKNOWN" in words
-        or "PENDING" in words
-        or "TBD" in words
+        or not AUTHORITY_DENIAL_LEXEMES.isdisjoint(words)
+        or re.search(
+            r"\bNO(?: [A-Z0-9]+)* (?:AUTHORITY|GRANTED|HELD)\b",
+            joined,
+        )
+        is not None
+        or re.search(
+            r"\b(?:NOT|NEVER)(?: [A-Z0-9]+)* (?:AUTHORIZED|GRANTED|HELD)\b",
+            joined,
+        )
+        is not None
     )
+
+
+def _nonaffirmative_authority_witnesses(
+    required_authority: str,
+    authority_held: str,
+) -> tuple[str, ...]:
+    if _authority_is_explicitly_denied(required_authority):
+        return ("required_authority",)
+    if _authority_is_held(required_authority, authority_held):
+        return ()
+    if _authority_is_explicitly_denied(authority_held):
+        return ("authority_held",)
+    held_scope = authority_held.removesuffix(AUTHORITY_HELD_SUFFIX)
+    if held_scope and held_scope != authority_held:
+        return ("required_authority",)
+    return ("authority_held",)
 
 
 def _is_resolved_evidence(value: str | None) -> bool:
@@ -459,12 +492,21 @@ def _current_state(
     missing_match_witnesses: list[str] = []
     negative_match_witnesses: list[str] = []
     if explicit_authority_match == "YES":
+        text_witness_values: dict[str, str] = {}
         for name, aliases in AUTHORITY_MATCH_TEXT_WITNESSES:
             value = first_value(surfaces, aliases)
             if not _is_resolved_evidence(value):
                 missing_match_witnesses.append(name)
-            elif not _authority_is_held(value):
-                negative_match_witnesses.append(name)
+            else:
+                assert value is not None
+                text_witness_values[name] = value
+        if len(text_witness_values) == len(AUTHORITY_MATCH_TEXT_WITNESSES):
+            negative_match_witnesses.extend(
+                _nonaffirmative_authority_witnesses(
+                    text_witness_values["required_authority"],
+                    text_witness_values["authority_held"],
+                )
+            )
         for name, aliases in AUTHORITY_MATCH_BOOLEAN_WITNESSES:
             value = first_value(surfaces, aliases)
             token, valid = _parse_token(value, ("YES", "NO"))
