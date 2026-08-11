@@ -1,3 +1,136 @@
+# Current Codex Handoff — Same-Run Completion Evidence Invalidation Integration
+
+## Canonical Current State — V13 Post Same-Run Temporal Evidence Integration
+
+```text
+Current Layer:
+V13 — Completion Integrity / Same-Run Temporal Evidence Integration
+
+V12 State:
+PASS
+
+13-124 Blank-Slate Highest-EV Round 2:
+PASS
+
+Selected capability:
+Same-Run approved-Modify completion-evidence invalidation
+
+Classification:
+CONTROL
+
+13-125:
+INTEGRATED locally pending remote canonicalization
+
+Bounded capability:
+same-Run matching completion read + approved exact-path Modify cannot establish
+current completion support.
+
+Temporal Rule:
+read_run <= modify_run invalidates.
+read_run > last_invalidation re-establishes support.
+
+Historical Evidence:
+The persisted matching read remains present as historical evidence. Only its
+eligibility as current completion support changes; "the file was read during
+this Run" is not rewritten.
+
+Conservative Boundary:
+Within-Run post-Modify reread cannot presently be proved from authoritative,
+restart-verifiable event ordering. Any same-Run matching-read / approved
+same-path-Modify collision therefore remains stale.
+
+Legacy Boundary:
+Pre-1.01 false-COMPLETE records fail closed as BLOCKED_CORRUPT / BLOCK. No
+silent migration, retrospective rewriting, or fabricated within-Run order is
+added.
+
+Bounded Claim:
+V13 no longer accepts a same-Run completion-matching read as current support
+when that Run also contains an approved Modify of the exact same evidence path.
+This prevents unsupported COMPLETE when post-mutation current identity is not
+proved.
+
+Claim Boundary:
+This does not establish within-Run event ordering, generic freshness, semantic
+equivalence, post-mutation content identity, transaction history, generic
+mutation dependency analysis, or full temporal reasoning.
+
+Compound Authority Preflight:
+INTEGRATED
+
+V11 Selective Reconnect:
+INTEGRATED
+
+V6 Safety Non-Dilution:
+INTEGRATED
+
+V8 Cross-Run Temporal Evidence Invalidation:
+INTEGRATED
+
+Zero-Declared-Progress Stop:
+INTEGRATED
+
+V10 Protective Rescale:
+HOLD — Carrier observability missing
+
+Genesis Selection:
+HOLD — typed present-Goal comparison missing
+
+13-108:
+NONCANONICAL
+
+Capability Commit:
+5d937fb3f1a123efc6a5d04727547d9c137c63e3
+
+Canonical Starting Main:
+72219407008abd1aa9131cf79ec9f7c46ff1368a
+
+Canonicalization Condition:
+This block becomes remote canonical only when the exact capability commit and
+this synchronization delta are on main with Human Seat authorization.
+
+Active Branch:
+codex/13-126-same-run-invalidation-integration
+
+Field Note 132:
+Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+Remote canonicalization only. Local review, integration, validation, and
+canonical synchronization are complete.
+
+Next Authorized Action:
+None. Stop at the remote publication Human Seat boundary. Do not push, open a
+PR, merge, begin another blank-slate diagnosis, generate candidates, start the
+forked stronger-intelligence audit experiment, or change V10, Genesis
+Selection, 13-108, Field Note 132, or the Compound Evidence Meter.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact 13-125 capability is reviewed and integrated locally, the
+same-Run collision now fails closed without erasing historical read evidence,
+clean and cross-Run behavior remain intact, and remote canonicalization awaits
+separate Human Seat authorization.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff — Compound Authority Preflight Integration
 
 ## Canonical Current State — V13 Post Compound Authority Preflight Integration
