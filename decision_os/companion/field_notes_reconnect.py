@@ -217,6 +217,13 @@ class FieldNoteExactRead:
     relative_path: str
     field_note_id: str
     source_run_id: str
+    task_family: str
+    scope_sha256: str
+    entry_device: int
+    entry_inode: int
+    entry_size: int
+    entry_mtime_ns: int
+    entry_ctime_ns: int
     metadata_sha256: str
     metadata_byte_count: int
     note_sha256: str
@@ -238,6 +245,7 @@ class _FileIdentity:
     inode: int
     size: int
     mtime_ns: int
+    ctime_ns: int
 
 
 @dataclass(frozen=True)
@@ -276,6 +284,7 @@ def _identity(value: os.stat_result) -> _FileIdentity:
         inode=value.st_ino,
         size=value.st_size,
         mtime_ns=value.st_mtime_ns,
+        ctime_ns=value.st_ctime_ns,
     )
 
 
@@ -1029,6 +1038,15 @@ def read_exact_field_note(
             relative_path=relative_path,
             field_note_id=candidate.field_note_id,
             source_run_id=metadata["source_run_id"],
+            task_family=scope["task_family"],
+            scope_sha256=hashlib.sha256(
+                canonical_json(scope).encode("utf-8")
+            ).hexdigest(),
+            entry_device=expected.device,
+            entry_inode=expected.inode,
+            entry_size=expected.size,
+            entry_mtime_ns=expected.mtime_ns,
+            entry_ctime_ns=expected.ctime_ns,
             metadata_sha256=candidate.metadata_sha256,
             metadata_byte_count=consumed,
             note_sha256=hashlib.sha256(note).hexdigest(),
