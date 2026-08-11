@@ -423,6 +423,51 @@ class StageBContinuationTest(unittest.TestCase):
                 snapshot["compound_loop"]["record_sha256"],
             )
 
+    def test_aggregated_block_replays_identically_without_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = RecordingFactory("read_only", "read_only")
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_one_automatic_continuation(
+                stage_b_request(
+                    goal_unchanged=NO,
+                    authority_sufficient=NO,
+                )
+            )
+            stopped = wait_for(
+                controller,
+                lambda state: (
+                    state["compound_loop"] is not None
+                    and state["compound_loop"].get("state") == "STOPPED"
+                ),
+            )
+
+            chain = stopped["compound_loop"]
+            supervisor = chain["supervisor"]
+            self.assertEqual("BLOCK", supervisor["gate"])
+            self.assertEqual("HUMAN-SEAT", supervisor["decision_route"])
+            self.assertEqual(
+                "Decide whether to authorize the proposed next bounded action.",
+                supervisor["human_seat_return"],
+            )
+            self.assertIn(
+                "Simultaneous failed Human Seat conditions: "
+                "goal_unchanged, authority_sufficient.",
+                supervisor["reason"],
+            )
+            self.assertEqual(0, chain["automatic_continuations_started"])
+            self.assertIsNone(chain["automatic_task"])
+            self.assertEqual(1, len(factory.prompts))
+
+            restarted_factory = RecordingFactory()
+            restarted = self.make_controller(root, restarted_factory)
+            replayed = restarted.snapshot()["compound_loop"]
+            self.assertEqual(supervisor, replayed["supervisor"])
+            self.assertEqual(chain["record_sha256"], replayed["record_sha256"])
+            self.assertEqual([], restarted_factory.prompts)
+
     def test_completed_chain_reconnects_without_dispatching_another_run(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

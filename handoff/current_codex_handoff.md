@@ -1,3 +1,90 @@
+# Current Codex Handoff — V6 Safety Non-Dilution Integration
+
+## Canonical Current State — V13 Post V6 Safety Non-Dilution Integration
+
+```text
+Current Layer:
+V13 — Decision Structure Transplant Integration / V6 Safety Non-Dilution
+
+V12 State:
+PASS
+
+V6-derived Safety Non-Dilution:
+INTEGRATED
+
+Bounded Claim:
+Existing BLOCK Human Seat failures cannot be diluted by earlier simultaneous
+HOLD/CAP failures.
+
+Claim Boundary:
+At Supervisor Human Seat commitment, all established NOT_SATISFIED
+human_conditions are evaluated. An existing BLOCK is selected over simultaneous
+earlier HOLD/CAP failures, every failed-condition identity is preserved in
+canonical condition order, exactly one deterministic Human Seat action is
+returned, and no automatic continuation is dispatched. If no BLOCK exists,
+existing first-match HOLD/CAP behavior remains unchanged. This does not
+establish a general Gate severity lattice.
+
+V8-derived temporal evidence invalidation:
+unchanged / integrated
+
+V10 Protective Rescale:
+HOLD — Carrier observability missing
+
+13-108:
+NONCANONICAL
+
+Capability Commit:
+a1e66127ddd4db8219805e113a71700c88ef93b3
+
+Canonicalization Condition:
+This block becomes canonical only when capability commit
+a1e66127ddd4db8219805e113a71700c88ef93b3 and this synchronization delta merge
+into main.
+
+Canonical Starting Main:
+5c510345d96ac1524ee625fd86ebd2be89277258
+
+Active Branch:
+main
+
+Field Note 132:
+Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+None after the exact capability and this canonical synchronization merge.
+
+Next Authorized Action:
+None. Preserve the exact BLOCK non-dilution claim boundary. Do not start another
+Decision transplant, release, publication, or Meter change.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact V6-derived BLOCK non-dilution capability is integrated without
+a broader Gate severity ordering and without changing UNKNOWN, goal-complete
+STOP, Run-cap CAP, zero-progress, V8 temporal-evidence, authority,
+protected-object, or Compound Evidence Meter semantics. No next Decision
+transplant is authorized.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff — V8-Derived Temporal Evidence Integration
 
 ## Canonical Current State — V13 Post V8-Derived Temporal Evidence Integration

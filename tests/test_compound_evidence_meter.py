@@ -274,7 +274,7 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Preserve the exact temporal-evidence claim boundary",
+            "Preserve the exact BLOCK non-dilution claim boundary",
             payload["next_authorized_action"],
         )
         for relative_path in (
@@ -289,29 +289,44 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     maxsplit=1,
                 )[0]
                 self.assertIn(
-                    "V13 — Post V8-Derived Temporal Evidence Integration",
+                    "V13 — Decision Structure Transplant Integration / "
+                    "V6 Safety Non-Dilution",
                     current,
                 )
                 self.assertIn(
-                    "13-106 zero-declared-progress stop:\nINTEGRATED",
+                    "V6-derived Safety Non-Dilution:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
-                    "13-110 V8-derived temporal evidence invalidation:\n"
-                    "INTEGRATED only after this focused branch merges into main",
+                    "Existing BLOCK Human Seat failures cannot be diluted by "
+                    "earlier simultaneous\nHOLD/CAP failures.",
                     current,
                 )
                 self.assertIn(
-                    "13-108 repository-identity candidate:\n"
-                    "NONCANONICAL / NOT INTEGRATED",
+                    "every failed-condition identity is preserved in\n"
+                    "canonical condition order",
                     current,
                 )
                 self.assertIn(
-                    "strictly later approved Modify of that same declared path",
+                    "does not\nestablish a general Gate severity lattice",
                     current,
                 )
                 self.assertIn(
-                    "Field Note 132:\nunchanged / Verification pending",
+                    "V8-derived temporal evidence invalidation:\n"
+                    "unchanged / integrated",
+                    current,
+                )
+                self.assertIn(
+                    "V10 Protective Rescale:\n"
+                    "HOLD — Carrier observability missing",
+                    current,
+                )
+                self.assertIn(
+                    "13-108:\nNONCANONICAL",
+                    current,
+                )
+                self.assertIn(
+                    "Field Note 132:\nVerification pending",
                     current,
                 )
                 self.assertIn(

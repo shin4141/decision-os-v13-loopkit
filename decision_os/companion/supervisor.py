@@ -507,16 +507,43 @@ def judge_continuation(
             "Answer the single proved Human Seat question recorded in the evidence.",
         ),
     )
-    for _name, fact, gate, reason, human_return in human_conditions:
-        if fact == ContractFact.NOT_SATISFIED:
-            return _judgment(
-                result,
-                context,
-                gate=gate,
-                reason=reason,
-                route=DecisionRoute.HUMAN_SEAT,
-                human_return=_human_return(context, human_return),
+    failed_human_conditions = tuple(
+        condition
+        for condition in human_conditions
+        if condition[1] == ContractFact.NOT_SATISFIED
+    )
+    if failed_human_conditions:
+        failed_blocks = tuple(
+            condition
+            for condition in failed_human_conditions
+            if condition[2] == SupervisorGate.BLOCK
+        )
+        primary = (
+            failed_blocks[0]
+            if failed_blocks
+            else failed_human_conditions[0]
+        )
+        _name, _fact, gate, reason, human_return = primary
+        if len(failed_human_conditions) > 1:
+            failed_names = ", ".join(
+                condition[0] for condition in failed_human_conditions
             )
+            reason = (
+                f"{reason} Simultaneous failed Human Seat conditions: "
+                f"{failed_names}."
+            )
+        return _judgment(
+            result,
+            context,
+            gate=gate,
+            reason=reason,
+            route=DecisionRoute.HUMAN_SEAT,
+            human_return=(
+                human_return
+                if failed_blocks and len(failed_human_conditions) > 1
+                else _human_return(context, human_return)
+            ),
+        )
 
     if context.next_bounded_action is None:
         return _judgment(
