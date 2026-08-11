@@ -274,7 +274,7 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Preserve the exact compound-authority and acceleration boundary",
+            "Stop at the remote publication Human Seat boundary",
             payload["next_authorized_action"],
         )
         for relative_path in (
@@ -289,16 +289,17 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     maxsplit=1,
                 )[0]
                 self.assertIn(
-                    "V13 — Compound Loop / Authority Preflight Integration",
+                    "V13 — Completion Integrity / Same-Run Temporal Evidence "
+                    "Integration",
                     current,
                 )
                 self.assertIn(
-                    "13-121 Blank-Slate Highest-EV Selection:\nPASS",
+                    "13-124 Blank-Slate Highest-EV Round 2:\nPASS",
                     current,
                 )
                 self.assertIn(
-                    "Selected capability:\nCompound authority preflight before "
-                    "Repository Default reuse",
+                    "Selected capability:\nSame-Run approved-Modify "
+                    "completion-evidence invalidation",
                     current,
                 )
                 self.assertIn(
@@ -306,40 +307,61 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     current,
                 )
                 self.assertIn(
-                    "Selection basis:\nhighest current realizable EV, not "
-                    "category preference",
+                    "13-125:\nINTEGRATED locally pending remote "
+                    "canonicalization",
                     current,
                 )
                 self.assertIn(
-                    "13-122 Compound Authority Preflight:\nINTEGRATED",
+                    "same-Run matching completion read + approved exact-path "
+                    "Modify cannot establish\ncurrent completion support.",
                     current,
                 )
                 self.assertIn(
-                    "active Stage B/C Create/Modify authority is checked before "
-                    "Repository Default\nreuse can authorize the action.",
+                    "read_run <= modify_run invalidates.\n"
+                    "read_run > last_invalidation re-establishes support.",
                     current,
                 )
                 self.assertIn(
-                    "valid in-envelope and ordinary non-compound Default reuse "
-                    "remain intact.",
+                    "The persisted matching read remains present as historical "
+                    "evidence. Only its\neligibility as current completion "
+                    "support changes",
                     current,
                 )
                 self.assertIn(
-                    "V13 now preflights active Stage B/C Create/Modify proposals "
-                    "against the current\npersisted compound mutation envelope "
-                    "before Repository Default reuse can\nauthorize them.",
+                    "Within-Run post-Modify reread cannot presently be proved "
+                    "from authoritative,\nrestart-verifiable event ordering.",
                     current,
                 )
                 self.assertIn(
-                    "This prevents an older reusable Default from widening the\n"
-                    "current compound Run's file-mutation authority.",
+                    "Pre-1.01 false-COMPLETE records fail closed as "
+                    "BLOCKED_CORRUPT / BLOCK.",
                     current,
                 )
                 self.assertIn(
-                    "This does not establish a generic permission hierarchy; "
-                    "shell, network,\narbitrary-tool, publication, or release "
-                    "authority; generalized capability\nalgebra; or a full "
-                    "authority-system redesign.",
+                    "No\nsilent migration, retrospective rewriting, or "
+                    "fabricated within-Run order is\nadded.",
+                    current,
+                )
+                self.assertIn(
+                    "V13 no longer accepts a same-Run completion-matching read "
+                    "as current support\nwhen that Run also contains an "
+                    "approved Modify of the exact same evidence path.",
+                    current,
+                )
+                self.assertIn(
+                    "This prevents unsupported COMPLETE when post-mutation "
+                    "current identity is not\nproved.",
+                    current,
+                )
+                self.assertIn(
+                    "This does not establish within-Run event ordering, generic "
+                    "freshness, semantic\nequivalence, post-mutation content "
+                    "identity, transaction history, generic\nmutation "
+                    "dependency analysis, or full temporal reasoning.",
+                    current,
+                )
+                self.assertIn(
+                    "Compound Authority Preflight:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
@@ -351,7 +373,11 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     current,
                 )
                 self.assertIn(
-                    "V8 Temporal Evidence Invalidation:\nINTEGRATED",
+                    "V8 Cross-Run Temporal Evidence Invalidation:\nINTEGRATED",
+                    current,
+                )
+                self.assertIn(
+                    "Zero-Declared-Progress Stop:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
@@ -370,12 +396,17 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                 )
                 self.assertIn(
                     "Capability Commit:\n"
-                    "8425b6e04a25f469687d8ca54b76258771a69027",
+                    "5d937fb3f1a123efc6a5d04727547d9c137c63e3",
                     current,
                 )
                 self.assertIn(
                     "Canonical Starting Main:\n"
-                    "b1131284854501a0364fb09984f1a4ea56eed531",
+                    "72219407008abd1aa9131cf79ec9f7c46ff1368a",
+                    current,
+                )
+                self.assertIn(
+                    "Active Branch:\n"
+                    "codex/13-126-same-run-invalidation-integration",
                     current,
                 )
                 self.assertIn(
