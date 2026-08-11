@@ -224,9 +224,13 @@ def _authority_is_held(value: str | None) -> bool:
     joined = " ".join(words)
     return not (
         words == ("NO",)
+        or "DENIED" in words
+        or "REVOKED" in words
         or "NONE" in words
         or "MISSING" in words
+        or "NO AUTHORITY" in joined
         or "NOT AUTHORIZED" in joined
+        or "NOT GRANTED" in joined
         or "INSUFFICIENT" in words
         or "UNKNOWN" in words
         or "PENDING" in words
