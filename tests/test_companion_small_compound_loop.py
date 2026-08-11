@@ -329,6 +329,167 @@ class StageCSmallCompoundLoopTest(unittest.TestCase):
                 controller.snapshot()["compound_loop"]["state"],
             )
 
+    def test_same_run_approved_modify_invalidates_current_read_support(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            factory = EvidenceFactory(
+                {
+                    "evidence": (1, 2, 3),
+                    "modifies": ("evidence-1.md",),
+                },
+                {"evidence": (1,)},
+            )
+            controller = self.make_controller(root, factory)
+            controller.select_repository(repository)
+            controller.start_small_compound_loop(
+                stage_c_request(
+                    allowed_mutation_paths=("evidence-1.md",),
+                )
+            )
+            chain = self.terminal(controller)["compound_loop"]
+
+            self.assertEqual("HOLD", chain["outcome"])
+            self.assertEqual(1, len(chain["runs"]))
+            self.assertEqual(
+                ["REQ-2", "REQ-3"],
+                chain["residues"][0]["established_requirement_ids"],
+            )
+            self.assertEqual(
+                ["REQ-1"],
+                chain["residues"][0]["remaining_requirement_ids"],
+            )
+            self.assertEqual(
+                "EVIDENCE-RECOVERY",
+                chain["supervisor_judgments"][0]["decision_route"],
+            )
+            self.assertEqual("HOLD", chain["governed_stop"]["gate"])
+            self.assertEqual(
+                "EVIDENCE-RECOVERY",
+                chain["governed_stop"]["route"],
+            )
+            self.assertEqual([], chain["automatic_tasks"])
+            self.assertEqual(0, chain["automatic_continuations_started"])
+            self.assertEqual(1, len(factory.prompts))
+            self.assertEqual(1, len(factory.plans))
+
+            matching_read = chain["runs"][0]["read_evidence"][0]
+            self.assertEqual(
+                {
+                    "path": "evidence-1.md",
+                    "bytes": 1,
+                    "sha256": "1" * 64,
+                    "repository_identity": "b" * 40,
+                    "status": "succeeded",
+                    "reason": None,
+                },
+                matching_read,
+            )
+            self.assertEqual(
+                {
+                    "action": "Modify",
+                    "path": "evidence-1.md",
+                    "access": "one-time",
+                    "status": "approved",
+                },
+                chain["runs"][0]["file_actions"][0],
+            )
+
+            restarted_factory = EvidenceFactory()
+            restarted = self.make_controller(root, restarted_factory)
+            replayed = restarted.snapshot()["compound_loop"]
+            self.assertEqual("HOLD", replayed["outcome"])
+            self.assertEqual(
+                chain["record_sha256"],
+                replayed["record_sha256"],
+            )
+            self.assertEqual(
+                chain["runs"][0]["read_evidence"],
+                replayed["runs"][0]["read_evidence"],
+            )
+            self.assertEqual(
+                ["REQ-1"],
+                replayed["residues"][0]["remaining_requirement_ids"],
+            )
+            self.assertEqual([], restarted_factory.prompts)
+
+    def test_same_run_collision_is_conservative_and_modify_specific(
+        self,
+    ) -> None:
+        collision = temporal_support_record(
+            {
+                "evidence": (1, 1, 2, 3),
+                "modifies": ("evidence-1.md",),
+            }
+        )
+        self.assertEqual(
+            ("REQ-2", "REQ-3"),
+            satisfied_requirement_ids(collision),
+        )
+        self.assertEqual(
+            ("REQ-1",),
+            tuple(
+                item["requirement_id"]
+                for item in remaining_requirements(collision)
+            ),
+        )
+        self.assertEqual(
+            2,
+            sum(
+                read["path"] == "evidence-1.md"
+                for read in collision["runs"][0]["read_evidence"]
+            ),
+        )
+
+        read_only = temporal_support_record({"evidence": (1, 2, 3)})
+        self.assertEqual(
+            ("REQ-1", "REQ-2", "REQ-3"),
+            satisfied_requirement_ids(read_only),
+        )
+
+        denied = temporal_support_record(
+            {
+                "evidence": (1, 2, 3),
+                "modifies": ("evidence-1.md",),
+            }
+        )
+        denied_action = denied["runs"][0]["file_actions"][0]
+        denied_action["access"] = "denied"
+        denied_action["status"] = "denied"
+        self.assertEqual(
+            ("REQ-1", "REQ-2", "REQ-3"),
+            satisfied_requirement_ids(denied),
+        )
+
+        created = temporal_support_record(
+            {
+                "evidence": (1, 2, 3),
+                "modifies": ("evidence-1.md",),
+            }
+        )
+        created["runs"][0]["file_actions"][0]["action"] = "Create"
+        self.assertEqual(
+            ("REQ-1", "REQ-2", "REQ-3"),
+            satisfied_requirement_ids(created),
+        )
+
+        different_path = temporal_support_record(
+            {
+                "evidence": (1, 2, 3),
+                "modifies": ("evidence-1.md",),
+            }
+        )
+        different_path["request"] = stage_c_request(
+            allowed_mutation_paths=("other.txt",),
+        ).as_dict()
+        different_path["runs"][0]["file_actions"][0]["path"] = "other.txt"
+        self.assertEqual(
+            ("REQ-1", "REQ-2", "REQ-3"),
+            satisfied_requirement_ids(different_path),
+        )
+
     def test_later_authorized_modify_invalidates_historical_read(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

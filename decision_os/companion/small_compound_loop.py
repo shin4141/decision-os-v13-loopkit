@@ -461,7 +461,9 @@ def _requirement_temporal_state(
     invalidating_modifies = tuple(
         modify_run
         for modify_run in authorized_modifies
-        if any(read_run < modify_run for read_run in matching_reads)
+        # Persisted Run evidence does not order reads against file actions.
+        # A same-Run collision therefore cannot prove post-Modify support.
+        if any(read_run <= modify_run for read_run in matching_reads)
     )
     if not invalidating_modifies:
         return True, False
