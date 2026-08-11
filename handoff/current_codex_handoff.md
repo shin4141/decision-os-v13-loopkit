@@ -1,3 +1,110 @@
+# Current Codex Handoff — V11-Derived Selective Reconnect Edge Integration
+
+## Canonical Current State — V13 Post Selective Reconnect Integration
+
+```text
+Current Layer:
+V11 → V13 — Reconnectable Forgetting / Selective Reconnect Integration
+
+V12 State:
+PASS
+
+V11-derived Selective Reconnect Edge:
+INTEGRATED
+
+Established Capability:
+Exact persisted Goal/gap → exact prior Field Note structure addressability, with
+fail-closed validation and no activation semantics.
+
+Bounded Claim:
+V13 now has one bounded scale-addressable reconnect path from an exact current
+Goal/gap to one exact prior Field Note structure without broad historical scan.
+
+Claim Boundary:
+Recall is addressability only. It does not establish present truth, usefulness,
+or validity; serving, injection, selection, promotion, or Canon; authority,
+Worker dispatch, or automatic continuation. It does not establish generic
+scalable memory, general semantic retrieval, RAG, autonomous memory management,
+generalized Outcome-Masked Replay, or full V11 integration.
+
+Source Validation:
+The already-recorded V11 source commit/path/blob identity matches the
+authoritative `shin4141/decision-os-paper` repository.
+
+Fresh upstream PDF refetch / rehash:
+NOT PERFORMED — the recorded PDF SHA-256 remains persisted lineage evidence,
+not a new independent source validation.
+
+V6 Safety Non-Dilution:
+INTEGRATED
+
+V8 Temporal Evidence Invalidation:
+INTEGRATED
+
+V10 Protective Rescale:
+HOLD — Carrier observability missing
+
+Genesis Selection:
+HOLD — typed present-Goal comparison missing
+
+13-108:
+NONCANONICAL
+
+Capability Commit:
+4f8f95ec9d32672b80231294c8f1dddef55a7e74
+
+Guard Repair Commit:
+31a3ccb223cc7647f5557b8366e369f4e200a699
+
+Canonicalization Condition:
+This block becomes canonical only when the exact capability commit, guard repair
+commit, and this synchronization delta are on main.
+
+Canonical Starting Main:
+559ec0cd5bdc8af52fe0784bd3df2cd249212bcd
+
+Active Branch:
+main
+
+Field Note 132:
+Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+None after the exact capability, guard repair, and this canonical synchronization
+are on main.
+
+Next Authorized Action:
+None. Preserve the exact addressability-only claim boundary. Do not start another
+Decision transplant, release, publication, Meter change, Genesis Selection,
+V10 Protective Rescale, FN132, or 13-108 integration.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact V11-derived Selective Reconnect Edge is integrated as one
+bounded Goal/gap-to-structure addressability path with fail-closed validation,
+no broad historical scan, and no serving, selection, promotion, Canon,
+authority, Worker dispatch, or automatic-continuation semantics. No next
+Decision transplant is authorized.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff — V6 Safety Non-Dilution Integration
 
 ## Canonical Current State — V13 Post V6 Safety Non-Dilution Integration
