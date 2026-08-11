@@ -274,7 +274,7 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Preserve the exact addressability-only claim boundary",
+            "Preserve the exact compound-authority and acceleration boundary",
             payload["next_authorized_action"],
         )
         for relative_path in (
@@ -289,43 +289,61 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     maxsplit=1,
                 )[0]
                 self.assertIn(
-                    "V11 → V13 — Reconnectable Forgetting / Selective "
-                    "Reconnect Integration",
+                    "V13 — Compound Loop / Authority Preflight Integration",
                     current,
                 )
                 self.assertIn(
-                    "V11-derived Selective Reconnect Edge:\nINTEGRATED",
+                    "13-121 Blank-Slate Highest-EV Selection:\nPASS",
                     current,
                 )
                 self.assertIn(
-                    "Exact persisted Goal/gap → exact prior Field Note structure "
-                    "addressability, with\nfail-closed validation and no "
-                    "activation semantics.",
+                    "Selected capability:\nCompound authority preflight before "
+                    "Repository Default reuse",
                     current,
                 )
                 self.assertIn(
-                    "one bounded scale-addressable reconnect path from an exact "
-                    "current\nGoal/gap to one exact prior Field Note structure "
-                    "without broad historical scan",
+                    "Classification:\nCONTROL",
                     current,
                 )
                 self.assertIn(
-                    "Recall is addressability only. It does not establish "
-                    "present truth, usefulness,\nor validity",
+                    "Selection basis:\nhighest current realizable EV, not "
+                    "category preference",
                     current,
                 )
                 self.assertIn(
-                    "generalized Outcome-Masked Replay, or full V11 integration",
+                    "13-122 Compound Authority Preflight:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
-                    "already-recorded V11 source commit/path/blob identity "
-                    "matches the\nauthoritative "
-                    "`shin4141/decision-os-paper` repository",
+                    "active Stage B/C Create/Modify authority is checked before "
+                    "Repository Default\nreuse can authorize the action.",
                     current,
                 )
                 self.assertIn(
-                    "Fresh upstream PDF refetch / rehash:\nNOT PERFORMED",
+                    "valid in-envelope and ordinary non-compound Default reuse "
+                    "remain intact.",
+                    current,
+                )
+                self.assertIn(
+                    "V13 now preflights active Stage B/C Create/Modify proposals "
+                    "against the current\npersisted compound mutation envelope "
+                    "before Repository Default reuse can\nauthorize them.",
+                    current,
+                )
+                self.assertIn(
+                    "This prevents an older reusable Default from widening the\n"
+                    "current compound Run's file-mutation authority.",
+                    current,
+                )
+                self.assertIn(
+                    "This does not establish a generic permission hierarchy; "
+                    "shell, network,\narbitrary-tool, publication, or release "
+                    "authority; generalized capability\nalgebra; or a full "
+                    "authority-system redesign.",
+                    current,
+                )
+                self.assertIn(
+                    "V11 Selective Reconnect:\nINTEGRATED",
                     current,
                 )
                 self.assertIn(
@@ -348,6 +366,16 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                 )
                 self.assertIn(
                     "13-108:\nNONCANONICAL",
+                    current,
+                )
+                self.assertIn(
+                    "Capability Commit:\n"
+                    "8425b6e04a25f469687d8ca54b76258771a69027",
+                    current,
+                )
+                self.assertIn(
+                    "Canonical Starting Main:\n"
+                    "b1131284854501a0364fb09984f1a4ea56eed531",
                     current,
                 )
                 self.assertIn(
