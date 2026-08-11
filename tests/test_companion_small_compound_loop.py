@@ -14,7 +14,8 @@ from decision_os.acceleration.codex_adapter import (
     CodexReadEvidence,
     CodexRunResult,
 )
-from decision_os.acceleration.model import hash_payload
+from decision_os.acceleration.engine import AccelerationEngine
+from decision_os.acceleration.model import DecisionType, hash_payload
 from decision_os.companion.controller import (
     CompanionController,
     RunConflictError,
@@ -698,6 +699,63 @@ class StageCSmallCompoundLoopTest(unittest.TestCase):
             )
             self.assertEqual(3, len(factory.prompts))
             self.assertEqual(1, len(factory.plans))
+
+    def test_stage_c_default_reuse_is_bounded_by_the_active_envelope(self) -> None:
+        cases = (
+            ("allowed.txt", "DENIED", "BLOCK", False),
+            ("target.txt", "VERIFIED_SAVE", "HOLD", True),
+        )
+        for allowed_path, run_status, outcome, approved in cases:
+            with self.subTest(allowed_path=allowed_path):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    repository = create_repository(root)
+                    ordinary = AccelerationEngine(repository)
+                    created = ordinary.evaluate(
+                        run_id="ordinary-default-creation",
+                        iteration=1,
+                        decision_type=DecisionType.MODIFY_FILE,
+                        requested_scope="target.txt",
+                        source_interrupt_id="ordinary-default-creation",
+                        choice_provider=lambda _identity: "2",
+                    )
+                    default_before = ordinary.store.active_default(
+                        created.identity.decision_key
+                    )
+                    factory = EvidenceFactory("mutation")
+                    controller = self.make_controller(root, factory)
+                    controller.select_repository(repository)
+
+                    controller.start_small_compound_loop(
+                        stage_c_request(
+                            allowed_mutation_paths=(allowed_path,),
+                        )
+                    )
+                    chain = self.terminal(controller)["compound_loop"]
+
+                    self.assertEqual(run_status, chain["runs"][0]["status"])
+                    self.assertEqual(outcome, chain["outcome"])
+                    approved_actions = [
+                        action
+                        for action in chain["runs"][0]["file_actions"]
+                        if action["status"] == "approved"
+                    ]
+                    self.assertEqual(approved, bool(approved_actions))
+                    if approved:
+                        self.assertEqual("reused", approved_actions[0]["access"])
+                    else:
+                        self.assertFalse(
+                            any(
+                                action["access"] == "reused"
+                                for action in chain["runs"][0]["file_actions"]
+                            )
+                        )
+                    self.assertEqual(
+                        default_before,
+                        ordinary.store.active_default(
+                            created.identity.decision_key
+                        ),
+                    )
 
     def test_rehashed_task_and_provenance_tampering_blocks_reconnect(self) -> None:
         def change_task_2(record: dict[str, Any]) -> None:

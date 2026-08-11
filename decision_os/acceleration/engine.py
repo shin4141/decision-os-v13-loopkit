@@ -13,6 +13,7 @@ from .store import AccelerationStore
 
 
 ChoiceProvider = Callable[[DecisionIdentity], str | None]
+MutationAuthorityPreflight = Callable[[DecisionIdentity], bool]
 
 
 @dataclass(frozen=True)
@@ -48,11 +49,13 @@ class AccelerationEngine:
         store: AccelerationStore | None = None,
         adapter: str = "core",
         adapter_version: str = "v0.1",
+        mutation_authority_preflight: MutationAuthorityPreflight | None = None,
     ) -> None:
         self.repository = Path(repository)
         self.store = store or AccelerationStore(self.repository)
         self.adapter = adapter
         self.adapter_version = adapter_version
+        self.mutation_authority_preflight = mutation_authority_preflight
 
     @staticmethod
     def new_run_id() -> str:
@@ -85,6 +88,26 @@ class AccelerationEngine:
             status="CHECKED",
             source_interrupt_id=source_interrupt_id,
         )
+        if (
+            identity.decision_type
+            in {DecisionType.CREATE_FILE, DecisionType.MODIFY_FILE}
+            and self.mutation_authority_preflight is not None
+        ):
+            try:
+                authority_allowed = (
+                    self.mutation_authority_preflight(identity) is True
+                )
+            except Exception:
+                authority_allowed = False
+            if not authority_allowed:
+                return DecisionOutcome(
+                    identity,
+                    run_id,
+                    iteration,
+                    False,
+                    "DENIED",
+                    source_interrupt_id,
+                )
         active = self.store.active_default(identity.decision_key)
         if active is not None:
             if active.rule_hash != identity.rule_hash:
