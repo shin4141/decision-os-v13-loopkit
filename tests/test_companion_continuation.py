@@ -9,11 +9,17 @@ import time
 import unittest
 from typing import Any
 
-from decision_os.acceleration.model import hash_payload
-from decision_os.acceleration.store import StateIntegrityError
+from decision_os.acceleration.engine import AccelerationEngine
+from decision_os.acceleration.model import (
+    DecisionType,
+    derive_decision_identity,
+    hash_payload,
+)
+from decision_os.acceleration.store import AccelerationStore, StateIntegrityError
 from decision_os.companion.continuation import (
     ContinuationIntegrityError,
     StageBContinuationRequest,
+    new_record,
 )
 from decision_os.companion.controller import (
     CompanionController,
@@ -237,6 +243,18 @@ class StageBContinuationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             repository = create_repository(root)
+            ordinary = AccelerationEngine(repository)
+            created = ordinary.evaluate(
+                run_id="ordinary-default-creation",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="ordinary-default-creation",
+                choice_provider=lambda _identity: "2",
+            )
+            default_before = ordinary.store.active_default(
+                created.identity.decision_key
+            )
             factory = RecordingFactory("mutation", "read_only")
             controller = self.make_controller(root, factory)
             controller.select_repository(repository)
@@ -258,6 +276,133 @@ class StageBContinuationTest(unittest.TestCase):
             self.assertEqual("STOP", chain["supervisor"]["decision_route"])
             self.assertEqual(0, chain["automatic_continuations_started"])
             self.assertEqual(1, len(factory.prompts))
+            self.assertIsNone(chain["supervisor"]["human_seat_return"])
+            self.assertEqual(
+                default_before,
+                ordinary.store.active_default(created.identity.decision_key),
+            )
+            later = ordinary.evaluate(
+                run_id="later-ordinary-reuse",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="later-ordinary-proposal",
+                choice_provider=lambda _identity: self.fail(
+                    "preserved Default must remain reusable"
+                ),
+            )
+            self.assertEqual("DEFAULT_MATCHED", later.status)
+
+    def test_compound_preflight_binds_persisted_authority_and_replays_decline(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = create_repository(root)
+            controller = self.make_controller(root, RecordingFactory())
+            controller.select_repository(repository)
+            request = stage_b_request(allowed_mutation_paths=("target.txt",))
+            chain_id = "a" * 32
+            record = controller._continuation_store.save(
+                new_record(
+                    request,
+                    chain_id=chain_id,
+                    repository_id=AccelerationStore(repository).repository_id,
+                )
+            )
+            controller._compound_loop = record
+            controller._compound_active = True
+            controller._compound_recovery_required = False
+            controller._compound_allowed_mutation_paths = ("target.txt",)
+            controller._run["state"] = "running"
+            controller._run["task_mode"] = "contract"
+            controller._run["continuation"] = {
+                "schema": "decision-os-bounded-run-continuation-v0.1",
+                "chain_id": chain_id,
+                "run_number": 1,
+                "automatic": False,
+                "source_run_id": None,
+                "source_evidence_sha256": None,
+                "task_sha256": hashlib.sha256(
+                    request.run_1_task.encode("utf-8")
+                ).hexdigest(),
+            }
+            target = derive_decision_identity(
+                repository,
+                DecisionType.MODIFY_FILE,
+                "target.txt",
+            )
+            outside = derive_decision_identity(
+                repository,
+                DecisionType.MODIFY_FILE,
+                "other.txt",
+            )
+            foreign_repository = create_repository(root, name="foreign")
+            foreign = derive_decision_identity(
+                foreign_repository,
+                DecisionType.MODIFY_FILE,
+                "target.txt",
+            )
+
+            self.assertTrue(controller._compound_mutation_preflight(target))
+            self.assertFalse(controller._compound_mutation_preflight(outside))
+            self.assertFalse(controller._compound_mutation_preflight(foreign))
+
+            controller._compound_allowed_mutation_paths = ()
+            self.assertFalse(controller._compound_mutation_preflight(target))
+            controller._compound_allowed_mutation_paths = ("target.txt",)
+            controller._run["continuation"] = None
+            self.assertFalse(controller._compound_mutation_preflight(target))
+            controller._run["continuation"] = {
+                "schema": "decision-os-bounded-run-continuation-v0.1",
+                "chain_id": chain_id,
+                "run_number": 1,
+                "automatic": False,
+                "source_run_id": None,
+                "source_evidence_sha256": None,
+                "task_sha256": hashlib.sha256(
+                    request.run_1_task.encode("utf-8")
+                ).hexdigest(),
+            }
+
+            restarted = self.make_controller(root, RecordingFactory())
+            replayed = restarted.snapshot()["compound_loop"]
+            self.assertEqual(record["chain_id"], replayed["chain_id"])
+            self.assertEqual(record["record_sha256"], replayed["record_sha256"])
+            self.assertFalse(controller._compound_mutation_preflight(outside))
+            self.assertFalse(restarted._compound_mutation_preflight(outside))
+
+            ordinary = AccelerationEngine(repository)
+            ordinary.evaluate(
+                run_id="malformed-default-creation",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="malformed-default-creation",
+                choice_provider=lambda _identity: "2",
+            )
+            controller._compound_active = False
+            controller._compound_loop = None
+            controller._compound_allowed_mutation_paths = ()
+            malformed = AccelerationEngine(
+                repository,
+                mutation_authority_preflight=(
+                    controller._compound_mutation_preflight
+                ),
+            ).evaluate(
+                run_id="malformed-unbound-compound",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="malformed-unbound-compound",
+                choice_provider=lambda _identity: self.fail(
+                    "unbound compound state must not reach Human approval"
+                ),
+            )
+            self.assertEqual("DENIED", malformed.status)
+            controller._run["continuation"] = None
+            controller._compound_allowed_mutation_paths = []  # type: ignore[assignment]
+            self.assertFalse(controller._compound_mutation_preflight(target))
 
     def test_insufficient_run_1_evidence_never_starts_run_two(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -1,3 +1,116 @@
+# Current Codex Handoff — Compound Authority Preflight Integration
+
+## Canonical Current State — V13 Post Compound Authority Preflight Integration
+
+```text
+Current Layer:
+V13 — Compound Loop / Authority Preflight Integration
+
+V12 State:
+PASS
+
+13-121 Blank-Slate Highest-EV Selection:
+PASS
+
+Selected capability:
+Compound authority preflight before Repository Default reuse
+
+Classification:
+CONTROL
+
+Selection basis:
+highest current realizable EV, not category preference
+
+13-122 Compound Authority Preflight:
+INTEGRATED
+
+Bounded capability:
+active Stage B/C Create/Modify authority is checked before Repository Default
+reuse can authorize the action.
+
+Acceleration boundary:
+valid in-envelope and ordinary non-compound Default reuse remain intact.
+
+Bounded Claim:
+V13 now preflights active Stage B/C Create/Modify proposals against the current
+persisted compound mutation envelope before Repository Default reuse can
+authorize them. This prevents an older reusable Default from widening the
+current compound Run's file-mutation authority.
+
+Claim Boundary:
+This does not establish a generic permission hierarchy; shell, network,
+arbitrary-tool, publication, or release authority; generalized capability
+algebra; or a full authority-system redesign.
+
+V11 Selective Reconnect:
+INTEGRATED
+
+V6 Safety Non-Dilution:
+INTEGRATED
+
+V8 Temporal Evidence Invalidation:
+INTEGRATED
+
+V10 Protective Rescale:
+HOLD — Carrier observability missing
+
+Genesis Selection:
+HOLD — typed present-Goal comparison missing
+
+13-108:
+NONCANONICAL
+
+Capability Commit:
+8425b6e04a25f469687d8ca54b76258771a69027
+
+Canonical Starting Main:
+b1131284854501a0364fb09984f1a4ea56eed531
+
+Canonicalization Condition:
+This block becomes canonical only when the exact capability commit and this
+synchronization delta are on main.
+
+Active Branch:
+main
+
+Field Note 132:
+Verification pending
+
+Compound Evidence Meter:
+unchanged
+
+Current Missing Closure:
+None after the exact capability commit and this canonical synchronization are
+on main.
+
+Next Authorized Action:
+None. Preserve the exact compound-authority and acceleration boundary. Do not
+start another blank-slate diagnosis, candidate selection, Decision transplant,
+release, publication, Meter change, Genesis Selection, V10 Protective Rescale,
+FN132, or 13-108 integration.
+
+Current Gate:
+HOLD — NO NEXT AUTHORITY
+
+Release Authority:
+NONE
+
+Publication Authority:
+NONE
+
+Decision Owner / Human Seat:
+Shin
+
+Completion Line:
+PASS — the exact 13-122 compound authority preflight is integrated before
+Repository Default reuse, valid in-envelope and ordinary non-compound Default
+acceleration remain available, and no next loop is authorized.
+```
+
+Everything below this boundary is preserved historical material byte-for-byte
+as of its own recorded state. Historical entries grant no present execution,
+merge, release, or publication authority.
+
 # Current Codex Handoff — V11-Derived Selective Reconnect Edge Integration
 
 ## Canonical Current State — V13 Post Selective Reconnect Integration

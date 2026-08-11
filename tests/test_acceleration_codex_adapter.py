@@ -32,6 +32,7 @@ from decision_os.acceleration.codex_adapter import (
     canonical_failure_diagnostic,
 )
 from decision_os.acceleration.engine import AccelerationEngine
+from decision_os.acceleration.model import DecisionType
 
 
 def create_repository(parent: Path) -> Path:
@@ -2959,6 +2960,172 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
                 for transport in factory.transports
             ]
             self.assertEqual(["thread-1", "thread-2"], turn_thread_ids)
+
+    async def test_compound_preflight_controls_wire_before_default_reuse(
+        self,
+    ) -> None:
+        cases = (
+            (DecisionType.MODIFY_FILE, "target.txt", "update"),
+            (DecisionType.CREATE_FILE, "created.txt", "add"),
+        )
+        for decision_type, path, kind in cases:
+            with self.subTest(decision_type=decision_type):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    ordinary = AccelerationEngine(
+                        repository,
+                        adapter=ADAPTER_NAME,
+                        adapter_version=CODEX_CLI_VERSION,
+                    )
+                    created = ordinary.evaluate(
+                        run_id="default-creation",
+                        iteration=1,
+                        decision_type=decision_type,
+                        requested_scope=path,
+                        source_interrupt_id="create-default",
+                        choice_provider=lambda _identity: "2",
+                    )
+                    default_before = ordinary.store.active_default(
+                        created.identity.decision_key
+                    )
+                    proposed_change = change(path=path, kind=kind)
+                    human_calls = []
+                    preflight_calls = []
+                    rejected_factory = FakeTransportFactory(
+                        [
+                            file_run_messages(
+                                repository,
+                                thread_id="thread-rejected",
+                                turn_id="turn-rejected",
+                                item_id="item-rejected",
+                                file_changes=[proposed_change],
+                                item_status="declined",
+                            )
+                        ]
+                    )
+                    rejected_engine = AccelerationEngine(
+                        repository,
+                        adapter=ADAPTER_NAME,
+                        adapter_version=CODEX_CLI_VERSION,
+                        mutation_authority_preflight=lambda identity: (
+                            preflight_calls.append(identity) or False
+                        ),
+                    )
+                    rejected_adapter = CodexAdapter(
+                        rejected_engine,
+                        input_func=lambda: None,
+                        stdout=io.StringIO(),
+                        approval_provider=lambda approval: (
+                            human_calls.append(approval) or "1"
+                        ),
+                        transport_factory=rejected_factory,
+                    )
+
+                    rejected = await rejected_adapter.run(
+                        "out-of-envelope compound proposal"
+                    )
+
+                    rejected_decisions = [
+                        message["result"]["decision"]
+                        for message in rejected_factory.transports[0].sent
+                        if isinstance(message.get("result"), dict)
+                        and "decision" in message["result"]
+                    ]
+                    self.assertEqual(["decline"], rejected_decisions)
+                    self.assertEqual("DENIED", rejected.status)
+                    self.assertFalse(rejected.normal_terminal)
+                    self.assertEqual(1, len(preflight_calls))
+                    self.assertEqual(path, preflight_calls[0].normalized_scope)
+                    self.assertEqual([], human_calls)
+                    self.assertEqual(set(), rejected_adapter._accepted_items)
+                    self.assertEqual({}, rejected_adapter._approved_changes)
+                    self.assertFalse(
+                        any(
+                            action.status == "approved"
+                            or action.access == "reused"
+                            for action in rejected.file_actions
+                        )
+                    )
+                    self.assertEqual(
+                        default_before,
+                        rejected_engine.store.active_default(
+                            created.identity.decision_key
+                        ),
+                    )
+
+                    allowed_factory = FakeTransportFactory(
+                        [
+                            file_run_messages(
+                                repository,
+                                thread_id="thread-allowed",
+                                turn_id="turn-allowed",
+                                item_id="item-allowed",
+                                file_changes=[proposed_change],
+                            )
+                        ]
+                    )
+                    allowed_engine = AccelerationEngine(
+                        repository,
+                        adapter=ADAPTER_NAME,
+                        adapter_version=CODEX_CLI_VERSION,
+                        mutation_authority_preflight=lambda _identity: True,
+                    )
+                    allowed_adapter = CodexAdapter(
+                        allowed_engine,
+                        input_func=lambda: None,
+                        stdout=io.StringIO(),
+                        approval_provider=lambda approval: (
+                            human_calls.append(approval) or "1"
+                        ),
+                        transport_factory=allowed_factory,
+                    )
+
+                    allowed = await allowed_adapter.run(
+                        "in-envelope compound proposal"
+                    )
+
+                    allowed_decisions = [
+                        message["result"]["decision"]
+                        for message in allowed_factory.transports[0].sent
+                        if isinstance(message.get("result"), dict)
+                        and "decision" in message["result"]
+                    ]
+                    self.assertEqual(["accept"], allowed_decisions)
+                    self.assertEqual("VERIFIED_SAVE", allowed.status)
+                    self.assertEqual(1, len(allowed.file_actions))
+                    self.assertEqual("reused", allowed.file_actions[0].access)
+                    self.assertEqual("approved", allowed.file_actions[0].status)
+                    self.assertEqual([], human_calls)
+
+                    ordinary_factory = FakeTransportFactory(
+                        [
+                            file_run_messages(
+                                repository,
+                                thread_id="thread-ordinary",
+                                turn_id="turn-ordinary",
+                                item_id="item-ordinary",
+                                file_changes=[proposed_change],
+                            )
+                        ]
+                    )
+                    ordinary_adapter = CodexAdapter(
+                        ordinary,
+                        input_func=lambda: self.fail(
+                            "ordinary matching Default must not ask again"
+                        ),
+                        stdout=io.StringIO(),
+                        transport_factory=ordinary_factory,
+                    )
+
+                    later_ordinary = await ordinary_adapter.run(
+                        "ordinary proposal after compound decline"
+                    )
+
+                    self.assertEqual("VERIFIED_REUSE", later_ordinary.status)
+                    self.assertEqual(
+                        "reused",
+                        later_ordinary.file_actions[0].access,
+                    )
 
     async def test_later_verified_reuse_keeps_final_reused_label(
         self,

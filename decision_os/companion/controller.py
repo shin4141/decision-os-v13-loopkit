@@ -31,7 +31,10 @@ from decision_os.acceleration.codex_adapter import (
 )
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import (
+    DecisionIdentity,
+    DecisionType,
     RepositoryIdentityError,
+    ScopeError,
     git_root,
     normalize_scope,
 )
@@ -53,6 +56,7 @@ from decision_os.companion.guided_intake import (
 )
 from decision_os.companion.continuation import (
     ContinuationIntegrityError,
+    STAGE_B_SCHEMA,
     StageBContinuationRequest,
     StageBContinuationStore,
     automatic_task_from_persisted_run,
@@ -140,6 +144,16 @@ PickerRunner = Callable[[Path], str | None]
 
 _TERMINAL_STATES = frozenset(
     {"completed", "denied", "unsupported", "needs_attention"}
+)
+_ACTIVE_COMPOUND_STATES = frozenset(
+    {
+        "RUN_1_ACTIVE",
+        "RUN_1_COMPLETE",
+        "RUN_2_ACTIVE",
+        "RUN_2_COMPLETE",
+        "RUN_3_ACTIVE",
+        "RUN_3_COMPLETE",
+    }
 )
 _INTELLIGENCE_TRANSPLANT_EVIDENCE_TYPES = frozenset(
     {
@@ -386,15 +400,7 @@ class CompanionController:
             self._compound_loop = value
             self._compound_recovery_required = bool(
                 value is not None
-                and value.get("state")
-                in {
-                    "RUN_1_ACTIVE",
-                    "RUN_1_COMPLETE",
-                    "RUN_2_ACTIVE",
-                    "RUN_2_COMPLETE",
-                    "RUN_3_ACTIVE",
-                    "RUN_3_COMPLETE",
-                }
+                and value.get("state") in _ACTIVE_COMPOUND_STATES
             )
         except (ContinuationIntegrityError, OSError):
             if self._continuation_store.schema_hint() == STAGE_C_SCHEMA:
@@ -1307,12 +1313,6 @@ class CompanionController:
         with self._condition:
             if self._run["state"] != "running":
                 return "3"
-            if (
-                self._compound_active
-                and approval.normalized_scope
-                not in self._compound_allowed_mutation_paths
-            ):
-                return "3"
             self._run["approval"] = {
                 "repository": approval.repository_name,
                 "action": approval.action,
@@ -1332,6 +1332,139 @@ class CompanionController:
             self._approval_choice = None
             self._condition.notify_all()
             return choice
+
+    def _compound_mutation_preflight(
+        self,
+        identity: DecisionIdentity,
+    ) -> bool:
+        """Constrain file authority to one exact active compound envelope."""
+
+        if (
+            not isinstance(identity, DecisionIdentity)
+            or identity.decision_type
+            not in {DecisionType.CREATE_FILE, DecisionType.MODIFY_FILE}
+        ):
+            return False
+        with self._condition:
+            active_record = bool(
+                isinstance(self._compound_loop, dict)
+                and self._compound_loop.get("state")
+                in _ACTIVE_COMPOUND_STATES
+            )
+            if not self._compound_active:
+                return bool(
+                    not self._compound_recovery_required
+                    and not active_record
+                    and self._compound_allowed_mutation_paths == ()
+                    and self._run.get("continuation") is None
+                )
+            if self._compound_recovery_required:
+                return False
+            repository = self._repository
+            continuation = self._run.get("continuation")
+            if (
+                repository is None
+                or self._run.get("run_type") != "bounded_task"
+                or self._run.get("task_mode") != "contract"
+                or self._run.get("state") != "running"
+                or not isinstance(continuation, dict)
+                or set(continuation)
+                != {
+                    "schema",
+                    "chain_id",
+                    "run_number",
+                    "automatic",
+                    "source_run_id",
+                    "source_evidence_sha256",
+                    "task_sha256",
+                }
+                or continuation.get("schema")
+                != "decision-os-bounded-run-continuation-v0.1"
+            ):
+                return False
+            try:
+                record = self._continuation_store.load_required()
+                if record != self._compound_loop:
+                    return False
+                schema = record.get("schema")
+                if schema == STAGE_B_SCHEMA:
+                    request = StageBContinuationRequest.from_dict(
+                        record.get("request")
+                    )
+                    automatic_tasks = (
+                        []
+                        if record.get("automatic_task") is None
+                        else [record["automatic_task"]]
+                    )
+                    maximum_run = 2
+                elif schema == STAGE_C_SCHEMA:
+                    request = StageCContinuationRequest.from_dict(
+                        record.get("request")
+                    )
+                    automatic_tasks = record.get("automatic_tasks")
+                    maximum_run = 3
+                else:
+                    return False
+                run_number = continuation.get("run_number")
+                if (
+                    not isinstance(run_number, int)
+                    or isinstance(run_number, bool)
+                    or not 1 <= run_number <= maximum_run
+                    or record.get("state") != f"RUN_{run_number}_ACTIVE"
+                    or record.get("chain_id") != continuation.get("chain_id")
+                    or continuation.get("automatic") != (run_number > 1)
+                    or not isinstance(automatic_tasks, list)
+                ):
+                    return False
+                if run_number == 1:
+                    expected_source_run_id = None
+                    expected_source_evidence_sha256 = None
+                    expected_task_sha256 = hashlib.sha256(
+                        request.run_1_task.strip().encode("utf-8")
+                    ).hexdigest()
+                else:
+                    if len(automatic_tasks) < run_number - 1:
+                        return False
+                    automatic_task = automatic_tasks[run_number - 2]
+                    if not isinstance(automatic_task, dict):
+                        return False
+                    expected_source_run_id = automatic_task.get("source_run_id")
+                    expected_source_evidence_sha256 = automatic_task.get(
+                        "source_evidence_sha256"
+                    )
+                    expected_task_sha256 = automatic_task.get("task_sha256")
+                allowed_paths = tuple(request.allowed_mutation_paths)
+                if (
+                    identity.repository_id
+                    != AccelerationStore(repository).repository_id
+                    or record.get("repository_id") != identity.repository_id
+                    or tuple(
+                        normalize_scope(repository, path)
+                        for path in allowed_paths
+                    )
+                    != allowed_paths
+                    or self._compound_allowed_mutation_paths != allowed_paths
+                    or continuation.get("source_run_id")
+                    != expected_source_run_id
+                    or continuation.get("source_evidence_sha256")
+                    != expected_source_evidence_sha256
+                    or continuation.get("task_sha256")
+                    != expected_task_sha256
+                ):
+                    return False
+            except (
+                AttributeError,
+                ContinuationIntegrityError,
+                KeyError,
+                OSError,
+                RepositoryIdentityError,
+                ScopeError,
+                StateIntegrityError,
+                TypeError,
+                ValueError,
+            ):
+                return False
+            return identity.normalized_scope in allowed_paths
 
     def submit_approval(self, choice: str) -> dict[str, Any]:
         choices = {
@@ -1368,6 +1501,7 @@ class CompanionController:
             repository,
             adapter=ADAPTER_NAME,
             adapter_version=CODEX_CLI_VERSION,
+            mutation_authority_preflight=self._compound_mutation_preflight,
         )
         adapter = self.adapter_factory(
             engine,

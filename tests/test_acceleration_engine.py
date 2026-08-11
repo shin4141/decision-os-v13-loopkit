@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from decision_os.acceleration.engine import AccelerationEngine, DeterministicAdapter
 from decision_os.acceleration.model import DecisionType
@@ -60,6 +61,215 @@ class AccelerationEngineTest(unittest.TestCase):
             self.assertEqual("VERIFIED_REUSE", third_checkpoint.status)
             self.assertTrue(third.allowed)
             self.assertEqual((1, 2), engine.store.counters())
+
+    def test_mutation_authority_preflight_precedes_matching_default(self) -> None:
+        cases = (
+            (DecisionType.MODIFY_FILE, "target.txt"),
+            (DecisionType.CREATE_FILE, "created.txt"),
+        )
+        for decision_type, path in cases:
+            with self.subTest(decision_type=decision_type):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    ordinary = self.make_engine(repository)
+                    created = ordinary.evaluate(
+                        run_id="default-creation",
+                        iteration=1,
+                        decision_type=decision_type,
+                        requested_scope=path,
+                        source_interrupt_id="create-default",
+                        choice_provider=lambda _identity: "2",
+                    )
+                    default_before = ordinary.store.active_default(
+                        created.identity.decision_key
+                    )
+                    preflight_calls = []
+                    human_calls = []
+                    guarded = AccelerationEngine(
+                        repository,
+                        adapter="deterministic-test",
+                        adapter_version="v0.1",
+                        mutation_authority_preflight=lambda identity: (
+                            preflight_calls.append(identity) or False
+                        ),
+                    )
+
+                    with patch.object(
+                        guarded.store,
+                        "active_default",
+                        wraps=guarded.store.active_default,
+                    ) as default_lookup:
+                        denied = guarded.evaluate(
+                            run_id="compound-out-of-envelope",
+                            iteration=1,
+                            decision_type=decision_type,
+                            requested_scope=path,
+                            source_interrupt_id="compound-proposal",
+                            choice_provider=lambda identity: (
+                                human_calls.append(identity) or "1"
+                            ),
+                        )
+
+                    self.assertEqual("DENIED", denied.status)
+                    self.assertFalse(denied.allowed)
+                    self.assertEqual([denied.identity], preflight_calls)
+                    self.assertEqual([], human_calls)
+                    default_lookup.assert_not_called()
+                    self.assertEqual(
+                        default_before,
+                        guarded.store.active_default(
+                            created.identity.decision_key
+                        ),
+                    )
+                    event_types = [
+                        event["event_type"]
+                        for event in guarded.store.read_events()
+                        if event["run_id"] == "compound-out-of-envelope"
+                    ]
+                    self.assertEqual(["DECISION_CHECK"], event_types)
+
+    def test_in_envelope_and_ordinary_default_acceleration_survive(self) -> None:
+        cases = (
+            (DecisionType.MODIFY_FILE, "target.txt"),
+            (DecisionType.CREATE_FILE, "created.txt"),
+        )
+        for decision_type, path in cases:
+            with self.subTest(decision_type=decision_type):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    ordinary = self.make_engine(repository)
+                    created = ordinary.evaluate(
+                        run_id="default-creation",
+                        iteration=1,
+                        decision_type=decision_type,
+                        requested_scope=path,
+                        source_interrupt_id="create-default",
+                        choice_provider=lambda _identity: "2",
+                    )
+                    preflight_calls = []
+                    compound = AccelerationEngine(
+                        repository,
+                        adapter="deterministic-test",
+                        adapter_version="v0.1",
+                        mutation_authority_preflight=lambda identity: (
+                            preflight_calls.append(identity) or True
+                        ),
+                    )
+
+                    in_envelope = compound.evaluate(
+                        run_id="compound-in-envelope",
+                        iteration=1,
+                        decision_type=decision_type,
+                        requested_scope=path,
+                        source_interrupt_id="compound-proposal",
+                        choice_provider=lambda _identity: self.fail(
+                            "matching Default must not ask the Human Seat"
+                        ),
+                    )
+                    later_ordinary = ordinary.evaluate(
+                        run_id="later-ordinary",
+                        iteration=1,
+                        decision_type=decision_type,
+                        requested_scope=path,
+                        source_interrupt_id="ordinary-proposal",
+                        choice_provider=lambda _identity: self.fail(
+                            "ordinary matching Default must not ask again"
+                        ),
+                    )
+
+                    self.assertEqual("DEFAULT_MATCHED", in_envelope.status)
+                    self.assertTrue(in_envelope.allowed)
+                    self.assertEqual([in_envelope.identity], preflight_calls)
+                    self.assertEqual("DEFAULT_MATCHED", later_ordinary.status)
+                    self.assertTrue(later_ordinary.allowed)
+                    self.assertEqual(
+                        created.default_created_run_id,
+                        later_ordinary.default_created_run_id,
+                    )
+
+    def test_mutation_authority_preflight_fails_closed_and_normalizes_once(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            observed = []
+            engine = AccelerationEngine(
+                repository,
+                adapter="deterministic-test",
+                adapter_version="v0.1",
+                mutation_authority_preflight=lambda identity: (
+                    observed.append(identity.normalized_scope) or False
+                ),
+            )
+
+            first = engine.evaluate(
+                run_id="normalized-1",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="./target.txt",
+                source_interrupt_id="normalized-1",
+                choice_provider=lambda _identity: "1",
+            )
+            second = engine.evaluate(
+                run_id="normalized-2",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="nested/../target.txt",
+                source_interrupt_id="normalized-2",
+                choice_provider=lambda _identity: "1",
+            )
+
+            self.assertEqual("DENIED", first.status)
+            self.assertEqual("DENIED", second.status)
+            self.assertEqual(["target.txt", "target.txt"], observed)
+            self.assertEqual(first.identity, second.identity)
+
+            for result in (None, "allowed", 1):
+                with self.subTest(result=result):
+                    malformed = AccelerationEngine(
+                        repository,
+                        mutation_authority_preflight=lambda _identity: result,
+                    ).evaluate(
+                        run_id=f"malformed-{result!r}",
+                        iteration=1,
+                        decision_type=DecisionType.MODIFY_FILE,
+                        requested_scope="target.txt",
+                        source_interrupt_id="malformed",
+                        choice_provider=lambda _identity: "1",
+                    )
+                    self.assertEqual("DENIED", malformed.status)
+
+            raised = AccelerationEngine(
+                repository,
+                mutation_authority_preflight=lambda _identity: (_ for _ in ()).throw(
+                    RuntimeError("malformed compound authority")
+                ),
+            ).evaluate(
+                run_id="malformed-raised",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="malformed",
+                choice_provider=lambda _identity: "1",
+            )
+            self.assertEqual("DENIED", raised.status)
+
+            callback_calls = []
+            unrelated_surface = AccelerationEngine(
+                repository,
+                mutation_authority_preflight=lambda identity: (
+                    callback_calls.append(identity) or False
+                ),
+            ).evaluate(
+                run_id="unrelated-authority-surface",
+                iteration=1,
+                decision_type=DecisionType.ADD_TESTS,
+                requested_scope="target.txt",
+                source_interrupt_id="unrelated-authority-surface",
+                choice_provider=lambda _identity: "1",
+            )
+            self.assertEqual("ALLOW_ONCE", unrelated_surface.status)
+            self.assertEqual([], callback_calls)
 
     def test_allow_once_deny_timeout_and_same_run_are_excluded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
