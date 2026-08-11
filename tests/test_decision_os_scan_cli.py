@@ -53,7 +53,7 @@ PROTECTED_BLOBS = {
     ),
     "decision_os/checks.py": (
         "100644",
-        "4b7b1154d3af0a0847a0a1a588310e5877ea3f9e",
+        "fa304eb1361e09c0ee7213aa3a6899ec867507a6",
     ),
     "decision_os/state.py": (
         "100644",
@@ -98,7 +98,7 @@ PROTECTED_BLOBS = {
     ),
     "tests/test_decision_os_checks.py": (
         "100644",
-        "c4249c22d47a2da69d54d24e3cf265f827272b5a",
+        "e04f8e85fd2297e6c8a9d2b4711f13c97b6c67b2",
     ),
     "tests/test_decision_os_cli.py": (
         "100644",
