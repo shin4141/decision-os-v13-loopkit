@@ -146,10 +146,19 @@ F-01 remained admitted but deferred.
 
 Question: could negative authority witnesses fail closed without widening the
 accepted authority language or weakening protected validation? Observation:
-the repair rejected negative witnesses, failed closed on denial, bound witness
-acceptance to canonical scope, and re-anchored the accepted protected blobs.
-Why the frontier moved: the F-04 repair lineage reached canonical closure, so
-the unresolved admitted-defect frontier returned to F-01.
+after F-04 was admitted, initial repair `3f7fddf` received independent
+`REVISE` because its open-ended negative denylist still allowed explicit
+negative forms. Second repair `eb65fce` also received independent `REVISE`
+because malformed or status-shaped `Required Authority` values could still
+manufacture valid-looking `Authority Held`. Type-bound v3 `3698ac7` recovered
+the pre-repair positive contract and type-bound the two witness roles; the
+independent semantic review then returned `PASS WITH REQUIRED
+PROTECTED-IDENTITY RE-ANCHOR`. The authorized re-anchor `b58e8c6` supplied that
+protected-identity closure, followed by canonical closure in `9566cc4`. Why the
+frontier moved: repeated falsification changed the repair strategy from
+phrase-denial patching to type-bound positive authority semantics. With that
+lineage canonically closed, the unresolved admitted-defect frontier returned
+to F-01.
 
 **EVIDENCE ANCHOR**
 
@@ -161,6 +170,8 @@ the unresolved admitted-defect frontier returned to F-01.
   (`Canonicalize F-04 v3 authority witness validation`).
 - `decision_os/checks.py`, `tests/test_decision_os_checks.py`, and
   `tests/test_decision_os_scan_cli.py` at that canonical commit.
+- Decision Owner 13-145 causal-repair instruction for the independent review
+  dispositions and the minimum rejection reasons preserved above.
 
 **GATE**
 
@@ -314,13 +325,19 @@ after ownership transfer and make fencing decisive.
 
 **CAUSAL DELTA**
 
-Question: could a Guardian alone close F-01? Observation: a Guardian-only
-design could still leave enforcement dependent on observation of an untrusted
-writer domain; it did not itself own the protected mutation boundary. Why the
-frontier moved: the architecture therefore required a Broker that exclusively
-mediates protected writes and recovery authority. F-01 became fixed as a
-Broker-bound recovery contract; Guardian evidence may inform the Broker but
-cannot substitute for it.
+Question: could a Guardian alone close F-01? Observation: Guardian could make
+controller death harmless, but old Codex descendants still retained direct
+protected-repository mutation capability independently of Guardian lifecycle.
+Accepted privacy boundaries also prevented host-wide, sequence-complete
+process-extinction observation from serving as the safety proof. Guardian was
+not rejected because its implementation failed, and process-group escape alone
+was not decisive: process lifetime could not be the authority boundary. Safe
+same-boot recovery instead required structural removal of direct Codex mutation
+capability, so Broker became required as the sole protected-repository writer.
+Old Codex processes may remain alive only if they are structurally unable to
+write. Why the frontier moved: mutation capability, not process liveness or a
+generic design preference, became the decisive boundary. Guardian evidence may
+inform the Broker but cannot substitute for Broker-owned mutation authority.
 
 **EVIDENCE ANCHOR**
 
@@ -328,10 +345,15 @@ cannot substitute for it.
   `f506734f6822bd3c63f8dd84b6e82f5a9c72285a` and
   `4dec9d0611451a581e4cc0b1b1f2b0692092a9c1` establish the inconclusive
   direct-containment and privacy-observability boundary that forced
-  architectural re-entry.
+  architectural re-entry. They are local/noncanonical qualification evidence,
+  not canonical architecture or contract authority.
 - Decision Owner 13-143 bootstrap instruction fixes the subsequent
   Guardian-only rejection, Broker requirement, and Broker-bound F-01 contract.
   This trajectory is not the evidence authority for those decisions.
+- Decision Owner 13-145 causal-repair instruction preserves the
+  architecture-review conclusion that mutation capability, rather than
+  process liveness, is the decisive boundary; it does not promote the local
+  qualification evidence to canonical authority.
 
 **GATE**
 
@@ -340,8 +362,9 @@ v0.2, migration, or canonical implementation change is authorized.
 
 **COMPLETION LINE**
 
-F-01 recovery is fixed as Broker-bound rather than as direct Codex containment
-or Guardian-only recovery.
+The F-01 recovery architecture and contract are fixed as Broker-bound rather
+than as direct Codex containment or Guardian-only recovery; F-01 itself remains
+open.
 
 **MISSING CLOSURE**
 
@@ -362,7 +385,14 @@ implementation from contract fixation alone.
 
 **FRONTIER**
 
-F-01 Broker-bound recovery contract is fixed.
+**F-01 remains OPEN.** F-04 is canonical / closed. The Guardian-only route is
+rejected; the Broker requirement is established; and the Broker-bound contract
+is fixed. `Contract: PASS` / `Broker-bound contract fixed` means only that the
+recovery architecture and contract are fixed. It does **not** mean F-01 is
+repaired, implemented, canonical, or closed. The deployment/security boundary
+awaits Human Seat decision. Broker/Guardian implementation, production v0.2,
+repository migration, and canonical implementation changes remain
+unauthorized.
 
 **CAUSAL DELTA**
 
