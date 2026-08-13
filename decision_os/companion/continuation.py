@@ -821,6 +821,28 @@ def _validate_record(value: Any) -> None:
     _validate_stage_b_record(value)
 
 
+def _validated_record_from_bytes(raw: bytes) -> dict[str, Any]:
+    if len(raw) > _MAX_RECORD_BYTES:
+        raise ContinuationIntegrityError(
+            "Persisted Stage B record is too large."
+        )
+    try:
+        value = json.loads(raw)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContinuationIntegrityError(
+            "Persisted Stage B record is unreadable."
+        ) from exc
+    try:
+        _validate_record(value)
+    except ContinuationIntegrityError:
+        raise
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        raise ContinuationIntegrityError(
+            "Persisted Stage B record structure is invalid."
+        ) from exc
+    return deepcopy(value)
+
+
 class StageBContinuationStore:
     """One strict, atomic, hash-bound reconnectable continuation record."""
 
@@ -836,45 +858,88 @@ class StageBContinuationStore:
         directory = self.path.parent
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(directory, 0o700)
-        temporary = directory / f".stage-b-{secrets.token_hex(8)}.tmp"
-        descriptor = os.open(
-            temporary,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o600,
-        )
+        temporary_name = f".stage-b-{secrets.token_hex(8)}.tmp"
+        directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        directory_descriptor = os.open(directory, directory_flags)
+        temporary_descriptor: int | None = None
+        temporary_created = False
+        temporary_identity: tuple[int, int] | None = None
+        published = False
         try:
-            with os.fdopen(descriptor, "wb") as stream:
+            temporary_descriptor = os.open(
+                temporary_name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+                dir_fd=directory_descriptor,
+            )
+            temporary_created = True
+            metadata = os.fstat(temporary_descriptor)
+            temporary_identity = (metadata.st_dev, metadata.st_ino)
+            stream = os.fdopen(temporary_descriptor, "wb")
+            temporary_descriptor = None
+            with stream:
                 stream.write(encoded)
-            os.replace(temporary, self.path)
-            os.chmod(self.path, 0o600)
+                stream.flush()
+                os.fchmod(stream.fileno(), 0o600)
+                os.fsync(stream.fileno())
+            os.replace(
+                temporary_name,
+                self.path.name,
+                src_dir_fd=directory_descriptor,
+                dst_dir_fd=directory_descriptor,
+            )
+            published = True
+            os.fsync(directory_descriptor)
         except Exception:
-            temporary.unlink(missing_ok=True)
+            if not published and temporary_created:
+                try:
+                    if temporary_identity is None:
+                        os.unlink(temporary_name, dir_fd=directory_descriptor)
+                    else:
+                        observed = os.stat(
+                            temporary_name,
+                            dir_fd=directory_descriptor,
+                            follow_symlinks=False,
+                        )
+                        if (
+                            observed.st_dev,
+                            observed.st_ino,
+                        ) == temporary_identity:
+                            os.unlink(
+                                temporary_name,
+                                dir_fd=directory_descriptor,
+                            )
+                except FileNotFoundError:
+                    pass
             raise
-        return self.load_required()
+        finally:
+            try:
+                if temporary_descriptor is not None:
+                    os.close(temporary_descriptor)
+            finally:
+                os.close(directory_descriptor)
+        try:
+            raw = self.path.read_bytes()
+        except OSError as exc:
+            raise ContinuationIntegrityError(
+                "Persisted Stage B record is unreadable."
+            ) from exc
+        if raw != encoded:
+            raise ContinuationIntegrityError(
+                "Published Stage B bytes mismatch the intended record."
+            )
+        return _validated_record_from_bytes(raw)
 
     def load(self) -> dict[str, Any] | None:
         if not self.path.exists():
             return None
         try:
             raw = self.path.read_bytes()
-            if len(raw) > _MAX_RECORD_BYTES:
-                raise ContinuationIntegrityError(
-                    "Persisted Stage B record is too large."
-                )
-            value = json.loads(raw)
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        except OSError as exc:
             raise ContinuationIntegrityError(
                 "Persisted Stage B record is unreadable."
             ) from exc
-        try:
-            _validate_record(value)
-        except ContinuationIntegrityError:
-            raise
-        except (AttributeError, KeyError, TypeError, ValueError) as exc:
-            raise ContinuationIntegrityError(
-                "Persisted Stage B record structure is invalid."
-            ) from exc
-        return deepcopy(value)
+        return _validated_record_from_bytes(raw)
 
     def load_required(self) -> dict[str, Any]:
         value = self.load()
