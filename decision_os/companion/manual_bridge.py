@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -3761,6 +3762,34 @@ class BridgeSessionController:
                 raise ManualBridgeValidationError(
                     "Burden observation cannot be negative."
                 )
+            incremented_value: int | float = 0
+            if method == "EXPLICIT_ONE_CLICK_INCREMENT":
+                record = session["burden"][field]
+                current = record.get("value_or_unknown")
+                if not isinstance(current, (int, float)) or isinstance(
+                    current,
+                    bool,
+                ):
+                    current = 0
+                try:
+                    increment = float(value)
+                    incremented_value = current + increment
+                except (OverflowError, ValueError):
+                    raise ManualBridgeValidationError(
+                        "One-click burden increment must be a finite, "
+                        "non-negative number."
+                    ) from None
+                if (
+                    not math.isfinite(increment)
+                    or increment < 0
+                    or not math.isfinite(incremented_value)
+                ):
+                    raise ManualBridgeValidationError(
+                        "One-click burden increment must be a finite, "
+                        "non-negative number."
+                    )
+                if isinstance(value, int):
+                    incremented_value = int(incremented_value)
             event = self._append(
                 "BURDEN_OBSERVATION_RECORDED",
                 {
@@ -3773,17 +3802,7 @@ class BridgeSessionController:
             )
             record = session["burden"][field]
             if method == "EXPLICIT_ONE_CLICK_INCREMENT":
-                current = record.get("value_or_unknown")
-                if not isinstance(current, (int, float)) or isinstance(
-                    current,
-                    bool,
-                ):
-                    current = 0
-                record["value_or_unknown"] = current + float(value)
-                if isinstance(value, int):
-                    record["value_or_unknown"] = int(
-                        record["value_or_unknown"]
-                    )
+                record["value_or_unknown"] = incremented_value
             else:
                 record["value_or_unknown"] = value
             record.update(

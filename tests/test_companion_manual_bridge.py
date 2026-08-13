@@ -1929,6 +1929,52 @@ class CompanionManualBridgeTest(unittest.TestCase):
                 method="MANUAL",
             )
 
+    def test_invalid_one_click_increment_preserves_durable_state(self) -> None:
+        largest_finite = float.fromhex("0x1.fffffffffffffp+1023")
+        cases = (
+            ("nonnumeric", "not-a-number", None),
+            ("not-finite", "NaN", None),
+            ("infinite", "Infinity", None),
+            ("negative", "-0.5", None),
+            ("conversion-overflow", 10**400, None),
+            ("result-overflow", largest_finite, largest_finite),
+        )
+        for index, (case, value, current) in enumerate(cases):
+            with self.subTest(case=case):
+                repository = create_repository(
+                    self.root,
+                    f"invalid-increment-{index}",
+                )
+                bridge = self.session(self.controller(repository))
+                if current is not None:
+                    bridge.record_observation(
+                        field="shin_re_explanation_count",
+                        value=current,
+                        unit="count",
+                        method="MANUAL_TIMER",
+                    )
+                snapshot_before = bridge.snapshot()
+                session_id = snapshot_before["session"]["session_id"]
+                session_path = bridge.store.session_path(session_id)
+                events_before = bridge.store.events_path.read_bytes()
+                session_before = session_path.read_bytes()
+                with self.assertRaisesRegex(
+                    ManualBridgeValidationError,
+                    "finite, non-negative number",
+                ):
+                    bridge.record_observation(
+                        field="shin_re_explanation_count",
+                        value=value,
+                        unit="count",
+                        method="EXPLICIT_ONE_CLICK_INCREMENT",
+                    )
+                self.assertEqual(
+                    events_before,
+                    bridge.store.events_path.read_bytes(),
+                )
+                self.assertEqual(session_before, session_path.read_bytes())
+                self.assertEqual(snapshot_before, bridge.snapshot())
+
 
 if __name__ == "__main__":
     unittest.main()
