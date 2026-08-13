@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+import fcntl
 import hashlib
 import os
 from pathlib import Path
@@ -31,9 +32,25 @@ from decision_os.companion.broker_control import (
     TargetKind,
     TargetObservation,
 )
+from decision_os.companion.broker_authority import (
+    AuthenticatedExecutionEnvelope,
+    EnvelopeAuthenticationError,
+    PRODUCTION_AUTHENTICATION_TRUST_PRECONDITION,
+)
 
 
 MAX_PROPOSAL_BYTES = 16 * 1024 * 1024
+CANONICAL_CONTROL_RELATIVE_PATH = Path("state") / "control.json"
+PRODUCTION_CANONICAL_STORE_PRECONDITION = (
+    "SLICE 3 TRUSTED ROUTING CONTRACT: the Broker control store for a protected "
+    "root is the absolute sibling path protected_root.parent/state/control.json. "
+    "The state directory must be a distinct filesystem directory outside the "
+    "protected root. "
+    "The deployed Broker must construct this store and its external trust key; "
+    "request data may supply neither. Distinct protected repositories therefore "
+    "require distinct parent deployment roots. OS protection of that routing "
+    "and state directory remains a later deployment gate."
+)
 REPOSITORY_SLICE_ENFORCES_EXCLUSIVE_WRITER = False
 PRODUCTION_EXCLUSIVE_WRITER_PRECONDITION = (
     "PRODUCTION PRECONDITION — NOT ENFORCED BY SLICE 2: deployed OS policy "
@@ -48,6 +65,56 @@ PRODUCTION_EXCLUSIVE_WRITER_PRECONDITION = (
 
 class BrokerApplyError(BrokerControlError):
     """Descriptor acquisition or protected publication failed closed."""
+
+
+def _snapshot_filesystem_path(value: Any, label: str) -> Path:
+    """Seal one Path (including subclasses) into one concrete absolute value."""
+
+    if not isinstance(value, Path):
+        raise BrokerApplyError(f"{label} must be one pathlib.Path.")
+    try:
+        raw = os.fspath(value)
+        if type(raw) not in {str, bytes}:
+            raise TypeError("filesystem path is not plain text or bytes")
+        decoded = os.fsdecode(raw)
+        if any(component in {".", ".."} for component in decoded.split(os.sep)):
+            raise ValueError("filesystem path is not lexically canonical")
+        return Path(decoded).absolute()
+    except (OSError, TypeError, ValueError) as exc:
+        raise BrokerApplyError(f"{label} is invalid or unavailable.") from exc
+
+
+def _require_separate_control_directory(
+    protected_root: Path,
+    control_path: Path,
+) -> None:
+    """Prove that positive-authority state is outside the protected repository."""
+
+    control_directory = control_path.parent
+    if (
+        protected_root == control_directory
+        or control_directory.is_relative_to(protected_root)
+    ):
+        raise BrokerApplyError(
+            "Broker control state must be outside the protected root."
+        )
+    try:
+        protected_status = protected_root.stat()
+        control_status = control_directory.stat()
+    except OSError as exc:
+        raise BrokerApplyError(
+            "Broker control-state separation cannot be proven."
+        ) from exc
+    if (
+        not stat.S_ISDIR(protected_status.st_mode)
+        or not stat.S_ISDIR(control_status.st_mode)
+        or (protected_status.st_dev, protected_status.st_ino)
+        == (control_status.st_dev, control_status.st_ino)
+    ):
+        raise BrokerApplyError(
+            "Broker control state must be a distinct directory outside the "
+            "protected root."
+        )
 
 
 @dataclass(frozen=True)
@@ -222,8 +289,7 @@ def acquire_mutation_decision(
 ) -> AcquiredMutation:
     """Acquire proposal bytes once from a no-follow descriptor."""
 
-    if not isinstance(proposal_path, Path):
-        raise BrokerApplyError("Proposal path must be an exact pathlib.Path.")
+    proposal_path = _snapshot_filesystem_path(proposal_path, "Proposal path")
     close_on_exec = _required_fd_features()
     flags = (
         os.O_RDONLY
@@ -331,8 +397,7 @@ def _snapshot_acquired(value: Any) -> _AcquisitionRecord:
 
 def _open_protected_root(protected_root: Path) -> int:
     _required_fd_features()
-    if not isinstance(protected_root, Path):
-        raise BrokerApplyError("Protected root must be a pathlib.Path.")
+    protected_root = _snapshot_filesystem_path(protected_root, "Protected root")
     flags = (
         os.O_RDONLY
         | os.O_DIRECTORY
@@ -396,6 +461,34 @@ def _require_bound_protected_root(
         raise BrokerApplyError(
             "Opened protected root does not match Broker activation identity."
         )
+
+
+def _duplicate_protected_root(root_fd: int) -> int:
+    """Take descriptor ownership so caller-side close/dup2 cannot retarget it."""
+
+    if type(root_fd) is not int or root_fd < 0:
+        raise BrokerApplyError(
+            "Protected root requires one exact open directory descriptor."
+        )
+    try:
+        if hasattr(fcntl, "F_DUPFD_CLOEXEC"):
+            owned = fcntl.fcntl(root_fd, fcntl.F_DUPFD_CLOEXEC, 0)
+        else:
+            owned = os.dup(root_fd)
+            os.set_inheritable(owned, False)
+        metadata = os.fstat(owned)
+    except OSError as exc:
+        try:
+            os.close(owned)
+        except (OSError, UnboundLocalError):
+            pass
+        raise BrokerApplyError(
+            "Protected root descriptor cannot be owned safely."
+        ) from exc
+    if not stat.S_ISDIR(metadata.st_mode):
+        os.close(owned)
+        raise BrokerApplyError("Protected root descriptor is not a directory.")
+    return owned
 
 
 @contextmanager
@@ -751,122 +844,141 @@ def _attempt_live(
 def apply_protected_mutation(
     store: ControlDomainStore,
     protected_root: Path,
-    acquired: AcquiredMutation,
+    proposal_path: Path,
+    envelope: AuthenticatedExecutionEnvelope,
 ) -> ReconciliationOutcome:
-    """Perform one serialized live attempt after durable intent publication."""
+    """Authenticate, fd-acquire, then perform one serialized live attempt."""
 
     if type(store) is not ControlDomainStore:
         raise BrokerApplyError("An exact Broker control store is required.")
-    if not isinstance(protected_root, Path):
-        raise BrokerApplyError("Protected root must be an exact pathlib.Path.")
-    acquisition = _snapshot_acquired(acquired)
-    decision = acquisition.decision
-    root_fd = _open_protected_root(protected_root)
+    protected_root = _snapshot_filesystem_path(protected_root, "Protected root")
+    proposal_path = _snapshot_filesystem_path(proposal_path, "Proposal path")
+    expected_control_path = (
+        protected_root.parent / CANONICAL_CONTROL_RELATIVE_PATH
+    ).absolute()
+    _require_separate_control_directory(protected_root, expected_control_path)
     try:
-        _require_bound_protected_root(root_fd, decision.activation)
+        store._require_coherent_routing()
+    except BrokerControlError as exc:
+        raise BrokerApplyError("Broker control-store routing is invalid.") from exc
+    if store.path != expected_control_path:
+        raise BrokerApplyError(
+            "Broker control store is not the canonical store for this protected root."
+        )
+    try:
+        verified_envelope = store._verify_execution_envelope(envelope)
+    except EnvelopeAuthenticationError as exc:
+        raise BrokerApplyError(
+            "Live apply requires a valid external execution envelope."
+        ) from exc
+    try:
+        with store._locked(exclusive=True):
+            store._require_authentication_key_commitment_unlocked()
+    except EnvelopeAuthenticationError as exc:
+        raise BrokerApplyError(
+            "Live apply requires the activation-bound external trust root."
+        ) from exc
+    return store._execute_authenticated_live_cas(
+        verified_envelope,
+        proposal_path,
+        protected_root,
+    )
 
-        def attempt() -> ReconciliationOutcome:
-            try:
-                with _open_parent_from_root(
-                    root_fd,
-                    decision.relative_path,
-                ) as (parent_fd, name):
-                    return _attempt_live(parent_fd, name, decision)
-            except BrokerApplyError:
-                # Descriptor or identity checks that fail after durable intent
-                # are positive evidence only of ambiguity.  They consume the
-                # one live authority and may never be reported NOT_APPLIED.
-                return ReconciliationOutcome.UNCERTAIN
 
-        # This is the sole trusted live caller of the store's private
-        # transaction seam.  No public control-store API accepts a caller-made
-        # outcome assertion.
-        return store._execute_live_cas(decision, attempt)
+def _recovery_observation_from_root_fd(
+    root_fd: int,
+    decision: MutationDecision,
+) -> TargetObservation:
+    # Root acquisition/identity is request routing, not target evidence.
+    # Propagate any mismatch so it cannot consume the pending intent as an
+    # UNCERTAIN observation.
+    owned_root_fd = _duplicate_protected_root(root_fd)
+    try:
+        _require_bound_protected_root(owned_root_fd, decision.activation)
+        with _open_parent_from_root(
+            owned_root_fd,
+            decision.relative_path,
+        ) as (parent_fd, name):
+            first = _observe_target(parent_fd, name)
+            if not _observation_is_exact_post(
+                decision,
+                first.observation,
+            ):
+                return first.observation
+            if first.identity is None:
+                return TargetObservation(TargetKind.OTHER)
+
+            # Exact bytes alone do not prove a publication survived the crash
+            # window before its parent-directory fsync. Recovery may make that
+            # already-observed entry durable, but never retries or rewrites it,
+            # and must reopen it afterward.
+            # A failed fsync is a transport/durability-proof failure, not
+            # evidence that the target is neither pre nor post. Propagate it
+            # so the pending intent remains retryable.
+            _fsync_parent(parent_fd)
+            second = _observe_target(parent_fd, name)
+            if (
+                second.identity != first.identity
+                or not _observation_is_exact_post(
+                    decision,
+                    second.observation,
+                )
+            ):
+                return TargetObservation(TargetKind.OTHER)
+            return second.observation
     finally:
-        os.close(root_fd)
+        os.close(owned_root_fd)
 
 
 def _recovery_observation(
     protected_root: Path,
     decision: MutationDecision,
 ) -> TargetObservation:
+    """Compatibility wrapper around fused descriptor-bound observation."""
+
+    root_fd = _open_protected_root(protected_root)
     try:
-        root_fd = _open_protected_root(protected_root)
-        try:
-            _require_bound_protected_root(root_fd, decision.activation)
-            with _open_parent_from_root(
-                root_fd,
-                decision.relative_path,
-            ) as (parent_fd, name):
-                first = _observe_target(parent_fd, name)
-                if not _observation_is_exact_post(
-                    decision,
-                    first.observation,
-                ):
-                    return first.observation
-                if first.identity is None:
-                    return TargetObservation(TargetKind.OTHER)
-
-                # Exact bytes alone do not prove a publication survived the
-                # crash window before its parent-directory fsync.  Recovery
-                # may make that already-observed entry durable, but never
-                # retries or rewrites it, and must reopen it afterward.
-                try:
-                    _fsync_parent(parent_fd)
-                except OSError:
-                    return TargetObservation(TargetKind.OTHER)
-                second = _observe_target(parent_fd, name)
-                if (
-                    second.identity != first.identity
-                    or not _observation_is_exact_post(
-                        decision,
-                        second.observation,
-                    )
-                ):
-                    return TargetObservation(TargetKind.OTHER)
-                return second.observation
-        finally:
-            os.close(root_fd)
-    except BrokerApplyError:
-        return TargetObservation(TargetKind.OTHER)
+        return _recovery_observation_from_root_fd(root_fd, decision)
+    finally:
+        os.close(root_fd)
 
 
-def recover_protected_mutation(
+def recover_pending_protected_mutation(
     store: ControlDomainStore,
     protected_root: Path,
-    decision: MutationDecision,
 ) -> ReconciliationOutcome:
-    """Observe exact current state and reconcile an existing intent; never write."""
+    """Reconstruct and observe the one pending durable mutation; never write."""
 
     if type(store) is not ControlDomainStore:
         raise BrokerApplyError("An exact Broker control store is required.")
-    if not isinstance(protected_root, Path):
-        raise BrokerApplyError("Protected root must be an exact pathlib.Path.")
-    if type(decision) is not MutationDecision:
-        raise BrokerApplyError("Recovery requires an exact mutation decision.")
+    protected_root = _snapshot_filesystem_path(protected_root, "Protected root")
+    expected_control_path = (
+        protected_root.parent / CANONICAL_CONTROL_RELATIVE_PATH
+    ).absolute()
+    _require_separate_control_directory(protected_root, expected_control_path)
     try:
-        snapshot = _copy_decision(decision)
-    except (MutationDecisionError, AttributeError, TypeError, ValueError) as exc:
+        store._require_coherent_routing()
+    except BrokerControlError as exc:
+        raise BrokerApplyError("Broker control-store routing is invalid.") from exc
+    if store.path != expected_control_path:
         raise BrokerApplyError(
-            "Recovery requires an exact immutable decision snapshot."
-        ) from exc
-    # Observation is likewise fused to the fd-bound repository adapter; the
-    # control store does not expose raw caller-supplied observations publicly.
-    return store._execute_recovery_cas(
-        snapshot,
-        lambda: _recovery_observation(protected_root, snapshot),
-    )
+            "Broker control store is not the canonical store for this protected root."
+        )
+    return store._execute_pending_recovery_cas(protected_root)
 
 
 __all__ = [
     "AcquiredMutation",
     "BrokerApplyError",
+    "CANONICAL_CONTROL_RELATIVE_PATH",
     "FileIdentity",
     "MAX_PROPOSAL_BYTES",
+    "PRODUCTION_AUTHENTICATION_TRUST_PRECONDITION",
+    "PRODUCTION_CANONICAL_STORE_PRECONDITION",
     "PRODUCTION_EXCLUSIVE_WRITER_PRECONDITION",
     "REPOSITORY_SLICE_ENFORCES_EXCLUSIVE_WRITER",
     "acquire_mutation_decision",
     "apply_protected_mutation",
-    "recover_protected_mutation",
+    "recover_pending_protected_mutation",
     "protected_root_identity",
 ]

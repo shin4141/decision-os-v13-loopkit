@@ -7,21 +7,29 @@ from pathlib import Path
 import stat
 import tempfile
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 import unittest
 from unittest.mock import patch
 from typing import Any
+from weakref import WeakKeyDictionary
 
 import decision_os.companion.broker_apply as broker_apply
 from decision_os.companion.broker_apply import (
     AcquiredMutation,
+    BrokerApplyError,
     FileIdentity,
     PRODUCTION_EXCLUSIVE_WRITER_PRECONDITION,
     REPOSITORY_SLICE_ENFORCES_EXCLUSIVE_WRITER,
     acquire_mutation_decision,
     apply_protected_mutation,
     protected_root_identity,
-    recover_protected_mutation,
+    recover_pending_protected_mutation,
+)
+from decision_os.companion.broker_authority import (
+    AuthenticatedExecutionEnvelope,
+    EnvelopeAuthenticationKey,
+    issue_execution_envelope,
 )
 from decision_os.companion.broker_control import (
     ActivationTuple,
@@ -63,9 +71,21 @@ class BrokerApplyFixture(unittest.TestCase):
         self.current = activation(
             protected_repository_identity=protected_root_identity(self.protected)
         )
-        self.store = ControlDomainStore(self.root / "state" / "control.json")
+        self.authentication_key = EnvelopeAuthenticationKey(
+            key_id="slice-2-regression-key",
+            key_version=1,
+            secret=b"slice 2 regression external trust" * 2,
+        )
+        self.store = ControlDomainStore(
+            self.root / "state" / "control.json",
+            authentication_key=self.authentication_key,
+        )
         self.store.activate_initial(self.current)
         self.proposal_ordinal = 0
+        self.authenticated_requests: WeakKeyDictionary[
+            AcquiredMutation,
+            tuple[Path, AuthenticatedExecutionEnvelope],
+        ] = WeakKeyDictionary()
 
     def acquire(
         self,
@@ -74,34 +94,97 @@ class BrokerApplyFixture(unittest.TestCase):
         relative_path: str,
         proposal_bytes: bytes,
         expected_prior_sha256: str | None,
-    ) -> Any:
+    ) -> AcquiredMutation:
         self.proposal_ordinal += 1
         proposal = self.proposals / f"proposal-{self.proposal_ordinal}.bin"
         proposal.write_bytes(proposal_bytes)
-        return acquire_mutation_decision(
+        acquired = acquire_mutation_decision(
             proposal,
             activation=self.current,
             operation=operation,
             relative_path=relative_path,
             expected_prior_sha256=expected_prior_sha256,
         )
+        self.authenticate(acquired, proposal)
+        return acquired
+
+    def authenticate(self, acquired: AcquiredMutation, proposal: Path) -> None:
+        now = int(time.time())
+        envelope = issue_execution_envelope(
+            acquired.decision,
+            self.store.load_required(),
+            authentication_key=self.authentication_key,
+            envelope_id=f"{self.proposal_ordinal:032x}",
+            nonce=f"{self.proposal_ordinal + 10_000:032x}",
+            issued_at_unix=now,
+            expires_at_unix=now + 300,
+            bootstrap_activation_evidence_id="slice-2-bootstrap",
+            bootstrap_activation_evidence_sha256="a" * 64,
+            human_seat_authorization_evidence_id="slice-2-human-seat",
+            human_seat_authorization_evidence_sha256="b" * 64,
+        )
+        self.authenticated_requests[acquired] = (proposal, envelope)
+
+    def authenticated_request(
+        self,
+        acquired: AcquiredMutation,
+    ) -> tuple[Path, AuthenticatedExecutionEnvelope]:
+        try:
+            return self.authenticated_requests[acquired]
+        except KeyError as exc:
+            raise BrokerApplyError(
+                "Test acquisition has no authenticated live request."
+            ) from exc
+
+    def apply(
+        self,
+        acquired: AcquiredMutation,
+        *,
+        store: ControlDomainStore | None = None,
+        protected_root: Path | None = None,
+    ) -> ReconciliationOutcome:
+        proposal, envelope = self.authenticated_request(acquired)
+        return apply_protected_mutation(
+            self.store if store is None else store,
+            self.protected if protected_root is None else protected_root,
+            proposal,
+            envelope,
+        )
+
+    def recover(
+        self,
+        *,
+        store: ControlDomainStore | None = None,
+        protected_root: Path | None = None,
+    ) -> ReconciliationOutcome:
+        return recover_pending_protected_mutation(
+            self.store if store is None else store,
+            self.protected if protected_root is None else protected_root,
+        )
+
+    def leave_pending(self, acquired: AcquiredMutation) -> None:
+        with (
+            patch.object(
+                broker_apply,
+                "_attempt_live",
+                side_effect=RuntimeError("leave pending intent"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "leave pending intent"),
+        ):
+            self.apply(acquired)
 
     def create_acquired(
         self,
         *,
         relative_path: str = "bounded/new.txt",
         post: bytes = b"created bytes\n",
-    ) -> Any:
+    ) -> AcquiredMutation:
         return self.acquire(
             operation=MutationOperation.CREATE,
             relative_path=relative_path,
             proposal_bytes=post,
             expected_prior_sha256=None,
         )
-
-    @staticmethod
-    def leave_pending_intent() -> ReconciliationOutcome:
-        raise RuntimeError("leave pending intent")
 
     def replace_acquired(
         self,
@@ -110,7 +193,7 @@ class BrokerApplyFixture(unittest.TestCase):
         prior: bytes = b"exact prior\n",
         post: bytes = b"exact post\n",
         expected_prior_sha256: str | None = None,
-    ) -> Any:
+    ) -> AcquiredMutation:
         return self.acquire(
             operation=MutationOperation.REPLACE,
             relative_path=relative_path,
@@ -197,6 +280,7 @@ class ProposalAcquisitionTest(BrokerApplyFixture):
             relative_path="bounded/activation-bound.txt",
             expected_prior_sha256=None,
         )
+        self.authenticate(acquired, proposal)
 
         object.__setattr__(
             caller_activation,
@@ -208,7 +292,7 @@ class ProposalAcquisitionTest(BrokerApplyFixture):
         self.assertEqual(self.current, acquired.decision.activation)
         self.assertEqual(
             ReconciliationOutcome.APPLIED,
-            apply_protected_mutation(self.store, self.protected, acquired),
+            self.apply(acquired),
         )
 
     def test_proposal_path_swap_after_open_cannot_change_acquired_bytes(
@@ -312,12 +396,14 @@ class ProposalAcquisitionTest(BrokerApplyFixture):
     def test_live_apply_rejects_a_raw_unacquired_mutation_decision(self) -> None:
         (self.protected / "bounded").mkdir()
         acquired = self.create_acquired()
+        _proposal, envelope = self.authenticated_request(acquired)
 
         with self.assertRaises(BrokerControlError):
             apply_protected_mutation(
                 self.store,
                 self.protected,
-                acquired.decision,
+                acquired.decision,  # type: ignore[arg-type]
+                envelope,
             )
 
         self.assertFalse((self.protected / "bounded" / "new.txt").exists())
@@ -329,10 +415,11 @@ class ProposalAcquisitionTest(BrokerApplyFixture):
         (self.protected / "bounded").mkdir()
         target = self.protected / "bounded" / "new.txt"
         acquired = self.create_acquired()
-        object.__setattr__(acquired, "proposal_bytes", b"forged after acquisition\n")
+        proposal, _envelope = self.authenticated_request(acquired)
+        proposal.write_bytes(b"forged after acquisition\n")
 
-        with self.assertRaises(BrokerControlError):
-            apply_protected_mutation(self.store, self.protected, acquired)
+        with self.assertRaises(AuthorityRejectedError):
+            self.apply(acquired)
 
         self.assertFalse(target.exists())
         self.assertEqual(self.current, self.store.require_active(self.current).activation)
@@ -362,7 +449,7 @@ class ProposalAcquisitionTest(BrokerApplyFixture):
         )
 
         with self.assertRaises(BrokerControlError):
-            apply_protected_mutation(self.store, self.protected, forged)
+            broker_apply._snapshot_acquired(forged)
 
         self.assertFalse(target.exists())
         self.assertEqual(self.current, self.store.require_active(self.current).activation)
@@ -377,7 +464,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         acquired = self.create_acquired()
 
         with self.assertRaises(BrokerControlError):
-            apply_protected_mutation(self.store, wrong_root, acquired)
+            self.apply(acquired, protected_root=wrong_root)
 
         self.assertFalse((wrong_root / "bounded" / "new.txt").exists())
         self.assertEqual(self.current, self.store.require_active(self.current).activation)
@@ -389,7 +476,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         parent.mkdir()
         acquired = self.create_acquired(post=b"created exact bytes\n")
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         target = parent / "new.txt"
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
@@ -407,7 +494,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         target.write_bytes(prior)
         acquired = self.replace_acquired(prior=prior, post=post)
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
         self.assertEqual(post, target.read_bytes())
@@ -426,7 +513,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             expected_prior_sha256=sha256(b"different expected prior\n"),
         )
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertNotEqual(ReconciliationOutcome.NOT_APPLIED, outcome)
@@ -442,7 +529,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         target.symlink_to(referent.name)
         acquired = self.replace_acquired(prior=b"referent prior\n")
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertTrue(target.is_symlink())
@@ -455,11 +542,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         (self.protected / "bounded").symlink_to(real_parent.name)
         acquired = self.replace_acquired()
 
-        outcome = apply_protected_mutation(
-            self.store,
-            self.protected,
-            acquired,
-        )
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(
@@ -509,11 +592,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply.os.open",
             side_effect=open_then_swap_root,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertTrue(swapped)
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
@@ -535,7 +614,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         os.link(target, alias)
         acquired = self.replace_acquired()
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(b"exact prior\n", target.read_bytes())
@@ -550,7 +629,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         (target / "sentinel").write_bytes(b"directory sentinel\n")
         acquired = self.replace_acquired()
 
-        outcome = apply_protected_mutation(self.store, self.protected, acquired)
+        outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertTrue(target.is_dir())
@@ -608,11 +687,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply.os.open",
             side_effect=open_then_rebind,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertTrue(rebound)
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
@@ -634,13 +709,13 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         with (
             patch.object(
                 self.store,
-                "_execute_live_cas",
+                "_execute_authenticated_live_cas",
                 side_effect=OSError("injected pre-intent failure"),
             ),
             patch("decision_os.companion.broker_apply._observe_target") as observe,
             self.assertRaisesRegex(OSError, "pre-intent"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         observe.assert_not_called()
         self.assertEqual(b"exact prior\n", target.read_bytes())
@@ -662,17 +737,15 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ),
             self.assertRaisesRegex(OSError, "after-intent"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         self.assertEqual(b"exact prior\n", target.read_bytes())
         with self.assertRaises(AuthorityRejectedError):
             self.store.require_active(self.current)
         self.assertEqual(
             ReconciliationOutcome.NOT_APPLIED,
-            recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+            self.recover(
+                store=ControlDomainStore(self.store.path),
             ),
         )
 
@@ -716,12 +789,12 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ),
             self.assertRaisesRegex(OSError, "response loss"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         self.assertEqual(1, replace_calls)
         self.assertEqual(b"exact post\n", target.read_bytes())
         with self.assertRaises(AuthorityRejectedError):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
         self.assertEqual(1, replace_calls)
         with (
             patch(
@@ -735,10 +808,8 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             patch("decision_os.companion.broker_apply._publish_create") as create,
             patch("decision_os.companion.broker_apply._publish_replace") as replace,
         ):
-            recovered = recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+            recovered = self.recover(
+                store=ControlDomainStore(self.store.path),
             )
 
         self.assertEqual(
@@ -762,6 +833,8 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
         def execute_then_raise(source: Any, destination: Any, **kwargs: Any) -> None:
             nonlocal link_calls
             original_link(source, destination, **kwargs)
+            if os.fspath(destination) not in {target.name, os.fspath(target)}:
+                return
             link_calls += 1
             raise OSError("simulated response loss after link")
 
@@ -772,19 +845,17 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ),
             self.assertRaisesRegex(OSError, "response loss"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         self.assertEqual(1, link_calls)
         self.assertEqual(b"created bytes\n", target.read_bytes())
         with self.assertRaises(AuthorityRejectedError):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
         self.assertEqual(1, link_calls)
         self.assertEqual(
             ReconciliationOutcome.APPLIED,
-            recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+            self.recover(
+                store=ControlDomainStore(self.store.path),
             ),
         )
 
@@ -804,15 +875,13 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ),
             self.assertRaisesRegex(OSError, "post-verification"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         self.assertEqual(b"exact post\n", target.read_bytes())
         self.assertEqual(
             ReconciliationOutcome.APPLIED,
-            recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+            self.recover(
+                store=ControlDomainStore(self.store.path),
             ),
         )
 
@@ -832,11 +901,7 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply._readback_post",
             side_effect=corrupt_then_readback,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(b"corrupt post image\n", target.read_bytes())
@@ -859,17 +924,13 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply._readback_post",
             side_effect=replace_inode_then_readback,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(b"exact post\n", target.read_bytes())
         self.assertEqual(ControlDomainState.UNCERTAIN, self.store.load_required().state)
 
-    def test_parent_fsync_failure_in_live_and_recovery_persists_uncertain(
+    def test_parent_fsync_failure_in_recovery_preserves_retryable_intent(
         self,
     ) -> None:
         parent = self.protected / "bounded"
@@ -885,11 +946,11 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ),
             self.assertRaisesRegex(OSError, "parent fsync failure"),
         ):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
 
         self.assertEqual(b"exact post\n", target.read_bytes())
         with self.assertRaises(AuthorityRejectedError):
-            apply_protected_mutation(self.store, self.protected, acquired)
+            self.apply(acquired)
         with (
             patch(
                 "decision_os.companion.broker_apply._fsync_parent",
@@ -897,18 +958,21 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
             ) as recovery_fsync,
             patch("decision_os.companion.broker_apply._publish_create") as create,
             patch("decision_os.companion.broker_apply._publish_replace") as replace,
+            self.assertRaisesRegex(OSError, "recovery parent fsync failure"),
         ):
-            outcome = recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+            self.recover(
+                store=ControlDomainStore(self.store.path),
             )
 
-        self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(1, recovery_fsync.call_count)
         create.assert_not_called()
         replace.assert_not_called()
         self.assertEqual(ControlDomainState.UNCERTAIN, self.store.load_required().state)
+        self.assertEqual(
+            ReconciliationOutcome.APPLIED,
+            self.recover(store=ControlDomainStore(self.store.path)),
+        )
+        self.assertEqual(ControlDomainState.ABANDONED, self.store.load_required().state)
 
     def test_same_authority_cannot_make_a_second_live_mutation(self) -> None:
         parent = self.protected / "bounded"
@@ -918,10 +982,10 @@ class ProtectedLiveApplyTest(BrokerApplyFixture):
 
         self.assertEqual(
             ReconciliationOutcome.APPLIED,
-            apply_protected_mutation(self.store, self.protected, first),
+            self.apply(first),
         )
         with self.assertRaises(AuthorityRejectedError):
-            apply_protected_mutation(self.store, self.protected, second)
+            self.apply(second)
 
         self.assertTrue((parent / "first.txt").is_file())
         self.assertFalse((parent / "second.txt").exists())
@@ -934,17 +998,13 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
         target_bytes: bytes,
         expected_prior: bytes = b"exact prior\n",
         post: bytes = b"exact post\n",
-    ) -> Any:
+    ) -> AcquiredMutation:
         parent = self.protected / "bounded"
         parent.mkdir(exist_ok=True)
         target = parent / "target.txt"
         target.write_bytes(target_bytes)
         acquired = self.replace_acquired(prior=expected_prior, post=post)
-        with self.assertRaisesRegex(RuntimeError, "leave pending intent"):
-            self.store._execute_live_cas(
-                acquired.decision,
-                self.leave_pending_intent,
-            )
+        self.leave_pending(acquired)
         return acquired
 
     def test_recovery_exact_prior_is_not_applied_and_never_replays(self) -> None:
@@ -955,11 +1015,7 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             patch("decision_os.companion.broker_apply._publish_create") as create,
             patch("decision_os.companion.broker_apply._publish_replace") as replace,
         ):
-            outcome = recover_protected_mutation(
-                self.store,
-                self.protected,
-                acquired.decision,
-            )
+            outcome = self.recover()
 
         self.assertEqual(ReconciliationOutcome.NOT_APPLIED, outcome)
         create.assert_not_called()
@@ -976,11 +1032,7 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             patch("decision_os.companion.broker_apply._publish_create") as create,
             patch("decision_os.companion.broker_apply._publish_replace") as replace,
         ):
-            outcome = recover_protected_mutation(
-                self.store,
-                self.protected,
-                acquired.decision,
-            )
+            outcome = self.recover()
 
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
         create.assert_not_called()
@@ -1012,11 +1064,7 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             patch("decision_os.companion.broker_apply._publish_create") as create,
             patch("decision_os.companion.broker_apply._publish_replace") as replace,
         ):
-            outcome = recover_protected_mutation(
-                self.store,
-                self.protected,
-                acquired.decision,
-            )
+            outcome = self.recover()
 
         self.assertEqual(1, fsync_calls)
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
@@ -1044,19 +1092,15 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             prior=prior,
             post=post,
         )
-        with self.assertRaisesRegex(RuntimeError, "leave pending intent"):
-            self.store._execute_live_cas(
-                acquired.decision,
-                self.leave_pending_intent,
-            )
+        self.leave_pending(acquired)
 
         observation_entered = threading.Event()
         allow_observation = threading.Event()
         observed_paths: list[str] = []
-        original_observation = broker_apply._recovery_observation
+        original_observation = broker_apply._recovery_observation_from_root_fd
 
         def observe_after_caller_mutation(
-            protected_root: Path,
+            root_fd: int,
             decision: MutationDecision,
         ) -> Any:
             # The store invokes this only after snapshotting and matching the
@@ -1064,20 +1108,18 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             observed_paths.append(decision.relative_path)
             observation_entered.set()
             self.assertTrue(allow_observation.wait(timeout=10))
-            return original_observation(protected_root, decision)
+            return original_observation(root_fd, decision)
 
         with (
             patch(
-                "decision_os.companion.broker_apply._recovery_observation",
+                "decision_os.companion.broker_apply._recovery_observation_from_root_fd",
                 side_effect=observe_after_caller_mutation,
             ),
             ThreadPoolExecutor(max_workers=1) as executor,
         ):
             recovery = executor.submit(
-                recover_protected_mutation,
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+                self.recover,
+                store=ControlDomainStore(self.store.path),
             )
             try:
                 self.assertTrue(observation_entered.wait(timeout=10))
@@ -1100,40 +1142,23 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
     def test_recovery_neither_image_is_uncertain_and_never_unlocked(self) -> None:
         acquired = self.begin_pending_replace(target_bytes=b"neither image\n")
 
-        outcome = recover_protected_mutation(
-            self.store,
-            self.protected,
-            acquired.decision,
-        )
+        outcome = self.recover()
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(ControlDomainState.UNCERTAIN, self.store.load_required().state)
         with self.assertRaises(AuthorityRejectedError):
             self.store.require_active(self.current)
-        self.assertEqual(
-            ReconciliationOutcome.UNCERTAIN,
-            recover_protected_mutation(
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
-            ),
-        )
+        with self.assertRaises(AuthorityRejectedError):
+            self.recover(store=ControlDomainStore(self.store.path))
+        self.assertEqual(ControlDomainState.UNCERTAIN, self.store.load_required().state)
 
     def test_recovery_create_absence_is_not_applied(self) -> None:
         parent = self.protected / "bounded"
         parent.mkdir()
         acquired = self.create_acquired()
-        with self.assertRaisesRegex(RuntimeError, "leave pending intent"):
-            self.store._execute_live_cas(
-                acquired.decision,
-                self.leave_pending_intent,
-            )
+        self.leave_pending(acquired)
 
-        outcome = recover_protected_mutation(
-            self.store,
-            self.protected,
-            acquired.decision,
-        )
+        outcome = self.recover()
 
         self.assertEqual(ReconciliationOutcome.NOT_APPLIED, outcome)
         self.assertFalse((parent / "new.txt").exists())
@@ -1144,15 +1169,11 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
         acquired = self.create_acquired()
 
         with self.assertRaises(AuthorityRejectedError):
-            recover_protected_mutation(
-                self.store,
-                self.protected,
-                acquired.decision,
-            )
+            self.recover()
 
         self.assertEqual(self.current, self.store.require_active(self.current).activation)
 
-    def test_recovery_requires_the_exact_persisted_decision_binding(self) -> None:
+    def test_recovery_reconstructs_the_exact_persisted_decision_binding(self) -> None:
         acquired = self.begin_pending_replace(target_bytes=b"exact prior\n")
         different = MutationDecision(
             activation=self.current,
@@ -1163,20 +1184,13 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
             expected_post_sha256=sha256(b"different post\n"),
         )
 
-        with self.assertRaises(AuthorityRejectedError):
-            recover_protected_mutation(
-                self.store,
-                self.protected,
-                different,
-            )
+        reconstructed = self.store._reconstruct_pending_decision()
+        self.assertEqual(acquired.decision, reconstructed)
+        self.assertNotEqual(different, reconstructed)
 
         self.assertEqual(
             ReconciliationOutcome.NOT_APPLIED,
-            recover_protected_mutation(
-                self.store,
-                self.protected,
-                acquired.decision,
-            ),
+            self.recover(),
         )
 
     def test_recovery_target_symlink_is_uncertain_without_following(self) -> None:
@@ -1187,17 +1201,9 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
         target = parent / "target.txt"
         target.symlink_to(referent.name)
         acquired = self.replace_acquired()
-        with self.assertRaisesRegex(RuntimeError, "leave pending intent"):
-            self.store._execute_live_cas(
-                acquired.decision,
-                self.leave_pending_intent,
-            )
+        self.leave_pending(acquired)
 
-        outcome = recover_protected_mutation(
-            self.store,
-            self.protected,
-            acquired.decision,
-        )
+        outcome = self.recover()
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertTrue(target.is_symlink())
@@ -1215,34 +1221,43 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
         allow_attempt_to_finish = threading.Event()
         recovery_returned = threading.Event()
 
-        def held_attempt() -> ReconciliationOutcome:
+        def held_attempt(
+            _parent_fd: int,
+            _name: str,
+            _decision: MutationDecision,
+        ) -> ReconciliationOutcome:
             attempt_entered.set()
             self.assertTrue(allow_attempt_to_finish.wait(timeout=10))
-            return ReconciliationOutcome.UNCERTAIN
+            raise RuntimeError("leave pending intent")
 
         def recover() -> ReconciliationOutcome:
             try:
-                return recover_protected_mutation(
-                    ControlDomainStore(self.store.path),
-                    self.protected,
-                    acquired.decision,
+                return self.recover(
+                    store=ControlDomainStore(self.store.path),
                 )
             finally:
                 recovery_returned.set()
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with (
+            patch.object(
+                broker_apply,
+                "_attempt_live",
+                side_effect=held_attempt,
+            ),
+            ThreadPoolExecutor(max_workers=2) as executor,
+        ):
             live = executor.submit(
-                self.store._execute_live_cas,
-                acquired.decision,
-                held_attempt,
+                self.apply,
+                acquired,
             )
             self.assertTrue(attempt_entered.wait(timeout=10))
             recovery = executor.submit(recover)
             self.assertFalse(recovery_returned.wait(timeout=0.2))
             allow_attempt_to_finish.set()
-            self.assertEqual(ReconciliationOutcome.UNCERTAIN, live.result(timeout=10))
+            with self.assertRaisesRegex(RuntimeError, "leave pending intent"):
+                live.result(timeout=10)
             self.assertEqual(
-                ReconciliationOutcome.UNCERTAIN,
+                ReconciliationOutcome.NOT_APPLIED,
                 recovery.result(timeout=10),
             )
 
@@ -1258,7 +1273,9 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
         allow_replace = threading.Event()
         recovery_observed = threading.Event()
         original_replace = os.replace
-        original_recovery_observation = broker_apply._recovery_observation
+        original_recovery_observation = (
+            broker_apply._recovery_observation_from_root_fd
+        )
 
         def pause_replace_then_lose_response(
             source: Any,
@@ -1284,24 +1301,20 @@ class ProtectedRecoveryTest(BrokerApplyFixture):
                 side_effect=pause_replace_then_lose_response,
             ),
             patch(
-                "decision_os.companion.broker_apply._recovery_observation",
+                "decision_os.companion.broker_apply._recovery_observation_from_root_fd",
                 side_effect=record_recovery_observation,
             ),
             ThreadPoolExecutor(max_workers=2) as executor,
         ):
             live = executor.submit(
-                apply_protected_mutation,
-                self.store,
-                self.protected,
+                self.apply,
                 acquired,
             )
             self.assertTrue(replace_entered.wait(timeout=10))
             self.assertEqual(b"exact prior\n", target.read_bytes())
             recovery = executor.submit(
-                recover_protected_mutation,
-                ControlDomainStore(self.store.path),
-                self.protected,
-                acquired.decision,
+                self.recover,
+                store=ControlDomainStore(self.store.path),
             )
             observed_before_unlock = recovery_observed.wait(timeout=0.2)
             allow_replace.set()
@@ -1347,11 +1360,7 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
                 side_effect=observed_link,
             ),
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
         publication = operations.index("create-publish")
@@ -1373,11 +1382,7 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply.os.link",
             side_effect=race_target_into_place,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
         self.assertEqual(b"concurrent sentinel\n", target.read_bytes())
@@ -1399,6 +1404,8 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
         ) -> None:
             nonlocal rebound_name
             original_link(source, destination, **kwargs)
+            if os.fspath(destination) != "new.txt":
+                return
             rebound_name = os.fspath(source)
             directory_fd = kwargs["src_dir_fd"]
             original_unlink(source, dir_fd=directory_fd)
@@ -1417,11 +1424,7 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply.os.link",
             side_effect=rebind_temp_after_link,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
         self.assertIsNotNone(rebound_name)
@@ -1445,6 +1448,8 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
         ) -> None:
             nonlocal rebound_name
             original_link(source, destination, **kwargs)
+            if os.fspath(destination) != "new.txt":
+                return
             rebound_name = os.fspath(source)
             directory_fd = kwargs["src_dir_fd"]
             original_unlink(source, dir_fd=directory_fd)
@@ -1458,11 +1463,7 @@ class ProtectedPublicationDurabilityTest(BrokerApplyFixture):
             "decision_os.companion.broker_apply.os.link",
             side_effect=rebind_temp_after_link,
         ):
-            outcome = apply_protected_mutation(
-                self.store,
-                self.protected,
-                acquired,
-            )
+            outcome = self.apply(acquired)
 
         self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
         self.assertIsNotNone(rebound_name)

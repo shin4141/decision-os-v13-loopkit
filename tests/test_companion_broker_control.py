@@ -9,12 +9,25 @@ from pathlib import Path
 import stat
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 from typing import Any
 
 import decision_os.companion.broker_control as broker_control
+import decision_os.companion.broker_apply as broker_apply
 from decision_os.acceleration.model import canonical_json, hash_payload
+from decision_os.companion.broker_apply import (
+    acquire_mutation_decision,
+    apply_protected_mutation,
+    protected_root_identity,
+    recover_pending_protected_mutation,
+)
+from decision_os.companion.broker_authority import (
+    EnvelopeAuthenticationKey,
+    MutationCapsuleIntegrityError,
+    issue_execution_envelope,
+)
 from decision_os.companion.broker_control import (
     ActivationTuple,
     AuthorityRejectedError,
@@ -160,35 +173,168 @@ def create_decision(
     return MutationDecision(**values)
 
 
-def crash_live_attempt() -> ReconciliationOutcome:
-    """Model process loss after durable intent but before a known outcome."""
+class CanonicalCASScenario:
+    """One real authenticated apply/recovery route for control-plane tests."""
 
-    raise RuntimeError("simulated live CAS crash")
+    def __init__(
+        self,
+        root: Path,
+        *,
+        prior: bytes = b"exact prior\n",
+        post: bytes = b"exact post\n",
+        operation: MutationOperation = MutationOperation.REPLACE,
+        relative_path: str | None = None,
+        activation_overrides: dict[str, Any] | None = None,
+    ) -> None:
+        self.root = root
+        self.protected_root = root / "protected"
+        self.proposals = root / "proposals"
+        self.protected_root.mkdir()
+        self.proposals.mkdir()
+        current_values = dict(activation_overrides or {})
+        current_values["protected_repository_identity"] = protected_root_identity(
+            self.protected_root
+        )
+        self.current = activation(**current_values)
+        self.authentication_key = EnvelopeAuthenticationKey(
+            key_id="control-regression-key",
+            key_version=1,
+            secret=b"control regression external trust" * 2,
+        )
+        self.path = root / "state" / "control.json"
+        self.store = ControlDomainStore(
+            self.path,
+            authentication_key=self.authentication_key,
+        )
+        self.initial = self.store.activate_initial(self.current)
+        self.operation = operation
+        self.relative_path = relative_path or (
+            "bounded/new.txt"
+            if operation is MutationOperation.CREATE
+            else "bounded/target.txt"
+        )
+        self.target = self.protected_root / self.relative_path
+        self.target.parent.mkdir(parents=True)
+        if operation is MutationOperation.REPLACE:
+            self.target.write_bytes(prior)
+        proposal = self.proposals / "proposal.bin"
+        proposal.write_bytes(post)
+        acquired = acquire_mutation_decision(
+            proposal,
+            activation=self.current,
+            operation=operation,
+            relative_path=self.relative_path,
+            expected_prior_sha256=(
+                None if operation is MutationOperation.CREATE else sha256(prior)
+            ),
+        )
+        self.proposal = proposal
+        self.decision = acquired.decision
+        now = int(time.time())
+        self.envelope = issue_execution_envelope(
+            self.decision,
+            self.initial,
+            authentication_key=self.authentication_key,
+            envelope_id="1" * 32,
+            nonce="2" * 32,
+            issued_at_unix=now,
+            expires_at_unix=now + 300,
+            bootstrap_activation_evidence_id="control-bootstrap",
+            bootstrap_activation_evidence_sha256="a" * 64,
+            human_seat_authorization_evidence_id="control-human-seat",
+            human_seat_authorization_evidence_sha256="b" * 64,
+        )
 
+    def apply(
+        self,
+        *,
+        store: ControlDomainStore | None = None,
+    ) -> ReconciliationOutcome:
+        return apply_protected_mutation(
+            self.store if store is None else store,
+            self.protected_root,
+            self.proposal,
+            self.envelope,
+        )
 
-def leave_pending_cas(
-    store: ControlDomainStore,
-    decision: MutationDecision,
-) -> None:
-    """Execute the live protocol through a raising mutation callback."""
+    def apply_as(
+        self,
+        requested_activation: ActivationTuple,
+        *,
+        store: ControlDomainStore | None = None,
+    ) -> ReconciliationOutcome:
+        """Submit a validly authenticated request for a non-current tuple."""
 
-    try:
-        store._execute_live_cas(decision, crash_live_attempt)
-    except RuntimeError as exc:
-        if str(exc) != "simulated live CAS crash":
-            raise
-    else:
-        raise AssertionError("raising live CAS callback unexpectedly returned")
+        acquired = acquire_mutation_decision(
+            self.proposal,
+            activation=requested_activation,
+            operation=self.operation,
+            relative_path=self.relative_path,
+            expected_prior_sha256=self.decision.expected_prior_sha256,
+        )
+        synthetic_active = broker_control._new_record(
+            requested_activation,
+            state=ControlDomainState.ACTIVE,
+            journal_position=0,
+            predecessor_record_sha256=None,
+            retired_authority_domain_ids=(),
+        )
+        now = int(time.time())
+        envelope = issue_execution_envelope(
+            acquired.decision,
+            synthetic_active,
+            authentication_key=self.authentication_key,
+            envelope_id="3" * 32,
+            nonce="4" * 32,
+            issued_at_unix=now,
+            expires_at_unix=now + 300,
+            bootstrap_activation_evidence_id="control-bootstrap",
+            bootstrap_activation_evidence_sha256="a" * 64,
+            human_seat_authorization_evidence_id="control-human-seat",
+            human_seat_authorization_evidence_sha256="b" * 64,
+        )
+        return apply_protected_mutation(
+            self.store if store is None else store,
+            self.protected_root,
+            self.proposal,
+            envelope,
+        )
 
+    def leave_pending(self) -> None:
+        with patch.object(
+            broker_apply,
+            "_attempt_live",
+            side_effect=RuntimeError("simulated live CAS crash"),
+        ):
+            try:
+                self.apply()
+            except RuntimeError as exc:
+                if str(exc) != "simulated live CAS crash":
+                    raise
+            else:
+                raise AssertionError("raising live CAS seam unexpectedly returned")
 
-def recover_observation(
-    store: ControlDomainStore,
-    decision: MutationDecision,
-    observation: TargetObservation,
-) -> ReconciliationOutcome:
-    """Sample one fixed test observation inside the recovery lock."""
+    def recover(
+        self,
+        *,
+        store: ControlDomainStore | None = None,
+    ) -> ReconciliationOutcome:
+        return recover_pending_protected_mutation(
+            self.store if store is None else store,
+            self.protected_root,
+        )
 
-    return store._execute_recovery_cas(decision, lambda: observation)
+    def restarted_store(self, *, authenticated: bool = False) -> ControlDomainStore:
+        return ControlDomainStore(
+            self.path,
+            authentication_key=(self.authentication_key if authenticated else None),
+        )
+
+    def set_target(self, content: bytes | None) -> None:
+        if os.path.lexists(self.target):
+            self.target.unlink()
+        if content is not None:
+            self.target.write_bytes(content)
 
 
 class BrokerControlDurabilityTest(unittest.TestCase):
@@ -217,6 +363,7 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             file_sizes_at_fsync: list[int] = []
             original_fsync = os.fsync
             original_replace = os.replace
+            original_link = os.link
 
             def observed_fsync(descriptor: int) -> None:
                 mode = os.fstat(descriptor).st_mode
@@ -231,6 +378,10 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 original_replace(source, target, **kwargs)
                 operations.append("replace")
 
+            def observed_link(source: Any, target: Any, **kwargs: Any) -> None:
+                original_link(source, target, **kwargs)
+                operations.append("link")
+
             with (
                 patch(
                     "decision_os.companion.broker_control.os.fsync",
@@ -240,6 +391,10 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                     "decision_os.companion.broker_control.os.replace",
                     side_effect=observed_replace,
                 ),
+                patch(
+                    "decision_os.companion.broker_control.os.link",
+                    side_effect=observed_link,
+                ),
             ):
                 ControlDomainStore(path).activate_initial(activation())
 
@@ -248,24 +403,31 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 for index, operation in enumerate(operations)
                 if operation == "replace"
             ]
-            self.assertEqual(2, len(replace_indexes))
+            self.assertEqual(1, len(replace_indexes))
             for index in replace_indexes:
                 self.assertEqual("file-fsync", operations[index - 1])
                 self.assertEqual("directory-fsync", operations[index + 1])
-            self.assertEqual(
-                [len(path.read_bytes()), len(path.read_bytes())],
-                file_sizes_at_fsync,
-            )
+            link_indexes = [
+                index
+                for index, operation in enumerate(operations)
+                if operation == "link"
+            ]
+            self.assertEqual(1, len(link_indexes))
+            for index in link_indexes:
+                self.assertEqual("file-fsync", operations[index - 1])
+                self.assertEqual("directory-fsync", operations[index + 1])
+            self.assertEqual(2, len(file_sizes_at_fsync))
+            self.assertTrue(all(size == len(path.read_bytes()) for size in file_sizes_at_fsync))
 
     def test_cas_fence_and_terminal_record_each_use_durable_publish(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "state" / "broker-control.json"
-            store = ControlDomainStore(path)
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            path = scenario.path
+            store = scenario.store
             operations: list[str] = []
             original_fsync = os.fsync
             original_replace = os.replace
+            original_link = os.link
 
             def observed_fsync(descriptor: int) -> None:
                 mode = os.fstat(descriptor).st_mode
@@ -276,7 +438,16 @@ class BrokerControlDurabilityTest(unittest.TestCase):
 
             def observed_replace(source: Any, target: Any, **kwargs: Any) -> None:
                 original_replace(source, target, **kwargs)
-                operations.append("replace")
+                operations.append(
+                    "protected-replace"
+                    if os.fspath(target) == scenario.target.name
+                    and kwargs.get("dst_dir_fd") is not None
+                    else "replace"
+                )
+
+            def observed_link(source: Any, target: Any, **kwargs: Any) -> None:
+                original_link(source, target, **kwargs)
+                operations.append("link")
 
             with (
                 patch(
@@ -287,12 +458,12 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                     "decision_os.companion.broker_control.os.replace",
                     side_effect=observed_replace,
                 ),
+                patch(
+                    "decision_os.companion.broker_control.os.link",
+                    side_effect=observed_link,
+                ),
             ):
-                decision = replace_decision(current)
-                outcome = store._execute_live_cas(
-                    decision,
-                    lambda: ReconciliationOutcome.APPLIED,
-                )
+                outcome = scenario.apply()
 
             self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
             replace_indexes = [
@@ -300,8 +471,19 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 for index, operation in enumerate(operations)
                 if operation == "replace"
             ]
-            self.assertEqual(6, len(replace_indexes))
+            self.assertEqual(2, len(replace_indexes))
             for index in replace_indexes:
+                self.assertEqual("file-fsync", operations[index - 1])
+                self.assertEqual("directory-fsync", operations[index + 1])
+            link_indexes = [
+                index
+                for index, operation in enumerate(operations)
+                if operation == "link"
+            ]
+            # Blob + capsule + INTENT + UNCERTAIN journal + COMPLETE +
+            # ABANDONED journal are each immutable no-clobber publications.
+            self.assertEqual(6, len(link_indexes))
+            for index in link_indexes:
                 self.assertEqual("file-fsync", operations[index - 1])
                 self.assertEqual("directory-fsync", operations[index + 1])
             security_files = (
@@ -314,16 +496,406 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 all(item.stat().st_mode & 0o777 == 0o600 for item in security_files)
             )
 
+    def test_immutable_publish_is_full_fsync_no_clobber_and_exact_readback(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "immutable" / "record.bin"
+            store = ControlDomainStore(Path(temporary) / "state" / "control.json")
+            encoded = b"immutable exact bytes\x00\n"
+            operations: list[str] = []
+            original_fsync = os.fsync
+            original_link = os.link
+
+            def observed_fsync(descriptor: int) -> None:
+                mode = os.fstat(descriptor).st_mode
+                original_fsync(descriptor)
+                operations.append(
+                    "directory-fsync" if stat.S_ISDIR(mode) else "file-fsync"
+                )
+
+            def observed_link(source: Any, destination: Any, **kwargs: Any) -> None:
+                original_link(source, destination, **kwargs)
+                operations.append("link")
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=observed_fsync,
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.link",
+                    side_effect=observed_link,
+                ),
+            ):
+                store._durable_publish_immutable_unlocked(
+                    target,
+                    encoded,
+                    label="test immutable record",
+                )
+            self.assertEqual(encoded, target.read_bytes())
+            link_index = operations.index("link")
+            self.assertEqual("file-fsync", operations[link_index - 1])
+            self.assertEqual("directory-fsync", operations[link_index + 1])
+            self.assertEqual([], list(target.parent.glob(".broker-control-*.tmp")))
+
+            with self.assertRaises(FileExistsError):
+                store._durable_publish_immutable_unlocked(
+                    target,
+                    b"must not clobber",
+                    label="test immutable collision",
+                )
+            self.assertEqual(encoded, target.read_bytes())
+
+    def test_immutable_link_before_unlink_crash_prefix_is_recovered_exactly(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "immutable"
+            directory.mkdir()
+            target = directory / "record.bin"
+            encoded = b"crash-prefix exact bytes\n"
+            temporary_path = directory / (
+                f".broker-control-{sha256(encoded)}-a1b2c3d4e5f60718.tmp"
+            )
+            temporary_path.write_bytes(encoded)
+            os.link(temporary_path, target)
+            self.assertEqual(2, target.stat().st_nlink)
+
+            recovered = ControlDomainStore._recover_immutable_publication_unlocked(
+                target,
+                maximum=len(encoded),
+                label="test immutable crash prefix",
+                expected=encoded,
+            )
+
+            self.assertEqual(encoded, recovered)
+            self.assertFalse(temporary_path.exists())
+            self.assertEqual(1, target.stat().st_nlink)
+
+    def test_immutable_link_repair_rejects_a_rebound_temporary_before_unlink(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "immutable"
+            directory.mkdir()
+            target = directory / "record.bin"
+            encoded = b"crash-prefix exact bytes\n"
+            temporary_path = directory / (
+                f".broker-control-{sha256(encoded)}-a1b2c3d4e5f60718.tmp"
+            )
+            foreign = directory / "foreign.bin"
+            sentinel = b"foreign temporary replacement\n"
+            temporary_path.write_bytes(encoded)
+            foreign.write_bytes(sentinel)
+            os.link(temporary_path, target)
+            original_stat = os.stat
+            rebound = False
+
+            def rebind_before_final_stat(
+                path: Any,
+                *args: Any,
+                **kwargs: Any,
+            ) -> os.stat_result:
+                nonlocal rebound
+                directory_descriptor = kwargs.get("dir_fd")
+                if (
+                    not rebound
+                    and path == temporary_path.name
+                    and directory_descriptor is not None
+                ):
+                    rebound = True
+                    os.unlink(temporary_path.name, dir_fd=directory_descriptor)
+                    os.rename(
+                        foreign.name,
+                        temporary_path.name,
+                        src_dir_fd=directory_descriptor,
+                        dst_dir_fd=directory_descriptor,
+                    )
+                return original_stat(path, *args, **kwargs)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.os.stat",
+                    side_effect=rebind_before_final_stat,
+                ),
+                self.assertRaises(MutationCapsuleIntegrityError),
+            ):
+                ControlDomainStore._recover_immutable_publication_unlocked(
+                    target,
+                    maximum=len(encoded),
+                    label="test rebound immutable crash prefix",
+                    expected=encoded,
+                )
+
+            self.assertTrue(rebound)
+            self.assertEqual(encoded, target.read_bytes())
+            self.assertEqual(sentinel, temporary_path.read_bytes())
+
+    def test_immutable_link_repair_retry_reestablishes_directory_durability(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "immutable"
+            directory.mkdir()
+            target = directory / "record.bin"
+            encoded = b"repair durability exact bytes\n"
+            temporary_path = directory / (
+                f".broker-control-{sha256(encoded)}-a1b2c3d4e5f60718.tmp"
+            )
+            temporary_path.write_bytes(encoded)
+            os.link(temporary_path, target)
+            original_fsync = os.fsync
+
+            def fail_repair_directory_fsync(descriptor: int) -> None:
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    raise OSError("injected repair directory fsync failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_repair_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    MutationCapsuleIntegrityError,
+                    "cannot be recovered",
+                ),
+            ):
+                ControlDomainStore._recover_immutable_publication_unlocked(
+                    target,
+                    maximum=len(encoded),
+                    label="test immutable repair durability",
+                    expected=encoded,
+                )
+
+            self.assertFalse(temporary_path.exists())
+            self.assertEqual(1, target.stat().st_nlink)
+            retry_directory_fsyncs = 0
+
+            def observe_retry_fsync(descriptor: int) -> None:
+                nonlocal retry_directory_fsyncs
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    retry_directory_fsyncs += 1
+                original_fsync(descriptor)
+
+            with patch(
+                "decision_os.companion.broker_control.os.fsync",
+                side_effect=observe_retry_fsync,
+            ):
+                recovered = (
+                    ControlDomainStore._recover_immutable_publication_unlocked(
+                        target,
+                        maximum=len(encoded),
+                        label="test immutable repair durability",
+                        expected=encoded,
+                    )
+                )
+
+            self.assertEqual(encoded, recovered)
+            self.assertGreaterEqual(retry_directory_fsyncs, 1)
+
+    def test_immutable_reuse_reads_back_after_directory_durability_refresh(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "immutable"
+            directory.mkdir()
+            target = directory / "record.bin"
+            replacement = directory / "replacement.bin"
+            expected = b"expected immutable bytes\n"
+            substituted = b"substituted immutable bytes\n"
+            target.write_bytes(expected)
+            replacement.write_bytes(substituted)
+            original_refresh = ControlDomainStore._fsync_directory
+            rebound = False
+
+            def rebind_during_refresh(parent: Path) -> None:
+                nonlocal rebound
+                original_refresh(parent)
+                if not rebound:
+                    rebound = True
+                    os.replace(replacement, target)
+
+            with (
+                patch.object(
+                    ControlDomainStore,
+                    "_fsync_directory",
+                    side_effect=rebind_during_refresh,
+                ),
+                self.assertRaisesRegex(
+                    MutationCapsuleIntegrityError,
+                    "expected content",
+                ),
+            ):
+                ControlDomainStore._recover_immutable_publication_unlocked(
+                    target,
+                    maximum=len(substituted),
+                    label="test immutable reuse",
+                    expected=expected,
+                )
+
+            self.assertTrue(rebound)
+            self.assertEqual(substituted, target.read_bytes())
+
+    def test_existing_directory_is_refsynced_after_mkdir_fsync_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / "state"
+            path = state / "control.json"
+            store = ControlDomainStore(path)
+            original_fsync = os.fsync
+            root_identity = root.stat()
+            failed = False
+
+            def fail_state_name_fsync(descriptor: int) -> None:
+                nonlocal failed
+                observed = os.fstat(descriptor)
+                if (
+                    not failed
+                    and state.exists()
+                    and stat.S_ISDIR(observed.st_mode)
+                    and (observed.st_dev, observed.st_ino)
+                    == (root_identity.st_dev, root_identity.st_ino)
+                ):
+                    failed = True
+                    raise OSError("injected state-name directory fsync failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_state_name_fsync,
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "state-name directory fsync",
+                ),
+            ):
+                store.activate_initial(activation())
+
+            self.assertTrue(failed)
+            self.assertTrue(state.is_dir())
+            self.assertFalse(path.exists())
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=OSError("injected retry directory fsync failure"),
+                ),
+                self.assertRaisesRegex(
+                    ControlRecordIntegrityError,
+                    "directory durability",
+                ),
+            ):
+                store.activate_initial(activation())
+            self.assertFalse(path.exists())
+
+            root_refreshes = 0
+
+            def observe_retry_fsync(descriptor: int) -> None:
+                nonlocal root_refreshes
+                observed = os.fstat(descriptor)
+                if (
+                    stat.S_ISDIR(observed.st_mode)
+                    and (observed.st_dev, observed.st_ino)
+                    == (root_identity.st_dev, root_identity.st_ino)
+                ):
+                    root_refreshes += 1
+                original_fsync(descriptor)
+
+            with patch(
+                "decision_os.companion.broker_control.os.fsync",
+                side_effect=observe_retry_fsync,
+            ):
+                activated = store.activate_initial(activation())
+
+            self.assertGreaterEqual(root_refreshes, 1)
+            self.assertEqual(ControlDomainState.ACTIVE, activated.state)
+            self.assertEqual(activated, store.load_required())
+
+    def test_authenticator_orphan_is_exactly_retryable_before_active_head(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "state" / "control.json"
+            key = broker_control.EnvelopeAuthenticationKey(
+                key_id="activation-retry-key",
+                key_version=1,
+                secret=b"activation retry external secret" * 2,
+            )
+            store = ControlDomainStore(path, authentication_key=key)
+            original_publish = store._publish_unlocked
+
+            with (
+                patch.object(
+                    store,
+                    "_publish_unlocked",
+                    side_effect=RuntimeError("crash after authenticator"),
+                ),
+                self.assertRaisesRegex(RuntimeError, "after authenticator"),
+            ):
+                store.activate_initial(activation())
+            self.assertFalse(path.exists())
+            self.assertTrue(store._authenticator_path.exists())
+
+            with patch.object(
+                store,
+                "_publish_unlocked",
+                side_effect=original_publish,
+            ):
+                activated = store.activate_initial(activation())
+            self.assertEqual(ControlDomainState.ACTIVE, activated.state)
+            self.assertEqual(activated, store.load_required())
+
+    def test_immutable_stable_read_rejects_same_inode_mutation_at_final_check(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "record.bin"
+            target.write_bytes(b"good!")
+            original_lstat = Path.lstat
+            mutated = False
+
+            def mutate_then_lstat(path: Path) -> os.stat_result:
+                nonlocal mutated
+                if path == target and not mutated:
+                    mutated = True
+                    path.write_bytes(b"evil!")
+                return original_lstat(path)
+
+            with (
+                patch.object(Path, "lstat", autospec=True, side_effect=mutate_then_lstat),
+                self.assertRaises(MutationCapsuleIntegrityError),
+            ):
+                ControlDomainStore._read_immutable_bytes(
+                    target,
+                    5,
+                    "test immutable record",
+                )
+
     def test_control_file_fsync_failure_preserves_exact_prior(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "state" / "broker-control.json"
             store = ControlDomainStore(path)
             initial = store.activate_initial(activation())
             prior_bytes = path.read_bytes()
+            original_fsync = os.fsync
+            regular_fsyncs = 0
+
+            def fail_head_file_fsync(descriptor: int) -> None:
+                nonlocal regular_fsyncs
+                if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    regular_fsyncs += 1
+                    if regular_fsyncs == 1:
+                        raise OSError("injected file fsync failure")
+                original_fsync(descriptor)
 
             with patch(
                 "decision_os.companion.broker_control.os.fsync",
-                side_effect=OSError("injected file fsync failure"),
+                side_effect=fail_head_file_fsync,
             ):
                 with self.assertRaisesRegex(OSError, "injected file fsync"):
                     store.transition(
@@ -404,12 +976,15 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             store = ControlDomainStore(target)
             original_fsync = os.fsync
             cleanup_directory_fsyncs = 0
+            primary_failed = False
 
             def fail_file_then_observe_cleanup(descriptor: int) -> None:
-                nonlocal cleanup_directory_fsyncs
+                nonlocal cleanup_directory_fsyncs, primary_failed
                 if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    primary_failed = True
                     raise OSError("injected owned-temp failure")
-                cleanup_directory_fsyncs += 1
+                if primary_failed:
+                    cleanup_directory_fsyncs += 1
                 original_fsync(descriptor)
 
             with (
@@ -439,11 +1014,17 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             target = root / "control.json"
             temporary_path = root / ".broker-control-cleanup-note.tmp"
             store = ControlDomainStore(target)
+            original_fsync = os.fsync
+            primary_failed = False
 
             def fail_primary_and_cleanup_fsync(descriptor: int) -> None:
+                nonlocal primary_failed
                 if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    primary_failed = True
                     raise OSError("primary durability failure")
-                raise FileNotFoundError("cleanup directory fsync failure")
+                if primary_failed:
+                    raise FileNotFoundError("cleanup directory fsync failure")
+                original_fsync(descriptor)
 
             with (
                 patch(
@@ -614,7 +1195,10 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             original_fsync = os.fsync
 
             def reuse_then_fail(descriptor: int) -> None:
-                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                if (
+                    target.exists()
+                    and stat.S_ISDIR(os.fstat(descriptor).st_mode)
+                ):
                     temporary_path.write_bytes(sentinel)
                     raise OSError("injected published directory failure")
                 original_fsync(descriptor)
@@ -650,7 +1234,10 @@ class BrokerControlDurabilityTest(unittest.TestCase):
 
             def fail_first_directory_fsync(descriptor: int) -> None:
                 nonlocal directory_fsyncs
-                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                if (
+                    any(store._journal_path.glob("*.json"))
+                    and stat.S_ISDIR(os.fstat(descriptor).st_mode)
+                ):
                     directory_fsyncs += 1
                     if directory_fsyncs == 1:
                         raise OSError("injected journal directory fsync failure")
@@ -675,14 +1262,21 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             store = ControlDomainStore(path)
             store._journal_path.mkdir()
             original_fsync = os.fsync
-            directory_fsyncs = 0
+            failed = False
 
             def fail_second_directory_fsync(descriptor: int) -> None:
-                nonlocal directory_fsyncs
-                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
-                    directory_fsyncs += 1
-                    if directory_fsyncs == 2:
-                        raise OSError("injected head directory fsync failure")
+                nonlocal failed
+                metadata = os.fstat(descriptor)
+                parent = path.parent.stat()
+                if (
+                    not failed
+                    and stat.S_ISDIR(metadata.st_mode)
+                    and (metadata.st_dev, metadata.st_ino)
+                    == (parent.st_dev, parent.st_ino)
+                    and path.exists()
+                ):
+                    failed = True
+                    raise OSError("injected head directory fsync failure")
                 original_fsync(descriptor)
 
             with patch(
@@ -978,9 +1572,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
 
     def test_every_activation_tuple_component_is_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
             mismatches = {
                 "authority-domain": replace(
                     current,
@@ -1005,12 +1599,12 @@ class BrokerControlAuthorityTest(unittest.TestCase):
                 with self.subTest(label=label):
                     with self.assertRaises(AuthorityRejectedError):
                         store.require_active(mismatch)
-                    attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
-                    with self.assertRaises(AuthorityRejectedError):
-                        store._execute_live_cas(
-                            replace_decision(mismatch),
-                            attempt,
-                        )
+                    attempt = Mock()
+                    with (
+                        patch.object(broker_apply, "_attempt_live", attempt),
+                        self.assertRaises(BrokerControlError),
+                    ):
+                        scenario.apply_as(mismatch)
                     attempt.assert_not_called()
 
             self.assertEqual(current, store.load_required().activation)
@@ -1018,45 +1612,49 @@ class BrokerControlAuthorityTest(unittest.TestCase):
 
     def test_repository_identity_mismatch_fails_before_cas(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
             mismatch = replace(
                 current,
                 repository_id=f"repo:v1:{'9' * 64}",
             )
 
-            with self.assertRaises(AuthorityRejectedError):
-                store._execute_live_cas(
-                    replace_decision(mismatch),
-                    crash_live_attempt,
-                )
+            attempt = Mock()
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaises(AuthorityRejectedError),
+            ):
+                scenario.apply_as(mismatch)
+            attempt.assert_not_called()
 
             self.assertEqual(ControlDomainState.ACTIVE, store.load_required().state)
 
     def test_write_principal_identity_mismatch_fails_before_cas(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
             mismatch = replace(
                 current,
                 write_principal_identity=f"principal:v1:{'8' * 64}",
             )
 
-            with self.assertRaises(AuthorityRejectedError):
-                store._execute_live_cas(
-                    replace_decision(mismatch),
-                    crash_live_attempt,
-                )
+            attempt = Mock()
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaises(AuthorityRejectedError),
+            ):
+                scenario.apply_as(mismatch)
+            attempt.assert_not_called()
 
             self.assertEqual(ControlDomainState.ACTIVE, store.load_required().state)
 
     def test_abandoned_domain_cannot_authorize_or_reactivate(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            old = activation()
-            store.activate_initial(old)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            old = scenario.current
             abandoned = store.transition(old, ControlDomainState.ABANDONED)
 
             self.assertEqual(ControlDomainState.ABANDONED, abandoned.state)
@@ -1066,20 +1664,24 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             )
             with self.assertRaises(AuthorityRejectedError):
                 store.require_active(old)
-            with self.assertRaises(AuthorityRejectedError):
-                store._execute_live_cas(
-                    replace_decision(old),
-                    crash_live_attempt,
-                )
+            attempt = Mock()
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaises(AuthorityRejectedError),
+            ):
+                scenario.apply()
+            attempt.assert_not_called()
             with self.assertRaises(ControlDomainTransitionError):
                 store.transition(old, ControlDomainState.ACTIVE)
 
     def test_numeric_generation_reuse_does_not_restore_abandoned_domain(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            first_process = ControlDomainStore(path)
-            old = activation(generation_witness=41)
-            first_process.activate_initial(old)
+            scenario = CanonicalCASScenario(
+                Path(temporary),
+                activation_overrides={"generation_witness": 41},
+            )
+            first_process = scenario.store
+            old = scenario.current
             first_process.transition(old, ControlDomainState.ABANDONED)
             successor = replace(
                 old,
@@ -1089,7 +1691,7 @@ class BrokerControlAuthorityTest(unittest.TestCase):
                 generation_witness=41,
             )
 
-            second_process = ControlDomainStore(path)
+            second_process = scenario.restarted_store(authenticated=True)
             current = second_process.activate_successor(
                 second_process.load_required(),
                 successor,
@@ -1102,11 +1704,13 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             )
             with self.assertRaises(AuthorityRejectedError):
                 first_process.require_active(old)
-            with self.assertRaises(AuthorityRejectedError):
-                first_process._execute_live_cas(
-                    replace_decision(old),
-                    crash_live_attempt,
-                )
+            attempt = Mock()
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaises(AuthorityRejectedError),
+            ):
+                scenario.apply(store=second_process)
+            attempt.assert_not_called()
 
     def test_exact_stale_active_head_replay_cannot_erase_abandonment(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1153,9 +1757,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
 
     def test_uncertain_domain_is_abandoned_not_repaired_in_place(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
             uncertain = store.transition(current, ControlDomainState.UNCERTAIN)
 
             self.assertEqual(ControlDomainState.UNCERTAIN, uncertain.state)
@@ -1176,12 +1780,14 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             self.assertEqual(ControlDomainState.ABANDONED, abandoned.state)
             self.assertEqual(ControlDomainState.ACTIVE, activated.state)
             with self.assertRaises(AuthorityRejectedError):
-                ControlDomainStore(store.path).require_active(current)
-            with self.assertRaises(AuthorityRejectedError):
-                ControlDomainStore(store.path)._execute_live_cas(
-                    replace_decision(current),
-                    crash_live_attempt,
-                )
+                scenario.restarted_store().require_active(current)
+            attempt = Mock()
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaises(AuthorityRejectedError),
+            ):
+                scenario.apply(store=scenario.restarted_store(authenticated=True))
+            attempt.assert_not_called()
 
     def test_no_force_unlock_or_generic_record_overwrite_path_exists(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1512,33 +2118,33 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(current)
-            initial = store.activate_initial(current)
-            observe = Mock(
-                return_value=TargetObservation(
-                    TargetKind.REGULAR,
-                    b"exact prior\n",
-                )
-            )
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            observe = Mock()
 
             with (
                 patch(
                     "decision_os.companion.broker_control.reconcile_mutation"
                 ) as reconcile,
+                patch(
+                    "decision_os.companion.broker_apply._recovery_observation_from_root_fd",
+                    observe,
+                ),
                 patch.object(store, "_append_cas_fence_unlocked") as append,
                 self.assertRaisesRegex(
                     AuthorityRejectedError,
-                    "requires an exact durable intent",
+                    "requires exactly one durable pending CAS intent",
                 ),
             ):
-                store._execute_recovery_cas(decision, observe)
+                scenario.recover()
 
             observe.assert_not_called()
             reconcile.assert_not_called()
             append.assert_not_called()
-            self.assertEqual(initial, store.require_active(current))
+            self.assertEqual(
+                scenario.initial,
+                store.require_active(scenario.current),
+            )
             self.assertFalse(store._fence_path.exists())
 
     def test_raw_cas_assertion_callbacks_are_not_public(self) -> None:
@@ -1598,22 +2204,25 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(current)
-            store.activate_initial(current)
-            leave_pending_cas(store, decision)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            scenario.leave_pending()
             original_fences = tuple(store._fence_path.iterdir())
-            second_attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+            second_attempt = Mock()
 
             with (
                 patch.object(store, "_append_cas_fence_unlocked") as append,
+                patch.object(
+                    broker_apply,
+                    "_attempt_live",
+                    second_attempt,
+                ),
                 self.assertRaisesRegex(
                     AuthorityRejectedError,
                     "live apply cannot resume",
                 ),
             ):
-                store._execute_live_cas(decision, second_attempt)
+                scenario.apply()
 
             append.assert_not_called()
             second_attempt.assert_not_called()
@@ -1624,19 +2233,20 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(current)
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
             attempt = Mock(return_value=ReconciliationOutcome.NOT_APPLIED)
 
-            with self.assertRaisesRegex(
-                MutationDecisionError,
-                "only through CAS recovery",
+            with (
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaisesRegex(
+                    MutationDecisionError,
+                    "only through CAS recovery",
+                ),
             ):
-                store._execute_live_cas(decision, attempt)
+                scenario.apply()
 
-            attempt.assert_called_once_with()
+            self.assertEqual(1, attempt.call_count)
             journal = store._journal_records_unlocked()
             fences = store._cas_fences_unlocked(journal)
             self.assertEqual(1, len(fences))
@@ -1644,22 +2254,18 @@ class BrokerControlCASTest(unittest.TestCase):
             self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    store,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(),
             )
             self.assertEqual(ControlDomainState.ABANDONED, store.load_required().state)
 
     def test_active_head_with_durable_intent_is_recovery_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            store = ControlDomainStore(path)
-            current = activation()
-            decision = replace_decision(current)
-            initial = store.activate_initial(current)
-            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+            scenario = CanonicalCASScenario(Path(temporary))
+            path = scenario.path
+            store = scenario.store
+            current = scenario.current
+            initial = scenario.initial
+            attempt = Mock()
 
             with (
                 patch.object(
@@ -1669,7 +2275,7 @@ class BrokerControlCASTest(unittest.TestCase):
                 ),
                 self.assertRaisesRegex(RuntimeError, "after durable intent"),
             ):
-                store._execute_live_cas(decision, attempt)
+                scenario.apply()
 
             attempt.assert_not_called()
 
@@ -1686,20 +2292,14 @@ class BrokerControlCASTest(unittest.TestCase):
             with self.assertRaisesRegex(
                 AuthorityRejectedError,
                 "live apply cannot resume",
-            ):
-                ControlDomainStore(path)._execute_live_cas(
-                    decision,
-                    crash_live_attempt,
-                )
+            ), patch.object(broker_apply, "_attempt_live", attempt):
+                scenario.apply(store=scenario.restarted_store(authenticated=True))
+            attempt.assert_not_called()
 
-            restarted = ControlDomainStore(path)
+            restarted = scenario.restarted_store()
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=restarted),
             )
             recovered_journal = restarted._journal_records_unlocked()
             self.assertEqual(
@@ -1719,13 +2319,9 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            target_path = Path(temporary) / "target.txt"
-            target_path.write_bytes(b"exact prior\n")
-            store = ControlDomainStore(path)
-            current = activation()
-            decision = replace_decision(current)
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            target_path = scenario.target
             attempt_entered = threading.Event()
             finish_attempt = threading.Event()
             recovery_started = threading.Event()
@@ -1733,24 +2329,29 @@ class BrokerControlCASTest(unittest.TestCase):
             attempt = Mock()
             observed_bytes: list[bytes] = []
 
-            def blocked_live_attempt() -> ReconciliationOutcome:
+            def blocked_live_attempt(
+                _parent_fd: int,
+                _name: str,
+                _decision: MutationDecision,
+            ) -> ReconciliationOutcome:
                 attempt()
                 attempt_entered.set()
                 self.assertTrue(finish_attempt.wait(timeout=10))
                 target_path.write_bytes(b"exact post\n")
                 raise RuntimeError("simulated failure after live mutation")
 
-            def observe_target() -> TargetObservation:
+            original_observation = broker_apply._recovery_observation_from_root_fd
+
+            def observe_target(*args: Any, **kwargs: Any) -> TargetObservation:
                 observed = target_path.read_bytes()
                 observed_bytes.append(observed)
                 observer_called.set()
-                return TargetObservation(TargetKind.REGULAR, observed)
+                return original_observation(*args, **kwargs)
 
             def recover_target() -> ReconciliationOutcome:
                 recovery_started.set()
-                return ControlDomainStore(path)._execute_recovery_cas(
-                    decision,
-                    observe_target,
+                return scenario.recover(
+                    store=scenario.restarted_store(),
                 )
 
             reconcile = Mock(wraps=reconcile_mutation)
@@ -1759,13 +2360,19 @@ class BrokerControlCASTest(unittest.TestCase):
                     "decision_os.companion.broker_control.reconcile_mutation",
                     reconcile,
                 ),
+                patch.object(
+                    broker_apply,
+                    "_attempt_live",
+                    side_effect=blocked_live_attempt,
+                ),
+                patch.object(
+                    broker_apply,
+                    "_recovery_observation_from_root_fd",
+                    side_effect=observe_target,
+                ),
                 ThreadPoolExecutor(max_workers=2) as executor,
             ):
-                live_future = executor.submit(
-                    store._execute_live_cas,
-                    decision,
-                    blocked_live_attempt,
-                )
+                live_future = executor.submit(scenario.apply)
                 try:
                     self.assertTrue(attempt_entered.wait(timeout=10))
                     self.assertEqual(b"exact prior\n", target_path.read_bytes())
@@ -1817,22 +2424,17 @@ class BrokerControlCASTest(unittest.TestCase):
         )
         for label, content, expected, terminal_state in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
-                path = Path(temporary) / "control.json"
-                current = activation()
-                decision = replace_decision(current)
-                first_process = ControlDomainStore(path)
-                first_process.activate_initial(current)
-                leave_pending_cas(first_process, decision)
+                scenario = CanonicalCASScenario(Path(temporary))
+                path = scenario.path
+                current = scenario.current
+                scenario.leave_pending()
+                scenario.set_target(content)
 
                 with self.assertRaises(AuthorityRejectedError):
-                    ControlDomainStore(path).require_active(current)
+                    scenario.restarted_store().require_active(current)
 
-                restarted = ControlDomainStore(path)
-                outcome = recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, content),
-                )
+                restarted = scenario.restarted_store()
+                outcome = scenario.recover(store=restarted)
 
                 self.assertEqual(expected, outcome)
                 self.assertEqual(terminal_state, restarted.load_required().state)
@@ -1841,13 +2443,17 @@ class BrokerControlCASTest(unittest.TestCase):
                         "completed recovery must not sample the target"
                     )
                 )
-                self.assertEqual(
-                    expected,
-                    ControlDomainStore(path)._execute_recovery_cas(
-                        decision,
+                if terminal_state is ControlDomainState.ABANDONED:
+                    with patch.object(
+                        broker_apply,
+                        "_recovery_observation_from_root_fd",
                         observe_after_completion,
-                    ),
-                )
+                    ):
+                        with self.assertRaises(AuthorityRejectedError):
+                            scenario.recover(store=scenario.restarted_store())
+                else:
+                    with self.assertRaises(AuthorityRejectedError):
+                        scenario.recover(store=scenario.restarted_store())
                 observe_after_completion.assert_not_called()
                 with self.assertRaises(AuthorityRejectedError):
                     restarted.require_active(current)
@@ -1856,30 +2462,19 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            original = replace_decision(current)
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            leave_pending_cas(store, original)
+            scenario = CanonicalCASScenario(Path(temporary))
+            path = scenario.path
+            current = scenario.current
+            store = scenario.store
+            scenario.leave_pending()
 
             different = replace_decision(
                 current,
                 post=b"different post\n",
             )
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation"
-            ) as reconcile:
-                with self.assertRaisesRegex(
-                    AuthorityRejectedError,
-                    "different decision",
-                ):
-                    recover_observation(
-                        ControlDomainStore(path),
-                        different,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
-                reconcile.assert_not_called()
+            reconstructed = store._reconstruct_pending_decision()
+            self.assertEqual(scenario.decision, reconstructed)
+            self.assertNotEqual(different, reconstructed)
             with self.assertRaisesRegex(
                 ControlDomainTransitionError,
                 "pending CAS intent",
@@ -1890,23 +2485,16 @@ class BrokerControlCASTest(unittest.TestCase):
                 )
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    original,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
 
     def test_pending_intent_rejects_every_activation_mismatch_before_observation(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            decision = replace_decision(current)
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            leave_pending_cas(store, decision)
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            scenario.leave_pending()
 
             mismatches = (
                 replace(current, authority_domain_id="other-domain"),
@@ -1922,53 +2510,35 @@ class BrokerControlCASTest(unittest.TestCase):
                 replace(current, generation_witness=8),
             )
             for mismatch in mismatches:
-                with self.subTest(mismatch=mismatch), patch(
-                    "decision_os.companion.broker_control.reconcile_mutation"
-                ) as reconcile:
-                    with self.assertRaises(AuthorityRejectedError):
-                        recover_observation(
-                            ControlDomainStore(path),
-                            replace_decision(mismatch),
-                            TargetObservation(
-                                TargetKind.REGULAR,
-                                b"exact post\n",
-                            ),
-                        )
-                    reconcile.assert_not_called()
+                with self.subTest(mismatch=mismatch):
+                    self.assertNotEqual(
+                        replace_decision(mismatch),
+                        scenario.store._reconstruct_pending_decision(),
+                    )
 
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
 
     def test_lost_pending_intent_remains_uncertain_and_cannot_regain_authority(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            decision = replace_decision(current)
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            leave_pending_cas(store, decision)
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
+            scenario.leave_pending()
             for fence_path in store._fence_path.glob("*.json"):
                 fence_path.unlink()
             store._fence_path.rmdir()
 
-            restarted = ControlDomainStore(path)
+            restarted = scenario.restarted_store()
             self.assertEqual(ControlDomainState.UNCERTAIN, restarted.load_required().state)
             with self.assertRaises(AuthorityRejectedError):
                 restarted.require_active(current)
             with self.assertRaises(AuthorityRejectedError):
-                recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                )
+                scenario.recover(store=restarted)
             abandoned = restarted.transition(
                 current,
                 ControlDomainState.ABANDONED,
@@ -1981,23 +2551,18 @@ class BrokerControlCASTest(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            decision = replace_decision(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
             self.assertEqual(
                 ReconciliationOutcome.APPLIED,
-                store._execute_live_cas(
-                    decision,
-                    lambda: ReconciliationOutcome.APPLIED,
-                ),
+                scenario.apply(),
             )
             for fence in store._fence_path.iterdir():
                 fence.unlink()
             store._fence_path.rmdir()
 
-            restarted = ControlDomainStore(path)
+            restarted = scenario.restarted_store()
             self.assertEqual(
                 ControlDomainState.ABANDONED,
                 restarted.load_required().state,
@@ -2005,61 +2570,148 @@ class BrokerControlCASTest(unittest.TestCase):
             with self.assertRaises(AuthorityRejectedError):
                 restarted.require_active(current)
             with self.assertRaises(AuthorityRejectedError):
-                recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                )
+                scenario.recover(store=restarted)
 
     def test_completion_directory_fsync_failure_resumes_without_false_applied(
         self,
     ) -> None:
-        for failure_ordinal in (4, 5, 6):
-            with self.subTest(
-                failure_ordinal=failure_ordinal,
-            ), tempfile.TemporaryDirectory() as temporary:
-                path = Path(temporary) / "control.json"
-                current = activation()
-                decision = replace_decision(current)
-                store = ControlDomainStore(path)
-                store.activate_initial(current)
-                store._fence_path.mkdir()
-                original_fsync = os.fsync
-                directory_fsyncs = 0
+        with tempfile.TemporaryDirectory() as temporary:
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
+            original_fsync = os.fsync
+            fail_completion_directory = False
+            completion_path: Path | None = None
 
-                def fail_selected_directory_fsync(descriptor: int) -> None:
-                    nonlocal directory_fsyncs
-                    if stat.S_ISDIR(os.fstat(descriptor).st_mode):
-                        directory_fsyncs += 1
-                        if directory_fsyncs == failure_ordinal:
-                            raise OSError("simulated terminal CAS directory fsync")
-                    original_fsync(descriptor)
-
-                with patch(
-                    "decision_os.companion.broker_control.os.fsync",
-                    side_effect=fail_selected_directory_fsync,
+            def fail_exact_completion_directory_fsync(descriptor: int) -> None:
+                nonlocal fail_completion_directory
+                if (
+                    fail_completion_directory
+                    and completion_path is not None
+                    and completion_path.exists()
+                    and stat.S_ISDIR(os.fstat(descriptor).st_mode)
                 ):
-                    with self.assertRaisesRegex(OSError, "terminal CAS directory"):
-                        store._execute_live_cas(
-                            decision,
-                            lambda: ReconciliationOutcome.APPLIED,
-                        )
+                    fail_completion_directory = False
+                    raise OSError("simulated terminal CAS directory fsync")
+                original_fsync(descriptor)
 
-                restarted = ControlDomainStore(path)
-                with self.assertRaises(BrokerControlError):
-                    restarted.require_active(current)
+            original_complete = broker_control._complete_cas_intent
+
+            def mark_completion(*args: Any, **kwargs: Any) -> Any:
+                nonlocal completion_path, fail_completion_directory
+                completion = original_complete(*args, **kwargs)
+                completion_path = (
+                    store._fence_path / f"{completion.record_sha256}.json"
+                )
+                fail_completion_directory = True
+                return completion
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control._complete_cas_intent",
+                    side_effect=mark_completion,
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_exact_completion_directory_fsync,
+                ),
+            ):
+                with self.assertRaisesRegex(OSError, "terminal CAS directory"):
+                    scenario.apply()
+
+            restarted = scenario.restarted_store()
+            with self.assertRaises(BrokerControlError):
+                restarted.require_active(current)
+            recovery_directory_fsyncs = 0
+
+            def observe_recovery_fsync(descriptor: int) -> None:
+                nonlocal recovery_directory_fsyncs
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    recovery_directory_fsyncs += 1
+                original_fsync(descriptor)
+
+            with patch(
+                "decision_os.companion.broker_control.os.fsync",
+                side_effect=observe_recovery_fsync,
+            ):
                 self.assertEqual(
                     ReconciliationOutcome.APPLIED,
-                    recover_observation(
-                        restarted,
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                    ),
+                    scenario.recover(store=restarted),
                 )
-                self.assertEqual(
+            self.assertGreaterEqual(recovery_directory_fsyncs, 1)
+            self.assertEqual(
+                ControlDomainState.ABANDONED,
+                restarted.load_required().state,
+            )
+
+    def test_terminal_transition_refreshes_visible_completion_durability(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
+            original_fsync = os.fsync
+            fail_completion_directory = False
+            completion_path: Path | None = None
+
+            def fail_exact_completion_directory_fsync(descriptor: int) -> None:
+                nonlocal fail_completion_directory
+                if (
+                    fail_completion_directory
+                    and completion_path is not None
+                    and completion_path.exists()
+                    and stat.S_ISDIR(os.fstat(descriptor).st_mode)
+                ):
+                    fail_completion_directory = False
+                    raise OSError("simulated terminal CAS directory fsync")
+                original_fsync(descriptor)
+
+            original_complete = broker_control._complete_cas_intent
+
+            def mark_completion(*args: Any, **kwargs: Any) -> Any:
+                nonlocal completion_path, fail_completion_directory
+                completion = original_complete(*args, **kwargs)
+                completion_path = (
+                    store._fence_path / f"{completion.record_sha256}.json"
+                )
+                fail_completion_directory = True
+                return completion
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control._complete_cas_intent",
+                    side_effect=mark_completion,
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_exact_completion_directory_fsync,
+                ),
+                self.assertRaisesRegex(OSError, "terminal CAS directory"),
+            ):
+                scenario.apply()
+
+            restarted = scenario.restarted_store()
+            refreshed_directories: list[Path] = []
+            original_refresh = ControlDomainStore._fsync_directory
+
+            def observe_refresh(directory: Path) -> None:
+                refreshed_directories.append(directory)
+                original_refresh(directory)
+
+            with patch.object(
+                ControlDomainStore,
+                "_fsync_directory",
+                side_effect=observe_refresh,
+            ):
+                abandoned = restarted.transition(
+                    current,
                     ControlDomainState.ABANDONED,
-                    restarted.load_required().state,
                 )
+
+            self.assertIn(restarted._fence_path, refreshed_directories)
+            self.assertEqual(ControlDomainState.ABANDONED, abandoned.state)
+            self.assertEqual(abandoned, restarted.load_required())
 
     def test_each_cas_consumes_old_domain_without_restoring_authority(self) -> None:
         for label, content, expected in (
@@ -2067,23 +2719,17 @@ class BrokerControlCASTest(unittest.TestCase):
             ("post", b"exact post\n", ReconciliationOutcome.APPLIED),
         ):
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
-                store = ControlDomainStore(Path(temporary) / "control.json")
-                current = activation()
-                initial = store.activate_initial(current)
-                decision = replace_decision(current)
+                scenario = CanonicalCASScenario(Path(temporary))
+                store = scenario.store
+                current = scenario.current
+                initial = scenario.initial
 
                 if expected is ReconciliationOutcome.APPLIED:
-                    outcome = store._execute_live_cas(
-                        decision,
-                        lambda: ReconciliationOutcome.APPLIED,
-                    )
+                    outcome = scenario.apply()
                 else:
-                    leave_pending_cas(store, decision)
-                    outcome = recover_observation(
-                        store,
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, content),
-                    )
+                    scenario.leave_pending()
+                    scenario.set_target(content)
+                    outcome = scenario.recover()
 
                 self.assertEqual(expected, outcome)
                 with self.assertRaises(AuthorityRejectedError):
@@ -2101,155 +2747,299 @@ class BrokerControlCASTest(unittest.TestCase):
 
     def test_unprovable_cas_durably_marks_domain_uncertain(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            initial = store.activate_initial(current)
-            decision = replace_decision(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            initial = scenario.initial
 
-            outcome = store._execute_live_cas(
-                decision,
-                lambda: ReconciliationOutcome.UNCERTAIN,
-            )
+            scenario.set_target(b"neither\n")
+            outcome = scenario.apply()
 
             uncertain = store.load_required()
             self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
             self.assertEqual(ControlDomainState.UNCERTAIN, uncertain.state)
             self.assertEqual(initial.record_sha256, uncertain.predecessor_record_sha256)
-            self.assertEqual(
-                ReconciliationOutcome.UNCERTAIN,
-                recover_observation(
-                    store,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                ),
-            )
+            with self.assertRaises(AuthorityRejectedError):
+                scenario.recover()
             self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
 
     def test_uncertain_persistence_failure_never_reopens_active_authority(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            store = ControlDomainStore(path)
-            current = activation()
-            store.activate_initial(current)
-            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
-            original_fsync = os.fsync
-            file_fsyncs = 0
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
+            attempt = Mock()
+            original_mark = store._mark_pending_cas_uncertain_unlocked
 
-            def fail_uncertain_head_fsync(descriptor: int) -> None:
-                nonlocal file_fsyncs
-                if stat.S_ISREG(os.fstat(descriptor).st_mode):
-                    file_fsyncs += 1
-                    if file_fsyncs == 3:
-                        raise OSError("injected uncertain record fsync failure")
-                original_fsync(descriptor)
+            def lose_uncertain_response(current_record: Any) -> None:
+                original_mark(current_record)
+                raise OSError("injected uncertain record fsync failure")
 
-            with patch(
-                "decision_os.companion.broker_control.os.fsync",
-                side_effect=fail_uncertain_head_fsync,
+            with (
+                patch.object(
+                    store,
+                    "_mark_pending_cas_uncertain_unlocked",
+                    side_effect=lose_uncertain_response,
+                ),
+                patch.object(broker_apply, "_attempt_live", attempt),
             ):
                 with self.assertRaisesRegex(OSError, "uncertain record"):
-                    store._execute_live_cas(
-                        replace_decision(current),
-                        attempt,
-                    )
+                    scenario.apply()
 
             attempt.assert_not_called()
 
-            with self.assertRaises(ControlRecordIntegrityError):
-                ControlDomainStore(path).require_active(current)
-            decision = replace_decision(current)
+            with self.assertRaises(AuthorityRejectedError):
+                scenario.restarted_store().require_active(current)
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
             self.assertEqual(
                 ControlDomainState.ABANDONED,
-                ControlDomainStore(path).load_required().state,
+                scenario.restarted_store().load_required().state,
+            )
+
+    def test_journal_ahead_repair_refreshes_directory_before_head_promotion(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            original_append = store._append_control_record_unlocked
+            original_fsync = os.fsync
+            attempt = Mock()
+            failed = False
+
+            def append_with_uncertain_directory_failure(
+                record: ControlDomainRecord,
+            ) -> None:
+                nonlocal failed
+                if record.state is not ControlDomainState.UNCERTAIN:
+                    original_append(record)
+                    return
+                record_path = store._journal_path / store._record_filename(record)
+
+                def fail_directory_fsync(descriptor: int) -> None:
+                    nonlocal failed
+                    if (
+                        not failed
+                        and record_path.exists()
+                        and stat.S_ISDIR(os.fstat(descriptor).st_mode)
+                    ):
+                        failed = True
+                        raise OSError("simulated uncertain journal directory fsync")
+                    original_fsync(descriptor)
+
+                with patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_directory_fsync,
+                ):
+                    original_append(record)
+
+            with (
+                patch.object(
+                    store,
+                    "_append_control_record_unlocked",
+                    side_effect=append_with_uncertain_directory_failure,
+                ),
+                patch.object(broker_apply, "_attempt_live", attempt),
+                self.assertRaisesRegex(OSError, "uncertain journal directory"),
+            ):
+                scenario.apply()
+
+            self.assertTrue(failed)
+            attempt.assert_not_called()
+            restarted = scenario.restarted_store()
+            original_refresh = ControlDomainStore._fsync_directory
+            original_replace = restarted._replace_head_unlocked
+            recovery_events: list[str] = []
+
+            def observe_refresh(directory: Path) -> None:
+                if directory == restarted._journal_path:
+                    recovery_events.append("journal-directory-fsync")
+                original_refresh(directory)
+
+            def crash_after_head_repair(record: ControlDomainRecord) -> None:
+                recovery_events.append("head-promotion")
+                original_replace(record)
+                raise RuntimeError("simulated crash after head promotion")
+
+            with (
+                patch.object(
+                    ControlDomainStore,
+                    "_fsync_directory",
+                    side_effect=observe_refresh,
+                ),
+                patch.object(
+                    restarted,
+                    "_replace_head_unlocked",
+                    side_effect=crash_after_head_repair,
+                ),
+                self.assertRaisesRegex(RuntimeError, "after head promotion"),
+            ):
+                scenario.recover(store=restarted)
+
+            self.assertIn("journal-directory-fsync", recovery_events)
+            self.assertLess(
+                recovery_events.index("journal-directory-fsync"),
+                recovery_events.index("head-promotion"),
+            )
+            self.assertEqual(
+                ControlDomainState.UNCERTAIN,
+                restarted.load_required().state,
+            )
+            self.assertEqual(
+                ReconciliationOutcome.NOT_APPLIED,
+                scenario.recover(store=scenario.restarted_store()),
             )
 
     def test_intent_failure_occurs_before_observation_is_consumed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            store = ControlDomainStore(path)
-            current = activation()
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
             store._fence_path.mkdir()
-            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
-
-            with (
-                patch(
-                    "decision_os.companion.broker_control.os.fsync",
-                    side_effect=OSError("injected intent fsync failure"),
-                ),
-            ):
-                with self.assertRaisesRegex(OSError, "intent fsync"):
-                    store._execute_live_cas(
-                        replace_decision(current),
-                        attempt,
-                    )
-
-            attempt.assert_not_called()
-            self.assertEqual(
-                current,
-                ControlDomainStore(path).require_active(current).activation,
-            )
-
-    def test_intent_directory_fsync_failure_is_restart_reconcilable(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            decision = replace_decision(current)
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            store._fence_path.mkdir()
-            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+            attempt = Mock()
             original_fsync = os.fsync
-            directory_fsyncs = 0
+            original_new_intent = broker_control._new_cas_intent
+            publishing_intent = False
 
-            def fail_directory_fsync(descriptor: int) -> None:
-                nonlocal directory_fsyncs
-                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
-                    directory_fsyncs += 1
-                    if directory_fsyncs == 1:
-                        raise OSError("simulated intent directory fsync")
+            def mark_intent(*args: Any, **kwargs: Any) -> Any:
+                nonlocal publishing_intent
+                intent = original_new_intent(*args, **kwargs)
+                publishing_intent = True
+                return intent
+
+            def fail_intent_file_fsync(descriptor: int) -> None:
+                if publishing_intent and stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise OSError("injected intent fsync failure")
                 original_fsync(descriptor)
 
             with (
                 patch(
                     "decision_os.companion.broker_control.os.fsync",
-                    side_effect=fail_directory_fsync,
+                    side_effect=fail_intent_file_fsync,
                 ),
+                patch(
+                    "decision_os.companion.broker_control._new_cas_intent",
+                    side_effect=mark_intent,
+                ),
+                patch.object(broker_apply, "_attempt_live", attempt),
+            ):
+                with self.assertRaisesRegex(OSError, "intent fsync"):
+                    scenario.apply()
+
+            attempt.assert_not_called()
+            self.assertEqual(
+                current,
+                scenario.restarted_store().require_active(current).activation,
+            )
+
+    def test_intent_directory_fsync_failure_is_restart_reconcilable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
+            store._fence_path.mkdir()
+            attempt = Mock()
+            original_fsync = os.fsync
+            original_append = store._append_cas_fence_unlocked
+            failed = False
+            intent_path: Path | None = None
+
+            def fail_directory_fsync(descriptor: int) -> None:
+                nonlocal failed
+                if (
+                    not failed
+                    and intent_path is not None
+                    and intent_path.exists()
+                    and stat.S_ISDIR(os.fstat(descriptor).st_mode)
+                ):
+                    failed = True
+                    raise OSError("simulated intent directory fsync")
+                original_fsync(descriptor)
+
+            def append_with_intent_fsync_failure(fence: Any) -> None:
+                nonlocal intent_path
+                if fence.kind != "INTENT":
+                    original_append(fence)
+                    return
+                intent_path = store._fence_path / f"{fence.record_sha256}.json"
+                with patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_directory_fsync,
+                ):
+                    original_append(fence)
+
+            with (
+                patch.object(
+                    store,
+                    "_append_cas_fence_unlocked",
+                    side_effect=append_with_intent_fsync_failure,
+                ),
+                patch.object(broker_apply, "_attempt_live", attempt),
             ):
                 with self.assertRaisesRegex(OSError, "intent directory"):
-                    store._execute_live_cas(decision, attempt)
+                    scenario.apply()
 
             attempt.assert_not_called()
 
             with self.assertRaises(ControlRecordIntegrityError):
-                ControlDomainStore(path).require_active(current)
+                scenario.restarted_store().require_active(current)
+            restarted = scenario.restarted_store()
+            original_refresh = ControlDomainStore._fsync_directory
+            original_mark = restarted._mark_pending_cas_uncertain_unlocked
+            recovery_events: list[str] = []
+
+            def observe_refresh(directory: Path) -> None:
+                if directory == restarted._fence_path:
+                    recovery_events.append("fence-directory-fsync")
+                original_refresh(directory)
+
+            def crash_after_uncertain_mark(
+                current_record: ControlDomainRecord,
+            ) -> ControlDomainRecord:
+                recovery_events.append("uncertain-mark")
+                original_mark(current_record)
+                raise RuntimeError("simulated crash after uncertain mark")
+
+            with (
+                patch.object(
+                    ControlDomainStore,
+                    "_fsync_directory",
+                    side_effect=observe_refresh,
+                ),
+                patch.object(
+                    restarted,
+                    "_mark_pending_cas_uncertain_unlocked",
+                    side_effect=crash_after_uncertain_mark,
+                ),
+                self.assertRaisesRegex(RuntimeError, "after uncertain mark"),
+            ):
+                scenario.recover(store=restarted)
+            self.assertIn("fence-directory-fsync", recovery_events)
+            self.assertLess(
+                recovery_events.index("fence-directory-fsync"),
+                recovery_events.index("uncertain-mark"),
+            )
+            self.assertEqual(
+                ControlDomainState.UNCERTAIN,
+                restarted.load_required().state,
+            )
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
             self.assertEqual(
                 ControlDomainState.ABANDONED,
-                ControlDomainStore(path).load_required().state,
+                scenario.restarted_store().load_required().state,
             )
 
     def test_applied_evidence_cannot_restore_an_uncertain_domain(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(current)
-            store.activate_initial(current)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
+            decision = scenario.decision
             store.transition(current, ControlDomainState.UNCERTAIN)
 
             self.assertEqual(
@@ -2260,11 +3050,7 @@ class BrokerControlCASTest(unittest.TestCase):
                 ),
             )
             with self.assertRaises(AuthorityRejectedError):
-                recover_observation(
-                    store,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                )
+                scenario.recover()
             self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
 
     def test_mutation_contract_rejects_forbidden_operations_and_paths(self) -> None:
@@ -2403,14 +3189,16 @@ class BrokerControlCASTest(unittest.TestCase):
 
     def test_unregistered_operation_cannot_resume_an_equal_binding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            decision = replace_decision(current)
-            first_process = ControlDomainStore(path)
-            first_process.activate_initial(current)
-            leave_pending_cas(first_process, decision)
+            scenario = CanonicalCASScenario(Path(temporary))
+            decision = scenario.decision
+            scenario.leave_pending()
 
-            forged = replace_decision(current)
+            forged = replace_decision(
+                scenario.current,
+                proposal_acquisition_sha256=(
+                    decision.proposal_acquisition_sha256
+                ),
+            )
             object.__setattr__(
                 forged,
                 "operation",
@@ -2426,32 +3214,23 @@ class BrokerControlCASTest(unittest.TestCase):
             )
 
             with self.assertRaises(MutationDecisionError):
-                recover_observation(
-                    ControlDomainStore(path),
-                    forged,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                )
+                scenario.store._snapshot_cas_decision(forged)
             self.assertEqual(
                 ControlDomainState.UNCERTAIN,
-                ControlDomainStore(path).load_required().state,
+                scenario.restarted_store().load_required().state,
             )
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
 
     def test_decision_subclass_cannot_alias_a_persisted_cas_binding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            store = ControlDomainStore(path)
-            current = activation()
-            legitimate = replace_decision(current)
-            store.activate_initial(current)
-            leave_pending_cas(store, legitimate)
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            current = scenario.current
+            legitimate = scenario.decision
+            scenario.leave_pending()
 
             forged = EqualitySpoofDecision(
                 activation=current,
@@ -2467,56 +3246,53 @@ class BrokerControlCASTest(unittest.TestCase):
                 MutationDecision.binding_dict(legitimate),
             )
 
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation"
-            ) as reconcile:
-                with self.assertRaises(MutationDecisionError):
-                    recover_observation(
-                        ControlDomainStore(path),
-                        forged,
-                        TargetObservation(
-                            TargetKind.REGULAR,
-                            b"different post\n",
-                        ),
-                    )
-                reconcile.assert_not_called()
+            with self.assertRaises(MutationDecisionError):
+                store._snapshot_cas_decision(forged)
 
             self.assertEqual(
+                legitimate,
+                store._reconstruct_pending_decision(),
+            )
+            scenario.set_target(b"exact post\n")
+            self.assertEqual(
                 ReconciliationOutcome.APPLIED,
-                recover_observation(
-                    ControlDomainStore(path),
-                    legitimate,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                ),
+                scenario.recover(store=scenario.restarted_store()),
             )
 
     def test_cas_uses_one_private_snapshot_if_caller_mutates_after_intent(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(
-                current,
+            scenario = CanonicalCASScenario(
+                Path(temporary),
                 post=b"first post\n",
             )
+            store = scenario.store
+            current = scenario.current
+            decision = scenario.decision
             first_binding = MutationDecision.binding_dict(decision)
             first_decision_sha256 = hash_payload(first_binding)
-            store.activate_initial(current)
             attempt_entered = threading.Event()
             release_attempt = threading.Event()
 
-            def paused_attempt() -> ReconciliationOutcome:
+            def paused_attempt(
+                _parent_fd: int,
+                _name: str,
+                _decision: MutationDecision,
+            ) -> ReconciliationOutcome:
                 attempt_entered.set()
                 self.assertTrue(release_attempt.wait(timeout=10))
                 return ReconciliationOutcome.UNCERTAIN
 
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    store._execute_live_cas,
-                    decision,
-                    paused_attempt,
-                )
+            with (
+                patch.object(
+                    broker_apply,
+                    "_attempt_live",
+                    side_effect=paused_attempt,
+                ),
+                ThreadPoolExecutor(max_workers=1) as executor,
+            ):
+                future = executor.submit(scenario.apply)
                 try:
                     self.assertTrue(attempt_entered.wait(timeout=10))
                     pending_journal = store._journal_records_unlocked()
@@ -2581,38 +3357,21 @@ class BrokerControlCASTest(unittest.TestCase):
                 completion["outcome"],
             )
             self.assertEqual(
-                ReconciliationOutcome.UNCERTAIN,
-                recover_observation(
-                    store,
-                    replace_decision(current, post=b"first post\n"),
-                    TargetObservation(TargetKind.REGULAR, b"second post\n"),
-                ),
-            )
-
-    def test_observation_subclass_is_rejected_before_reconciliation(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            store = ControlDomainStore(Path(temporary) / "control.json")
-            current = activation()
-            decision = replace_decision(current)
-            store.activate_initial(current)
-            leave_pending_cas(store, decision)
-            forged = EqualitySpoofObservation(
-                TargetKind.REGULAR,
-                b"exact post\n",
-            )
-
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation"
-            ) as reconcile:
-                with self.assertRaises(MutationDecisionError):
-                    recover_observation(store, decision, forged)
-                reconcile.assert_not_called()
-
-            self.assertEqual(
                 ControlDomainState.UNCERTAIN,
                 store.load_required().state,
             )
-            self.assertEqual(1, len(tuple(store._fence_path.glob("*.json"))))
+            with self.assertRaises(AuthorityRejectedError):
+                scenario.recover()
+
+    def test_observation_subclass_is_rejected_before_reconciliation(self) -> None:
+        decision = replace_decision(activation())
+        forged = EqualitySpoofObservation(
+            TargetKind.REGULAR,
+            b"exact post\n",
+        )
+
+        with self.assertRaises(MutationDecisionError):
+            reconcile_mutation(decision, forged)
 
     def test_standalone_reconciliation_rejects_wrapper_subclasses(self) -> None:
         current = activation()
@@ -2665,10 +3424,7 @@ class BrokerControlIntegrityTest(unittest.TestCase):
                 store = ControlDomainStore(path)
 
                 with self.assertRaises(ControlRecordIntegrityError):
-                    store._execute_live_cas(
-                        replace_decision(activation()),
-                        crash_live_attempt,
-                    )
+                    store.load_required()
 
     def test_rehashed_impossible_state_is_still_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2724,36 +3480,24 @@ class BrokerControlIntegrityTest(unittest.TestCase):
 
     def test_torn_cas_intent_never_reconciles_or_restores_authority(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            decision = replace_decision(current)
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            leave_pending_cas(store, decision)
+            scenario = CanonicalCASScenario(Path(temporary))
+            current = scenario.current
+            store = scenario.store
+            scenario.leave_pending()
             intent_path = next(store._fence_path.glob("*.json"))
             intent_path.write_bytes(b'{"torn":')
 
-            restarted = ControlDomainStore(path)
+            restarted = scenario.restarted_store()
             with self.assertRaises(ControlRecordIntegrityError):
                 restarted.require_active(current)
             with self.assertRaises(ControlRecordIntegrityError):
-                recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                )
+                scenario.recover(store=restarted)
 
     def test_orphan_cas_completion_never_becomes_applied(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "control.json"
-            current = activation()
-            store = ControlDomainStore(path)
-            store.activate_initial(current)
-            decision = replace_decision(current)
-            store._execute_live_cas(
-                decision,
-                lambda: ReconciliationOutcome.APPLIED,
-            )
+            scenario = CanonicalCASScenario(Path(temporary))
+            store = scenario.store
+            scenario.apply()
             fence_values = {
                 fence_path: json.loads(fence_path.read_bytes())
                 for fence_path in store._fence_path.glob("*.json")
@@ -2765,15 +3509,11 @@ class BrokerControlIntegrityTest(unittest.TestCase):
             )
             intent_path.unlink()
 
-            restarted = ControlDomainStore(path)
+            restarted = scenario.restarted_store()
             with self.assertRaises(ControlRecordIntegrityError):
                 restarted.load_required()
             with self.assertRaises(ControlRecordIntegrityError):
-                recover_observation(
-                    restarted,
-                    decision,
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                )
+                scenario.recover(store=restarted)
 
     def test_noncanonical_or_unsafe_record_identity_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2828,10 +3568,7 @@ class BrokerControlIntegrityTest(unittest.TestCase):
                 with self.assertRaises(ControlRecordIntegrityError):
                     store.require_active(activation())
                 with self.assertRaises(ControlRecordIntegrityError):
-                    store._execute_live_cas(
-                        replace_decision(activation()),
-                        crash_live_attempt,
-                    )
+                    store.load_required()
 
 
 if __name__ == "__main__":
