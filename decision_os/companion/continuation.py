@@ -837,20 +837,40 @@ class StageBContinuationStore:
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(directory, 0o700)
         temporary = directory / f".stage-b-{secrets.token_hex(8)}.tmp"
-        descriptor = os.open(
-            temporary,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o600,
-        )
+        descriptor: int | None = None
         try:
-            with os.fdopen(descriptor, "wb") as stream:
+            descriptor = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600,
+            )
+            stream = os.fdopen(descriptor, "wb")
+            descriptor = None
+            with stream:
                 stream.write(encoded)
+                stream.flush()
+                os.fchmod(stream.fileno(), 0o600)
+                os.fsync(stream.fileno())
             os.replace(temporary, self.path)
-            os.chmod(self.path, 0o600)
+            parent_descriptor = os.open(
+                directory,
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+            )
+            try:
+                os.fsync(parent_descriptor)
+            finally:
+                os.close(parent_descriptor)
         except Exception:
+            if descriptor is not None:
+                os.close(descriptor)
             temporary.unlink(missing_ok=True)
             raise
-        return self.load_required()
+        published = self.load_required()
+        if published != value:
+            raise ContinuationIntegrityError(
+                "Persisted Stage B record readback mismatches the write."
+            )
+        return published
 
     def load(self) -> dict[str, Any] | None:
         if not self.path.exists():
