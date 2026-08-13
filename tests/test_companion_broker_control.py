@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 from typing import Any
@@ -18,6 +19,7 @@ from decision_os.companion.broker_control import (
     ActivationTuple,
     AuthorityRejectedError,
     BrokerControlError,
+    ControlDomainRecord,
     ControlDomainState,
     ControlDomainStore,
     ControlDomainTransitionError,
@@ -34,6 +36,79 @@ from decision_os.companion.broker_control import (
 
 def sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+class EqualitySpoofStr(str):
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+    __hash__ = str.__hash__
+
+
+class EqualitySpoofInt(int):
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+    __hash__ = int.__hash__
+
+
+class EqualitySpoofBytes(bytes):
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+    __hash__ = bytes.__hash__
+
+
+class EqualitySpoofActivation(ActivationTuple):
+    def __post_init__(self) -> None:
+        pass
+
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+
+class EqualitySpoofRecord(ControlDomainRecord):
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+
+class EqualitySpoofDecision(MutationDecision):
+    def __post_init__(self) -> None:
+        pass
+
+    def binding_dict(self) -> dict[str, Any]:
+        return self.alias_binding
+
+
+class EqualitySpoofObservation(TargetObservation):
+    def __post_init__(self) -> None:
+        pass
+
+
+def forged_string_enum(
+    enum_type: Any,
+    underlying_value: str,
+    advertised_value: str,
+) -> Any:
+    forged = str.__new__(enum_type, underlying_value)
+    object.__setattr__(forged, "_name_", "FORGED")
+    object.__setattr__(forged, "_value_", advertised_value)
+    return forged
 
 
 def activation(**overrides: Any) -> ActivationTuple:
@@ -231,6 +306,307 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 list(path.parent.rglob(".broker-control-*.tmp")),
             )
 
+    def test_temp_name_collision_never_unlinks_foreign_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            foreign = root / ".broker-control-collision.tmp"
+            sentinel = b"foreign collision sentinel"
+            foreign.write_bytes(sentinel)
+            foreign_identity = (foreign.stat().st_dev, foreign.stat().st_ino)
+            store = ControlDomainStore(target)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="collision",
+                ),
+                self.assertRaises(FileExistsError),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertEqual(sentinel, foreign.read_bytes())
+            self.assertEqual(
+                foreign_identity,
+                (foreign.stat().st_dev, foreign.stat().st_ino),
+            )
+            self.assertFalse(target.exists())
+
+    def test_temp_without_captured_inode_is_preserved_on_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            unverified = root / ".broker-control-unverified.tmp"
+            store = ControlDomainStore(target)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="unverified",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fstat",
+                    side_effect=OSError("injected fstat failure"),
+                ),
+                self.assertRaisesRegex(OSError, "injected fstat failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertTrue(unverified.exists())
+            self.assertEqual(b"", unverified.read_bytes())
+            self.assertFalse(target.exists())
+
+    def test_proven_owned_temp_cleanup_is_directory_fsynced(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            temporary_path = root / ".broker-control-cleanup.tmp"
+            store = ControlDomainStore(target)
+            original_fsync = os.fsync
+            cleanup_directory_fsyncs = 0
+
+            def fail_file_then_observe_cleanup(descriptor: int) -> None:
+                nonlocal cleanup_directory_fsyncs
+                if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise OSError("injected owned-temp failure")
+                cleanup_directory_fsyncs += 1
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="cleanup",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_file_then_observe_cleanup,
+                ),
+                self.assertRaisesRegex(OSError, "owned-temp failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertFalse(temporary_path.exists())
+            self.assertEqual(1, cleanup_directory_fsyncs)
+            self.assertFalse(target.exists())
+
+    def test_cleanup_fsync_failure_preserves_the_primary_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            temporary_path = root / ".broker-control-cleanup-note.tmp"
+            store = ControlDomainStore(target)
+
+            def fail_primary_and_cleanup_fsync(descriptor: int) -> None:
+                if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise OSError("primary durability failure")
+                raise FileNotFoundError("cleanup directory fsync failure")
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="cleanup-note",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=fail_primary_and_cleanup_fsync,
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "primary durability failure",
+                ) as caught,
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertFalse(temporary_path.exists())
+            self.assertTrue(
+                any(
+                    "cleanup directory fsync failure" in note
+                    for note in getattr(caught.exception, "__notes__", ())
+                )
+            )
+            self.assertFalse(target.exists())
+
+    def test_temp_cleanup_preserves_rebound_regular_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            temporary_path = root / ".broker-control-rebound.tmp"
+            sentinel = b"foreign rebound sentinel"
+            store = ControlDomainStore(target)
+            original_fsync = os.fsync
+            owned_identity: tuple[int, int] | None = None
+
+            def rebind_then_fail(descriptor: int) -> None:
+                nonlocal owned_identity
+                metadata = os.fstat(descriptor)
+                if stat.S_ISREG(metadata.st_mode):
+                    owned_identity = (metadata.st_dev, metadata.st_ino)
+                    temporary_path.unlink()
+                    temporary_path.write_bytes(sentinel)
+                    raise OSError("injected rebound file failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="rebound",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=rebind_then_fail,
+                ),
+                self.assertRaisesRegex(OSError, "rebound file failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertIsNotNone(owned_identity)
+            self.assertNotEqual(
+                owned_identity,
+                (temporary_path.stat().st_dev, temporary_path.stat().st_ino),
+            )
+            self.assertEqual(sentinel, temporary_path.read_bytes())
+            self.assertFalse(target.exists())
+
+    def test_temp_cleanup_preserves_rebound_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            temporary_path = root / ".broker-control-rebound-link.tmp"
+            sentinel_path = root / "foreign-sentinel"
+            sentinel_path.write_bytes(b"foreign symlink sentinel")
+            store = ControlDomainStore(target)
+            original_fsync = os.fsync
+
+            def rebind_then_fail(descriptor: int) -> None:
+                if stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    temporary_path.unlink()
+                    temporary_path.symlink_to(sentinel_path)
+                    raise OSError("injected rebound symlink failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="rebound-link",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=rebind_then_fail,
+                ),
+                self.assertRaisesRegex(OSError, "rebound symlink failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertTrue(temporary_path.is_symlink())
+            self.assertEqual(b"foreign symlink sentinel", sentinel_path.read_bytes())
+            self.assertFalse(target.exists())
+
+    def test_temp_cleanup_stays_bound_to_the_open_parent_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent = root / "state"
+            parent.mkdir()
+            moved_parent = root / "owned-state"
+            target = parent / "control.json"
+            temporary_name = ".broker-control-parent-race.tmp"
+            foreign = parent / temporary_name
+            sentinel = b"foreign parent replacement sentinel"
+            store = ControlDomainStore(target)
+            original_fsync = os.fsync
+            substituted = False
+
+            def substitute_parent_then_fail(descriptor: int) -> None:
+                nonlocal substituted
+                if stat.S_ISREG(os.fstat(descriptor).st_mode) and not substituted:
+                    substituted = True
+                    parent.rename(moved_parent)
+                    parent.mkdir()
+                    foreign.write_bytes(sentinel)
+                    raise OSError("injected parent substitution failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="parent-race",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=substitute_parent_then_fail,
+                ),
+                self.assertRaisesRegex(OSError, "parent substitution failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    b"owned bytes",
+                    replace_existing=False,
+                )
+
+            self.assertTrue(substituted)
+            self.assertEqual(sentinel, foreign.read_bytes())
+            self.assertFalse((moved_parent / temporary_name).exists())
+            self.assertFalse(target.exists())
+
+    def test_post_replace_temp_reuse_survives_directory_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "control.json"
+            temporary_path = root / ".broker-control-published.tmp"
+            encoded = b"durably published bytes"
+            sentinel = b"post-publication foreign sentinel"
+            store = ControlDomainStore(target)
+            original_fsync = os.fsync
+
+            def reuse_then_fail(descriptor: int) -> None:
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    temporary_path.write_bytes(sentinel)
+                    raise OSError("injected published directory failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.secrets.token_hex",
+                    return_value="published",
+                ),
+                patch(
+                    "decision_os.companion.broker_control.os.fsync",
+                    side_effect=reuse_then_fail,
+                ),
+                self.assertRaisesRegex(OSError, "published directory failure"),
+            ):
+                store._durable_publish_unlocked(
+                    target,
+                    encoded,
+                    replace_existing=False,
+                )
+
+            self.assertEqual(encoded, target.read_bytes())
+            self.assertEqual(sentinel, temporary_path.read_bytes())
+
     def test_journal_fsync_failure_cannot_mint_initial_authority(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -326,7 +702,7 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                 **kwargs: Any,
             ) -> None:
                 original_replace(source, target, **kwargs)
-                if Path(target) == path:
+                if Path(target).name == path.name:
                     path.write_bytes(b'{"torn":')
 
             with patch(
@@ -351,7 +727,7 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             original_replace = os.replace
 
             def fail_head_replace(source: Any, target: Any, **kwargs: Any) -> None:
-                if Path(target) == path:
+                if Path(target).name == path.name:
                     raise OSError("simulated stale head")
                 original_replace(source, target, **kwargs)
 
@@ -402,7 +778,7 @@ class BrokerControlDurabilityTest(unittest.TestCase):
             original_replace = os.replace
 
             def fail_head_replace(source: Any, target: Any, **kwargs: Any) -> None:
-                if Path(target) == path:
+                if Path(target).name == path.name:
                     raise OSError("simulated unpublished active head")
                 original_replace(source, target, **kwargs)
 
@@ -474,6 +850,99 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             with self.subTest(overrides=overrides):
                 with self.assertRaises(ValueError):
                     activation(**overrides)
+
+    def test_activation_scalar_subclasses_are_rejected_exactly(self) -> None:
+        cases = {
+            "authority_domain_id": EqualitySpoofStr("authority-domain-other"),
+            "repository_id": EqualitySpoofStr(f"repo:v1:{'4' * 64}"),
+            "protected_repository_identity": EqualitySpoofStr(
+                f"protected:v1:{'5' * 64}"
+            ),
+            "write_principal_identity": EqualitySpoofStr(
+                f"principal:v1:{'6' * 64}"
+            ),
+            "generation_witness": EqualitySpoofInt(8),
+        }
+
+        for field, spoof in cases.items():
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                activation(**{field: spoof})
+
+    def test_spoof_fields_cannot_match_or_transition_current_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            store.activate_initial(current)
+            cases: dict[str, tuple[Any, Any]] = {
+                "authority_domain_id": (
+                    "authority-domain-other",
+                    EqualitySpoofStr("authority-domain-other"),
+                ),
+                "repository_id": (
+                    f"repo:v1:{'4' * 64}",
+                    EqualitySpoofStr(f"repo:v1:{'4' * 64}"),
+                ),
+                "protected_repository_identity": (
+                    f"protected:v1:{'5' * 64}",
+                    EqualitySpoofStr(f"protected:v1:{'5' * 64}"),
+                ),
+                "write_principal_identity": (
+                    f"principal:v1:{'6' * 64}",
+                    EqualitySpoofStr(f"principal:v1:{'6' * 64}"),
+                ),
+                "generation_witness": (8, EqualitySpoofInt(8)),
+            }
+
+            for field, (plain_mismatch, spoof) in cases.items():
+                with self.subTest(field=field):
+                    candidate = activation(**{field: plain_mismatch})
+                    object.__setattr__(candidate, field, spoof)
+                    with self.assertRaises(AuthorityRejectedError):
+                        store.require_active(candidate)
+                    with self.assertRaises(AuthorityRejectedError):
+                        store.transition(
+                            candidate,
+                            ControlDomainState.UNCERTAIN,
+                        )
+
+            self.assertEqual(
+                current,
+                store.require_active(current).activation,
+            )
+
+    def test_activation_subclass_cannot_acquire_or_match_authority(self) -> None:
+        current = activation()
+        spoof = EqualitySpoofActivation(
+            authority_domain_id="spoof-domain",
+            repository_id=f"repo:v1:{'4' * 64}",
+            protected_repository_identity=f"protected:v1:{'5' * 64}",
+            write_principal_identity=f"principal:v1:{'6' * 64}",
+            generation_witness=99,
+        )
+        self.assertTrue(spoof == current)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = ControlDomainStore(root / "control.json")
+            store.activate_initial(current)
+
+            with self.assertRaises(AuthorityRejectedError):
+                store.require_active(spoof)
+            with self.assertRaises(AuthorityRejectedError):
+                store.transition(spoof, ControlDomainState.UNCERTAIN)
+            with self.assertRaises(MutationDecisionError):
+                replace_decision(spoof)
+
+            abandoned = store.transition(
+                current,
+                ControlDomainState.ABANDONED,
+            )
+            with self.assertRaises(ControlDomainTransitionError):
+                store.activate_successor(abandoned, spoof)
+            self.assertEqual(abandoned, store.load_required())
+
+            with self.assertRaises(ControlDomainTransitionError):
+                ControlDomainStore(root / "other.json").activate_initial(spoof)
 
     def test_every_activation_tuple_component_is_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -830,6 +1299,37 @@ class BrokerControlAuthorityTest(unittest.TestCase):
                 store.activate_successor(first_abandoned, stale_successor)
 
             self.assertEqual(second_abandoned, store.load_required())
+
+    def test_record_subclass_cannot_alias_successor_predecessor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            initial = store.activate_initial(current)
+            abandoned = store.transition(
+                current,
+                ControlDomainState.ABANDONED,
+            )
+            fake = EqualitySpoofRecord(
+                schema=initial.schema,
+                activation=initial.activation,
+                state=initial.state,
+                journal_position=initial.journal_position,
+                predecessor_record_sha256=initial.predecessor_record_sha256,
+                retired_authority_domain_ids=("unrelated-retired-domain",),
+                record_sha256="0" * 64,
+            )
+            successor = replace(
+                current,
+                authority_domain_id="record-spoof-successor",
+                protected_repository_identity=f"protected:v1:{'8' * 64}",
+                write_principal_identity=f"principal:v1:{'8' * 64}",
+            )
+            self.assertTrue(fake == abandoned)
+
+            with self.assertRaises(ControlDomainTransitionError):
+                store.activate_successor(fake, successor)
+
+            self.assertEqual(abandoned, store.load_required())
 
     def test_successor_requires_fresh_protected_and_principal_identities(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1488,6 +1988,320 @@ class BrokerControlCASTest(unittest.TestCase):
                 prior=b"same",
                 post=b"same",
             )
+
+    def test_mutation_and_observation_scalars_require_exact_types(self) -> None:
+        current = activation()
+        cases = (
+            {"operation": EqualitySpoofStr("REPLACE")},
+            {"operation": EqualitySpoofStr("DELETE")},
+            {"relative_path": EqualitySpoofStr("bounded/target.txt")},
+            {"target_bytes": EqualitySpoofBytes(b"exact post\n")},
+            {
+                "expected_prior_sha256": EqualitySpoofStr(
+                    sha256(b"exact prior\n")
+                )
+            },
+            {
+                "expected_post_sha256": EqualitySpoofStr(
+                    sha256(b"exact post\n")
+                )
+            },
+        )
+        for overrides in cases:
+            with self.subTest(overrides=tuple(overrides)), self.assertRaises(
+                MutationDecisionError
+            ):
+                replace_decision(current, **overrides)
+
+        with self.assertRaises(MutationDecisionError):
+            TargetObservation(
+                EqualitySpoofStr("REGULAR"),
+                b"exact post\n",
+            )
+        with self.assertRaises(MutationDecisionError):
+            TargetObservation(
+                TargetKind.REGULAR,
+                EqualitySpoofBytes(b"exact post\n"),
+            )
+
+    def test_state_equality_spoof_cannot_request_a_transition(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            store.activate_initial(current)
+
+            with self.assertRaises(ControlDomainTransitionError):
+                store.transition(
+                    current,
+                    EqualitySpoofStr("UNCERTAIN"),
+                )
+
+            self.assertEqual(
+                ControlDomainState.ACTIVE,
+                store.require_active(current).state,
+            )
+
+    def test_unregistered_exact_enum_objects_are_rejected(self) -> None:
+        forged_operation = forged_string_enum(
+            MutationOperation,
+            MutationOperation.REPLACE.value,
+            MutationOperation.REPLACE.value,
+        )
+        forged_kind = forged_string_enum(
+            TargetKind,
+            TargetKind.ABSENT.value,
+            TargetKind.ABSENT.value,
+        )
+        forged_state = forged_string_enum(
+            ControlDomainState,
+            ControlDomainState.UNCERTAIN.value,
+            ControlDomainState.ACTIVE.value,
+        )
+        self.assertIs(type(forged_operation), MutationOperation)
+        self.assertEqual(MutationOperation.REPLACE, forged_operation)
+        self.assertIsNot(MutationOperation.REPLACE, forged_operation)
+        self.assertIs(type(forged_kind), TargetKind)
+        self.assertEqual(TargetKind.ABSENT, forged_kind)
+        self.assertIsNot(TargetKind.ABSENT, forged_kind)
+        self.assertIs(type(forged_state), ControlDomainState)
+        self.assertEqual(ControlDomainState.UNCERTAIN, forged_state)
+        self.assertIsNot(ControlDomainState.UNCERTAIN, forged_state)
+
+        with self.assertRaises(MutationDecisionError):
+            replace_decision(activation(), operation=forged_operation)
+        with self.assertRaises(MutationDecisionError):
+            TargetObservation(forged_kind)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            initial = store.activate_initial(current)
+            with self.assertRaises(ControlDomainTransitionError):
+                store.transition(current, forged_state)
+            self.assertEqual(initial, store.load_required())
+            self.assertEqual((initial,), store._journal_records_unlocked())
+
+    def test_unregistered_operation_cannot_resume_an_equal_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "control.json"
+            current = activation()
+            decision = replace_decision(current)
+            first_process = ControlDomainStore(path)
+            first_process.activate_initial(current)
+
+            with patch(
+                "decision_os.companion.broker_control.reconcile_mutation",
+                side_effect=RuntimeError("simulated crash after intent"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "after intent"):
+                    first_process.reconcile_cas(
+                        decision,
+                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                    )
+
+            forged = replace_decision(current)
+            object.__setattr__(
+                forged,
+                "operation",
+                forged_string_enum(
+                    MutationOperation,
+                    MutationOperation.REPLACE.value,
+                    MutationOperation.REPLACE.value,
+                ),
+            )
+            self.assertEqual(
+                MutationDecision.binding_dict(decision),
+                MutationDecision.binding_dict(forged),
+            )
+
+            with self.assertRaises(MutationDecisionError):
+                ControlDomainStore(path).reconcile_cas(
+                    forged,
+                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                )
+            self.assertEqual(
+                ControlDomainState.UNCERTAIN,
+                ControlDomainStore(path).load_required().state,
+            )
+            self.assertEqual(
+                ReconciliationOutcome.NOT_APPLIED,
+                ControlDomainStore(path).reconcile_cas(
+                    decision,
+                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                ),
+            )
+
+    def test_decision_subclass_cannot_alias_a_persisted_cas_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "control.json"
+            store = ControlDomainStore(path)
+            current = activation()
+            legitimate = replace_decision(current)
+            store.activate_initial(current)
+
+            with patch(
+                "decision_os.companion.broker_control.reconcile_mutation",
+                side_effect=RuntimeError("simulated crash after intent"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "after intent"):
+                    store.reconcile_cas(
+                        legitimate,
+                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                    )
+
+            forged = EqualitySpoofDecision(
+                activation=current,
+                operation=MutationOperation.REPLACE,
+                relative_path="different/target.txt",
+                target_bytes=b"different post\n",
+                expected_prior_sha256=sha256(b"different prior\n"),
+                expected_post_sha256=sha256(b"different post\n"),
+            )
+            object.__setattr__(
+                forged,
+                "alias_binding",
+                MutationDecision.binding_dict(legitimate),
+            )
+
+            with patch(
+                "decision_os.companion.broker_control.reconcile_mutation"
+            ) as reconcile:
+                with self.assertRaises(MutationDecisionError):
+                    ControlDomainStore(path).reconcile_cas(
+                        forged,
+                        TargetObservation(
+                            TargetKind.REGULAR,
+                            b"different post\n",
+                        ),
+                    )
+                reconcile.assert_not_called()
+
+            self.assertEqual(
+                ReconciliationOutcome.APPLIED,
+                ControlDomainStore(path).reconcile_cas(
+                    legitimate,
+                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                ),
+            )
+
+    def test_cas_uses_one_private_snapshot_if_caller_mutates_after_intent(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(
+                current,
+                post=b"first post\n",
+            )
+            first_binding = MutationDecision.binding_dict(decision)
+            store.activate_initial(current)
+            reached_reconciliation = threading.Event()
+            continue_reconciliation = threading.Event()
+            original_reconcile = reconcile_mutation
+
+            def pause_after_intent(
+                snapshot: MutationDecision,
+                observation: TargetObservation,
+            ) -> ReconciliationOutcome:
+                self.assertIsNot(snapshot, decision)
+                reached_reconciliation.set()
+                self.assertTrue(continue_reconciliation.wait(timeout=10))
+                return original_reconcile(snapshot, observation)
+
+            with patch(
+                "decision_os.companion.broker_control.reconcile_mutation",
+                side_effect=pause_after_intent,
+            ), ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    store.reconcile_cas,
+                    decision,
+                    TargetObservation(
+                        TargetKind.REGULAR,
+                        b"second post\n",
+                    ),
+                )
+                self.assertTrue(reached_reconciliation.wait(timeout=10))
+                object.__setattr__(decision, "target_bytes", b"second post\n")
+                object.__setattr__(
+                    decision,
+                    "expected_post_sha256",
+                    sha256(b"second post\n"),
+                )
+                continue_reconciliation.set()
+                outcome = future.result(timeout=10)
+
+            self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
+            intent = next(
+                json.loads(path.read_bytes())
+                for path in store._fence_path.glob("*.json")
+                if json.loads(path.read_bytes())["kind"] == "INTENT"
+            )
+            self.assertEqual(
+                hash_payload(first_binding),
+                intent["decision_sha256"],
+            )
+            self.assertNotEqual(
+                hash_payload(MutationDecision.binding_dict(decision)),
+                intent["decision_sha256"],
+            )
+            self.assertEqual(
+                ControlDomainState.UNCERTAIN,
+                store.load_required().state,
+            )
+
+    def test_observation_subclass_is_rejected_before_reconciliation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(current)
+            store.activate_initial(current)
+            forged = EqualitySpoofObservation(
+                TargetKind.REGULAR,
+                b"exact post\n",
+            )
+
+            with patch(
+                "decision_os.companion.broker_control.reconcile_mutation"
+            ) as reconcile:
+                with self.assertRaises(MutationDecisionError):
+                    store.reconcile_cas(decision, forged)
+                reconcile.assert_not_called()
+
+            self.assertEqual(
+                ControlDomainState.ACTIVE,
+                store.require_active(current).state,
+            )
+            self.assertFalse(store._fence_path.exists())
+
+    def test_standalone_reconciliation_rejects_wrapper_subclasses(self) -> None:
+        current = activation()
+        decision = replace_decision(current)
+        forged_decision = EqualitySpoofDecision(
+            activation=current,
+            operation=MutationOperation.REPLACE,
+            relative_path="bounded/target.txt",
+            target_bytes=b"exact post\n",
+            expected_prior_sha256=sha256(b"exact prior\n"),
+            expected_post_sha256=sha256(b"exact post\n"),
+        )
+        object.__setattr__(
+            forged_decision,
+            "alias_binding",
+            MutationDecision.binding_dict(decision),
+        )
+        forged_observation = EqualitySpoofObservation(
+            TargetKind.REGULAR,
+            b"exact post\n",
+        )
+
+        with self.assertRaises(MutationDecisionError):
+            reconcile_mutation(
+                forged_decision,
+                TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+            )
+        with self.assertRaises(MutationDecisionError):
+            reconcile_mutation(decision, forged_observation)
 
 
 class BrokerControlIntegrityTest(unittest.TestCase):
