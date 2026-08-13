@@ -70,6 +70,16 @@ GROUP_READ_KEYS = tuple(EXPECTED_GROUP) + (
     "GroupMembership",
     "GroupMembers",
 )
+REQUIRED_ABSENT_USER_KEYS = (
+    "NFSHomeDirectory",
+    "UserShell",
+    "IsHidden",
+    "AuthenticationAuthority",
+)
+REQUIRED_ABSENT_GROUP_KEYS = (
+    "GroupMembership",
+    "GroupMembers",
+)
 ROLLBACK_MUTATION_COMMANDS = (
     (DSCL, ".", "-delete", USER_PATH),
     (DSCL, ".", "-delete", GROUP_PATH),
@@ -237,34 +247,22 @@ def _require_mapping(
             )
 
 
-def _require_optional_shape(
+def _require_exact_observed_shape(
     user: Mapping[str, tuple[str, ...]],
     group: Mapping[str, tuple[str, ...]],
 ) -> None:
-    allowed_user_values = {
-        "NFSHomeDirectory": ("/var/empty",),
-        "UserShell": ("/usr/bin/false",),
-        "IsHidden": ("1",),
-    }
-    for key, allowed in allowed_user_values.items():
-        value = user.get(key)
-        if value is not None and value != allowed:
+    for key in REQUIRED_ABSENT_USER_KEYS:
+        if key in user:
             raise RollbackError(
-                f"User attribute {key} differs from the Slice 4A shape."
+                f"User attribute {key} appeared after the accepted observation; "
+                "deletion refused."
             )
-    authentication = user.get("AuthenticationAuthority")
-    if authentication is not None and not any(
-        "DisabledUser" in value for value in authentication
-    ):
-        raise RollbackError(
-            "Unexpected authentication authority is attached to the target user."
-        )
-    allowed_names = ("_decisionos_codex",)
-    allowed_guids = (EXPECTED_USER["GeneratedUID"][0],)
-    if group.get("GroupMembership") not in {None, allowed_names}:
-        raise RollbackError("Private group has an unrelated named member.")
-    if group.get("GroupMembers") not in {None, allowed_guids}:
-        raise RollbackError("Private group has an unrelated GUID member.")
+    for key in REQUIRED_ABSENT_GROUP_KEYS:
+        if key in group:
+            raise RollbackError(
+                f"Private-group attribute {key} appeared after the accepted "
+                "observation; deletion refused."
+            )
 
 
 def _require_held_surfaces_absent(
@@ -288,7 +286,7 @@ def _require_exact_partial_state(
     group = _read_record(runner, GROUP_PATH, GROUP_READ_KEYS)
     _require_mapping(user, EXPECTED_USER, "User")
     _require_mapping(group, EXPECTED_GROUP, "Group")
-    _require_optional_shape(user, group)
+    _require_exact_observed_shape(user, group)
     if _search_names(runner, "/Users", "UniqueID", 510) != (
         "_decisionos_codex",
     ):
@@ -300,15 +298,21 @@ def _require_exact_partial_state(
 
 
 def _require_user_still_bound(runner: Runner) -> None:
-    """Rebind the user immediately before the name-addressed deletion."""
+    """Rebind both exact target records immediately before user deletion."""
 
     user = _read_record(runner, USER_PATH, USER_READ_KEYS)
+    group = _read_record(runner, GROUP_PATH, GROUP_READ_KEYS)
     _require_mapping(user, EXPECTED_USER, "User")
-    _require_optional_shape(user, {})
+    _require_mapping(group, EXPECTED_GROUP, "Group")
+    _require_exact_observed_shape(user, group)
     if _search_names(runner, "/Users", "UniqueID", 510) != (
         "_decisionos_codex",
     ):
         raise RollbackError("UID 510 changed before user deletion.")
+    if _search_names(runner, "/Groups", "PrimaryGroupID", 510) != (
+        "_decisionos_codex",
+    ):
+        raise RollbackError("GID 510 changed before user deletion.")
 
 
 def _wait_absent(
@@ -400,8 +404,8 @@ def rollback_partial_codex(
         raise RollbackError("Rollback requires one explicit root authorization.")
     require_tool(DSCL)
     _require_exact_partial_state(runner, lexists)
-    _require_user_still_bound(runner)
     _require_held_surfaces_absent(runner, lexists)
+    _require_user_still_bound(runner)
 
     _mutate(runner, ROLLBACK_MUTATION_COMMANDS[0], completed, "user_deleted")
     try:
@@ -415,17 +419,18 @@ def rollback_partial_codex(
             sleep=sleep,
         )
 
-        # Rebind the surviving group immediately before its own deletion.  A
-        # name/GID/GUID swap between the two mutations must stop at HOLD.
+        _require_absent(runner, USER_PATH)
+        _require_held_surfaces_absent(runner, lexists)
+
+        # Rebind the surviving group immediately before its own deletion. A
+        # name/GID/GUID/attribute swap between the mutations must stop at HOLD.
         group = _read_record(runner, GROUP_PATH, GROUP_READ_KEYS)
         _require_mapping(group, EXPECTED_GROUP, "Group")
-        _require_optional_shape({}, group)
+        _require_exact_observed_shape({}, group)
         if _search_names(runner, "/Groups", "PrimaryGroupID", 510) != (
             "_decisionos_codex",
         ):
             raise RollbackError("GID 510 changed before group deletion.")
-        _require_absent(runner, USER_PATH)
-        _require_held_surfaces_absent(runner, lexists)
 
         _mutate(runner, ROLLBACK_MUTATION_COMMANDS[1], completed, "group_deleted")
         _wait_absent(runner, GROUP_PATH, sleep=sleep)

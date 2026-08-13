@@ -60,15 +60,24 @@ Before deletion, the rollback requires:
 
 - exact equality of all table fields;
 - UID 510 and GID 510 each resolve only to the named target;
-- no unrelated authentication authority or private-group member;
+- `NFSHomeDirectory`, `UserShell`, `IsHidden`, and
+  `AuthenticationAuthority` are absent from the user record;
+- `GroupMembership` and `GroupMembers` are absent from the private-group
+  record;
 - Guardian and Broker user/group records remain absent; and
 - all DecisionOS/F01PrincipalSeparation host-state paths remain absent.
 
-The target user is read and rebound a second time immediately before its
-name-addressed deletion. After that deletion, the target group is likewise
-read and rebound immediately before its deletion. Held principals and the
-host-state paths are rechecked before each mutation. This narrows each
-deletion to the observed identity and refuses a name/GUID/ID substitution.
+Later intended Slice 4A values are not accepted as equivalent. Presence of any
+one of those six attributes means the host changed after the accepted
+observation and forces `HOLD` before mutation.
+
+Both target records are read and rebound immediately before the user's
+name-addressed deletion, including a second exact-absence check for all six
+attributes. After that deletion, the target group is likewise read and rebound
+immediately before its deletion; the user must remain absent and both group
+membership attributes must remain absent. Held principals and the host-state
+paths are rechecked before each mutation. This narrows each deletion to the
+observed identity and refuses a name/GUID/ID/attribute substitution.
 
 The only mutation allowlist is:
 
@@ -91,12 +100,12 @@ Repository source:
 
 Read-only execution copy:
 
-`/private/tmp/decision-os-f01-slice4a-rollback-714d07da0fa26da6/rollback.py`
+`/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97/rollback.py`
 
 Both files have SHA-256:
 
 ```text
-714d07da0fa26da673ad1c5c72428cc032ad8803024c4a345313f82e2705886d
+fca618b2aa376a97688c9da673dc655a281931fedaa8bbbc3352119309fdce9f
 ```
 
 The staged directory is owner `501`, group `0`, mode `0500`. The staged file is
@@ -113,7 +122,7 @@ administrator interaction. Neither this command nor its rollback payload was
 executed in this preparation pass.
 
 ```sh
-/usr/bin/osascript -e "set payload to \"import hashlib,os,stat,sys;p='/private/tmp/decision-os-f01-slice4a-rollback-714d07da0fa26da6/rollback.py';q='/private/tmp/decision-os-f01-slice4a-rollback-714d07da0fa26da6';d=os.stat(q,follow_symlinks=False);fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW);s=os.fstat(fd);f=os.fdopen(fd,'rb',closefd=True);b=f.read();f.close();ok=stat.S_ISDIR(d.st_mode) and d.st_uid==501 and d.st_gid==0 and stat.S_IMODE(d.st_mode)==0o500 and stat.S_ISREG(s.st_mode) and s.st_uid==501 and s.st_gid==0 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o444 and len(b)==s.st_size and hashlib.sha256(b).hexdigest()=='714d07da0fa26da673ad1c5c72428cc032ad8803024c4a345313f82e2705886d';ok or sys.exit('rollback script identity mismatch');sys.argv=[p,'rollback','--confirm','rollback-only-observed-partial-codex-uid-gid-510'];g={'__name__':'__main__','__file__':p};exec(compile(b,p,'exec'),g,g)\"" -e 'do shell script ("/usr/bin/python3 -I -S -c " & quoted form of payload) with administrator privileges'
+/usr/bin/osascript -e "set payload to \"import hashlib,os,stat,sys;p='/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97/rollback.py';q='/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97';d=os.stat(q,follow_symlinks=False);fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW);s=os.fstat(fd);f=os.fdopen(fd,'rb',closefd=True);b=f.read();f.close();ok=stat.S_ISDIR(d.st_mode) and d.st_uid==501 and d.st_gid==0 and stat.S_IMODE(d.st_mode)==0o500 and stat.S_ISREG(s.st_mode) and s.st_uid==501 and s.st_gid==0 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o444 and len(b)==s.st_size and hashlib.sha256(b).hexdigest()=='fca618b2aa376a97688c9da673dc655a281931fedaa8bbbc3352119309fdce9f';ok or sys.exit('rollback script identity mismatch');sys.argv=[p,'rollback','--confirm','rollback-only-observed-partial-codex-uid-gid-510'];g={'__name__':'__main__','__file__':p};exec(compile(b,p,'exec'),g,g)\"" -e 'do shell script ("/usr/bin/python3 -I -S -c " & quoted form of payload) with administrator privileges'
 ```
 
 Only the shell parse and an unprivileged hash-loader `--help` path were tested.
@@ -146,8 +155,8 @@ executed only against mocks. Guardian and Broker have not been provisioned.
 
 ## Preparation verification
 
-- focused principal-separation plus rollback fixtures: `53` tests passed;
-- rollback fixtures under macOS `/usr/bin/python3` 3.9: `18` tests passed;
+- focused principal-separation plus rollback fixtures: `55` tests passed;
+- rollback fixtures under macOS `/usr/bin/python3` 3.9: `20` tests passed;
 - corrected provision fault injection covers every one of its `39` successful
   Directory Service/password-policy mutation positions and proves one call at
   the injected failure;
@@ -156,7 +165,7 @@ executed only against mocks. Guardian and Broker have not been provisioned.
 - the plan entrypoint passed under the exact macOS system Python 3.9 runtime;
 - staged and repository rollback hashes match; and
 - the proposed shell command passed `zsh -n` parsing without execution;
-- non-network Broker/Companion regression: `531` tests passed, `2` skipped;
+- Broker Slice 1/2/3 regression: `181` tests passed;
 - full repository attempt: `1741` tests ran, with `14` skips, `43` loopback
   bind errors (`PermissionError: [Errno 1] Operation not permitted`), and `3`
   sandboxed browser-process failures (exit `-6`). No broader sandbox or

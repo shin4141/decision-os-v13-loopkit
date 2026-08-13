@@ -20,14 +20,24 @@ from scripts.macos_f01_rollback_partial_codex import (
 )
 
 
+FORBIDDEN_OBSERVED_ADDITIONS = (
+    (USER_PATH, "NFSHomeDirectory", ("/var/empty",)),
+    (USER_PATH, "UserShell", ("/usr/bin/false",)),
+    (USER_PATH, "IsHidden", ("1",)),
+    (USER_PATH, "AuthenticationAuthority", (";DisabledUser;",)),
+    (GROUP_PATH, "GroupMembership", ("_decisionos_codex",)),
+    (
+        GROUP_PATH,
+        "GroupMembers",
+        (EXPECTED_USER["GeneratedUID"][0],),
+    ),
+)
+
+
 class FakeDirectoryService:
     def __init__(self) -> None:
         self.records: dict[str, dict[str, tuple[str, ...]]] = {
-            USER_PATH: dict(EXPECTED_USER)
-            | {
-                "NFSHomeDirectory": ("/var/empty",),
-                "UserShell": ("/usr/bin/false",),
-            },
+            USER_PATH: dict(EXPECTED_USER),
             GROUP_PATH: dict(EXPECTED_GROUP),
         }
         self.calls: list[tuple[str, ...]] = []
@@ -37,7 +47,14 @@ class FakeDirectoryService:
         self.uid_collision_after_user_delete = False
         self.gid_collision_after_group_delete = False
         self.swap_user_before_rebind = False
+        self.add_before_user_delete: tuple[
+            str, str, tuple[str, ...]
+        ] | None = None
+        self.add_group_attribute_after_user_delete: tuple[
+            str, tuple[str, ...]
+        ] | None = None
         self.user_reads = 0
+        self.group_reads = 0
 
     @staticmethod
     def _record_output(
@@ -74,6 +91,22 @@ class FakeDirectoryService:
                     record["GeneratedUID"] = (
                         "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE",
                     )
+                if (
+                    self.add_before_user_delete is not None
+                    and self.user_reads == 2
+                    and self.add_before_user_delete[0] == USER_PATH
+                ):
+                    _, key, value = self.add_before_user_delete
+                    record[key] = value
+            if path == GROUP_PATH:
+                self.group_reads += 1
+                if (
+                    self.add_before_user_delete is not None
+                    and self.group_reads == 2
+                    and self.add_before_user_delete[0] == GROUP_PATH
+                ):
+                    _, key, value = self.add_before_user_delete
+                    record[key] = value
             return CommandResult(0, self._record_output(record, command[4:]))
         if command[:3] == (DSCL, ".", "-search"):
             root, attribute, expected = command[3:6]
@@ -111,6 +144,9 @@ class FakeDirectoryService:
                         "RecordName": ("unrelated",),
                         "UniqueID": ("510",),
                     }
+                if self.add_group_attribute_after_user_delete is not None:
+                    key, value = self.add_group_attribute_after_user_delete
+                    self.records[GROUP_PATH][key] = value
             if path == GROUP_PATH and self.gid_collision_after_group_delete:
                 self.records["/Groups/unrelated"] = {
                     "RecordName": ("unrelated",),
@@ -134,6 +170,8 @@ def run(fake: FakeDirectoryService, *, state_exists: bool = False) -> dict[str, 
 class PartialCodexRollbackTests(unittest.TestCase):
     def test_exact_partial_identity_is_removed_and_verified(self) -> None:
         fake = FakeDirectoryService()
+        for path, key, _value in FORBIDDEN_OBSERVED_ADDITIONS:
+            self.assertNotIn(key, fake.records[path])
 
         report = run(fake)
 
@@ -193,21 +231,27 @@ class PartialCodexRollbackTests(unittest.TestCase):
                     run(fake)
                 self.assertEqual(fake.mutations, [])
 
-    def test_unexpected_authentication_or_group_membership_refuses_deletion(self) -> None:
-        cases = (
-            (USER_PATH, "AuthenticationAuthority", (";ShadowHash;",)),
-            (GROUP_PATH, "GroupMembership", ("unrelated",)),
-            (
-                GROUP_PATH,
-                "GroupMembers",
-                ("AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE",),
-            ),
-        )
-        for path, key, value in cases:
+    def test_any_later_slice_attribute_refuses_all_deletion(self) -> None:
+        for path, key, value in FORBIDDEN_OBSERVED_ADDITIONS:
             with self.subTest(path=path, key=key):
                 fake = FakeDirectoryService()
                 fake.records[path][key] = value
-                with self.assertRaises(RollbackError):
+                with self.assertRaisesRegex(
+                    RollbackError, "appeared after the accepted observation"
+                ):
+                    run(fake)
+                self.assertEqual(fake.mutations, [])
+
+    def test_any_later_slice_attribute_added_before_rebind_still_has_zero_mutations(
+        self,
+    ) -> None:
+        for path, key, value in FORBIDDEN_OBSERVED_ADDITIONS:
+            with self.subTest(path=path, key=key):
+                fake = FakeDirectoryService()
+                fake.add_before_user_delete = (path, key, value)
+                with self.assertRaisesRegex(
+                    RollbackError, "appeared after the accepted observation"
+                ):
                     run(fake)
                 self.assertEqual(fake.mutations, [])
 
@@ -267,6 +311,26 @@ class PartialCodexRollbackTests(unittest.TestCase):
         self.assertEqual(fake.mutations, [ROLLBACK_MUTATION_COMMANDS[0]])
         self.assertEqual(raised.exception.completed_mutations, ("user_deleted",))
         self.assertIn(GROUP_PATH, fake.records)
+
+    def test_group_membership_added_after_user_delete_blocks_group_delete(
+        self,
+    ) -> None:
+        for _path, key, value in FORBIDDEN_OBSERVED_ADDITIONS[-2:]:
+            with self.subTest(key=key):
+                fake = FakeDirectoryService()
+                fake.add_group_attribute_after_user_delete = (key, value)
+
+                with self.assertRaisesRegex(
+                    RollbackError, "appeared after the accepted observation"
+                ) as raised:
+                    run(fake)
+
+                self.assertEqual(fake.mutations, [ROLLBACK_MUTATION_COMMANDS[0]])
+                self.assertEqual(
+                    raised.exception.completed_mutations,
+                    ("user_deleted",),
+                )
+                self.assertIn(GROUP_PATH, fake.records)
 
     def test_user_is_rebound_immediately_before_user_delete(self) -> None:
         fake = FakeDirectoryService()
