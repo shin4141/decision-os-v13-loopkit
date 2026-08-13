@@ -18,7 +18,7 @@ import os
 from pathlib import Path, PurePosixPath
 import secrets
 import stat
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from decision_os.acceleration.model import canonical_json, hash_payload
 
@@ -357,6 +357,7 @@ class MutationDecision:
     target_bytes: bytes
     expected_prior_sha256: str | None
     expected_post_sha256: str
+    proposal_acquisition_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if type(self) is not MutationDecision:
@@ -405,11 +406,18 @@ class MutationDecision:
                 raise MutationDecisionError(
                     "REPLACE cannot use an identical prior and post image."
                 )
+        if (
+            self.proposal_acquisition_sha256 is not None
+            and not _is_sha256(self.proposal_acquisition_sha256)
+        ):
+            raise MutationDecisionError(
+                "Proposal-acquisition binding hash is invalid."
+            )
 
     def binding_dict(self) -> dict[str, Any]:
         """Return the exact bounded decision identity persisted by a CAS fence."""
 
-        return {
+        binding = {
             "activation": ActivationTuple.as_dict(self.activation),
             "operation": self.operation.value,
             "relative_path": self.relative_path,
@@ -418,6 +426,14 @@ class MutationDecision:
             "expected_prior_sha256": self.expected_prior_sha256,
             "expected_post_sha256": self.expected_post_sha256,
         }
+        # Preserve the accepted Slice 1 decision hash when no fd-acquisition
+        # binding exists; Slice 2 live decisions extend, rather than rewrite,
+        # that durable identity.
+        if self.proposal_acquisition_sha256 is not None:
+            binding["proposal_acquisition_sha256"] = (
+                self.proposal_acquisition_sha256
+            )
+        return binding
 
 
 @dataclass(frozen=True)
@@ -478,6 +494,7 @@ def _snapshot_decision(value: Any) -> MutationDecision:
         target_bytes=value.target_bytes,
         expected_prior_sha256=value.expected_prior_sha256,
         expected_post_sha256=value.expected_post_sha256,
+        proposal_acquisition_sha256=value.proposal_acquisition_sha256,
     )
 
 
@@ -1718,29 +1735,93 @@ class ControlDomainStore:
                 )
             return deepcopy(current)
 
-    def reconcile_cas(
-        self,
-        decision: MutationDecision,
-        observation: TargetObservation,
-    ) -> ReconciliationOutcome:
-        """Fence and classify caller-supplied bytes; never mutate repository data.
-
-        Repeating the exact decision reconciles a durable pre-crash intent.  A
-        different decision cannot consume or supersede that intent.  Every
-        terminal result moves the domain irreversibly out of ``ACTIVE`` before
-        it is returned: exact evidence abandons it, while unprovable evidence
-        marks it ``UNCERTAIN``.
-        """
+    @staticmethod
+    def _snapshot_cas_decision(decision: MutationDecision) -> MutationDecision:
+        """Validate one public CAS argument without exposing wrapper behavior."""
 
         try:
-            decision = _snapshot_decision(decision)
-            observation = _snapshot_observation(observation)
+            return _snapshot_decision(decision)
         except MutationDecisionError:
             raise
         except (AttributeError, TypeError, ValueError) as exc:
             raise MutationDecisionError(
-                "CAS reconciliation requires one bound decision and observation."
+                "A CAS operation requires one exact bound mutation decision."
             ) from exc
+
+    @staticmethod
+    def _decision_sha256(decision: MutationDecision) -> str:
+        return hash_payload(MutationDecision.binding_dict(decision))
+
+    def _mark_pending_cas_uncertain_unlocked(
+        self,
+        current: ControlDomainRecord,
+    ) -> ControlDomainRecord:
+        """Consume an ACTIVE domain after its durable intent already exists."""
+
+        if current.state is ControlDomainState.ACTIVE:
+            return self._publish_unlocked(
+                self._prospective_record(
+                    current,
+                    ControlDomainState.UNCERTAIN,
+                )
+            )
+        if current.state is ControlDomainState.UNCERTAIN:
+            return current
+        raise ControlRecordIntegrityError(
+            "An abandoned Broker domain has an incomplete CAS intent."
+        )
+
+    def _finish_cas_state_unlocked(
+        self,
+        current: ControlDomainRecord,
+        outcome: ReconciliationOutcome,
+    ) -> None:
+        """Make an exact terminal result non-reusable before returning it."""
+
+        if outcome is ReconciliationOutcome.UNCERTAIN:
+            if current.state not in {
+                ControlDomainState.UNCERTAIN,
+                ControlDomainState.ABANDONED,
+            }:
+                raise ControlRecordIntegrityError(
+                    "An uncertain CAS completion has an invalid control state."
+                )
+            return
+        if current.state is ControlDomainState.UNCERTAIN:
+            self._publish_unlocked(
+                self._prospective_record(
+                    current,
+                    ControlDomainState.ABANDONED,
+                )
+            )
+            return
+        if current.state is not ControlDomainState.ABANDONED:
+            raise ControlRecordIntegrityError(
+                "An exact CAS completion has an invalid control state."
+            )
+
+    def _execute_live_cas(
+        self,
+        decision: MutationDecision,
+        attempt: Callable[[], ReconciliationOutcome],
+    ) -> ReconciliationOutcome:
+        """Private broker-apply transaction for one live mutation attempt.
+
+        The exclusive control lock is held continuously across exact authority
+        validation, durable intent publication, transition out of ``ACTIVE``,
+        the callback invocation, and durable completion.  Thus recovery cannot
+        observe the protected target while the one live attempt is in flight.
+
+        The callback is invoked exactly once and only after the durable intent
+        has been read back and authority has been consumed.  If it raises, or
+        returns an invalid result, the pending intent remains for explicit
+        observation-only recovery.  Live apply can return only ``APPLIED`` or
+        ``UNCERTAIN``; ``NOT_APPLIED`` is reserved for recovery.
+        """
+
+        decision = self._snapshot_cas_decision(decision)
+        if not callable(attempt):
+            raise MutationDecisionError("Live CAS attempt must be callable.")
         with self._locked(exclusive=True):
             current = self._load_required_unlocked(
                 allow_consumed_cas=True,
@@ -1748,59 +1829,99 @@ class ControlDomainStore:
             )
             self._require_exact_activation(current, decision.activation)
             journal = self._journal_records_unlocked()
-            decision_sha256 = hash_payload(
-                MutationDecision.binding_dict(decision)
-            )
             intent, completion = self._cas_exchange_unlocked(
                 journal,
                 decision.activation,
-                decision_sha256,
+                self._decision_sha256(decision),
+            )
+            if intent is not None or completion is not None:
+                raise AuthorityRejectedError(
+                    "Broker authority already has a consumed CAS intent; "
+                    "live apply cannot resume it."
+                )
+            if current.state is not ControlDomainState.ACTIVE:
+                raise AuthorityRejectedError(
+                    "A non-ACTIVE Broker domain cannot execute live CAS apply."
+                )
+            if len(self._cas_fences_unlocked(journal)) > _MAX_CAS_FENCES - 2:
+                raise ControlRecordIntegrityError(
+                    "Broker CAS-fence capacity is exhausted."
+                )
+
+            # Intent durability is the hard boundary: no protected target may
+            # be mutated until this append and its exact readback have returned.
+            intent = _new_cas_intent(decision, current)
+            self._append_cas_fence_unlocked(intent)
+            current = self._mark_pending_cas_uncertain_unlocked(current)
+
+            outcome = attempt()
+            if not _is_canonical_enum_member(outcome, ReconciliationOutcome):
+                raise MutationDecisionError("Live CAS attempt outcome is invalid.")
+            if outcome is ReconciliationOutcome.NOT_APPLIED:
+                raise MutationDecisionError(
+                    "NOT_APPLIED is available only through CAS recovery."
+                )
+            completion = _complete_cas_intent(intent, outcome)
+            self._append_cas_fence_unlocked(completion)
+            self._finish_cas_state_unlocked(current, outcome)
+            return outcome
+
+    def _execute_recovery_cas(
+        self,
+        decision: MutationDecision,
+        observe: Callable[[], TargetObservation],
+    ) -> ReconciliationOutcome:
+        """Private broker-apply recovery transaction under the control lock.
+
+        The observation callback runs only for an incomplete exact intent and
+        while the exclusive lock remains held.  The store therefore never
+        requests a target sample before a concurrent live attempt finishes.
+        Recovery never creates an intent or invokes protected-target mutation.
+
+        An ``ACTIVE`` head accompanied by a durable intent is the crash prefix
+        between intent durability and control-state publication; it is first
+        moved to ``UNCERTAIN`` before observation.  Exact pre-image evidence
+        may produce ``NOT_APPLIED`` only on this recovery path.  If observation
+        raises or is invalid, the pending intent remains for later recovery.
+        """
+
+        decision = self._snapshot_cas_decision(decision)
+        if not callable(observe):
+            raise MutationDecisionError("CAS recovery observer must be callable.")
+        with self._locked(exclusive=True):
+            current = self._load_required_unlocked(
+                allow_consumed_cas=True,
+                repair_incomplete_publication=True,
+            )
+            self._require_exact_activation(current, decision.activation)
+            journal = self._journal_records_unlocked()
+            intent, completion = self._cas_exchange_unlocked(
+                journal,
+                decision.activation,
+                self._decision_sha256(decision),
             )
             if intent is None:
-                if current.state is ControlDomainState.UNCERTAIN:
-                    return ReconciliationOutcome.UNCERTAIN
-                if current.state is not ControlDomainState.ACTIVE:
-                    raise AuthorityRejectedError(
-                        "A non-ACTIVE Broker domain has no reconcilable CAS intent."
-                    )
-                if len(self._cas_fences_unlocked(journal)) > _MAX_CAS_FENCES - 2:
-                    raise ControlRecordIntegrityError(
-                        "Broker CAS-fence capacity is exhausted."
-                    )
-                intent = _new_cas_intent(decision, current)
-                current = self._publish_unlocked(
-                    self._prospective_record(
-                        current,
-                        ControlDomainState.UNCERTAIN,
-                    )
+                raise AuthorityRejectedError(
+                    "CAS recovery requires an exact durable intent."
                 )
-                self._append_cas_fence_unlocked(intent)
             if completion is None:
-                if current.state is ControlDomainState.UNCERTAIN:
-                    outcome = reconcile_mutation(decision, observation)
-                elif current.state is not ControlDomainState.ABANDONED:
-                    raise ControlRecordIntegrityError(
-                        "A pending Broker CAS intent has an invalid control state."
-                    )
-                else:
-                    raise ControlRecordIntegrityError(
-                        "An abandoned Broker domain has an incomplete CAS fence."
-                    )
+                current = self._mark_pending_cas_uncertain_unlocked(current)
+                observation = observe()
+                try:
+                    observation = _snapshot_observation(observation)
+                except MutationDecisionError:
+                    raise
+                except (AttributeError, TypeError, ValueError) as exc:
+                    raise MutationDecisionError(
+                        "CAS recovery requires one exact target observation."
+                    ) from exc
+                outcome = reconcile_mutation(decision, observation)
                 completion = _complete_cas_intent(intent, outcome)
                 self._append_cas_fence_unlocked(completion)
             else:
                 assert completion.outcome is not None
                 outcome = ReconciliationOutcome(completion.outcome)
-            if (
-                current.state is ControlDomainState.UNCERTAIN
-                and outcome is not ReconciliationOutcome.UNCERTAIN
-            ):
-                self._publish_unlocked(
-                    self._prospective_record(
-                        current,
-                        ControlDomainState.ABANDONED,
-                    )
-                )
+            self._finish_cas_state_unlocked(current, outcome)
             return outcome
 
 

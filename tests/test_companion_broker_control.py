@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import replace
 import hashlib
 import json
@@ -10,7 +10,7 @@ import stat
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from typing import Any
 
 import decision_os.companion.broker_control as broker_control
@@ -160,6 +160,37 @@ def create_decision(
     return MutationDecision(**values)
 
 
+def crash_live_attempt() -> ReconciliationOutcome:
+    """Model process loss after durable intent but before a known outcome."""
+
+    raise RuntimeError("simulated live CAS crash")
+
+
+def leave_pending_cas(
+    store: ControlDomainStore,
+    decision: MutationDecision,
+) -> None:
+    """Execute the live protocol through a raising mutation callback."""
+
+    try:
+        store._execute_live_cas(decision, crash_live_attempt)
+    except RuntimeError as exc:
+        if str(exc) != "simulated live CAS crash":
+            raise
+    else:
+        raise AssertionError("raising live CAS callback unexpectedly returned")
+
+
+def recover_observation(
+    store: ControlDomainStore,
+    decision: MutationDecision,
+    observation: TargetObservation,
+) -> ReconciliationOutcome:
+    """Sample one fixed test observation inside the recovery lock."""
+
+    return store._execute_recovery_cas(decision, lambda: observation)
+
+
 class BrokerControlDurabilityTest(unittest.TestCase):
     def test_normal_durable_save_reloads_exact_canonical_record(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -257,9 +288,10 @@ class BrokerControlDurabilityTest(unittest.TestCase):
                     side_effect=observed_replace,
                 ),
             ):
-                outcome = store.reconcile_cas(
-                    replace_decision(current),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                decision = replace_decision(current)
+                outcome = store._execute_live_cas(
+                    decision,
+                    lambda: ReconciliationOutcome.APPLIED,
                 )
 
             self.assertEqual(ReconciliationOutcome.APPLIED, outcome)
@@ -973,18 +1005,13 @@ class BrokerControlAuthorityTest(unittest.TestCase):
                 with self.subTest(label=label):
                     with self.assertRaises(AuthorityRejectedError):
                         store.require_active(mismatch)
-                    with patch(
-                        "decision_os.companion.broker_control.reconcile_mutation"
-                    ) as reconcile:
-                        with self.assertRaises(AuthorityRejectedError):
-                            store.reconcile_cas(
-                                replace_decision(mismatch),
-                                TargetObservation(
-                                    TargetKind.REGULAR,
-                                    b"exact post\n",
-                                ),
-                            )
-                        reconcile.assert_not_called()
+                    attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+                    with self.assertRaises(AuthorityRejectedError):
+                        store._execute_live_cas(
+                            replace_decision(mismatch),
+                            attempt,
+                        )
+                    attempt.assert_not_called()
 
             self.assertEqual(current, store.load_required().activation)
             self.assertFalse(store._fence_path.exists())
@@ -1000,9 +1027,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             )
 
             with self.assertRaises(AuthorityRejectedError):
-                store.reconcile_cas(
+                store._execute_live_cas(
                     replace_decision(mismatch),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                    crash_live_attempt,
                 )
 
             self.assertEqual(ControlDomainState.ACTIVE, store.load_required().state)
@@ -1018,9 +1045,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             )
 
             with self.assertRaises(AuthorityRejectedError):
-                store.reconcile_cas(
+                store._execute_live_cas(
                     replace_decision(mismatch),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                    crash_live_attempt,
                 )
 
             self.assertEqual(ControlDomainState.ACTIVE, store.load_required().state)
@@ -1040,9 +1067,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             with self.assertRaises(AuthorityRejectedError):
                 store.require_active(old)
             with self.assertRaises(AuthorityRejectedError):
-                store.reconcile_cas(
+                store._execute_live_cas(
                     replace_decision(old),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                    crash_live_attempt,
                 )
             with self.assertRaises(ControlDomainTransitionError):
                 store.transition(old, ControlDomainState.ACTIVE)
@@ -1076,9 +1103,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             with self.assertRaises(AuthorityRejectedError):
                 first_process.require_active(old)
             with self.assertRaises(AuthorityRejectedError):
-                first_process.reconcile_cas(
+                first_process._execute_live_cas(
                     replace_decision(old),
-                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                    crash_live_attempt,
                 )
 
     def test_exact_stale_active_head_replay_cannot_erase_abandonment(self) -> None:
@@ -1151,9 +1178,9 @@ class BrokerControlAuthorityTest(unittest.TestCase):
             with self.assertRaises(AuthorityRejectedError):
                 ControlDomainStore(store.path).require_active(current)
             with self.assertRaises(AuthorityRejectedError):
-                ControlDomainStore(store.path).reconcile_cas(
+                ControlDomainStore(store.path)._execute_live_cas(
                     replace_decision(current),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                    crash_live_attempt,
                 )
 
     def test_no_force_unlock_or_generic_record_overwrite_path_exists(self) -> None:
@@ -1407,6 +1434,17 @@ class BrokerControlAuthorityTest(unittest.TestCase):
 
 
 class BrokerControlCASTest(unittest.TestCase):
+    def test_unacquired_decision_binding_preserves_slice_one_hash_shape(
+        self,
+    ) -> None:
+        decision = replace_decision(activation())
+
+        self.assertIsNone(decision.proposal_acquisition_sha256)
+        self.assertNotIn(
+            "proposal_acquisition_sha256",
+            MutationDecision.binding_dict(decision),
+        )
+
     def test_exact_prior_post_and_neither_reconcile_to_fixed_outcomes(self) -> None:
         decision = replace_decision(activation())
 
@@ -1470,6 +1508,292 @@ class BrokerControlCASTest(unittest.TestCase):
                     reconcile_mutation(decision, TargetObservation(kind)),
                 )
 
+    def test_recovery_without_durable_intent_is_rejected_without_consumption(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(current)
+            initial = store.activate_initial(current)
+            observe = Mock(
+                return_value=TargetObservation(
+                    TargetKind.REGULAR,
+                    b"exact prior\n",
+                )
+            )
+
+            with (
+                patch(
+                    "decision_os.companion.broker_control.reconcile_mutation"
+                ) as reconcile,
+                patch.object(store, "_append_cas_fence_unlocked") as append,
+                self.assertRaisesRegex(
+                    AuthorityRejectedError,
+                    "requires an exact durable intent",
+                ),
+            ):
+                store._execute_recovery_cas(decision, observe)
+
+            observe.assert_not_called()
+            reconcile.assert_not_called()
+            append.assert_not_called()
+            self.assertEqual(initial, store.require_active(current))
+            self.assertFalse(store._fence_path.exists())
+
+    def test_raw_cas_assertion_callbacks_are_not_public(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(current)
+            initial = store.activate_initial(current)
+            mint_applied = Mock(return_value=ReconciliationOutcome.APPLIED)
+            mint_not_applied = Mock(
+                return_value=TargetObservation(
+                    TargetKind.REGULAR,
+                    b"exact prior\n",
+                )
+            )
+
+            self.assertFalse(hasattr(store, "execute_live_cas"))
+            self.assertFalse(hasattr(store, "execute_recovery_cas"))
+            self.assertFalse(hasattr(store, "recover_cas"))
+            self.assertFalse(hasattr(store, "reconcile_cas"))
+            with self.assertRaises(AttributeError):
+                store.execute_live_cas(  # type: ignore[attr-defined]
+                    decision,
+                    mint_applied,
+                )
+            with self.assertRaises(AttributeError):
+                store.execute_recovery_cas(  # type: ignore[attr-defined]
+                    decision,
+                    mint_not_applied,
+                )
+
+            mint_applied.assert_not_called()
+            mint_not_applied.assert_not_called()
+            self.assertEqual(initial, store.require_active(current))
+            self.assertFalse(store._fence_path.exists())
+
+            public_methods = {
+                name
+                for name in dir(store)
+                if not name.startswith("_") and callable(getattr(store, name))
+            }
+            self.assertTrue(
+                {
+                    "activate_initial",
+                    "activate_successor",
+                    "load",
+                    "load_required",
+                    "require_active",
+                    "transition",
+                }.issubset(public_methods)
+            )
+            self.assertFalse(
+                any("cas" in name or "reconcil" in name for name in public_methods)
+            )
+
+    def test_second_live_execute_is_rejected_even_for_the_exact_decision(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(current)
+            store.activate_initial(current)
+            leave_pending_cas(store, decision)
+            original_fences = tuple(store._fence_path.iterdir())
+            second_attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+
+            with (
+                patch.object(store, "_append_cas_fence_unlocked") as append,
+                self.assertRaisesRegex(
+                    AuthorityRejectedError,
+                    "live apply cannot resume",
+                ),
+            ):
+                store._execute_live_cas(decision, second_attempt)
+
+            append.assert_not_called()
+            second_attempt.assert_not_called()
+            self.assertEqual(original_fences, tuple(store._fence_path.iterdir()))
+            self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
+
+    def test_live_not_applied_is_rejected_and_only_recovery_can_prove_it(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            store = ControlDomainStore(Path(temporary) / "control.json")
+            current = activation()
+            decision = replace_decision(current)
+            store.activate_initial(current)
+            attempt = Mock(return_value=ReconciliationOutcome.NOT_APPLIED)
+
+            with self.assertRaisesRegex(
+                MutationDecisionError,
+                "only through CAS recovery",
+            ):
+                store._execute_live_cas(decision, attempt)
+
+            attempt.assert_called_once_with()
+            journal = store._journal_records_unlocked()
+            fences = store._cas_fences_unlocked(journal)
+            self.assertEqual(1, len(fences))
+            self.assertEqual("INTENT", fences[0].kind)
+            self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
+            self.assertEqual(
+                ReconciliationOutcome.NOT_APPLIED,
+                recover_observation(
+                    store,
+                    decision,
+                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                ),
+            )
+            self.assertEqual(ControlDomainState.ABANDONED, store.load_required().state)
+
+    def test_active_head_with_durable_intent_is_recovery_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "control.json"
+            store = ControlDomainStore(path)
+            current = activation()
+            decision = replace_decision(current)
+            initial = store.activate_initial(current)
+            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
+
+            with (
+                patch.object(
+                    store,
+                    "_mark_pending_cas_uncertain_unlocked",
+                    side_effect=RuntimeError("simulated crash after durable intent"),
+                ),
+                self.assertRaisesRegex(RuntimeError, "after durable intent"),
+            ):
+                store._execute_live_cas(decision, attempt)
+
+            attempt.assert_not_called()
+
+            journal = store._journal_records_unlocked()
+            fences = store._cas_fences_unlocked(journal)
+            self.assertEqual((initial,), journal)
+            self.assertEqual(1, len(fences))
+            self.assertEqual("INTENT", fences[0].kind)
+            with self.assertRaisesRegex(
+                ControlRecordIntegrityError,
+                "consumed CAS fence",
+            ):
+                ControlDomainStore(path).require_active(current)
+            with self.assertRaisesRegex(
+                AuthorityRejectedError,
+                "live apply cannot resume",
+            ):
+                ControlDomainStore(path)._execute_live_cas(
+                    decision,
+                    crash_live_attempt,
+                )
+
+            restarted = ControlDomainStore(path)
+            self.assertEqual(
+                ReconciliationOutcome.NOT_APPLIED,
+                recover_observation(
+                    restarted,
+                    decision,
+                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                ),
+            )
+            recovered_journal = restarted._journal_records_unlocked()
+            self.assertEqual(
+                (
+                    ControlDomainState.ACTIVE,
+                    ControlDomainState.UNCERTAIN,
+                    ControlDomainState.ABANDONED,
+                ),
+                tuple(record.state for record in recovered_journal),
+            )
+            self.assertEqual(
+                2,
+                len(restarted._cas_fences_unlocked(recovered_journal)),
+            )
+
+    def test_recovery_observes_after_failed_live_callback_releases_lock(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "control.json"
+            target_path = Path(temporary) / "target.txt"
+            target_path.write_bytes(b"exact prior\n")
+            store = ControlDomainStore(path)
+            current = activation()
+            decision = replace_decision(current)
+            store.activate_initial(current)
+            attempt_entered = threading.Event()
+            finish_attempt = threading.Event()
+            recovery_started = threading.Event()
+            observer_called = threading.Event()
+            attempt = Mock()
+            observed_bytes: list[bytes] = []
+
+            def blocked_live_attempt() -> ReconciliationOutcome:
+                attempt()
+                attempt_entered.set()
+                self.assertTrue(finish_attempt.wait(timeout=10))
+                target_path.write_bytes(b"exact post\n")
+                raise RuntimeError("simulated failure after live mutation")
+
+            def observe_target() -> TargetObservation:
+                observed = target_path.read_bytes()
+                observed_bytes.append(observed)
+                observer_called.set()
+                return TargetObservation(TargetKind.REGULAR, observed)
+
+            def recover_target() -> ReconciliationOutcome:
+                recovery_started.set()
+                return ControlDomainStore(path)._execute_recovery_cas(
+                    decision,
+                    observe_target,
+                )
+
+            reconcile = Mock(wraps=reconcile_mutation)
+            with (
+                patch(
+                    "decision_os.companion.broker_control.reconcile_mutation",
+                    reconcile,
+                ),
+                ThreadPoolExecutor(max_workers=2) as executor,
+            ):
+                live_future = executor.submit(
+                    store._execute_live_cas,
+                    decision,
+                    blocked_live_attempt,
+                )
+                try:
+                    self.assertTrue(attempt_entered.wait(timeout=10))
+                    self.assertEqual(b"exact prior\n", target_path.read_bytes())
+                    recovery_future = executor.submit(recover_target)
+                    self.assertTrue(recovery_started.wait(timeout=10))
+                    with self.assertRaises(FutureTimeoutError):
+                        recovery_future.result(timeout=0.1)
+                    self.assertFalse(observer_called.is_set())
+                    reconcile.assert_not_called()
+                finally:
+                    finish_attempt.set()
+
+                with self.assertRaisesRegex(RuntimeError, "after live mutation"):
+                    live_future.result(timeout=10)
+                self.assertEqual(
+                    ReconciliationOutcome.APPLIED,
+                    recovery_future.result(timeout=10),
+                )
+
+            attempt.assert_called_once_with()
+            self.assertEqual([b"exact post\n"], observed_bytes)
+            self.assertTrue(observer_called.is_set())
+            reconcile.assert_called_once()
+            self.assertEqual(
+                ControlDomainState.ABANDONED,
+                store.load_required().state,
+            )
+
     def test_durable_intent_reconciles_exactly_after_process_restart(self) -> None:
         cases = (
             (
@@ -1498,35 +1822,33 @@ class BrokerControlCASTest(unittest.TestCase):
                 decision = replace_decision(current)
                 first_process = ControlDomainStore(path)
                 first_process.activate_initial(current)
-
-                with patch(
-                    "decision_os.companion.broker_control.reconcile_mutation",
-                    side_effect=RuntimeError("simulated crash after intent"),
-                ):
-                    with self.assertRaisesRegex(RuntimeError, "after intent"):
-                        first_process.reconcile_cas(
-                            decision,
-                            TargetObservation(TargetKind.REGULAR, content),
-                        )
+                leave_pending_cas(first_process, decision)
 
                 with self.assertRaises(AuthorityRejectedError):
                     ControlDomainStore(path).require_active(current)
 
                 restarted = ControlDomainStore(path)
-                outcome = restarted.reconcile_cas(
+                outcome = recover_observation(
+                    restarted,
                     decision,
                     TargetObservation(TargetKind.REGULAR, content),
                 )
 
                 self.assertEqual(expected, outcome)
                 self.assertEqual(terminal_state, restarted.load_required().state)
+                observe_after_completion = Mock(
+                    side_effect=AssertionError(
+                        "completed recovery must not sample the target"
+                    )
+                )
                 self.assertEqual(
                     expected,
-                    ControlDomainStore(path).reconcile_cas(
+                    ControlDomainStore(path)._execute_recovery_cas(
                         decision,
-                        TargetObservation(TargetKind.REGULAR, b"changed later\n"),
+                        observe_after_completion,
                     ),
                 )
+                observe_after_completion.assert_not_called()
                 with self.assertRaises(AuthorityRejectedError):
                     restarted.require_active(current)
 
@@ -1539,15 +1861,7 @@ class BrokerControlCASTest(unittest.TestCase):
             original = replace_decision(current)
             store = ControlDomainStore(path)
             store.activate_initial(current)
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash after intent"),
-            ):
-                with self.assertRaises(RuntimeError):
-                    store.reconcile_cas(
-                        original,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
+            leave_pending_cas(store, original)
 
             different = replace_decision(
                 current,
@@ -1560,7 +1874,8 @@ class BrokerControlCASTest(unittest.TestCase):
                     AuthorityRejectedError,
                     "different decision",
                 ):
-                    ControlDomainStore(path).reconcile_cas(
+                    recover_observation(
+                        ControlDomainStore(path),
                         different,
                         TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                     )
@@ -1575,7 +1890,8 @@ class BrokerControlCASTest(unittest.TestCase):
                 )
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     original,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 ),
@@ -1590,15 +1906,7 @@ class BrokerControlCASTest(unittest.TestCase):
             decision = replace_decision(current)
             store = ControlDomainStore(path)
             store.activate_initial(current)
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash after intent"),
-            ):
-                with self.assertRaises(RuntimeError):
-                    store.reconcile_cas(
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
+            leave_pending_cas(store, decision)
 
             mismatches = (
                 replace(current, authority_domain_id="other-domain"),
@@ -1618,7 +1926,8 @@ class BrokerControlCASTest(unittest.TestCase):
                     "decision_os.companion.broker_control.reconcile_mutation"
                 ) as reconcile:
                     with self.assertRaises(AuthorityRejectedError):
-                        ControlDomainStore(path).reconcile_cas(
+                        recover_observation(
+                            ControlDomainStore(path),
                             replace_decision(mismatch),
                             TargetObservation(
                                 TargetKind.REGULAR,
@@ -1629,7 +1938,8 @@ class BrokerControlCASTest(unittest.TestCase):
 
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 ),
@@ -1644,15 +1954,7 @@ class BrokerControlCASTest(unittest.TestCase):
             decision = replace_decision(current)
             store = ControlDomainStore(path)
             store.activate_initial(current)
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash after intent"),
-            ):
-                with self.assertRaises(RuntimeError):
-                    store.reconcile_cas(
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
+            leave_pending_cas(store, decision)
             for fence_path in store._fence_path.glob("*.json"):
                 fence_path.unlink()
             store._fence_path.rmdir()
@@ -1661,13 +1963,12 @@ class BrokerControlCASTest(unittest.TestCase):
             self.assertEqual(ControlDomainState.UNCERTAIN, restarted.load_required().state)
             with self.assertRaises(AuthorityRejectedError):
                 restarted.require_active(current)
-            self.assertEqual(
-                ReconciliationOutcome.UNCERTAIN,
-                restarted.reconcile_cas(
+            with self.assertRaises(AuthorityRejectedError):
+                recover_observation(
+                    restarted,
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                ),
-            )
+                )
             abandoned = restarted.transition(
                 current,
                 ControlDomainState.ABANDONED,
@@ -1684,11 +1985,12 @@ class BrokerControlCASTest(unittest.TestCase):
             current = activation()
             store = ControlDomainStore(path)
             store.activate_initial(current)
+            decision = replace_decision(current)
             self.assertEqual(
                 ReconciliationOutcome.APPLIED,
-                store.reconcile_cas(
-                    replace_decision(current),
-                    TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                store._execute_live_cas(
+                    decision,
+                    lambda: ReconciliationOutcome.APPLIED,
                 ),
             )
             for fence in store._fence_path.iterdir():
@@ -1703,8 +2005,9 @@ class BrokerControlCASTest(unittest.TestCase):
             with self.assertRaises(AuthorityRejectedError):
                 restarted.require_active(current)
             with self.assertRaises(AuthorityRejectedError):
-                restarted.reconcile_cas(
-                    replace_decision(current),
+                recover_observation(
+                    restarted,
+                    decision,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 )
 
@@ -1737,9 +2040,9 @@ class BrokerControlCASTest(unittest.TestCase):
                     side_effect=fail_selected_directory_fsync,
                 ):
                     with self.assertRaisesRegex(OSError, "terminal CAS directory"):
-                        store.reconcile_cas(
+                        store._execute_live_cas(
                             decision,
-                            TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                            lambda: ReconciliationOutcome.APPLIED,
                         )
 
                 restarted = ControlDomainStore(path)
@@ -1747,7 +2050,8 @@ class BrokerControlCASTest(unittest.TestCase):
                     restarted.require_active(current)
                 self.assertEqual(
                     ReconciliationOutcome.APPLIED,
-                    restarted.reconcile_cas(
+                    recover_observation(
+                        restarted,
                         decision,
                         TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                     ),
@@ -1766,11 +2070,20 @@ class BrokerControlCASTest(unittest.TestCase):
                 store = ControlDomainStore(Path(temporary) / "control.json")
                 current = activation()
                 initial = store.activate_initial(current)
+                decision = replace_decision(current)
 
-                outcome = store.reconcile_cas(
-                    replace_decision(current),
-                    TargetObservation(TargetKind.REGULAR, content),
-                )
+                if expected is ReconciliationOutcome.APPLIED:
+                    outcome = store._execute_live_cas(
+                        decision,
+                        lambda: ReconciliationOutcome.APPLIED,
+                    )
+                else:
+                    leave_pending_cas(store, decision)
+                    outcome = recover_observation(
+                        store,
+                        decision,
+                        TargetObservation(TargetKind.REGULAR, content),
+                    )
 
                 self.assertEqual(expected, outcome)
                 with self.assertRaises(AuthorityRejectedError):
@@ -1791,10 +2104,11 @@ class BrokerControlCASTest(unittest.TestCase):
             store = ControlDomainStore(Path(temporary) / "control.json")
             current = activation()
             initial = store.activate_initial(current)
+            decision = replace_decision(current)
 
-            outcome = store.reconcile_cas(
-                replace_decision(current),
-                TargetObservation(TargetKind.REGULAR, b"neither\n"),
+            outcome = store._execute_live_cas(
+                decision,
+                lambda: ReconciliationOutcome.UNCERTAIN,
             )
 
             uncertain = store.load_required()
@@ -1803,8 +2117,9 @@ class BrokerControlCASTest(unittest.TestCase):
             self.assertEqual(initial.record_sha256, uncertain.predecessor_record_sha256)
             self.assertEqual(
                 ReconciliationOutcome.UNCERTAIN,
-                store.reconcile_cas(
-                    replace_decision(current),
+                recover_observation(
+                    store,
+                    decision,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                 ),
             )
@@ -1816,34 +2131,45 @@ class BrokerControlCASTest(unittest.TestCase):
             store = ControlDomainStore(path)
             current = activation()
             store.activate_initial(current)
+            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
             original_fsync = os.fsync
             file_fsyncs = 0
 
-            def fail_second_file_fsync(descriptor: int) -> None:
+            def fail_uncertain_head_fsync(descriptor: int) -> None:
                 nonlocal file_fsyncs
                 if stat.S_ISREG(os.fstat(descriptor).st_mode):
                     file_fsyncs += 1
-                    if file_fsyncs == 2:
+                    if file_fsyncs == 3:
                         raise OSError("injected uncertain record fsync failure")
                 original_fsync(descriptor)
 
             with patch(
                 "decision_os.companion.broker_control.os.fsync",
-                side_effect=fail_second_file_fsync,
+                side_effect=fail_uncertain_head_fsync,
             ):
                 with self.assertRaisesRegex(OSError, "uncertain record"):
-                    store.reconcile_cas(
+                    store._execute_live_cas(
                         replace_decision(current),
-                        TargetObservation(TargetKind.REGULAR, b"neither\n"),
+                        attempt,
                     )
+
+            attempt.assert_not_called()
 
             with self.assertRaises(ControlRecordIntegrityError):
                 ControlDomainStore(path).require_active(current)
-            abandoned = ControlDomainStore(path).transition(
-                current,
-                ControlDomainState.ABANDONED,
+            decision = replace_decision(current)
+            self.assertEqual(
+                ReconciliationOutcome.NOT_APPLIED,
+                recover_observation(
+                    ControlDomainStore(path),
+                    decision,
+                    TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
+                ),
             )
-            self.assertEqual(ControlDomainState.ABANDONED, abandoned.state)
+            self.assertEqual(
+                ControlDomainState.ABANDONED,
+                ControlDomainStore(path).load_required().state,
+            )
 
     def test_intent_failure_occurs_before_observation_is_consumed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1852,23 +2178,21 @@ class BrokerControlCASTest(unittest.TestCase):
             current = activation()
             store.activate_initial(current)
             store._fence_path.mkdir()
+            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
 
             with (
                 patch(
                     "decision_os.companion.broker_control.os.fsync",
                     side_effect=OSError("injected intent fsync failure"),
                 ),
-                patch(
-                    "decision_os.companion.broker_control.reconcile_mutation"
-                ) as reconcile,
             ):
                 with self.assertRaisesRegex(OSError, "intent fsync"):
-                    store.reconcile_cas(
+                    store._execute_live_cas(
                         replace_decision(current),
-                        TargetObservation(TargetKind.REGULAR, b"neither\n"),
+                        attempt,
                     )
 
-            reconcile.assert_not_called()
+            attempt.assert_not_called()
             self.assertEqual(
                 current,
                 ControlDomainStore(path).require_active(current).activation,
@@ -1882,6 +2206,7 @@ class BrokerControlCASTest(unittest.TestCase):
             store = ControlDomainStore(path)
             store.activate_initial(current)
             store._fence_path.mkdir()
+            attempt = Mock(return_value=ReconciliationOutcome.APPLIED)
             original_fsync = os.fsync
             directory_fsyncs = 0
 
@@ -1889,7 +2214,7 @@ class BrokerControlCASTest(unittest.TestCase):
                 nonlocal directory_fsyncs
                 if stat.S_ISDIR(os.fstat(descriptor).st_mode):
                     directory_fsyncs += 1
-                    if directory_fsyncs == 3:
+                    if directory_fsyncs == 1:
                         raise OSError("simulated intent directory fsync")
                 original_fsync(descriptor)
 
@@ -1898,29 +2223,25 @@ class BrokerControlCASTest(unittest.TestCase):
                     "decision_os.companion.broker_control.os.fsync",
                     side_effect=fail_directory_fsync,
                 ),
-                patch(
-                    "decision_os.companion.broker_control.reconcile_mutation"
-                ) as reconcile,
             ):
                 with self.assertRaisesRegex(OSError, "intent directory"):
-                    store.reconcile_cas(
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
-                reconcile.assert_not_called()
+                    store._execute_live_cas(decision, attempt)
 
-            with self.assertRaises(AuthorityRejectedError):
+            attempt.assert_not_called()
+
+            with self.assertRaises(ControlRecordIntegrityError):
                 ControlDomainStore(path).require_active(current)
             self.assertEqual(
-                ControlDomainState.UNCERTAIN,
-                ControlDomainStore(path).load_required().state,
-            )
-            self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 ),
+            )
+            self.assertEqual(
+                ControlDomainState.ABANDONED,
+                ControlDomainStore(path).load_required().state,
             )
 
     def test_applied_evidence_cannot_restore_an_uncertain_domain(self) -> None:
@@ -1938,13 +2259,12 @@ class BrokerControlCASTest(unittest.TestCase):
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                 ),
             )
-            self.assertEqual(
-                ReconciliationOutcome.UNCERTAIN,
-                store.reconcile_cas(
+            with self.assertRaises(AuthorityRejectedError):
+                recover_observation(
+                    store,
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                ),
-            )
+                )
             self.assertEqual(ControlDomainState.UNCERTAIN, store.load_required().state)
 
     def test_mutation_contract_rejects_forbidden_operations_and_paths(self) -> None:
@@ -2088,16 +2408,7 @@ class BrokerControlCASTest(unittest.TestCase):
             decision = replace_decision(current)
             first_process = ControlDomainStore(path)
             first_process.activate_initial(current)
-
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash after intent"),
-            ):
-                with self.assertRaisesRegex(RuntimeError, "after intent"):
-                    first_process.reconcile_cas(
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
-                    )
+            leave_pending_cas(first_process, decision)
 
             forged = replace_decision(current)
             object.__setattr__(
@@ -2115,7 +2426,8 @@ class BrokerControlCASTest(unittest.TestCase):
             )
 
             with self.assertRaises(MutationDecisionError):
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     forged,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 )
@@ -2125,7 +2437,8 @@ class BrokerControlCASTest(unittest.TestCase):
             )
             self.assertEqual(
                 ReconciliationOutcome.NOT_APPLIED,
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact prior\n"),
                 ),
@@ -2138,16 +2451,7 @@ class BrokerControlCASTest(unittest.TestCase):
             current = activation()
             legitimate = replace_decision(current)
             store.activate_initial(current)
-
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash after intent"),
-            ):
-                with self.assertRaisesRegex(RuntimeError, "after intent"):
-                    store.reconcile_cas(
-                        legitimate,
-                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                    )
+            leave_pending_cas(store, legitimate)
 
             forged = EqualitySpoofDecision(
                 activation=current,
@@ -2167,7 +2471,8 @@ class BrokerControlCASTest(unittest.TestCase):
                 "decision_os.companion.broker_control.reconcile_mutation"
             ) as reconcile:
                 with self.assertRaises(MutationDecisionError):
-                    ControlDomainStore(path).reconcile_cas(
+                    recover_observation(
+                        ControlDomainStore(path),
                         forged,
                         TargetObservation(
                             TargetKind.REGULAR,
@@ -2178,7 +2483,8 @@ class BrokerControlCASTest(unittest.TestCase):
 
             self.assertEqual(
                 ReconciliationOutcome.APPLIED,
-                ControlDomainStore(path).reconcile_cas(
+                recover_observation(
+                    ControlDomainStore(path),
                     legitimate,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                 ),
@@ -2195,50 +2501,64 @@ class BrokerControlCASTest(unittest.TestCase):
                 post=b"first post\n",
             )
             first_binding = MutationDecision.binding_dict(decision)
+            first_decision_sha256 = hash_payload(first_binding)
             store.activate_initial(current)
-            reached_reconciliation = threading.Event()
-            continue_reconciliation = threading.Event()
-            original_reconcile = reconcile_mutation
+            attempt_entered = threading.Event()
+            release_attempt = threading.Event()
 
-            def pause_after_intent(
-                snapshot: MutationDecision,
-                observation: TargetObservation,
-            ) -> ReconciliationOutcome:
-                self.assertIsNot(snapshot, decision)
-                reached_reconciliation.set()
-                self.assertTrue(continue_reconciliation.wait(timeout=10))
-                return original_reconcile(snapshot, observation)
+            def paused_attempt() -> ReconciliationOutcome:
+                attempt_entered.set()
+                self.assertTrue(release_attempt.wait(timeout=10))
+                return ReconciliationOutcome.UNCERTAIN
 
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=pause_after_intent,
-            ), ThreadPoolExecutor(max_workers=1) as executor:
+            with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
-                    store.reconcile_cas,
+                    store._execute_live_cas,
                     decision,
-                    TargetObservation(
-                        TargetKind.REGULAR,
-                        b"second post\n",
-                    ),
+                    paused_attempt,
                 )
-                self.assertTrue(reached_reconciliation.wait(timeout=10))
-                object.__setattr__(decision, "target_bytes", b"second post\n")
-                object.__setattr__(
-                    decision,
-                    "expected_post_sha256",
-                    sha256(b"second post\n"),
-                )
-                continue_reconciliation.set()
-                outcome = future.result(timeout=10)
+                try:
+                    self.assertTrue(attempt_entered.wait(timeout=10))
+                    pending_journal = store._journal_records_unlocked()
+                    pending_fences = store._cas_fences_unlocked(pending_journal)
+                    self.assertEqual(
+                        (
+                            ControlDomainState.ACTIVE,
+                            ControlDomainState.UNCERTAIN,
+                        ),
+                        tuple(record.state for record in pending_journal),
+                    )
+                    self.assertEqual(
+                        ControlDomainState.UNCERTAIN,
+                        store._read_control_record(store.path).state,
+                    )
+                    self.assertEqual(1, len(pending_fences))
+                    self.assertEqual("INTENT", pending_fences[0].kind)
+                    self.assertEqual(
+                        first_decision_sha256,
+                        pending_fences[0].decision_sha256,
+                    )
 
-            self.assertEqual(ReconciliationOutcome.UNCERTAIN, outcome)
+                    object.__setattr__(decision, "target_bytes", b"second post\n")
+                    object.__setattr__(
+                        decision,
+                        "expected_post_sha256",
+                        sha256(b"second post\n"),
+                    )
+                finally:
+                    release_attempt.set()
+                self.assertEqual(
+                    ReconciliationOutcome.UNCERTAIN,
+                    future.result(timeout=10),
+                )
+
             intent = next(
                 json.loads(path.read_bytes())
                 for path in store._fence_path.glob("*.json")
                 if json.loads(path.read_bytes())["kind"] == "INTENT"
             )
             self.assertEqual(
-                hash_payload(first_binding),
+                first_decision_sha256,
                 intent["decision_sha256"],
             )
             self.assertNotEqual(
@@ -2249,6 +2569,25 @@ class BrokerControlCASTest(unittest.TestCase):
                 ControlDomainState.UNCERTAIN,
                 store.load_required().state,
             )
+            completion = next(
+                json.loads(path.read_bytes())
+                for path in store._fence_path.glob("*.json")
+                if json.loads(path.read_bytes())["kind"] == "COMPLETE"
+            )
+            self.assertEqual(first_decision_sha256, completion["decision_sha256"])
+            self.assertEqual(intent["record_sha256"], completion["intent_sha256"])
+            self.assertEqual(
+                ReconciliationOutcome.UNCERTAIN.value,
+                completion["outcome"],
+            )
+            self.assertEqual(
+                ReconciliationOutcome.UNCERTAIN,
+                recover_observation(
+                    store,
+                    replace_decision(current, post=b"first post\n"),
+                    TargetObservation(TargetKind.REGULAR, b"second post\n"),
+                ),
+            )
 
     def test_observation_subclass_is_rejected_before_reconciliation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2256,6 +2595,7 @@ class BrokerControlCASTest(unittest.TestCase):
             current = activation()
             decision = replace_decision(current)
             store.activate_initial(current)
+            leave_pending_cas(store, decision)
             forged = EqualitySpoofObservation(
                 TargetKind.REGULAR,
                 b"exact post\n",
@@ -2265,14 +2605,14 @@ class BrokerControlCASTest(unittest.TestCase):
                 "decision_os.companion.broker_control.reconcile_mutation"
             ) as reconcile:
                 with self.assertRaises(MutationDecisionError):
-                    store.reconcile_cas(decision, forged)
+                    recover_observation(store, decision, forged)
                 reconcile.assert_not_called()
 
             self.assertEqual(
-                ControlDomainState.ACTIVE,
-                store.require_active(current).state,
+                ControlDomainState.UNCERTAIN,
+                store.load_required().state,
             )
-            self.assertFalse(store._fence_path.exists())
+            self.assertEqual(1, len(tuple(store._fence_path.glob("*.json"))))
 
     def test_standalone_reconciliation_rejects_wrapper_subclasses(self) -> None:
         current = activation()
@@ -2325,9 +2665,9 @@ class BrokerControlIntegrityTest(unittest.TestCase):
                 store = ControlDomainStore(path)
 
                 with self.assertRaises(ControlRecordIntegrityError):
-                    store.reconcile_cas(
+                    store._execute_live_cas(
                         replace_decision(activation()),
-                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                        crash_live_attempt,
                     )
 
     def test_rehashed_impossible_state_is_still_rejected(self) -> None:
@@ -2389,15 +2729,7 @@ class BrokerControlIntegrityTest(unittest.TestCase):
             decision = replace_decision(current)
             store = ControlDomainStore(path)
             store.activate_initial(current)
-            with patch(
-                "decision_os.companion.broker_control.reconcile_mutation",
-                side_effect=RuntimeError("simulated crash"),
-            ):
-                with self.assertRaises(RuntimeError):
-                    store.reconcile_cas(
-                        decision,
-                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
-                    )
+            leave_pending_cas(store, decision)
             intent_path = next(store._fence_path.glob("*.json"))
             intent_path.write_bytes(b'{"torn":')
 
@@ -2405,7 +2737,8 @@ class BrokerControlIntegrityTest(unittest.TestCase):
             with self.assertRaises(ControlRecordIntegrityError):
                 restarted.require_active(current)
             with self.assertRaises(ControlRecordIntegrityError):
-                restarted.reconcile_cas(
+                recover_observation(
+                    restarted,
                     decision,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                 )
@@ -2416,9 +2749,10 @@ class BrokerControlIntegrityTest(unittest.TestCase):
             current = activation()
             store = ControlDomainStore(path)
             store.activate_initial(current)
-            store.reconcile_cas(
-                replace_decision(current),
-                TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+            decision = replace_decision(current)
+            store._execute_live_cas(
+                decision,
+                lambda: ReconciliationOutcome.APPLIED,
             )
             fence_values = {
                 fence_path: json.loads(fence_path.read_bytes())
@@ -2435,8 +2769,9 @@ class BrokerControlIntegrityTest(unittest.TestCase):
             with self.assertRaises(ControlRecordIntegrityError):
                 restarted.load_required()
             with self.assertRaises(ControlRecordIntegrityError):
-                restarted.reconcile_cas(
-                    replace_decision(current),
+                recover_observation(
+                    restarted,
+                    decision,
                     TargetObservation(TargetKind.REGULAR, b"exact post\n"),
                 )
 
@@ -2493,9 +2828,9 @@ class BrokerControlIntegrityTest(unittest.TestCase):
                 with self.assertRaises(ControlRecordIntegrityError):
                     store.require_active(activation())
                 with self.assertRaises(ControlRecordIntegrityError):
-                    store.reconcile_cas(
+                    store._execute_live_cas(
                         replace_decision(activation()),
-                        TargetObservation(TargetKind.REGULAR, b"exact post\n"),
+                        crash_live_attempt,
                     )
 
 
