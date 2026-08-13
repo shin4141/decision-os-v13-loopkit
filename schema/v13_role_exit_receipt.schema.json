@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/v13-role-exit-receipt.schema.json",
+  "title": "Decision-OS V13 Stage 4 Role Exit Receipt v0.1",
+  "description": "A hash-bound structural return record for one supplied Role Contract. The Python reference validator is the normative layer for canonical hashing, cross-document bindings, and semantic checks. Validation does not authenticate the producer, prove command execution, verification-scope sufficiency, or repository state, grant authority, establish role independence, or choose the receiver's review disposition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "recorded_at",
+    "contract_identity",
+    "assignment_identity",
+    "repository_state",
+    "changed_artifacts",
+    "verification_commands",
+    "runtime_evidence",
+    "completion",
+    "coverage_gap_recommendation",
+    "implementation_boundary",
+    "required_next_actor",
+    "claims_not_made"
+  ],
+  "properties": {
+    "schema_version": {"const": "decision-os.role-exit-receipt.v0.1"},
+    "receipt_id": {"$ref": "#/$defs/sha256"},
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "contract_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "contract_hash"],
+      "properties": {
+        "contract_id": {"$ref": "#/$defs/nonEmptyString"},
+        "contract_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "assignment_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "role_id",
+        "assignee_identity",
+        "execution_context_identity"
+      ],
+      "properties": {
+        "task_id": {"$ref": "#/$defs/nonEmptyString"},
+        "role_id": {"enum": ["BUILDER", "AUDITOR"]},
+        "assignee_identity": {"$ref": "#/$defs/nonEmptyString"},
+        "execution_context_identity": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "repository_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "base_head", "final_head"],
+      "properties": {
+        "repo": {"$ref": "#/$defs/nonEmptyString"},
+        "base_head": {"$ref": "#/$defs/gitHead"},
+        "final_head": {"$ref": "#/$defs/gitHead"}
+      }
+    },
+    "changed_artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/changedArtifact"}
+    },
+    "verification_commands": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/verificationCommand"}
+    },
+    "runtime_evidence": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/runtimeEvidence"}
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v12_state",
+        "completion_state",
+        "completion_line",
+        "routine_cleanup_state",
+        "remaining_unverified",
+        "unknowns"
+      ],
+      "properties": {
+        "v12_state": {"enum": ["PASS", "DELAY", "BLOCK", "UNKNOWN"]},
+        "completion_state": {"enum": ["COMPLETE", "INCOMPLETE", "BLOCKED", "UNKNOWN"]},
+        "completion_line": {"$ref": "#/$defs/nonEmptyString"},
+        "routine_cleanup_state": {"enum": ["COMPLETE", "INCOMPLETE", "UNKNOWN"]},
+        "remaining_unverified": {"$ref": "#/$defs/uniqueStrings"},
+        "unknowns": {"$ref": "#/$defs/uniqueStrings"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"v12_state": {"const": "PASS"}}},
+          "then": {
+            "properties": {
+              "completion_state": {"const": "COMPLETE"},
+              "routine_cleanup_state": {"const": "COMPLETE"},
+              "remaining_unverified": {"maxItems": 0},
+              "unknowns": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"v12_state": {"const": "DELAY"}}},
+          "then": {"properties": {"completion_state": {"const": "INCOMPLETE"}}}
+        },
+        {
+          "if": {"properties": {"v12_state": {"const": "BLOCK"}}},
+          "then": {"properties": {"completion_state": {"const": "BLOCKED"}}}
+        },
+        {
+          "if": {"properties": {"v12_state": {"const": "UNKNOWN"}}},
+          "then": {"properties": {"completion_state": {"const": "UNKNOWN"}}}
+        }
+      ]
+    },
+    "coverage_gap_recommendation": {"$ref": "#/$defs/coverageGapRecommendation"},
+    "implementation_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_separation_enforcement",
+        "record_issuer_authentication_transport",
+        "role_independence",
+        "verification_scope_sufficiency",
+        "end_to_end_false_division_prevention"
+      ],
+      "properties": {
+        "role_separation_enforcement": {"const": "VALIDATOR-LEVEL ONLY"},
+        "record_issuer_authentication_transport": {"const": "NOT IMPLEMENTED"},
+        "role_independence": {"const": "NOT ESTABLISHED"},
+        "verification_scope_sufficiency": {"const": "NOT ESTABLISHED"},
+        "end_to_end_false_division_prevention": {"const": "NOT ESTABLISHED"}
+      }
+    },
+    "required_next_actor": {"$ref": "#/$defs/nonEmptyString"},
+    "claims_not_made": {
+      "const": [
+        "command_execution_authenticity",
+        "verification_scope_sufficiency",
+        "artifact_bytes_or_repository_state_beyond_supplied_hashes",
+        "record_issuer_authentication_or_transport",
+        "role_independence",
+        "authority_approval_or_receiver_disposition"
+      ]
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s*(?:UNKNOWN|UNVERIFIABLE|NONE)\\s*$)(?=[\\s\\S]*\\S)[\\s\\S]+$"
+    },
+    "boundedGitPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*/$)[^\\\\\\u0000]+$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gitHead": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "uniqueStrings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "changedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "change_type", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/boundedGitPath"},
+        "change_type": {"enum": ["ADDED", "MODIFIED", "DELETED"]},
+        "sha256": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"change_type": {"const": "DELETED"}}},
+          "then": {"properties": {"sha256": {"const": null}}},
+          "else": {"properties": {"sha256": {"$ref": "#/$defs/sha256"}}}
+        }
+      ]
+    },
+    "verificationCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "exit_code",
+        "stdout_sha256",
+        "stderr_sha256",
+        "environment_sha256",
+        "required"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/nonEmptyString"}
+        },
+        "exit_code": {"type": "integer", "minimum": -255, "maximum": 255},
+        "stdout_sha256": {"$ref": "#/$defs/sha256"},
+        "stderr_sha256": {"$ref": "#/$defs/sha256"},
+        "environment_sha256": {"$ref": "#/$defs/sha256"},
+        "required": {"type": "boolean"}
+      }
+    },
+    "runtimeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_type", "identity_sha256"],
+      "properties": {
+        "evidence_type": {"enum": ["INSTALLED_MODULE", "APP_BUILD", "SMOKE_RUN", "OTHER"]},
+        "identity_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "coverageGapRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage_completed",
+        "coverage_gap",
+        "recommended_specialist",
+        "reason",
+        "exact_target",
+        "required_evidence",
+        "urgency",
+        "assignment_authority_required",
+        "automatic_invocation"
+      ],
+      "properties": {
+        "coverage_completed": {"type": "boolean"},
+        "coverage_gap": {"$ref": "#/$defs/nonEmptyString"},
+        "recommended_specialist": {"enum": ["NONE", "BUILDER", "AUDITOR"]},
+        "reason": {"$ref": "#/$defs/nonEmptyString"},
+        "exact_target": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/boundedGitPath"}
+        },
+        "required_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonEmptyString"}
+        },
+        "urgency": {"enum": ["LOW", "MEDIUM", "HIGH", "NONE"]},
+        "assignment_authority_required": {"const": true},
+        "automatic_invocation": {"const": false}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"coverage_gap": {"const": "NONE DETECTED"}}},
+          "then": {
+            "properties": {
+              "coverage_completed": {"const": true},
+              "recommended_specialist": {"const": "NONE"},
+              "urgency": {"const": "NONE"}
+            }
+          },
+          "else": {
+            "properties": {
+              "recommended_specialist": {"enum": ["BUILDER", "AUDITOR"]},
+              "urgency": {"enum": ["LOW", "MEDIUM", "HIGH"]}
+            }
+          }
+        }
+      ]
+    }
+  }
+}
