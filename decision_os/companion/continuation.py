@@ -862,7 +862,6 @@ class StageBContinuationStore:
         directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
         directory_descriptor = os.open(directory, directory_flags)
         temporary_descriptor: int | None = None
-        temporary_created = False
         temporary_identity: tuple[int, int] | None = None
         published = False
         try:
@@ -872,7 +871,6 @@ class StageBContinuationStore:
                 0o600,
                 dir_fd=directory_descriptor,
             )
-            temporary_created = True
             metadata = os.fstat(temporary_descriptor)
             temporary_identity = (metadata.st_dev, metadata.st_ino)
             stream = os.fdopen(temporary_descriptor, "wb")
@@ -891,24 +889,21 @@ class StageBContinuationStore:
             published = True
             os.fsync(directory_descriptor)
         except Exception:
-            if not published and temporary_created:
+            if not published and temporary_identity is not None:
                 try:
-                    if temporary_identity is None:
-                        os.unlink(temporary_name, dir_fd=directory_descriptor)
-                    else:
-                        observed = os.stat(
+                    observed = os.stat(
+                        temporary_name,
+                        dir_fd=directory_descriptor,
+                        follow_symlinks=False,
+                    )
+                    if (
+                        observed.st_dev,
+                        observed.st_ino,
+                    ) == temporary_identity:
+                        os.unlink(
                             temporary_name,
                             dir_fd=directory_descriptor,
-                            follow_symlinks=False,
                         )
-                        if (
-                            observed.st_dev,
-                            observed.st_ino,
-                        ) == temporary_identity:
-                            os.unlink(
-                                temporary_name,
-                                dir_fd=directory_descriptor,
-                            )
                 except FileNotFoundError:
                     pass
             raise

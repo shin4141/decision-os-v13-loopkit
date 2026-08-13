@@ -370,12 +370,13 @@ class StageBContinuationTest(unittest.TestCase):
                 os.fstat(descriptors[0])
             self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
 
-    def test_continuation_store_cleans_temp_when_fstat_fails(
+    def test_continuation_store_retains_unverified_temp_when_fstat_fails(
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             path = root / "application-state" / "stage-b-continuation.json"
+            temporary_path = path.parent / ".stage-b-fstat.tmp"
             store = StageBContinuationStore(path)
             descriptors: list[int] = []
 
@@ -399,7 +400,43 @@ class StageBContinuationTest(unittest.TestCase):
             self.assertEqual(1, len(descriptors))
             with self.assertRaises(OSError):
                 os.fstat(descriptors[0])
-            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+            self.assertEqual(b"", temporary_path.read_bytes())
+            self.assertFalse(path.exists())
+
+    def test_continuation_store_preserves_unverified_fstat_replacement(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            temporary_path = path.parent / ".stage-b-fstat-race.tmp"
+            store = StageBContinuationStore(path)
+            descriptors: list[int] = []
+            sentinel = b"unverified replacement sentinel"
+
+            def substitute_then_fail_fstat(descriptor: int) -> None:
+                descriptors.append(descriptor)
+                temporary_path.unlink()
+                temporary_path.write_bytes(sentinel)
+                raise OSError("injected fstat race failure")
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="fstat-race",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fstat",
+                    side_effect=substitute_then_fail_fstat,
+                ),
+                self.assertRaisesRegex(OSError, "injected fstat race failure"),
+            ):
+                store.save(self.continuation_record("9" * 32))
+
+            self.assertEqual(1, len(descriptors))
+            with self.assertRaises(OSError):
+                os.fstat(descriptors[0])
+            self.assertEqual(sentinel, temporary_path.read_bytes())
             self.assertFalse(path.exists())
 
     def test_continuation_store_preserves_substituted_temp_on_file_failure(
