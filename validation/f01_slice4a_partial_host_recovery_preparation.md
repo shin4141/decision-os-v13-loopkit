@@ -1,14 +1,38 @@
 # F-01 Slice 4A — partial-host recovery preparation
 
-**As-of:** 2026-08-13 JST
+**As-of:** `CURRENT_HOST_STATE` captured through Unix ns
+`1786628296769401000` on 2026-08-13 JST
 
-**Gate:** `HOLD — INDEPENDENT ROLLBACK REVIEW`
+**Gate:** `BLOCK — NO PRIVILEGED EXECUTION`
 
 **Authority:** preparation and non-privileged fixtures only
 
-**Privileged interaction budget:** `1` for a later separately authorized run
+**Privileged interaction budget:** `1`; the current authorization budget is
+exhausted and this repair authorizes no privileged execution
 
-No privileged command was executed during this recovery-preparation pass.
+No privileged command was executed during this current-state repair pass.
+
+## Sole rollback As-of authority
+
+The latest direct Directory Service re-anchor supersedes the immediate
+post-failure T0 shape for rollback preconditions. Its exact current target is:
+
+- user present values: `RecordName=_decisionos_codex`, `UniqueID=510`,
+  `GeneratedUID=D6515614-B56A-4943-AA41-18D17DE9F899`,
+  `PrimaryGroupID=510`, `RealName=Decision OS Codex execution principal`, and
+  `NFSHomeDirectory=/var/empty`;
+- user absent attributes: `UserShell`, `IsHidden`, and
+  `AuthenticationAuthority`;
+- group present values: `RecordName=_decisionos_codex`, `PrimaryGroupID=510`,
+  `GeneratedUID=1F200679-B0A2-4D13-A86F-6492F9C4B66F`, and
+  `RealName=Decision OS Codex execution principal`;
+- group absent attributes: `GroupMembership` and `GroupMembers`;
+- UID 510 and GID 510 each uniquely resolve to `_decisionos_codex`;
+- Guardian and Broker user/group records are absent; and
+- all three DecisionOS Slice 4A host-state paths are absent.
+
+The re-anchor collector ran as EUID `501`. This repair does not reinterpret the
+earlier convenience-shell result: `UserShell` is required absent.
 
 ## Exact stop diagnosis
 
@@ -60,24 +84,26 @@ Before deletion, the rollback requires:
 
 - exact equality of all table fields;
 - UID 510 and GID 510 each resolve only to the named target;
-- `NFSHomeDirectory`, `UserShell`, `IsHidden`, and
-  `AuthenticationAuthority` are absent from the user record;
+- `NFSHomeDirectory=/var/empty` is present in the user record;
+- `UserShell`, `IsHidden`, and `AuthenticationAuthority` are absent from the
+  user record;
 - `GroupMembership` and `GroupMembers` are absent from the private-group
   record;
 - Guardian and Broker user/group records remain absent; and
 - all DecisionOS/F01PrincipalSeparation host-state paths remain absent.
 
-Later intended Slice 4A values are not accepted as equivalent. Presence of any
-one of those six attributes means the host changed after the accepted
-observation and forces `HOLD` before mutation.
+The old T0 state is not accepted as equivalent. Absence or drift of
+`NFSHomeDirectory`, or presence of any required-absent attribute, means the
+host changed after the current re-anchor and forces `HOLD` before mutation.
 
 Both target records are read and rebound immediately before the user's
-name-addressed deletion, including a second exact-absence check for all six
-attributes. After that deletion, the target group is likewise read and rebound
-immediately before its deletion; the user must remain absent and both group
-membership attributes must remain absent. Held principals and the host-state
-paths are rechecked before each mutation. This narrows each deletion to the
-observed identity and refuses a name/GUID/ID/attribute substitution.
+name-addressed deletion, including a second exact-value check for
+`NFSHomeDirectory` and exact-absence checks for the other five attributes.
+After that deletion, the target group is likewise read and rebound immediately
+before its deletion; the user must remain absent and both group membership
+attributes must remain absent. Held principals and the host-state paths are
+rechecked before each mutation. This narrows each deletion to the observed
+identity and refuses a name/GUID/ID/attribute substitution.
 
 The only mutation allowlist is:
 
@@ -100,12 +126,12 @@ Repository source:
 
 Read-only execution copy:
 
-`/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97/rollback.py`
+`/private/tmp/decision-os-f01-slice4a-rollback-beac99db0ad4fff4/rollback.py`
 
 Both files have SHA-256:
 
 ```text
-fca618b2aa376a97688c9da673dc655a281931fedaa8bbbc3352119309fdce9f
+beac99db0ad4fff4162531d904e9f36bb4d21535b0e0e885608b0d227f4b8877
 ```
 
 The staged directory is owner `501`, group `0`, mode `0500`. The staged file is
@@ -122,7 +148,7 @@ administrator interaction. Neither this command nor its rollback payload was
 executed in this preparation pass.
 
 ```sh
-/usr/bin/osascript -e "set payload to \"import hashlib,os,stat,sys;p='/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97/rollback.py';q='/private/tmp/decision-os-f01-slice4a-rollback-fca618b2aa376a97';d=os.stat(q,follow_symlinks=False);fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW);s=os.fstat(fd);f=os.fdopen(fd,'rb',closefd=True);b=f.read();f.close();ok=stat.S_ISDIR(d.st_mode) and d.st_uid==501 and d.st_gid==0 and stat.S_IMODE(d.st_mode)==0o500 and stat.S_ISREG(s.st_mode) and s.st_uid==501 and s.st_gid==0 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o444 and len(b)==s.st_size and hashlib.sha256(b).hexdigest()=='fca618b2aa376a97688c9da673dc655a281931fedaa8bbbc3352119309fdce9f';ok or sys.exit('rollback script identity mismatch');sys.argv=[p,'rollback','--confirm','rollback-only-observed-partial-codex-uid-gid-510'];g={'__name__':'__main__','__file__':p};exec(compile(b,p,'exec'),g,g)\"" -e 'do shell script ("/usr/bin/python3 -I -S -c " & quoted form of payload) with administrator privileges'
+/usr/bin/osascript -e "set payload to \"import hashlib,os,stat,sys;p='/private/tmp/decision-os-f01-slice4a-rollback-beac99db0ad4fff4/rollback.py';q='/private/tmp/decision-os-f01-slice4a-rollback-beac99db0ad4fff4';d=os.stat(q,follow_symlinks=False);fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW);s=os.fstat(fd);f=os.fdopen(fd,'rb',closefd=True);b=f.read();f.close();ok=stat.S_ISDIR(d.st_mode) and d.st_uid==501 and d.st_gid==0 and stat.S_IMODE(d.st_mode)==0o500 and stat.S_ISREG(s.st_mode) and s.st_uid==501 and s.st_gid==0 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o444 and len(b)==s.st_size and hashlib.sha256(b).hexdigest()=='beac99db0ad4fff4162531d904e9f36bb4d21535b0e0e885608b0d227f4b8877';ok or sys.exit('rollback script identity mismatch');sys.argv=[p,'rollback','--confirm','rollback-only-observed-partial-codex-uid-gid-510'];g={'__name__':'__main__','__file__':p};exec(compile(b,p,'exec'),g,g)\"" -e 'do shell script ("/usr/bin/python3 -I -S -c " & quoted form of payload) with administrator privileges'
 ```
 
 Only the shell parse and an unprivileged hash-loader `--help` path were tested.
@@ -155,8 +181,8 @@ executed only against mocks. Guardian and Broker have not been provisioned.
 
 ## Preparation verification
 
-- focused principal-separation plus rollback fixtures: `55` tests passed;
-- rollback fixtures under macOS `/usr/bin/python3` 3.9: `20` tests passed;
+- focused principal-separation plus rollback fixtures: `57` tests passed;
+- rollback fixtures under macOS `/usr/bin/python3` 3.9: `22` tests passed;
 - corrected provision fault injection covers every one of its `39` successful
   Directory Service/password-policy mutation positions and proves one call at
   the injected failure;

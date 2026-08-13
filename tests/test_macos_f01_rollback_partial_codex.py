@@ -21,7 +21,6 @@ from scripts.macos_f01_rollback_partial_codex import (
 
 
 FORBIDDEN_OBSERVED_ADDITIONS = (
-    (USER_PATH, "NFSHomeDirectory", ("/var/empty",)),
     (USER_PATH, "UserShell", ("/usr/bin/false",)),
     (USER_PATH, "IsHidden", ("1",)),
     (USER_PATH, "AuthenticationAuthority", (";DisabledUser;",)),
@@ -31,6 +30,11 @@ FORBIDDEN_OBSERVED_ADDITIONS = (
         "GroupMembers",
         (EXPECTED_USER["GeneratedUID"][0],),
     ),
+)
+CURRENT_STATE_DRIFTS = (
+    (USER_PATH, "NFSHomeDirectory", None),
+    (USER_PATH, "NFSHomeDirectory", ("/changed",)),
+    *FORBIDDEN_OBSERVED_ADDITIONS,
 )
 
 
@@ -47,8 +51,8 @@ class FakeDirectoryService:
         self.uid_collision_after_user_delete = False
         self.gid_collision_after_group_delete = False
         self.swap_user_before_rebind = False
-        self.add_before_user_delete: tuple[
-            str, str, tuple[str, ...]
+        self.drift_before_user_delete: tuple[
+            str, str, tuple[str, ...] | None
         ] | None = None
         self.add_group_attribute_after_user_delete: tuple[
             str, tuple[str, ...]
@@ -92,21 +96,27 @@ class FakeDirectoryService:
                         "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE",
                     )
                 if (
-                    self.add_before_user_delete is not None
+                    self.drift_before_user_delete is not None
                     and self.user_reads == 2
-                    and self.add_before_user_delete[0] == USER_PATH
+                    and self.drift_before_user_delete[0] == USER_PATH
                 ):
-                    _, key, value = self.add_before_user_delete
-                    record[key] = value
+                    _, key, value = self.drift_before_user_delete
+                    if value is None:
+                        record.pop(key, None)
+                    else:
+                        record[key] = value
             if path == GROUP_PATH:
                 self.group_reads += 1
                 if (
-                    self.add_before_user_delete is not None
+                    self.drift_before_user_delete is not None
                     and self.group_reads == 2
-                    and self.add_before_user_delete[0] == GROUP_PATH
+                    and self.drift_before_user_delete[0] == GROUP_PATH
                 ):
-                    _, key, value = self.add_before_user_delete
-                    record[key] = value
+                    _, key, value = self.drift_before_user_delete
+                    if value is None:
+                        record.pop(key, None)
+                    else:
+                        record[key] = value
             return CommandResult(0, self._record_output(record, command[4:]))
         if command[:3] == (DSCL, ".", "-search"):
             root, attribute, expected = command[3:6]
@@ -170,6 +180,10 @@ def run(fake: FakeDirectoryService, *, state_exists: bool = False) -> dict[str, 
 class PartialCodexRollbackTests(unittest.TestCase):
     def test_exact_partial_identity_is_removed_and_verified(self) -> None:
         fake = FakeDirectoryService()
+        self.assertEqual(
+            fake.records[USER_PATH]["NFSHomeDirectory"],
+            ("/var/empty",),
+        )
         for path, key, _value in FORBIDDEN_OBSERVED_ADDITIONS:
             self.assertNotIn(key, fake.records[path])
 
@@ -189,6 +203,10 @@ class PartialCodexRollbackTests(unittest.TestCase):
         self.assertEqual(EXPECTED_USER["RecordName"], ("_decisionos_codex",))
         self.assertEqual(EXPECTED_USER["UniqueID"], ("510",))
         self.assertEqual(EXPECTED_USER["PrimaryGroupID"], ("510",))
+        self.assertEqual(
+            EXPECTED_USER["NFSHomeDirectory"],
+            ("/var/empty",),
+        )
         self.assertEqual(
             EXPECTED_USER["GeneratedUID"],
             ("D6515614-B56A-4943-AA41-18D17DE9F899",),
@@ -231,7 +249,31 @@ class PartialCodexRollbackTests(unittest.TestCase):
                     run(fake)
                 self.assertEqual(fake.mutations, [])
 
-    def test_any_later_slice_attribute_refuses_all_deletion(self) -> None:
+    def test_nfs_home_absence_refuses_all_deletion(self) -> None:
+        fake = FakeDirectoryService()
+        del fake.records[USER_PATH]["NFSHomeDirectory"]
+
+        with self.assertRaisesRegex(
+            RollbackError, "mismatch at NFSHomeDirectory"
+        ):
+            run(fake)
+
+        self.assertEqual(fake.mutations, [])
+
+    def test_nfs_home_change_refuses_all_deletion(self) -> None:
+        fake = FakeDirectoryService()
+        fake.records[USER_PATH]["NFSHomeDirectory"] = ("/changed",)
+
+        with self.assertRaisesRegex(
+            RollbackError, "mismatch at NFSHomeDirectory"
+        ):
+            run(fake)
+
+        self.assertEqual(fake.mutations, [])
+
+    def test_any_required_absent_attribute_appearance_refuses_all_deletion(
+        self,
+    ) -> None:
         for path, key, value in FORBIDDEN_OBSERVED_ADDITIONS:
             with self.subTest(path=path, key=key):
                 fake = FakeDirectoryService()
@@ -242,16 +284,14 @@ class PartialCodexRollbackTests(unittest.TestCase):
                     run(fake)
                 self.assertEqual(fake.mutations, [])
 
-    def test_any_later_slice_attribute_added_before_rebind_still_has_zero_mutations(
+    def test_any_current_state_drift_before_rebind_still_has_zero_mutations(
         self,
     ) -> None:
-        for path, key, value in FORBIDDEN_OBSERVED_ADDITIONS:
+        for path, key, value in CURRENT_STATE_DRIFTS:
             with self.subTest(path=path, key=key):
                 fake = FakeDirectoryService()
-                fake.add_before_user_delete = (path, key, value)
-                with self.assertRaisesRegex(
-                    RollbackError, "appeared after the accepted observation"
-                ):
+                fake.drift_before_user_delete = (path, key, value)
+                with self.assertRaises(RollbackError):
                     run(fake)
                 self.assertEqual(fake.mutations, [])
 

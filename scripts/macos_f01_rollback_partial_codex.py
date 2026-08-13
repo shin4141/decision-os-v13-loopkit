@@ -43,6 +43,7 @@ EXPECTED_USER = {
     "GeneratedUID": ("D6515614-B56A-4943-AA41-18D17DE9F899",),
     "PrimaryGroupID": ("510",),
     "RealName": ("Decision", "OS", "Codex", "execution", "principal"),
+    "NFSHomeDirectory": ("/var/empty",),
 }
 EXPECTED_GROUP = {
     "RecordName": ("_decisionos_codex",),
@@ -61,7 +62,6 @@ HELD_GROUP_PATHS = (
     "/Groups/_decisionos_broker",
 )
 USER_READ_KEYS = tuple(EXPECTED_USER) + (
-    "NFSHomeDirectory",
     "UserShell",
     "IsHidden",
     "AuthenticationAuthority",
@@ -71,7 +71,6 @@ GROUP_READ_KEYS = tuple(EXPECTED_GROUP) + (
     "GroupMembers",
 )
 REQUIRED_ABSENT_USER_KEYS = (
-    "NFSHomeDirectory",
     "UserShell",
     "IsHidden",
     "AuthenticationAuthority",
