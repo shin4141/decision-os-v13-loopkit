@@ -3,15 +3,19 @@ from __future__ import annotations
 from collections import deque
 import hashlib
 import json
+import os
 from pathlib import Path
+import stat
 import tempfile
 import time
 import unittest
 from typing import Any
+from unittest.mock import patch
 
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import (
     DecisionType,
+    canonical_json,
     derive_decision_identity,
     hash_payload,
 )
@@ -19,6 +23,7 @@ from decision_os.acceleration.store import AccelerationStore, StateIntegrityErro
 from decision_os.companion.continuation import (
     ContinuationIntegrityError,
     StageBContinuationRequest,
+    StageBContinuationStore,
     new_record,
 )
 from decision_os.companion.controller import (
@@ -119,6 +124,373 @@ class StageBContinuationTest(unittest.TestCase):
             picker_runner=lambda _script: None,
             adapter_factory=factory,
         )
+
+    def continuation_record(self, chain_id: str) -> dict[str, Any]:
+        return new_record(
+            stage_b_request(),
+            chain_id=chain_id,
+            repository_id="repo:v1:durability-test",
+        )
+
+    def encoded_continuation_record(self, payload: dict[str, Any]) -> bytes:
+        value = dict(payload)
+        value.pop("record_sha256", None)
+        value["record_sha256"] = hash_payload(value)
+        return (canonical_json(value) + "\n").encode("utf-8")
+
+    def test_continuation_store_durably_saves_and_validates_exact_record(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+
+            saved = store.save(self.continuation_record("a" * 32))
+
+            self.assertEqual(saved, store.load_required())
+            self.assertEqual(0o600, stat.S_IMODE(path.stat().st_mode))
+            self.assertEqual(0o700, stat.S_IMODE(path.parent.stat().st_mode))
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_fsync_order_and_complete_file(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            path.parent.mkdir(mode=0o700)
+            store = StageBContinuationStore(path)
+            payload = self.continuation_record("b" * 32)
+            expected_bytes = self.encoded_continuation_record(payload)
+            temporary_path = path.parent / ".stage-b-ordered.tmp"
+            operations: list[str] = []
+            original_fsync = os.fsync
+            original_replace = os.replace
+
+            def observed_fsync(descriptor: int) -> None:
+                metadata = os.fstat(descriptor)
+                if stat.S_ISDIR(metadata.st_mode):
+                    parent = path.parent.stat()
+                    self.assertEqual(
+                        (parent.st_dev, parent.st_ino),
+                        (metadata.st_dev, metadata.st_ino),
+                    )
+                    operations.append("directory-fsync")
+                else:
+                    temporary_metadata = temporary_path.stat()
+                    self.assertEqual(
+                        (temporary_metadata.st_dev, temporary_metadata.st_ino),
+                        (metadata.st_dev, metadata.st_ino),
+                    )
+                    self.assertEqual(expected_bytes, temporary_path.read_bytes())
+                    operations.append("file-fsync")
+                original_fsync(descriptor)
+
+            def observed_replace(
+                source: str,
+                target: str,
+                *,
+                src_dir_fd: int | None = None,
+                dst_dir_fd: int | None = None,
+            ) -> None:
+                self.assertEqual(temporary_path.name, source)
+                self.assertEqual(path.name, target)
+                self.assertIsNotNone(src_dir_fd)
+                self.assertEqual(src_dir_fd, dst_dir_fd)
+                operations.append("replace")
+                original_replace(
+                    source,
+                    target,
+                    src_dir_fd=src_dir_fd,
+                    dst_dir_fd=dst_dir_fd,
+                )
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="ordered",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fsync",
+                    side_effect=observed_fsync,
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.replace",
+                    side_effect=observed_replace,
+                ),
+            ):
+                saved = store.save(payload)
+
+            self.assertEqual(saved, store.load_required())
+            self.assertEqual(
+                ["file-fsync", "replace", "directory-fsync"],
+                operations,
+            )
+
+    def test_continuation_store_file_fsync_failure_preserves_prior_and_cleans_temp(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            prior = store.save(self.continuation_record("c" * 32))
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.os.fsync",
+                    side_effect=OSError("injected file fsync failure"),
+                ),
+                self.assertRaisesRegex(OSError, "injected file fsync failure"),
+            ):
+                store.save(self.continuation_record("d" * 32))
+
+            self.assertEqual(prior, store.load_required())
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_replace_failure_preserves_prior_and_cleans_temp(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            prior = store.save(self.continuation_record("e" * 32))
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.os.replace",
+                    side_effect=OSError("injected replace failure"),
+                ),
+                self.assertRaisesRegex(OSError, "injected replace failure"),
+            ):
+                store.save(self.continuation_record("f" * 32))
+
+            self.assertEqual(prior, store.load_required())
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_directory_fsync_failure_never_reports_success(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            original_fsync = os.fsync
+
+            def fail_directory_fsync(descriptor: int) -> None:
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    raise OSError("injected directory fsync failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.os.fsync",
+                    side_effect=fail_directory_fsync,
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "injected directory fsync failure",
+                ),
+            ):
+                store.save(self.continuation_record("1" * 32))
+
+            published = store.load_required()
+            self.assertEqual("1" * 32, published["chain_id"])
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_rejects_noncanonical_published_readback(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            original_replace = os.replace
+
+            def rewrite_after_replace(
+                source: str,
+                target: str,
+                *,
+                src_dir_fd: int | None = None,
+                dst_dir_fd: int | None = None,
+            ) -> None:
+                original_replace(
+                    source,
+                    target,
+                    src_dir_fd=src_dir_fd,
+                    dst_dir_fd=dst_dir_fd,
+                )
+                value = json.loads(path.read_bytes())
+                path.write_text(json.dumps(value, indent=2), encoding="utf-8")
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.os.replace",
+                    side_effect=rewrite_after_replace,
+                ),
+                self.assertRaisesRegex(
+                    ContinuationIntegrityError,
+                    "bytes mismatch the intended record",
+                ),
+            ):
+                store.save(self.continuation_record("3" * 32))
+
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_closes_descriptor_when_fdopen_fails(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            descriptors: list[int] = []
+
+            def fail_fdopen(descriptor: int, _mode: str) -> None:
+                descriptors.append(descriptor)
+                raise OSError("injected fdopen failure")
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="fdopen",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fdopen",
+                    side_effect=fail_fdopen,
+                ),
+                self.assertRaisesRegex(OSError, "injected fdopen failure"),
+            ):
+                store.save(self.continuation_record("5" * 32))
+
+            self.assertEqual(1, len(descriptors))
+            with self.assertRaises(OSError):
+                os.fstat(descriptors[0])
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+
+    def test_continuation_store_cleans_temp_when_fstat_fails(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            store = StageBContinuationStore(path)
+            descriptors: list[int] = []
+
+            def fail_fstat(descriptor: int) -> None:
+                descriptors.append(descriptor)
+                raise OSError("injected fstat failure")
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="fstat",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fstat",
+                    side_effect=fail_fstat,
+                ),
+                self.assertRaisesRegex(OSError, "injected fstat failure"),
+            ):
+                store.save(self.continuation_record("8" * 32))
+
+            self.assertEqual(1, len(descriptors))
+            with self.assertRaises(OSError):
+                os.fstat(descriptors[0])
+            self.assertEqual([], list(path.parent.glob(".stage-b-*.tmp")))
+            self.assertFalse(path.exists())
+
+    def test_continuation_store_preserves_substituted_temp_on_file_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            temporary_path = path.parent / ".stage-b-reused.tmp"
+            store = StageBContinuationStore(path)
+            sentinel = b"unowned pre-publication sentinel"
+
+            def substitute_before_file_failure(_descriptor: int) -> None:
+                temporary_path.unlink()
+                temporary_path.write_bytes(sentinel)
+                raise OSError("injected file fsync failure")
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="reused",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fsync",
+                    side_effect=substitute_before_file_failure,
+                ),
+                self.assertRaisesRegex(OSError, "injected file fsync failure"),
+            ):
+                store.save(self.continuation_record("6" * 32))
+
+            self.assertEqual(sentinel, temporary_path.read_bytes())
+            self.assertFalse(path.exists())
+
+    def test_continuation_store_preserves_reused_temp_after_publication_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            temporary_path = path.parent / ".stage-b-reused.tmp"
+            store = StageBContinuationStore(path)
+            sentinel = b"unowned post-publication sentinel"
+            original_fsync = os.fsync
+
+            def reuse_before_directory_failure(descriptor: int) -> None:
+                if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                    temporary_path.write_bytes(sentinel)
+                    raise OSError("injected directory fsync failure")
+                original_fsync(descriptor)
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="reused",
+                ),
+                patch(
+                    "decision_os.companion.continuation.os.fsync",
+                    side_effect=reuse_before_directory_failure,
+                ),
+                self.assertRaisesRegex(
+                    OSError,
+                    "injected directory fsync failure",
+                ),
+            ):
+                store.save(self.continuation_record("7" * 32))
+
+            self.assertEqual(sentinel, temporary_path.read_bytes())
+            self.assertEqual("7" * 32, store.load_required()["chain_id"])
+
+    def test_continuation_store_temp_collision_preserves_unowned_file(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / "application-state" / "stage-b-continuation.json"
+            path.parent.mkdir(mode=0o700)
+            collision = path.parent / ".stage-b-collision.tmp"
+            collision.write_bytes(b"unowned sentinel")
+            store = StageBContinuationStore(path)
+
+            with (
+                patch(
+                    "decision_os.companion.continuation.secrets.token_hex",
+                    return_value="collision",
+                ),
+                self.assertRaises(FileExistsError),
+            ):
+                store.save(self.continuation_record("4" * 32))
+
+            self.assertEqual(b"unowned sentinel", collision.read_bytes())
+            self.assertFalse(path.exists())
 
     def test_one_goal_creates_one_causal_automatic_run_and_never_run_three(
         self,
