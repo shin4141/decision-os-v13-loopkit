@@ -121,9 +121,13 @@ class TargetKind(str, Enum):
     OTHER = "OTHER"
 
 
+def _is_canonical_enum_member(value: Any, enum_type: type[Enum]) -> bool:
+    return type(value) is enum_type and any(value is member for member in enum_type)
+
+
 def _bounded_identity(value: Any, label: str) -> str:
     if (
-        not isinstance(value, str)
+        type(value) is not str
         or not value
         or value != value.strip()
     ):
@@ -141,7 +145,7 @@ def _bounded_identity(value: Any, label: str) -> str:
 
 def _is_sha256(value: Any) -> bool:
     return (
-        isinstance(value, str)
+        type(value) is str
         and len(value) == _SHA256_LENGTH
         and all(character in "0123456789abcdef" for character in value)
     )
@@ -172,6 +176,8 @@ class ActivationTuple:
     generation_witness: int
 
     def __post_init__(self) -> None:
+        if type(self) is not ActivationTuple:
+            raise ValueError("Activation tuple subclasses are forbidden.")
         for value, label in (
             (self.authority_domain_id, "Authority-domain identity"),
             (
@@ -183,8 +189,7 @@ class ActivationTuple:
             _bounded_identity(value, label)
         _repository_identity(self.repository_id)
         if (
-            not isinstance(self.generation_witness, int)
-            or isinstance(self.generation_witness, bool)
+            type(self.generation_witness) is not int
             or not 0 <= self.generation_witness <= _MAX_GENERATION_WITNESS
         ):
             raise ValueError(
@@ -216,7 +221,7 @@ class ControlDomainRecord:
     def as_dict(self) -> dict[str, Any]:
         return {
             "schema": self.schema,
-            **self.activation.as_dict(),
+            **ActivationTuple.as_dict(self.activation),
             "state": self.state.value,
             "journal_position": self.journal_position,
             "predecessor_record_sha256": self.predecessor_record_sha256,
@@ -228,11 +233,14 @@ class ControlDomainRecord:
 
     @classmethod
     def from_dict(cls, value: Any) -> "ControlDomainRecord":
-        if not isinstance(value, dict) or set(value) != _CONTROL_RECORD_FIELDS:
+        if type(value) is not dict or set(value) != _CONTROL_RECORD_FIELDS:
             raise ControlRecordIntegrityError(
                 "Persisted Broker control-record fields are invalid."
             )
-        if value.get("schema") != CONTROL_DOMAIN_SCHEMA:
+        if (
+            type(value.get("schema")) is not str
+            or value["schema"] != CONTROL_DOMAIN_SCHEMA
+        ):
             raise ControlRecordIntegrityError(
                 "Persisted Broker control-record schema is invalid."
             )
@@ -246,17 +254,16 @@ class ControlDomainRecord:
                 write_principal_identity=value["write_principal_identity"],
                 generation_witness=value["generation_witness"],
             )
-            state = ControlDomainState(value["state"])
+            raw_state = value["state"]
+            if type(raw_state) is not str:
+                raise ValueError("Persisted state must be a plain string.")
+            state = ControlDomainState(raw_state)
         except (KeyError, TypeError, ValueError) as exc:
             raise ControlRecordIntegrityError(
                 "Persisted Broker activation tuple or state is invalid."
             ) from exc
         position = value["journal_position"]
-        if (
-            not isinstance(position, int)
-            or isinstance(position, bool)
-            or position < 0
-        ):
+        if type(position) is not int or position < 0:
             raise ControlRecordIntegrityError(
                 "Persisted Broker journal position is invalid."
             )
@@ -271,7 +278,7 @@ class ControlDomainRecord:
             )
         retired_value = value["retired_authority_domain_ids"]
         if (
-            not isinstance(retired_value, list)
+            type(retired_value) is not list
             or len(retired_value) > _MAX_RETIRED_DOMAINS
         ):
             raise ControlRecordIntegrityError(
@@ -324,7 +331,7 @@ class ControlDomainRecord:
             raise ControlRecordIntegrityError(
                 "Persisted Broker control-record hash mismatches."
             )
-        record = cls(
+        record = ControlDomainRecord(
             schema=CONTROL_DOMAIN_SCHEMA,
             activation=activation,
             state=state,
@@ -352,18 +359,29 @@ class MutationDecision:
     expected_post_sha256: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.activation, ActivationTuple):
+        if type(self) is not MutationDecision:
+            raise MutationDecisionError(
+                "Mutation-decision subclasses are forbidden."
+            )
+        if type(self.activation) is not ActivationTuple:
             raise MutationDecisionError(
                 "A complete activation tuple is required."
             )
         try:
-            operation = MutationOperation(self.operation)
-        except (TypeError, ValueError) as exc:
-            raise MutationDecisionError("Mutation operation is unsupported.") from exc
-        object.__setattr__(self, "operation", operation)
+            ActivationTuple.__post_init__(self.activation)
+        except ValueError as exc:
+            raise MutationDecisionError(
+                "A complete activation tuple is required."
+            ) from exc
+        if not _is_canonical_enum_member(
+            self.operation,
+            MutationOperation,
+        ):
+            raise MutationDecisionError("Mutation operation is unsupported.")
+        operation = self.operation
         normalized = _normalize_relative_path(self.relative_path)
         object.__setattr__(self, "relative_path", normalized)
-        if not isinstance(self.target_bytes, bytes):
+        if type(self.target_bytes) is not bytes:
             raise MutationDecisionError("Full target bytes are required.")
         if len(self.target_bytes) > _MAX_TARGET_BYTES:
             raise MutationDecisionError("Target bytes exceed the bounded size limit.")
@@ -392,7 +410,7 @@ class MutationDecision:
         """Return the exact bounded decision identity persisted by a CAS fence."""
 
         return {
-            "activation": self.activation.as_dict(),
+            "activation": ActivationTuple.as_dict(self.activation),
             "operation": self.operation.value,
             "relative_path": self.relative_path,
             "target_byte_count": len(self.target_bytes),
@@ -410,13 +428,15 @@ class TargetObservation:
     content: bytes | None = None
 
     def __post_init__(self) -> None:
-        try:
-            kind = TargetKind(self.kind)
-        except (TypeError, ValueError) as exc:
-            raise MutationDecisionError("Target observation kind is invalid.") from exc
-        object.__setattr__(self, "kind", kind)
+        if type(self) is not TargetObservation:
+            raise MutationDecisionError(
+                "Target-observation subclasses are forbidden."
+            )
+        if not _is_canonical_enum_member(self.kind, TargetKind):
+            raise MutationDecisionError("Target observation kind is invalid.")
+        kind = self.kind
         if kind is TargetKind.REGULAR:
-            if not isinstance(self.content, bytes):
+            if type(self.content) is not bytes:
                 raise MutationDecisionError(
                     "A regular target observation requires exact bytes."
                 )
@@ -428,6 +448,47 @@ class TargetObservation:
             raise MutationDecisionError(
                 "Non-regular target observations cannot carry trusted bytes."
             )
+
+
+def _snapshot_activation(value: Any) -> ActivationTuple:
+    """Copy one exact activation into private, validated plain values."""
+
+    if type(value) is not ActivationTuple:
+        raise ValueError("Activation tuple subclasses are forbidden.")
+    return ActivationTuple(
+        authority_domain_id=value.authority_domain_id,
+        repository_id=value.repository_id,
+        protected_repository_identity=value.protected_repository_identity,
+        write_principal_identity=value.write_principal_identity,
+        generation_witness=value.generation_witness,
+    )
+
+
+def _snapshot_decision(value: Any) -> MutationDecision:
+    """Copy one caller decision so later caller mutation cannot change binding."""
+
+    if type(value) is not MutationDecision:
+        raise MutationDecisionError(
+            "Mutation-decision subclasses are forbidden."
+        )
+    return MutationDecision(
+        activation=_snapshot_activation(value.activation),
+        operation=value.operation,
+        relative_path=value.relative_path,
+        target_bytes=value.target_bytes,
+        expected_prior_sha256=value.expected_prior_sha256,
+        expected_post_sha256=value.expected_post_sha256,
+    )
+
+
+def _snapshot_observation(value: Any) -> TargetObservation:
+    """Copy one caller observation into exact immutable fields."""
+
+    if type(value) is not TargetObservation:
+        raise MutationDecisionError(
+            "Target-observation subclasses are forbidden."
+        )
+    return TargetObservation(kind=value.kind, content=value.content)
 
 
 @dataclass(frozen=True)
@@ -459,22 +520,25 @@ class _CASFenceRecord:
 
     @classmethod
     def from_dict(cls, value: Any) -> "_CASFenceRecord":
-        if not isinstance(value, dict) or set(value) != _CAS_FENCE_FIELDS:
+        if type(value) is not dict or set(value) != _CAS_FENCE_FIELDS:
             raise ControlRecordIntegrityError(
                 "Persisted Broker CAS-fence fields are invalid."
             )
-        if value.get("schema") != CAS_FENCE_SCHEMA:
+        if (
+            type(value.get("schema")) is not str
+            or value["schema"] != CAS_FENCE_SCHEMA
+        ):
             raise ControlRecordIntegrityError(
                 "Persisted Broker CAS-fence schema is invalid."
             )
         kind = value["kind"]
-        if kind not in {"INTENT", "COMPLETE"}:
+        if type(kind) is not str or kind not in {"INTENT", "COMPLETE"}:
             raise ControlRecordIntegrityError(
                 "Persisted Broker CAS-fence kind is invalid."
             )
         fence_id = value["fence_id"]
         if (
-            not isinstance(fence_id, str)
+            type(fence_id) is not str
             or len(fence_id) != 32
             or any(character not in "0123456789abcdef" for character in fence_id)
         ):
@@ -509,6 +573,7 @@ class _CASFenceRecord:
                 )
         elif (
             not _is_sha256(intent_sha256)
+            or type(outcome) is not str
             or outcome
             not in {
                 ReconciliationOutcome.APPLIED.value,
@@ -526,7 +591,7 @@ class _CASFenceRecord:
             raise ControlRecordIntegrityError(
                 "Persisted Broker CAS-fence hash mismatches."
             )
-        record = cls(**value)
+        record = _CASFenceRecord(**value)
         if len(_canonical_fence_bytes(record)) > _MAX_CAS_FENCE_BYTES:
             raise ControlRecordIntegrityError(
                 "Persisted Broker CAS fence is too large."
@@ -535,7 +600,7 @@ class _CASFenceRecord:
 
 
 def _normalize_relative_path(value: Any) -> str:
-    if not isinstance(value, str) or not value or "\x00" in value:
+    if type(value) is not str or not value or "\x00" in value:
         raise MutationDecisionError("Mutation path must be one non-empty path.")
     try:
         encoded = value.encode("utf-8")
@@ -567,6 +632,9 @@ def reconcile_mutation(
 ) -> ReconciliationOutcome:
     """Classify only exact pre/post evidence; never grant or restore authority."""
 
+    decision = _snapshot_decision(decision)
+    observation = _snapshot_observation(observation)
+
     if observation.kind is TargetKind.REGULAR:
         assert observation.content is not None
         observed_hash = _sha256_bytes(observation.content)
@@ -590,15 +658,45 @@ def reconcile_mutation(
 
 
 def _canonical_record_bytes(record: ControlDomainRecord) -> bytes:
-    return (canonical_json(record.as_dict()) + "\n").encode("utf-8")
+    if (
+        type(record) is not ControlDomainRecord
+        or type(record.schema) is not str
+        or record.schema != CONTROL_DOMAIN_SCHEMA
+        or not _is_canonical_enum_member(record.state, ControlDomainState)
+        or type(record.journal_position) is not int
+        or record.journal_position < 0
+        or (
+            record.predecessor_record_sha256 is not None
+            and not _is_sha256(record.predecessor_record_sha256)
+        )
+        or type(record.retired_authority_domain_ids) is not tuple
+        or not _is_sha256(record.record_sha256)
+    ):
+        raise ControlRecordIntegrityError(
+            "Broker control-record runtime types are invalid."
+        )
+    try:
+        _snapshot_activation(record.activation)
+        for retired in record.retired_authority_domain_ids:
+            _bounded_identity(retired, "Retired authority-domain identity")
+    except ValueError as exc:
+        raise ControlRecordIntegrityError(
+            "Broker control-record runtime types are invalid."
+        ) from exc
+    return (canonical_json(ControlDomainRecord.as_dict(record)) + "\n").encode(
+        "utf-8"
+    )
 
 
 def _canonical_fence_bytes(record: _CASFenceRecord) -> bytes:
-    return (canonical_json(record.as_dict()) + "\n").encode("utf-8")
+    return (canonical_json(_CASFenceRecord.as_dict(record)) + "\n").encode(
+        "utf-8"
+    )
 
 
 def _activation_sha256(activation: ActivationTuple) -> str:
-    return hash_payload(activation.as_dict())
+    snapshot = _snapshot_activation(activation)
+    return hash_payload(ActivationTuple.as_dict(snapshot))
 
 
 def _new_cas_intent(
@@ -612,7 +710,7 @@ def _new_cas_intent(
         "authority_domain_id": decision.activation.authority_domain_id,
         "activation_sha256": _activation_sha256(decision.activation),
         "control_record_sha256": current.record_sha256,
-        "decision_sha256": hash_payload(decision.binding_dict()),
+        "decision_sha256": hash_payload(MutationDecision.binding_dict(decision)),
         "intent_sha256": None,
         "outcome": None,
     }
@@ -624,12 +722,10 @@ def _complete_cas_intent(
     intent: _CASFenceRecord,
     outcome: ReconciliationOutcome,
 ) -> _CASFenceRecord:
-    try:
-        outcome = ReconciliationOutcome(outcome)
-    except (TypeError, ValueError) as exc:
+    if not _is_canonical_enum_member(outcome, ReconciliationOutcome):
         raise ControlRecordIntegrityError(
             "The CAS reconciliation outcome is invalid."
-        ) from exc
+        )
     payload: dict[str, Any] = {
         "schema": CAS_FENCE_SCHEMA,
         "kind": "COMPLETE",
@@ -653,9 +749,27 @@ def _new_record(
     predecessor_record_sha256: str | None,
     retired_authority_domain_ids: tuple[str, ...],
 ) -> ControlDomainRecord:
+    if type(activation) is not ActivationTuple:
+        raise ControlRecordIntegrityError(
+            "A Broker control record requires an exact activation tuple."
+        )
+    try:
+        ActivationTuple.__post_init__(activation)
+    except ValueError as exc:
+        raise ControlRecordIntegrityError(
+            "A Broker control record requires an exact activation tuple."
+        ) from exc
+    if not _is_canonical_enum_member(state, ControlDomainState):
+        raise ControlRecordIntegrityError(
+            "A Broker control record requires an exact state."
+        )
+    if type(journal_position) is not int or journal_position < 0:
+        raise ControlRecordIntegrityError(
+            "A Broker control record requires an exact journal position."
+        )
     payload: dict[str, Any] = {
         "schema": CONTROL_DOMAIN_SCHEMA,
-        **activation.as_dict(),
+        **ActivationTuple.as_dict(activation),
         "state": state.value,
         "journal_position": journal_position,
         "predecessor_record_sha256": predecessor_record_sha256,
@@ -1219,15 +1333,26 @@ class ControlDomainStore:
             raise ControlRecordIntegrityError(
                 "A supposedly fresh Broker security record already exists."
             )
-        temporary = target.parent / (
-            f".broker-control-{secrets.token_hex(8)}.tmp"
+        directory_descriptor = os.open(
+            target.parent,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
         )
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         descriptor: int | None = None
+        temporary_identity: tuple[int, int] | None = None
+        published = False
         try:
-            descriptor = os.open(temporary, flags, 0o600)
+            temporary_name = f".broker-control-{secrets.token_hex(8)}.tmp"
+            descriptor = os.open(
+                temporary_name,
+                flags,
+                0o600,
+                dir_fd=directory_descriptor,
+            )
+            metadata = os.fstat(descriptor)
+            temporary_identity = (metadata.st_dev, metadata.st_ino)
             stream = os.fdopen(descriptor, "wb")
             descriptor = None
             with stream:
@@ -1235,13 +1360,66 @@ class ControlDomainStore:
                 stream.flush()
                 os.fchmod(stream.fileno(), 0o600)
                 os.fsync(stream.fileno())
-            os.replace(temporary, target)
-            self._fsync_directory(target.parent)
-        except Exception:
+            os.replace(
+                temporary_name,
+                target.name,
+                src_dir_fd=directory_descriptor,
+                dst_dir_fd=directory_descriptor,
+            )
+            published = True
+            os.fsync(directory_descriptor)
+        except BaseException as primary_error:
+            cleanup_errors: list[BaseException] = []
             if descriptor is not None:
-                os.close(descriptor)
-            temporary.unlink(missing_ok=True)
+                try:
+                    os.close(descriptor)
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+                descriptor = None
+            if not published and temporary_identity is not None:
+                try:
+                    observed = os.stat(
+                        temporary_name,
+                        dir_fd=directory_descriptor,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    pass
+                except BaseException as cleanup_error:
+                    cleanup_errors.append(cleanup_error)
+                else:
+                    if (observed.st_dev, observed.st_ino) == temporary_identity:
+                        removed = False
+                        try:
+                            os.unlink(
+                                temporary_name,
+                                dir_fd=directory_descriptor,
+                            )
+                            removed = True
+                        except FileNotFoundError:
+                            pass
+                        except BaseException as cleanup_error:
+                            cleanup_errors.append(cleanup_error)
+                        if removed:
+                            try:
+                                os.fsync(directory_descriptor)
+                            except BaseException as cleanup_error:
+                                cleanup_errors.append(cleanup_error)
+            try:
+                os.close(directory_descriptor)
+            except BaseException as cleanup_error:
+                cleanup_errors.append(cleanup_error)
+            for cleanup_error in cleanup_errors:
+                try:
+                    primary_error.add_note(
+                        "Broker temporary cleanup also failed: "
+                        f"{cleanup_error!r}"
+                    )
+                except AttributeError:
+                    pass
             raise
+        else:
+            os.close(directory_descriptor)
         if self._read_private_bytes(
             target,
             len(encoded),
@@ -1337,10 +1515,12 @@ class ControlDomainStore:
             ) from exc
 
     def activate_initial(self, activation: ActivationTuple) -> ControlDomainRecord:
-        if not isinstance(activation, ActivationTuple):
+        try:
+            activation = _snapshot_activation(activation)
+        except ValueError as exc:
             raise ControlDomainTransitionError(
                 "Initial Broker authority requires a complete activation tuple."
-            )
+            ) from exc
         with self._locked(exclusive=True):
             if self._load_unlocked(
                 repair_incomplete_publication=True,
@@ -1363,12 +1543,14 @@ class ControlDomainStore:
         expected_activation: ActivationTuple,
         target_state: ControlDomainState,
     ) -> ControlDomainRecord:
-        try:
-            target = ControlDomainState(target_state)
-        except (TypeError, ValueError) as exc:
+        if not _is_canonical_enum_member(
+            target_state,
+            ControlDomainState,
+        ):
             raise ControlDomainTransitionError(
                 "Requested Broker control-domain state is invalid."
-            ) from exc
+            )
+        target = target_state
         allowed = {
             ControlDomainState.ACTIVE: {
                 ControlDomainState.ABANDONED,
@@ -1414,20 +1596,33 @@ class ControlDomainStore:
         expected_predecessor: ControlDomainRecord,
         activation: ActivationTuple,
     ) -> ControlDomainRecord:
-        if not isinstance(expected_predecessor, ControlDomainRecord):
+        if type(expected_predecessor) is not ControlDomainRecord:
             raise ControlDomainTransitionError(
                 "Successor activation requires the exact abandoned predecessor."
             )
-        if not isinstance(activation, ActivationTuple):
+        try:
+            activation = _snapshot_activation(activation)
+        except ValueError as exc:
             raise ControlDomainTransitionError(
                 "Successor Broker authority requires a complete activation tuple."
-            )
+            ) from exc
         with self._locked(exclusive=True):
             current = self._load_required_unlocked(
                 repair_incomplete_publication=True,
             )
             journal = self._journal_records_unlocked()
-            if current != expected_predecessor:
+            try:
+                predecessor_bytes = _canonical_record_bytes(expected_predecessor)
+            except (
+                AttributeError,
+                ControlRecordIntegrityError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                raise ControlDomainTransitionError(
+                    "Successor activation requires the exact abandoned predecessor."
+                ) from exc
+            if _canonical_record_bytes(current) != predecessor_bytes:
                 raise AuthorityRejectedError(
                     "Successor predecessor does not match the current control head."
                 )
@@ -1499,7 +1694,13 @@ class ControlDomainStore:
         current: ControlDomainRecord,
         expected: ActivationTuple,
     ) -> None:
-        if current.activation != expected:
+        try:
+            expected_hash = _activation_sha256(_snapshot_activation(expected))
+        except ValueError as exc:
+            raise AuthorityRejectedError(
+                "Activation tuple does not match current Broker authority."
+            ) from exc
+        if _activation_sha256(current.activation) != expected_hash:
             raise AuthorityRejectedError(
                 "Activation tuple does not match current Broker authority."
             )
@@ -1531,13 +1732,15 @@ class ControlDomainStore:
         marks it ``UNCERTAIN``.
         """
 
-        if not isinstance(decision, MutationDecision) or not isinstance(
-            observation,
-            TargetObservation,
-        ):
+        try:
+            decision = _snapshot_decision(decision)
+            observation = _snapshot_observation(observation)
+        except MutationDecisionError:
+            raise
+        except (AttributeError, TypeError, ValueError) as exc:
             raise MutationDecisionError(
                 "CAS reconciliation requires one bound decision and observation."
-            )
+            ) from exc
         with self._locked(exclusive=True):
             current = self._load_required_unlocked(
                 allow_consumed_cas=True,
@@ -1545,7 +1748,9 @@ class ControlDomainStore:
             )
             self._require_exact_activation(current, decision.activation)
             journal = self._journal_records_unlocked()
-            decision_sha256 = hash_payload(decision.binding_dict())
+            decision_sha256 = hash_payload(
+                MutationDecision.binding_dict(decision)
+            )
             intent, completion = self._cas_exchange_unlocked(
                 journal,
                 decision.activation,
