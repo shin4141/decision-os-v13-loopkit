@@ -1,0 +1,41 @@
+name: F-01 Slice 4A Clean macOS Capsule
+
+on:
+  push:
+    branches:
+      - codex/13-154-f01-slice4a-clean-macos-capsule
+
+permissions:
+  contents: read
+
+concurrency:
+  group: f01-slice4a-clean-macos-capsule-13-154
+  cancel-in-progress: false
+
+jobs:
+  qualify-and-deploy:
+    if: >-
+      github.repository == 'shin4141/decision-os-v13-loopkit' &&
+      github.ref == 'refs/heads/codex/13-154-f01-slice4a-clean-macos-capsule'
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact capsule commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Run one fail-closed qualification and deployment capsule
+        id: capsule
+        working-directory: ${{ github.workspace }}
+        run: python3 -m scripts.macos_f01_clean_host_capsule
+
+      - name: Preserve hash-bound capsule evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: f01-slice4a-clean-macos-${{ github.run_id }}-${{ github.run_attempt }}
+          path: validation/f01_slice4a_clean_macos_capsule_run_evidence
+          if-no-files-found: error
+          retention-days: 7
