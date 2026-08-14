@@ -86,12 +86,21 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
         )
         report = json.loads(completed.stdout)
 
-        self.assertEqual(report["total"], 31)
-        self.assertEqual(report["passed"], 31)
+        self.assertEqual(report["total"], 40)
+        self.assertEqual(report["passed"], 40)
         self.assertEqual(report["failed"], 0)
         names = {item["name"] for item in report["tests"]}
         self.assertTrue(
             {
+                "unprivileged_shaped_user_password_marker_validates",
+                "privileged_shaped_user_password_absence_validates",
+                "wrong_user_password_marker_zero_deletes",
+                "multi_value_user_password_marker_zero_deletes",
+                "credential_like_user_password_marker_zero_deletes",
+                "non_string_user_password_marker_zero_deletes",
+                "malformed_user_password_marker_zero_deletes",
+                "exact_privileged_snapshot_current_state_validates",
+                "exact_privileged_snapshot_orders_validation_before_fixture_delete",
                 "wrong_user_guid_zero_deletes",
                 "wrong_group_guid_zero_deletes",
                 "wrong_uid_zero_deletes",
@@ -201,6 +210,27 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
         for forbidden in ("setuid(", "seteuid(", "setreuid(", "argv[1]", "stdin"):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
+
+    def test_only_user_password_marker_is_observer_dependent(self) -> None:
+        source = SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("if (observation == nil)", source)
+        self.assertIn(
+            '![[(NSArray *)observation firstObject] isEqual:@"********"]',
+            source,
+        )
+        self.assertEqual(
+            source.count("F01RequireObserverSafeUserPasswordMarker(issues, user);"),
+            1,
+        )
+        self.assertNotIn(
+            "F01RequireValues(issues, user, kODAttributeTypePassword",
+            source,
+        )
+        self.assertIn(
+            "F01RequireValues(issues, group, kODAttributeTypePassword",
+            source,
+        )
 
     def test_binary_is_reproducible_native_and_has_bounded_dependencies(self) -> None:
         self.assertEqual(

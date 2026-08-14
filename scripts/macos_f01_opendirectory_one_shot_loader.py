@@ -15,19 +15,19 @@ INTERPRETER_IDENTITY = (
     102352,
 )
 INTERPRETER_SHA256 = "bdea59019a38eb6600cc9e71e984a97fedadc406448431281e7657030f54987e"
-STAGE = "/private/tmp/decision-os-f01-slice4a-one-shot-2418c8ea235a"
-STAGE_IDENTITY = (16777234, 123705528, 501, 0, 0o500)
+STAGE = "/private/tmp/decision-os-f01-slice4a-one-shot-0450739ae668"
+STAGE_IDENTITY = (16777234, 123725406, 501, 0, 0o500)
 WRAPPER_NAME = "macos_f01_opendirectory_one_shot_wrapper.py"
 WRAPPER_IDENTITY = (
     16777234,
-    123706512,
+    123725636,
     501,
     0,
     0o444,
     1,
     21377,
 )
-WRAPPER_SHA256 = "8b140768b8c639a4317ff1fcd216ee4041d3645ed3cfdc5289bb83e68bd90217"
+WRAPPER_SHA256 = "faaa4ad63585ddc552a645d656976355c111351e5e36820ac745e31595f87ad9"
 
 
 def emit(status, phase, error):

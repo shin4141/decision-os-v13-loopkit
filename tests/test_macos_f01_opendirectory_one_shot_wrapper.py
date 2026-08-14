@@ -19,6 +19,7 @@ from scripts.macos_f01_opendirectory_one_shot_wrapper import (
     EXPECTED_COMPLETED_MUTATIONS,
     EXPECTED_SUCCESS_STATUS,
     PRIVILEGED_INTERACTION_BUDGET,
+    PRODUCTION_IDENTITY,
     ArtifactIdentity,
     ChildExecution,
     TestHooks,
@@ -32,10 +33,10 @@ SOURCE = ROOT / "scripts" / "macos_f01_opendirectory_one_shot_wrapper.py"
 LOADER_SOURCE = ROOT / "scripts" / "macos_f01_opendirectory_one_shot_loader.py"
 COMMAND = ROOT / "scripts" / "macos_f01_opendirectory_one_shot_command.txt"
 STAGED_WRAPPER = Path(
-    "/private/tmp/decision-os-f01-slice4a-one-shot-2418c8ea235a/"
+    "/private/tmp/decision-os-f01-slice4a-one-shot-0450739ae668/"
     "macos_f01_opendirectory_one_shot_wrapper.py"
 )
-LOADER_SHA256 = "abe76aed381b01999e828c2122644ff3ad4f01d2c900d445b58eb10641254236"
+LOADER_SHA256 = "5ae6ab13c9068f2c63afef58c4749a7c55244f4cec1edf4381c92c20d2e86ab1"
 
 
 class Fixture:
@@ -423,7 +424,7 @@ class OneShotWrapperTests(unittest.TestCase):
         self.assertEqual(command.count("do shell script"), 1)
         self.assertEqual(hashlib.sha256(loader_bytes).hexdigest(), LOADER_SHA256)
         self.assertIn(
-            "8b140768b8c639a4317ff1fcd216ee4041d3645ed3cfdc5289bb83e68bd90217",
+            "faaa4ad63585ddc552a645d656976355c111351e5e36820ac745e31595f87ad9",
             loader,
         )
         self.assertIn(
@@ -485,6 +486,55 @@ class OneShotWrapperTests(unittest.TestCase):
 
         self.assertEqual(opened_bytes, SOURCE.read_bytes())
         self.assertEqual(opened_bytes, STAGED_WRAPPER.read_bytes())
+
+    def test_current_staged_mutator_matches_wrapper_identity(self) -> None:
+        identity = PRODUCTION_IDENTITY
+        staged = Path(identity.directory) / identity.filename
+        if not staged.exists():
+            self.skipTest("review-only staged mutator is not present")
+        directory = os.lstat(identity.directory)
+        binary = os.lstat(staged)
+
+        self.assertTrue(stat.S_ISDIR(directory.st_mode))
+        self.assertEqual(
+            (
+                directory.st_dev,
+                directory.st_ino,
+                directory.st_uid,
+                directory.st_gid,
+                stat.S_IMODE(directory.st_mode),
+            ),
+            (
+                identity.directory_device,
+                identity.directory_inode,
+                identity.directory_uid,
+                identity.directory_gid,
+                identity.directory_mode,
+            ),
+        )
+        self.assertTrue(stat.S_ISREG(binary.st_mode))
+        self.assertEqual(
+            (
+                binary.st_dev,
+                binary.st_ino,
+                binary.st_uid,
+                binary.st_gid,
+                stat.S_IMODE(binary.st_mode),
+                binary.st_nlink,
+                binary.st_size,
+                hashlib.sha256(staged.read_bytes()).hexdigest(),
+            ),
+            (
+                identity.binary_device,
+                identity.binary_inode,
+                identity.binary_uid,
+                identity.binary_gid,
+                identity.binary_mode,
+                identity.binary_nlink,
+                identity.binary_size,
+                identity.binary_sha256,
+            ),
+        )
 
 
 if __name__ == "__main__":

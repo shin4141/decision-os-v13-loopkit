@@ -500,6 +500,26 @@ static void F01RequireAbsent(NSMutableArray<NSString *> *issues,
     }
 }
 
+static void F01RequireObserverSafeUserPasswordMarker(
+    NSMutableArray<NSString *> *issues,
+    NSDictionary *user) {
+    id attributes = user[@"attributes"];
+    if (![attributes isKindOfClass:[NSDictionary class]]) {
+        [issues addObject:@"User Password marker representation is malformed."];
+        return;
+    }
+    id observation = ((NSDictionary *)attributes)[kODAttributeTypePassword];
+    if (observation == nil) {
+        return;
+    }
+    if (![observation isKindOfClass:[NSArray class]] ||
+        [(NSArray *)observation count] != 1 ||
+        ![[(NSArray *)observation firstObject] isKindOfClass:[NSString class]] ||
+        ![[(NSArray *)observation firstObject] isEqual:@"********"]) {
+        [issues addObject:@"User Password marker has an unreviewed observation."];
+    }
+}
+
 static void F01RequireExactAttributeSurface(NSMutableArray<NSString *> *issues,
                                             NSDictionary *record,
                                             NSSet<NSString *> *allowed,
@@ -654,8 +674,7 @@ static void F01ValidateExactUser(NSMutableArray<NSString *> *issues,
                      @[kODRecordTypeUsers], @"User framework RecordType");
     F01RequireValues(issues, user, kODAttributeTypeMetaNodeLocation,
                      @[F01NodeName], @"User framework node location");
-    F01RequireValues(issues, user, kODAttributeTypePassword,
-                     @[@"********"], @"User non-credential password marker");
+    F01RequireObserverSafeUserPasswordMarker(issues, user);
     F01RequireSafeAccountPolicy(issues, user);
 }
 
@@ -1077,6 +1096,20 @@ static NSMutableDictionary *F01FixtureAttributes(NSMutableDictionary *fixture,
     return F01FixtureRecord(fixture, kind)[@"attributes"];
 }
 
+static NSMutableDictionary *F01PrivilegedObserverFixture(void) {
+    NSMutableDictionary *fixture = F01DeepMutableCopy(F01AcceptedFixture());
+    NSMutableDictionary *user = F01FixtureAttributes(fixture, @"user");
+    [user removeObjectForKey:kODAttributeTypePassword];
+    user[F01NativeAccountPolicyData] = @[@{
+        @"data_base64":
+            @"PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHBsaXN0IFBVQkxJQyAiLS8vQXBwbGUvL0RURCBQTElTVCAxLjAvL0VOIiAiaHR0cDovL3d3dy5hcHBsZS5jb20vRFREcy9Qcm9wZXJ0eUxpc3QtMS4wLmR0ZCI+CjxwbGlzdCB2ZXJzaW9uPSIxLjAiPgo8ZGljdD4KCTxrZXk+Y3JlYXRpb25UaW1lPC9rZXk+Cgk8cmVhbD4xNzg2NjIxNDIxLjU3ODU1OTk8L3JlYWw+CjwvZGljdD4KPC9wbGlzdD4K"
+    }];
+    user[F01NativeRecordDaemonVersion] = @[@"9670000"];
+    F01FixtureAttributes(fixture, @"group")[F01NativeRecordDaemonVersion] =
+        @[@"9670000"];
+    return fixture;
+}
+
 typedef void (^F01FixtureDrift)(NSMutableDictionary *state);
 
 @interface F01FixtureBackend : NSObject <F01MutationBackend>
@@ -1196,6 +1229,71 @@ static void F01ExpectZeroDelete(NSMutableArray *results,
 
 static NSDictionary *F01RunSelfTests(void) {
     NSMutableArray *results = [NSMutableArray array];
+
+    NSMutableDictionary *unprivilegedShape = F01AcceptedFixture();
+    NSArray *unprivilegedShapeIssues =
+        F01ValidateCurrentSnapshot(unprivilegedShape);
+    F01RecordTest(results,
+                  @"unprivileged_shaped_user_password_marker_validates",
+                  unprivilegedShapeIssues.count == 0,
+                  [unprivilegedShapeIssues componentsJoinedByString:@" | "]);
+
+    NSMutableDictionary *privilegedShape = F01DeepMutableCopy(F01AcceptedFixture());
+    [F01FixtureAttributes(privilegedShape, @"user")
+        removeObjectForKey:kODAttributeTypePassword];
+    NSArray *privilegedShapeIssues = F01ValidateCurrentSnapshot(privilegedShape);
+    F01RecordTest(results,
+                  @"privileged_shaped_user_password_absence_validates",
+                  privilegedShapeIssues.count == 0,
+                  [privilegedShapeIssues componentsJoinedByString:@" | "]);
+
+    F01ExpectZeroDelete(results, @"wrong_user_password_marker_zero_deletes",
+                        ^(NSMutableDictionary *f) {
+        F01FixtureAttributes(f, @"user")[kODAttributeTypePassword] = @[@"WRONG"];
+    });
+    F01ExpectZeroDelete(results, @"multi_value_user_password_marker_zero_deletes",
+                        ^(NSMutableDictionary *f) {
+        F01FixtureAttributes(f, @"user")[kODAttributeTypePassword] =
+            @[@"********", @"********"];
+    });
+    F01ExpectZeroDelete(results, @"credential_like_user_password_marker_zero_deletes",
+                        ^(NSMutableDictionary *f) {
+        F01FixtureAttributes(f, @"user")[kODAttributeTypePassword] =
+            @[@"review-me-as-a-credential"];
+    });
+    F01ExpectZeroDelete(results, @"non_string_user_password_marker_zero_deletes",
+                        ^(NSMutableDictionary *f) {
+        F01FixtureAttributes(f, @"user")[kODAttributeTypePassword] = @[@1];
+    });
+    F01ExpectZeroDelete(results, @"malformed_user_password_marker_zero_deletes",
+                        ^(NSMutableDictionary *f) {
+        F01FixtureAttributes(f, @"user")[kODAttributeTypePassword] = @"********";
+    });
+
+    NSMutableDictionary *rootSnapshot = F01PrivilegedObserverFixture();
+    NSArray *rootSnapshotIssues = F01ValidateCurrentSnapshot(rootSnapshot);
+    F01RecordTest(results,
+                  @"exact_privileged_snapshot_current_state_validates",
+                  rootSnapshotIssues.count == 0,
+                  [rootSnapshotIssues componentsJoinedByString:@" | "]);
+
+    F01FixtureBackend *rootSnapshotOrdering = [[F01FixtureBackend alloc] init];
+    rootSnapshotOrdering.state = F01PrivilegedObserverFixture();
+    rootSnapshotOrdering.userDeleteError = F01Error(
+        780, @"Fixture-only stop before modeled deletion.", @{});
+    NSDictionary *rootSnapshotOrderingReport =
+        F01ExecuteForEUID(rootSnapshotOrdering, 0);
+    F01RecordTest(
+        results,
+        @"exact_privileged_snapshot_orders_validation_before_fixture_delete",
+        [rootSnapshotOrdering.events isEqual:@[
+            @"observe", @"rebind_both", @"delete_user"
+        ]] &&
+            [rootSnapshotOrdering.deleteCalls isEqual:@[@"user"]] &&
+            [rootSnapshotOrderingReport[@"status"]
+                isEqual:@"HOLD_USER_DELETE_FAILED"] &&
+            [rootSnapshotOrderingReport[@"completed_mutations"] isEqual:@[]],
+        rootSnapshotOrderingReport[@"status"]);
 
     F01ExpectZeroDelete(results, @"wrong_user_guid_zero_deletes", ^(NSMutableDictionary *f) {
         F01FixtureAttributes(f, @"user")[kODAttributeTypeGUID] = @[@"WRONG"];

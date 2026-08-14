@@ -57,23 +57,23 @@ class ArtifactIdentity:
 
 PRODUCTION_IDENTITY = ArtifactIdentity(
     directory=(
-        "/private/tmp/decision-os-f01-slice4a-one-shot-2418c8ea235a"
+        "/private/tmp/decision-os-f01-slice4a-one-shot-0450739ae668"
     ),
     filename="macos_f01_opendirectory_mutation",
     directory_device=16777234,
-    directory_inode=123705528,
+    directory_inode=123725406,
     directory_uid=501,
     directory_gid=0,
     directory_mode=0o500,
     binary_device=16777234,
-    binary_inode=123705533,
+    binary_inode=123725407,
     binary_uid=501,
     binary_gid=0,
     binary_mode=0o555,
     binary_nlink=1,
     binary_size=94704,
     binary_sha256=(
-        "2418c8ea235a3eebe0890e38ed95932ff6094bf4aaa778e78964bfb9eaa6b4fa"
+        "0450739ae6680b148d4c38af6cc047502be6b1d32b37cc53fc0b153a6ffed802"
     ),
     required_euid=0,
     required_egid=0,
