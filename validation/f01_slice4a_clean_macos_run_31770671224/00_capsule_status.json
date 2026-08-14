@@ -1,0 +1,1 @@
+{"capsule_exit_code":5,"deployment_passed":false,"failure_boundary":"slice4a_deployment","final_gate":"HOLD","phase_1_entered":true,"phase_1_passed":true,"phase_2_entered":true,"post_deployment_passed":false,"schema":"decision-os-f01-slice4a-clean-macos-capsule-v0.1","tests_passed":true}

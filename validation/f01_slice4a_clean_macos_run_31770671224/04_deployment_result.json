@@ -1,0 +1,1 @@
+{"arguments":["/usr/bin/sudo","-n","/usr/bin/python3","-I","-S","/Users/runner/work/decision-os-v13-loopkit/decision-os-v13-loopkit/decision_os/companion/principal_separation.py","provision"],"output_truncated":false,"privileged_prompt_allowed":false,"privileged_retry_performed":false,"returncode":1}
