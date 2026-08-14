@@ -458,3 +458,67 @@ RE-ENTRY
 
 An appended entry may correct or supersede an interpretation, but it must name
 the prior entry and preserve that prior record unchanged.
+
+### 8. F-01 Host Attempt 1 preserved state but did not qualify Slice 4A
+
+**AS-OF**
+
+2026-08-14 JST, after the single-input sudo authentication-failure re-anchor.
+
+**FRONTIER**
+
+F-01 Slice 4A had attempted to establish distinct host principals. Host
+Attempt 1 instead stopped with only the partial `_decisionos_codex` user and
+private group remaining at UID/GID 510; principal-separation deployment had
+not completed.
+
+**CAUSAL DELTA**
+
+Question: could the partial host identity be safely removed without widening
+rollback authority or exceeding the Human Seat interaction boundary?
+Observation: multiple bounded recovery routes were attempted, but no deletion
+ever completed. No Guardian or Broker principal was provisioned, and no ACL,
+protected-repository permission, or sole-writer transition occurred. The
+recovery established that Directory Service presentation can vary by observer
+context and that privilege escalation does not itself prove mutation
+authority. Why the frontier stopped: the stale Codex principal remained while
+Human Seat recovery cost reached the fixed CAP boundary, so Host Attempt 1
+could not qualify as a Slice 4A deployment.
+
+**EVIDENCE ANCHOR**
+
+- Decision Owner `TIME TUBE — F-01 SLICE 4A / HOST ATTEMPT 1`, As-of
+  2026-08-14 JST after the single-input sudo authentication-failure re-anchor;
+  this is the authoritative terminal-state and recovery-history record.
+- Recovery branch `codex/13-153-rollback-review` through
+  `11bc417c2104840676003d2cc3d5f12517e9d13f`, especially
+  `validation/f01_slice4a_partial_host_recovery_preparation.md`,
+  `validation/f01_slice4a_opendirectory_mutation_artifact.md`,
+  `validation/f01_slice4a_observer_password_marker_contract_repair.md`, and
+  `validation/f01_slice4a_single_interaction_sudo_transport.md`. These
+  preparation artifacts do not supersede the Time Tube or claim completed
+  deletion.
+
+**GATE**
+
+`HOLD — HOST ATTEMPT 1 IS NOT A QUALIFIED SLICE 4A DEPLOYMENT`. No next action
+is authorized until re-entry path A or B is explicitly selected.
+
+**COMPLETION LINE**
+
+`PASS — POST-FAILURE STATE PRESERVED`: the accepted pre-rollback host state
+remains bounded and restartable without representing recovery or Slice 4A as
+successful.
+
+**MISSING CLOSURE**
+
+The stale `_decisionos_codex` user/group still occupies UID/GID 510. It must
+not be reused or promoted as fresh Slice 4A authority; F-01 remains open and
+principal separation remains incomplete.
+
+**RE-ENTRY**
+
+Re-enter only after explicit selection of either A, separately qualified
+cleanup of the stale host principal, or B, fresh Slice 4A deployment on a
+clean host or clean macOS environment. Do not infer a selection from this
+trajectory entry and do not invent another privileged rollback transport.
