@@ -522,3 +522,109 @@ Re-enter only after explicit selection of either A, separately qualified
 cleanup of the stale host principal, or B, fresh Slice 4A deployment on a
 clean host or clean macOS environment. Do not infer a selection from this
 trajectory entry and do not invent another privileged rollback transport.
+
+## 9. F-01 Slice 4A isolated the deployment mechanism before selecting a zero-cost clean execution boundary
+
+Host Attempt 1 closed with only a stale `_decisionos_codex` user/group and no
+Guardian, Broker, DecisionOS state tree, ACL promotion, or sole-writer
+transition. Its exact accepted Time Tube was later fixed as durable supporting
+evidence, while the trajectory/evidence lineage and implementation/recovery
+lineage remained deliberately separate.
+
+Path B — clean-host deployment — was selected because cleanup of Host Attempt
+1 was not required for forward F-01 progress. The stale host was explicitly
+excluded from the new deployment authority and evidence boundary.
+
+A single GitHub-hosted clean macOS capsule then proved that host contamination
+was not the only relevant variable. Clean-host qualification passed with all
+DecisionOS principal names absent, UID/GID 510–512 free, no prior state tree,
+and no ACL authority. Provisioning nevertheless failed closed during the first
+Codex principal creation when a post-creation `GeneratedUID` write through the
+serial `dscl` mechanism was denied by Directory Services. No Guardian,
+Broker, state tree, ACL, or sole-writer authority was reached.
+
+This result did not reproduce Host Attempt 1's recovery failure. Host Attempt 1
+had already persisted a Codex GUID and later encountered a separate sandbox
+denial during recovery. The two attempts therefore exposed different authority
+boundaries rather than one repeated host-contamination failure.
+
+After repeated environment-side hypotheses, an independent Opus audit was
+introduced before another costly or privileged attempt. That audit challenged
+the existing frame: three-principal separation was being conflated with
+implementation choices such as serial `dscl` mutation and post-creation
+`GeneratedUID` replacement. Subsequent primary-source audit classified the
+strongest supported root cause as deployment mechanism, not architecture.
+
+The falsified implementation assumption was narrowed to:
+
+`EUID 0 alone is a sufficient and portable authority qualification for the
+selected Directory Services mutation path.`
+
+The accepted F-01 security contract remained intact. The candidate
+forward-only delta replaced bare-record-plus-serial-mutation provisioning with
+explicitly authenticated `/Local/Default` OpenDirectory complete-record
+creation, preserving fixed identity semantics while moving GUID assignment
+into the initial record dictionary.
+
+Design review then separated two different failure properties:
+
+* authority fail-closed;
+* state fail-closed.
+
+Because the complete Slice 4A principal set spans multiple user/group records,
+the proposed operation is not a true atomic transaction. It is a compensating
+transaction whose partial-state behavior, reverse compensation, evidence, and
+future re-entry conditions must be explicit.
+
+A scratch-only OpenDirectory mechanism capsule was therefore designed before
+any new F-01 production attempt. It tests explicit node authentication,
+complete-record creation, fixed GUID assignment, `IsHidden`, disabled-login
+semantics, failed-create zero-residue behavior, one-shot deletion, independent
+observation, and root-only environment behavior using non-production
+identities.
+
+Its control semantics were repaired before execution:
+
+* ambient EUID 0 may or may not possess Directory Services mutation authority
+  on a particular host;
+* F-01 must never use EUID 0 alone as proof of qualified authority;
+* failed complete-record creation is judged primarily by zero persistent state,
+  not by one universal numeric error code.
+
+No scratch mechanism execution has yet occurred.
+
+Environment selection was then performed against the frozen capsule contract,
+not by provider name. A second internal macOS installation and a local
+Virtualization.framework macOS VM were both found technically capable without
+new monetary spending. The local VM was selected because it preserves a
+separate macOS `/Local/Default` while giving lower ordinary-host risk, stronger
+isolation, easier reset, and equivalent zero-new-spend cost.
+
+GitHub-hosted macOS was rejected for the frozen new mechanism because it does
+not supply the usable local-administrator credential required for explicit
+OpenDirectory node authentication.
+
+External SSD spending is therefore not currently necessary.
+
+Current frontier:
+
+Prepare exactly one fresh owner-controlled local Virtualization.framework
+macOS VM and perform non-mutating qualification only. The qualification must
+establish the fresh guest `/Local/Default`, VM-local administrator,
+explicit-node credential establishment, future EUID-0 path, non-sandboxed
+execution, independent observer, and evidence export.
+
+No scratch user/group creation is authorized during this preparation.
+
+If the VM qualification passes, a later separately authorized loop may execute
+the already frozen scratch mechanism capsule exactly once.
+
+Current Gate:
+
+`GO — PREPARE SELECTED ZERO-COST ENVIRONMENT`
+
+F-01 remains OPEN.
+
+Slice 4A remains INCOMPLETE.
+
+Host Attempt 1 remains excluded and untouched.
