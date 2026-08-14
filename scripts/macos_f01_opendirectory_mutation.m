@@ -995,6 +995,9 @@ static NSDictionary *F01ExecuteForEUID(id<F01MutationBackend> backend,
 
 #if defined(F01_TESTING)
 
+static NSString *const F01PrivilegedAccountPolicyDataBase64 =
+    @"PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHBsaXN0IFBVQkxJQyAiLS8vQXBwbGUvL0RURCBQTElTVCAxLjAvL0VOIiAiaHR0cDovL3d3dy5hcHBsZS5jb20vRFREcy9Qcm9wZXJ0eUxpc3QtMS4wLmR0ZCI+CjxwbGlzdCB2ZXJzaW9uPSIxLjAiPgo8ZGljdD4KCTxrZXk+Y3JlYXRpb25UaW1lPC9rZXk+Cgk8cmVhbD4xNzg2NjIxNDI1Ljc4NTU5OTk8L3JlYWw+CjwvZGljdD4KPC9wbGlzdD4K";
+
 static NSData *F01FixturePolicyData(NSDictionary *policy) {
     return [NSPropertyListSerialization dataWithPropertyList:policy
                                                       format:NSPropertyListXMLFormat_v1_0
@@ -1101,8 +1104,7 @@ static NSMutableDictionary *F01PrivilegedObserverFixture(void) {
     NSMutableDictionary *user = F01FixtureAttributes(fixture, @"user");
     [user removeObjectForKey:kODAttributeTypePassword];
     user[F01NativeAccountPolicyData] = @[@{
-        @"data_base64":
-            @"PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHBsaXN0IFBVQkxJQyAiLS8vQXBwbGUvL0RURCBQTElTVCAxLjAvL0VOIiAiaHR0cDovL3d3dy5hcHBsZS5jb20vRFREcy9Qcm9wZXJ0eUxpc3QtMS4wLmR0ZCI+CjxwbGlzdCB2ZXJzaW9uPSIxLjAiPgo8ZGljdD4KCTxrZXk+Y3JlYXRpb25UaW1lPC9rZXk+Cgk8cmVhbD4xNzg2NjIxNDIxLjU3ODU1OTk8L3JlYWw+CjwvZGljdD4KPC9wbGlzdD4K"
+        @"data_base64": F01PrivilegedAccountPolicyDataBase64
     }];
     user[F01NativeRecordDaemonVersion] = @[@"9670000"];
     F01FixtureAttributes(fixture, @"group")[F01NativeRecordDaemonVersion] =
@@ -1272,6 +1274,15 @@ static NSDictionary *F01RunSelfTests(void) {
 
     NSMutableDictionary *rootSnapshot = F01PrivilegedObserverFixture();
     NSArray *rootSnapshotIssues = F01ValidateCurrentSnapshot(rootSnapshot);
+    NSArray *rootSnapshotAccountPolicy =
+        F01FixtureAttributes(rootSnapshot, @"user")[F01NativeAccountPolicyData];
+    F01RecordTest(
+        results,
+        @"exact_privileged_snapshot_account_policy_bytes_embedded",
+        [rootSnapshotAccountPolicy isEqual:@[@{
+            @"data_base64": F01PrivilegedAccountPolicyDataBase64
+        }]],
+        [rootSnapshotAccountPolicy description]);
     F01RecordTest(results,
                   @"exact_privileged_snapshot_current_state_validates",
                   rootSnapshotIssues.count == 0,

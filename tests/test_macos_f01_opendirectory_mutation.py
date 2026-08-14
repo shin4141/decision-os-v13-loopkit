@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +15,24 @@ SOURCE = ROOT / "scripts" / "macos_f01_opendirectory_mutation.m"
 READ_ONLY_SOURCE = ROOT / "scripts" / "macos_f01_opendirectory_readonly.m"
 READ_ONLY_SOURCE_SHA256 = (
     "0b12fdebf944b01645733c9b7aaf1cbfa97397e82b6ebfbe80a6d823120adaa6"
+)
+PRIVILEGED_ACCOUNT_POLICY_DATA_BASE64 = (
+    "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCFET0NUWVBFIHBsaXN0"
+    "IFBVQkxJQyAiLS8vQXBwbGUvL0RURCBQTElTVCAxLjAvL0VOIiAiaHR0cDovL3d3dy5hcHBs"
+    "ZS5jb20vRFREcy9Qcm9wZXJ0eUxpc3QtMS4wLmR0ZCI+CjxwbGlzdCB2ZXJzaW9uPSIxLjAi"
+    "Pgo8ZGljdD4KCTxrZXk+Y3JlYXRpb25UaW1lPC9rZXk+Cgk8cmVhbD4xNzg2NjIxNDI1Ljc4"
+    "NTU5OTk8L3JlYWw+CjwvZGljdD4KPC9wbGlzdD4K"
+)
+PRIVILEGED_ACCOUNT_POLICY_DATA_BYTES = (
+    b'<?xml version="1.0" encoding="UTF-8"?>\n'
+    b'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+    b'"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+    b'<plist version="1.0">\n'
+    b"<dict>\n"
+    b"\t<key>creationTime</key>\n"
+    b"\t<real>1786621425.7855999</real>\n"
+    b"</dict>\n"
+    b"</plist>\n"
 )
 
 
@@ -86,8 +105,8 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
         )
         report = json.loads(completed.stdout)
 
-        self.assertEqual(report["total"], 40)
-        self.assertEqual(report["passed"], 40)
+        self.assertEqual(report["total"], 41)
+        self.assertEqual(report["passed"], 41)
         self.assertEqual(report["failed"], 0)
         names = {item["name"] for item in report["tests"]}
         self.assertTrue(
@@ -99,6 +118,7 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
                 "credential_like_user_password_marker_zero_deletes",
                 "non_string_user_password_marker_zero_deletes",
                 "malformed_user_password_marker_zero_deletes",
+                "exact_privileged_snapshot_account_policy_bytes_embedded",
                 "exact_privileged_snapshot_current_state_validates",
                 "exact_privileged_snapshot_orders_validation_before_fixture_delete",
                 "wrong_user_guid_zero_deletes",
@@ -126,6 +146,23 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
                 "unprivileged_exact_state_has_zero_mutation_calls",
                 "successful_transaction_two_deletes_in_order",
             }.issubset(names)
+        )
+        source = SOURCE.read_text(encoding="utf-8")
+        self.assertEqual(source.count(PRIVILEGED_ACCOUNT_POLICY_DATA_BASE64), 1)
+        stale_policy_data = PRIVILEGED_ACCOUNT_POLICY_DATA_BYTES.replace(
+            b"1786621425.7855999",
+            b"1786621421.5785599",
+        )
+        self.assertNotIn(
+            base64.b64encode(stale_policy_data).decode("ascii"),
+            source,
+        )
+        self.assertEqual(
+            base64.b64decode(
+                PRIVILEGED_ACCOUNT_POLICY_DATA_BASE64,
+                validate=True,
+            ),
+            PRIVILEGED_ACCOUNT_POLICY_DATA_BYTES,
         )
 
     def test_production_binary_rejects_all_runtime_arguments_before_host_access(
@@ -211,7 +248,9 @@ class OpenDirectoryMutationArtifactTests(unittest.TestCase):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
 
-    def test_only_user_password_marker_is_observer_dependent(self) -> None:
+    def test_password_marker_is_only_validation_contract_change(
+        self,
+    ) -> None:
         source = SOURCE.read_text(encoding="utf-8")
 
         self.assertIn("if (observation == nil)", source)
