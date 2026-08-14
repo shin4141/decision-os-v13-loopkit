@@ -1,0 +1,144 @@
+TIME TUBE — F-01 SLICE 4A / HOST ATTEMPT 1
+
+As-of:
+2026-08-14 JST
+Post single-input sudo authentication failure re-anchor
+
+Layer:
+V13 — F-01 / Slice 4A
+Record form:
+V8-style Time Tube
+
+CURRENT HOST STATE
+
+Local user:
+_decisionos_codex
+UID = 510
+Primary GID = 510
+GeneratedUID = D6515614-B56A-4943-AA41-18D17DE9F899
+RealName = Decision OS Codex execution principal
+NFSHomeDirectory = /var/empty
+
+Required absent and currently absent:
+- UserShell
+- IsHidden
+- AuthenticationAuthority
+
+Local group:
+_decisionos_codex
+GID = 510
+GeneratedUID = 1F200679-B0A2-4D13-A86F-6492F9C4B66F
+RealName = Decision OS Codex execution principal
+
+Currently absent:
+- GroupMembership
+- GroupMembers
+
+Held principals:
+- Guardian user/group absent
+- Broker user/group absent
+
+DecisionOS host state:
+- /Library/Application Support/DecisionOS absent
+- Slice 4A host-state tree absent
+
+Protected repository:
+- no ACL modification
+- no protected-repository permission promotion
+- no sole-writer transition
+
+ROLLBACK HISTORY
+
+The partial Codex principal was created during the first Slice 4A host attempt.
+
+Subsequent recovery attempts did not complete any deletion.
+
+Observed recovery boundaries included:
+
+1. dscl mutation route
+   - mutation returned exit 40
+   - no deletion completed
+
+2. OpenDirectory through osascript administrator transport
+   - reached EUID 0
+   - exact identity validation eventually passed
+   - user deletion rejected with:
+     com.apple.OpenDirectory / 4001
+     "Disallowed by sandbox"
+   - completed_mutations = []
+
+3. Independently launched Terminal + same osascript transport
+   - same OpenDirectory 4001 sandbox rejection
+   - disproved Codex ancestry as the sole cause
+   - completed_mutations = []
+
+4. SSV-anchored sudo recovery route
+   - single-human-input feeder constructed
+   - human credential supplied exactly once
+   - sudo rejected that credential
+   - feeder correctly supplied EOF to any subsequent sudo read
+   - reviewed loader/mutator never launched
+   - completed_mutations = []
+
+POST-FAILURE RE-ANCHOR
+
+Current host state matches the accepted pre-rollback state.
+
+No OpenDirectory deletion occurred.
+No new provisioning occurred.
+No ACL change occurred.
+No protected-repository mutation occurred.
+
+SAFETY INTERPRETATION
+
+The Mac is not known to be damaged.
+
+The remaining defect is bounded to a stale local experimental
+_decisionos_codex user/group identity occupying UID/GID 510.
+
+This host must NOT be treated as a clean F-01 deployment host while that
+principal remains.
+
+The stale principal must not be silently reused or promoted as proof of a
+successful Slice 4A deployment.
+
+CURRENT GATE
+
+HOLD — HOST ATTEMPT 1 IS NOT A QUALIFIED SLICE 4A DEPLOYMENT
+
+F-01 remains OPEN.
+Slice 4A remains incomplete.
+
+NO FURTHER PRIVILEGED RECOVERY IS AUTHORIZED BY THIS TIME TUBE.
+
+RESTART POINT
+
+Resume from one of two explicitly re-evaluated paths:
+
+A. separately qualified cleanup of the stale host principal; or
+B. fresh Slice 4A deployment on a clean host / clean macOS environment.
+
+Do not resume by inventing another privileged rollback transport.
+
+RE-ANCHOR CONDITION
+
+Before any future use of this Mac as an F-01 deployment host, prove either:
+
+- _decisionos_codex user/group are absent and UID/GID 510 are free;
+
+OR
+
+- the old host attempt is explicitly excluded from the new deployment
+  authority/evidence boundary.
+
+FORWARD-ONLY DELTA
+
+No historical failed attempt is rewritten as success.
+
+The main lessons retained are:
+
+- privilege escalation does not imply mutation authority;
+- observer context can alter Directory Service presentation;
+- fail-closed mutation safety and Human Seat interaction safety are separate;
+- repeated recovery experimentation must be CAPped before Human Seat cost
+  becomes the dominant failure mode.
