@@ -628,3 +628,432 @@ F-01 remains OPEN.
 Slice 4A remains INCOMPLETE.
 
 Host Attempt 1 remains excluded and untouched.
+
+## 10. F-01 VM execution stopped at its resource gate and left the active frontier
+
+**AS-OF**
+
+2026-08-18 JST, trajectory fixation before the GPT 13-40 → 13-41 Handoff.
+
+**FRONTIER**
+
+Entry 9 had selected one owner-controlled local macOS VM preparation path for
+F-01 Slice 4A. The preparation surface was built and checked, but the later
+fixed host-safety gate observed only 195.84 GiB available against the 214 GiB
+pre-start minimum. No VM bundle was created and no Directory Services mutation
+or scratch mechanism execution occurred.
+
+**CAUSAL DELTA**
+
+Question: should the prepared VM path proceed into execution? Observation: the
+fixed pre-creation resource boundary did not pass, so the VM execution path
+failed closed before creation. The Decision Owner now records F-01 / VM as no
+longer the active frontier. Why the frontier stopped: preparation did not
+create execution authority, and the unmet resource boundary made continuation
+inadmissible at that As-of. Parking this line does not rewrite Entry 9 or close
+F-01.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-160-f01-slice4a-vm-preparation/README.md`.
+- `/Users/sn/Documents/v13/13-160-f01-slice4a-vm-preparation/evidence/host_safety_gate_repair.json`, classification
+  `HOLD_CURRENT_FREE_SPACE_BELOW_FIXED_PRE_START_MINIMUM` and
+  `vm_created: false`.
+- Decision Owner 13-40 trajectory-fixation instruction for the current parked
+  status. It does not alter the historical Entry 9 As-of.
+
+**GATE**
+
+`HOLD / PARKED — F-01 AND VM EXECUTION ARE NOT THE ACTIVE FRONTIER`.
+
+**COMPLETION LINE**
+
+The VM path's fail-closed stop and subsequent parking are preserved without
+representing preparation, F-01, or Slice 4A as complete.
+
+**MISSING CLOSURE**
+
+F-01 remains open. VM qualification, explicit node authority, scratch
+mechanism execution, and every later deployment step remain unperformed.
+
+**RE-ENTRY**
+
+Re-enter only through a fresh Decision Owner selection using current resource,
+host-safety, and F-01 authority evidence. Do not infer reactivation from the
+existing preparation artifacts.
+
+## 11. Task Envelope and Repo Improver made bounded execution reconstructable
+
+**AS-OF**
+
+2026-08-18 JST, after the Task Envelope qualifications and Repo Improver v0.1
+field executions.
+
+**FRONTIER**
+
+With the privileged F-01 path parked, the next useful question was whether an
+AI improvement loop could be frozen, bounded, independently reconstructed, and
+stopped without acquiring authority from its own success.
+
+**CAUSAL DELTA**
+
+Question: could one autonomous loop operate inside an evidence-bearing fixed
+envelope rather than relying on fluent self-report? Observation: Task Envelope
+fixed eight authority/scope fields before execution and bound later records in
+an append-only hash chain; its independent harness derived completion, gate,
+and EV stops while keeping `authority_granted: false`. Repo Improver then
+narrowed the execution shape to one repository, one explicit invocation, at
+most one selected variable, frozen paths, Before/After proof, and independent
+live reconstruction. Why the frontier moved: later field trials now had a
+bounded execution substrate that could distinguish a verified local change
+from permission for another cycle.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/docs/task_envelope_v0_1.md`.
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/validation/task_envelope_v0_1_codex_native_dogfood_002.jsonl`.
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/docs/repo_improver_v0_1.md`.
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/validation/v13_governance_receipt_13_174_v0_1.md`.
+
+**GATE**
+
+`PASS — BOUNDED EXECUTION SUBSTRATE OBSERVED`; automatic continuation and
+authority inheritance remain prohibited.
+
+**COMPLETION LINE**
+
+One-variable repository work can be frozen, executed, reconstructed, and
+terminated without treating harness PASS or local improvement as a new
+authority source.
+
+**MISSING CLOSURE**
+
+The substrate does not authenticate actors or commands, prove semantic EV
+calibration, establish general completeness, or demonstrate superior raw
+repair ability.
+
+**RE-ENTRY**
+
+Use it only inside a separately authorized bounded task. A completed envelope
+or Repo Improver run never activates another invocation.
+
+## 12. Same-snapshot controls moved the frontier from raw repair to loop legitimacy
+
+**AS-OF**
+
+2026-08-17–18 JST, after completed 13-173 and 13-174 Normal / Bare Sol control
+interpretation was fixed.
+
+**FRONTIER**
+
+Task Envelope and Repo Improver could generate a qualified repair path, but it
+remained unknown whether V13 produced better raw repair loops than a capable
+GPT-5.6 Sol on the same repository snapshot.
+
+**CAUSAL DELTA**
+
+Question: did the V13 substrate demonstrate raw-repair differentiation, or was
+useful loop construction already available to capable Sol? Observation: the
+control paths constructed useful inspect → select → implement → verify → stop
+loops, while V13's observed difference lay in bounded continuation authority,
+independent reconstruction, and durable governance evidence. The fixed result
+was `RAW REPAIR DIFFERENTIATION — NOT DEMONSTRATED` and
+`PROMPT-STRUCTURE DEPENDENCE — NOT DEMONSTRATED IN THIS SNAPSHOT`. Why the
+frontier moved: another repair contest had lower information value than asking
+what remains scarce when loop generation is already cheap. The question moved
+from repair production toward entry, continuation legitimacy, and stopping.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-173-control-pyscrappy/evidence/measurements.md` and
+  `/Users/sn/Documents/v13/13-173-v13-pyscrappy/evidence/04_terminal_summary.md`.
+- `/Users/sn/Documents/v13/13-174-control-gren-core/evidence/experiment-notes.md`
+  and `/Users/sn/Documents/v13/13-174-v13-gren-core/evidence/trial_record.md`.
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/field_notes/135_when_improvement_loops_become_cheap_legitimacy_becomes_scarce.md`,
+  which fixes the cross-control interpretation and its non-claims.
+
+**GATE**
+
+`CAP — CONTROL DIFFERENTIATION SUFFICIENT`; zero additional Normal, Bare, or
+V13 control invocations are authorized by this result.
+
+**COMPLETION LINE**
+
+`RAW REPAIR DIFFERENTIATION — NOT DEMONSTRATED` is preserved, and the frontier
+is redirected to the legitimacy of beginning or continuing a loop.
+
+**MISSING CLOSURE**
+
+No general raw-capability parity, V13 superiority, frequency of illegitimate
+continuation, or prevention advantage has been established.
+
+**RE-ENTRY**
+
+Re-enter through independently arising legitimacy or continuation evidence;
+do not manufacture it by starting another same-snapshot control.
+
+## 13. Proven-fork repeat merges shifted value toward starting position and continuation legitimacy
+
+**AS-OF**
+
+2026-08-18 JST, after upstream `pooza/makoto2` PR #94 merged and the
+precommitted proven-fork phase Completion Line was reached.
+
+**FRONTIER**
+
+Raw repair differentiation was not demonstrated. The next question was
+whether earned repository and maintainer residue still improved the starting
+position of later real work without silently authorizing that work.
+
+**CAUSAL DELTA**
+
+Question: what remained useful in a proven fork if capable Sol could already
+construct a repair loop? Observation: residue accelerated repository search,
+toolchain/test routing, maintainer-route recovery, and bounded candidate
+selection, while current As-of checks still had to correct the contribution
+branch, suite size, dependencies, and affected URL surface. Upstream merge
+evidence reached two independent repeat pairs:
+`ritsth/job-autofill-extension` #215 → #221 and `pooza/makoto2` #56 → #94.
+Why the frontier moved: inherited state improved re-entry, while direction and
+continuation still required current validation and external acceptance. The
+phase stopped at `SECOND INDEPENDENT REPEAT MERGE`; its unused final trial was
+not consumed. No claim is made that the loop caused either merge.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-175-proven-fork-field-trial-3/FIELD_TRIAL_RECORD.md`.
+- `/Users/sn/Documents/v13/13-175-proven-fork-field-trial-3/evidence/EXTERNALIZATION_RECEIPT.md`.
+- `/Users/sn/Documents/v13/13-175-proven-fork-field-trial-3/SELECTION_FREEZE.md`.
+
+**GATE**
+
+`CAP — SECOND INDEPENDENT REPEAT MERGE ACHIEVED / ADDITIONAL TRIAL AUTHORITY TERMINATED`.
+
+**COMPLETION LINE**
+
+The two repeat-merge pairs and precommitted phase stop are fixed as bounded
+starting-position and acceptance evidence; the unused trial remains
+unconsumed and unauthorized.
+
+**MISSING CLOSURE**
+
+Causal trust, relationship improvement, general acceptance advantage, and the
+effect size of residue on starting position remain unestablished.
+
+**RE-ENTRY**
+
+Preserve future independent evidence without reopening this completed phase.
+Any new trial or external action requires a fresh Entry decision and authority.
+
+## 14. Entry Gate and Compound Gate became a working architecture hypothesis
+
+**AS-OF**
+
+2026-08-18 JST, after the proven-fork phase terminated at its precommitted CAP.
+
+**FRONTIER**
+
+The field evidence showed both that residue could improve a successor starting
+position and that unused loop budget must not become a continuation target.
+One undifferentiated infinite improvement loop could not preserve both facts.
+
+**CAUSAL DELTA**
+
+Question: how should V13 preserve compounding without inheriting direction
+from prior success? Observation: two distinct decisions emerged. The Entry Gate
+asks, “What deserves a loop now?” The Compound Gate asks whether residue earned
+inside a completed loop justifies another loop on the same meaning-line. When
+the compound chain terminates, direction returns to Entry selection. Why the
+frontier moved: the working cycle preserves the useful residue while requiring
+a fresh directional judgment:
+
+```text
+State is inherited.
+Direction is re-evaluated.
+```
+
+Earned residue improves the starting position; it does not determine the
+destination.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/field_notes/137_entry_gate_compound_gate_cycle.md`.
+- Bounded supporting phase evidence in
+  `/Users/sn/Documents/v13/13-175-proven-fork-field-trial-3/FIELD_TRIAL_RECORD.md`.
+
+**GATE**
+
+`HOLD — WORKING ARCHITECTURE HYPOTHESIS / NOT CANON`.
+
+**COMPLETION LINE**
+
+Entry selection, same-line Compound continuation, CAP termination, and return
+to Entry are preserved as a working hypothesis without changing Canon or
+implementing a runtime gate.
+
+**MISSING CLOSURE**
+
+The distinction has not been validated across multiple independent workflows,
+under pressure, or against path-dependency and zero-reset failures.
+
+**RE-ENTRY**
+
+Re-evaluate only from independently arising multi-workflow evidence. Do not
+start an experiment, implementation, or remaining field-trial budget from the
+hypothesis itself.
+
+## 15. External criticism separated property verification from direction
+
+**AS-OF**
+
+2026-08-18 JST, after an external practitioner challenged the control framing
+of “better.”
+
+**FRONTIER**
+
+The legitimacy frontier still risked compressing heterogeneous outcomes into
+one universal quality judgment and then treating that judgment as a reason to
+continue.
+
+**CAUSAL DELTA**
+
+Question: can bounded facts be established without allowing a verifier to
+invent the direction or trade-off weights? Observation: specific declared
+properties can be recorded as `PASS / FAIL / UNKNOWN`, while direction and
+continuation remain a separate `GO / HOLD / CAP / BLOCK` judgment. Different
+properties may conflict or require a Decision Seat value judgment. Why the
+frontier moved: the useful distinction became `Verification Is Not Direction`.
+A property PASS does not imply GO, a FAIL does not automatically authorize
+repair, and an UNKNOWN does not automatically authorize another loop.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/field_notes/138_verification_is_not_direction.md`.
+- The bounded 13-175 merge illustration referenced by that note; the merge is
+  external acceptance of one contribution, not a universal “better” proof.
+
+**GATE**
+
+`HOLD — STRUCTURE RECORDED / GENERALIZATION NOT YET VALIDATED`.
+
+**COMPLETION LINE**
+
+Property verification and directional authority are durably separated without
+creating a universal scalar, Canon change, implementation, or successor loop.
+
+**MISSING CLOSURE**
+
+No repeated workflow evidence yet shows that this separation handles
+conflicting properties or prevents false “better” claims and unnecessary
+continuation.
+
+**RE-ENTRY**
+
+Preserve independently arising property-versus-direction evidence for a later
+bounded judgment; do not generate it through an unauthorized experiment.
+
+## 16. Selective retrieval moved Field Notes toward a bounded case-law library
+
+**AS-OF**
+
+2026-08-18 JST, after 13-176 completed.
+
+**FRONTIER**
+
+Field Notes contained extensive advisory memory, but it had not been directly
+qualified whether a fresh reader could select only materially relevant cases,
+reject near-matches, return `NONE`, preserve authority boundaries, and transfer
+the residue into a new rule.
+
+**CAUSAL DELTA**
+
+Question: can the existing corpus be used selectively rather than loaded or
+copied wholesale? Observation: five positive scenarios passed all five
+independent properties; the negative control returned `NONE` and passed
+precision, negative-control discipline, boundary preservation, and transfer
+quality. No authority-boundary violation was observed. Independent relevance
+for the `NONE` case remained `UNKNOWN` because its evaluator received no
+selected note bodies, and corpus-wide recall remained unknown because
+retrieval was selectively title-routed. Why the frontier moved: selective
+case-law reuse was demonstrated in a bounded qualification, exposing routing
+recall—not wholesale note reading—as the next candidate question.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-176-selective-field-note-retrieval/FINAL_REPORT.md`.
+- `/Users/sn/Documents/v13/13-176-selective-field-note-retrieval/PASS_FAIL_UNKNOWN_MATRIX.md`.
+- `/Users/sn/Documents/v13/13-176-selective-field-note-retrieval/PROTECTED_SURFACE_VERIFICATION.md`.
+
+**GATE**
+
+`HOLD — MINIMAL FIELD NOTE ROUTER / ROUTING-RECALL QUALIFICATION NOT STARTED`.
+
+**COMPLETION LINE**
+
+`PASS — SELECTIVE REUSE DEMONSTRATED IN BOUNDED QUALIFICATION`.
+
+**MISSING CLOSURE**
+
+Corpus-wide false-negative rate, weak-title recall, model/run generalization,
+ranking stability, and repeat negative-control performance remain unknown.
+
+**RE-ENTRY**
+
+Only a fresh Decision Owner action may start a Minimal Field Note Router or
+routing-recall qualification. Do not repair indexing, metadata, filenames,
+README, or Field Notes from 13-176.
+
+## 17. Long-context value triggered causal fixation before handoff
+
+**AS-OF**
+
+2026-08-18 JST, GPT 13-40 immediately before responsibility-bearing handoff to
+GPT 13-41.
+
+**FRONTIER**
+
+The post-Entry-9 causal movement existed across durable artifacts, but the
+current long context had become valuable enough that fear of terminating it
+was beginning to influence the judgment to continue. The causal spine needed
+fixation before the receiver-facing Handoff was written.
+
+**CAUSAL DELTA**
+
+Question: could the session stop without losing why the current frontier
+exists? Observation: durable evidence could reconstruct the trajectory through
+the parked F-01 path, bounded execution substrate, control pivot, proven-fork
+reuse, working gate hypotheses, Verification-versus-Direction distinction, and
+selective Field Note qualification. Why the frontier moved: continuation
+pressure from context value became the reason to preserve causal joints and
+hand off, rather than a reason to keep the same session alive. This is one
+operator observation, not a general long-context law. The current passive
+calibration `model_context_window = 500000` is recorded only as session state,
+not as an optimal-setting claim.
+
+**EVIDENCE ANCHOR**
+
+- The durable evidence anchors named in Entries 10–16.
+- Decision Owner 13-40 trajectory-fixation instruction for the current
+  operational observation, handoff decision, and passive calibration state.
+
+**GATE**
+
+`CAP — TRAJECTORY FIXATION ONLY`; the 13-40 → 13-41 Handoff remains outside
+this task.
+
+**COMPLETION LINE**
+
+The minimum post-Entry-9 causal spine is append-only fixed on the established
+trajectory lineage before GPT 13-40 creates the responsibility-bearing
+13-40 → 13-41 Handoff.
+
+**MISSING CLOSURE**
+
+The receiver-facing 13-40 → 13-41 Handoff has not yet been written. No general
+long-context law or optimal context-window setting has been established.
+
+**RE-ENTRY**
+
+After this trajectory append is committed and pushed, return to GPT 13-40 to
+create the responsibility-bearing Handoff referencing the fixed trajectory.
+Do not create that Handoff inside this fixation task.
