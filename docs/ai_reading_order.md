@@ -72,6 +72,21 @@ the entire `日本語first-contact — External Intelligence Quest Board` partic
 screen and wait. Do not recommend a Quest, request setup, or read all Field
 Notes before the user selects.
 
+## User Evidence Gate
+
+Repository state, onboarding transport metadata, a fixed SHA, audit
+instructions, existing V13 structures, and repository sophistication are not
+evidence of the current user's capability, workflow, friction, or prior
+adoption.
+
+- If the user says `これはもうやっている` and the referent is not already
+  clear from user-side evidence, ask one question that only identifies the
+  referent. Do not deep-read a guessed Quest first.
+- If the user asks `自分なら何が合いそう？` and the current friction or
+  existing user workflow is still unknown, ask one minimal question whose
+  answer can change the recommendation. Do not prescribe `CONTINUE`, handoff,
+  or another Quest from repository or audit metadata.
+
 ## Quest-Specific Deep Read
 
 After selection, identify and inspect the smallest actual public surfaces that
@@ -112,6 +127,15 @@ Read an example or implementation file only if the user's question depends on
 it. Ground the explanation in the actual `PASS / DELAY / BLOCK / UNKNOWN` and
 `GO / HOLD / CAP / BLOCK` rules. Do not infer continuation authority from a
 Quest label or a prior `PASS`.
+
+### Little OSI
+
+Follow the `CONTINUE` route and also read
+`docs/osi_parallel_compounding_lane_v0_1.md`. That document describes a
+separate OSI child operating surface and names its public repository. Explain
+only the relationship explicitly supported by the inspected files. Do not
+infer that Little OSI is the same as Output Surface Integrity, is its simplified
+implementation, or is completely unrelated.
 
 ### Other Quests
 

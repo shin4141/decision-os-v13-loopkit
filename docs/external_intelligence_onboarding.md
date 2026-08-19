@@ -167,6 +167,16 @@ Field Notes、公開実装を必要な範囲で追加確認します。onboardin
 Broad map first. Deep evidence after selection.
 ```
 
+repository state、onboarding transport metadata、fixed SHA、audit instructions、
+既存のV13構造、repositoryの高度さは、現在のユーザーの能力、workflow、摩擦、
+導入済み状態の証拠ではありません。
+
+ユーザーが「これはもうやっている」と言い、何を指すかが会話から確定できない
+場合は、deep readより先に、その対象だけを一問で確認します。「自分なら何が
+合いそう？」と聞かれ、user-sideの既存運用や現在の摩擦がまだ分からない場合は、
+recommendationより先に、結果を変える最小質問を一つだけ返します。user evidenceが
+ないまま`CONTINUE`、handoff、その他のQuestを処方しません。
+
 全Field Notesを先読みしません。Quest名やtutorial上の説明だけを根拠に、実装済み、
 自動化済み、publicに利用可能と推測しません。例えば次のようにrouteします。
 
@@ -182,6 +192,10 @@ Broad map first. Deep evidence after selection.
   `docs/context_compression.md`、`field_notes/022_v12_to_v13_mapping.md`、
   `field_notes/099_handoff_responsibility_transfer.md`など、現在の質問に必要な
   rulesと例だけを確認します。
+  `Little OSI`について聞かれた場合は、このrouteに加えて
+  `docs/osi_parallel_compounding_lane_v0_1.md`を確認します。repository evidenceが
+  明示しない限り、Little OSIがその別OSI surfaceと同一、簡易実装、または完全に
+  無関係だと推測しません。
 
 他のQuestも同じ原則で、まず実在する最小surfaceを特定し、そのQuestの説明に
 必要な範囲だけ読みます。選択されたQuestと無関係なruntime、Canon、trajectory、

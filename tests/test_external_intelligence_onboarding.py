@@ -61,6 +61,41 @@ class RepoGroundedExternalIntelligenceOnboardingTests(unittest.TestCase):
         self.assertIn("access boundaryを最大数行", onboarding)
         self.assertIn("全Field Notesを先読みしません", onboarding)
 
+    def test_user_evidence_gate_precedes_deep_read_and_recommendation(
+        self,
+    ) -> None:
+        onboarding = read("docs/external_intelligence_onboarding.md")
+        reading_order = read("docs/ai_reading_order.md")
+
+        for text in (onboarding, reading_order):
+            self.assertIn("fixed SHA", text)
+            self.assertIn("audit", text)
+            self.assertIn("これはもうやっている", text)
+            self.assertIn("自分なら何が合いそう？", text)
+
+        self.assertIn("deep readより先に、その対象だけを一問", onboarding)
+        self.assertIn("結果を変える最小質問を一つだけ", onboarding)
+        self.assertIn("Do not deep-read a guessed Quest first.", reading_order)
+        self.assertIn(
+            "Do not prescribe `CONTINUE`, handoff,\n  or another Quest",
+            reading_order,
+        )
+
+    def test_little_osi_route_disambiguates_the_separate_osi_surface(
+        self,
+    ) -> None:
+        reading_order = read("docs/ai_reading_order.md")
+        little_osi = reading_order.split("### Little OSI", 1)[1].split(
+            "### Other Quests", 1
+        )[0]
+
+        self.assertIn("Follow the `CONTINUE` route", little_osi)
+        self.assertIn("docs/osi_parallel_compounding_lane_v0_1.md", little_osi)
+        self.assertTrue((ROOT / "docs/osi_parallel_compounding_lane_v0_1.md").is_file())
+        self.assertIn("same as Output Surface Integrity", little_osi)
+        self.assertIn("simplified", little_osi)
+        self.assertIn("completely unrelated", little_osi)
+
     def test_v13_loop_is_explained_as_a_next_cycle_gate_not_automation(
         self,
     ) -> None:
