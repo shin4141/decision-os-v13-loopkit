@@ -22,10 +22,16 @@ This guide remains the current LoopKit onboarding guide. Its menu and first-resp
 
 Before explaining, read:
 
-1. the opening and External Intelligence entry in `README.md`; stop at the
-   next unrelated top-level section
+1. the public purpose, External Intelligence entry, claim boundary, and Fork
+   boundary in `README.md`
 2. `AGENTS.md`
 3. `docs/external_intelligence_onboarding.md`
+4. `docs/ai_reading_order.md`
+5. `docs/field_note_lifecycle.md`
+
+Briefly disclose which of those files were actually inspectable and which were
+not. Give a short repository-grounded orientation before the Quest Board. Do
+not turn this disclosure into a long audit or infer missing behavior.
 
 Then read only the surface needed for the selected first structure:
 
@@ -141,30 +147,36 @@ Intelligence onboarding trigger in this repository. Unless the user explicitly
 asks for model delegation, do not reinterpret it as a request to consult
 ChatGPT or install a plugin.
 
-1. External intelligence here means governed repository memory and selective
-   reuse, not automatic model-weight training.
-2. The user does not need to adopt the whole system.
-3. Show the capability map before asking diagnostic questions, choosing a
+1. Explain from the files actually inspected that external intelligence here
+   means governed repository memory and selective reuse, not automatic
+   model-weight training.
+2. In a few lines, state what was and was not inspectable and the resulting
+   evidence boundary. Do not infer missing implementation.
+3. The user does not need to adopt the whole system.
+4. Show the capability map before asking diagnostic questions, choosing a
    starting structure, or recommending one. For Japanese first contact, use
    `日本語first-contact — External Intelligence Quest Board` in
    `docs/external_intelligence_onboarding.md`.
-4. Do not require a Fork, clone, repository attachment, Codex project, setup,
+5. Do not require a Fork, clone, repository attachment, Codex project, setup,
    or file change to view the Quest Board. Environment attachment comes only
-   after the user selects a Quest or says they want to try one.
-5. Wait for the user to choose, explore, ask to see everything, say what they
+   after the user receives a repo-grounded Quest explanation or trial and says
+   they want the Full Experience.
+6. Wait for the user to choose, explore, ask to see everything, say what they
    already use, or request a recommendation. Viewing or choosing does not
    authorize setup or file changes.
-6. After that choice, use the current conversation and repository to recognize
-   existing instructions, memory, handoff, Git, Codex practice, interests, and
-   current friction. Ask only for missing facts that would change the next
-   step. Do not use a quiz or capability ranking.
-7. Recommend at most one starting structure only after the map when the user
+7. After that choice, inspect the actual rules, docs, relevant Field Notes, and
+   public implementation needed for that Quest before explaining it. Use the
+   current conversation and repository to recognize existing instructions,
+   memory, handoff, Git, Codex practice, interests, and current friction. Ask
+   only for missing facts that would change the next step. Do not use a quiz or
+   capability ranking.
+8. Recommend at most one starting structure only after the map when the user
    asks what fits, or help use the one they selected. Leave a restart point and
    stop.
-8. Treat the exchange as one bounded onboarding task. Do not attach the full
+9. Treat the exchange as one bounded onboarding task. Do not attach the full
    completion report to every in-progress question; use the canonical report
    when the selected exercise closes or a real blocker ends the task.
-9. In a third-party fork, establish the fork's own Decision Owner. Do not
+10. In a third-party fork, establish the fork's own Decision Owner. Do not
    inherit Shin merely because the upstream canonical repository names him.
 
 For Japanese first contact, do not replace the Quest Board with a preference
@@ -180,7 +192,7 @@ abbreviated six-category summary. Then wait.
 The order is:
 
 ```text
-Show the map first. Recommend second.
+Read the repository first. Show the map. Deep-read after selection.
 ```
 
 Do not call the user a beginner without evidence. Observe existing capability
@@ -233,18 +245,26 @@ Tell the user they can:
 - choose `🚦 Signals`, `🌱 Growth OS`, or `💊 Setup Pill` as optional but valuable follow-up modules
 
 The initial Quest Board may also expose Little OSI and Little Compactor as
-lightweight entry concepts. Do not turn those names into new products,
-runtime behavior, schemas, or performance claims.
+lightweight entry concepts. The public Little Compactor evidence is a
+research-candidate document, not proof of a complete shipped implementation.
+Do not turn those names into new products, runtime behavior, schemas, or
+performance claims.
 
 ## First-Run Loop
 
-1. Show the External Intelligence Quest Board.
-2. Wait for the user's choice, exploration, or request for a recommendation.
-3. Observe the user's current goal, friction, and existing system.
-4. Explain only the minimum mental model needed for the choice.
-5. Select at most one useful structure or follow the selected Quest.
-6. Run one tiny, authorized use of that structure.
-7. Leave the restart point and the condition for returning.
+1. Inspect the five first-contact repository surfaces and disclose the access
+   boundary briefly.
+2. Give a short repository-grounded orientation and show the full External
+   Intelligence Quest Board.
+3. Wait for the user's choice, exploration, or request for a recommendation.
+4. Inspect only the additional repository evidence needed for that Quest.
+5. Observe the user's current goal, friction, and existing system.
+6. Explain only the minimum mental model needed for the choice.
+7. Select at most one useful structure or follow the selected Quest.
+8. Run one tiny, authorized use of that structure.
+9. Leave the restart point and the condition for returning.
+10. Offer `🔓 Full Experience — Forkして体感する` only if the user expresses
+    interest after the explanation or trial.
 
 Do not introduce another structure merely because it appears next in this
 guide.

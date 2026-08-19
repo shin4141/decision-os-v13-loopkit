@@ -8,13 +8,39 @@ first contactは処方ではなくshowroomです。最初に何ができるか�
 ユーザーが選ぶまで開始構造を決めません。
 
 ```text
-Show the map first. Recommend second.
+Read the repository first. Show the map. Deep-read after selection.
 ```
 
 ## 日本語first-contact — External Intelligence Quest Board
 
-日本語でExternal Intelligenceのtutorialや始め方を求められたら、質問や
-おすすめを先に出さず、次のparticipant-facing画面を最初に見せます。
+日本語でExternal Intelligenceのtutorialや始め方を求められたら、まず同じ
+public repositoryにある次の最小surfaceを実際に確認します。
+
+- `README.md`
+- `AGENTS.md`
+- `docs/external_intelligence_onboarding.md`
+- `docs/ai_reading_order.md`
+- `docs/field_note_lifecycle.md`
+
+その証拠だけを使い、External Intelligenceがこのrepositoryで何を意味し、実際に
+どのsurfaceで支えられているかを短く説明します。次に、長い監査報告ではなく、
+access boundaryを最大数行で示します。
+
+```text
+確認できたもの:
+README / AGENTS / onboarding / reading order / Field Note lifecycle / <others actually inspected>
+
+現在確認できないもの:
+<あれば。なければ「上記first-contact範囲ではなし」>
+
+したがって、この案内では
+<supported boundary>までrepository根拠で説明できます。
+```
+
+アクセス不足を能力不足のように装いません。取得できなかったfile、privateまたは
+separate artifact、未確認の実装は、推測で補いません。この短いorientationと
+disclosureの後、質問やおすすめを先に出さず、次のparticipant-facing画面を
+全文表示します。
 `MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT / GRADUATE`、
 `Little OSI`、`Little Compactor`、Multi-AI Note候補、自由選択例を省略した
 短い要約へ置き換えません。項目名は固定された導入順ではなく、選べる入口です。
@@ -24,6 +50,10 @@ Show the map first. Recommend second.
 # 🧠 External Intelligence
 
 ## 自分専用の外部知能を育てる
+
+このrepositoryのV13 LoopKitは、AIとの仕事で生まれた記憶・再開点・再利用できる
+知識を外部に残し、現在の作業が終わった後に次の作業へ進むべきかを判断するための
+運用OSです。
 
 External Intelligenceは、AIそのものを自動学習させる仕組みではありません。
 
@@ -65,6 +95,9 @@ AIとの仕事や会話から生まれた、記憶、学び、失敗、判断理
 - **次のAIが迷わず再開できる最小情報を残す** — Little OSI
 - **「終わったつもり」を防ぐ** — V12 Completion Integrity
 - **次のloopを走らせるか決める** — V13 Loop Gate
+  - V13 Loop Gateは、自動で作業を繰り返す機能ではありません。現在のtaskが
+    終わった後、次の作業cycleを開始する正当性を`GO / HOLD / CAP / BLOCK`で
+    判断する境界です。
   - `GO / HOLD / CAP / BLOCK`
   - 今の作業が終わっていても、次のloopを自動開始しません。
 
@@ -122,26 +155,80 @@ Tutorialは補助輪であり、External Intelligence本体ではありません
 ---
 
 ユーザーが選択するまでは、file変更、handoff作成、Note保存、Rule promotion、
-setupを開始しません。
+setup、Fork、cloneを開始せず、特定Questを推薦しません。
 
-## Questを試すと決めた後
+## Quest選択後 — evidence first
 
-Quest Boardを見て、気になるQuestを選んだか、試したいと表明した後にだけ、
-自分の環境へ接続する案内を出します。
-
-1. このrepositoryをForkまたはcloneする
-2. repository rootをCodexまたはClaude Codeで開く
-3. 普通に話しかける
+Questが選ばれた後にだけ、そのQuestを支える実ファイル、rules、docs、関連する
+Field Notes、公開実装を必要な範囲で追加確認します。onboarding本文だけを根拠に
+説明せず、存在を確認したsurfaceと、そこから言える境界を先に揃えます。
 
 ```text
-外部知能を使ってみたい。何から始めればいい？
+Broad map first. Deep evidence after selection.
 ```
 
-repository rootのtiny routerがこのページへ案内します。長いcopy-paste promptや
-特定fileの指定は必要ありません。通常taskではtutorialを読み込みません。
+全Field Notesを先読みしません。Quest名やtutorial上の説明だけを根拠に、実装済み、
+自動化済み、publicに利用可能と推測しません。例えば次のようにrouteします。
 
-Questを見ただけ、または興味を持っただけでは、Fork、clone、project attachment、
-setup、file変更を開始しません。
+- `LIGHTEN`:
+  `AGENTS.md`、`docs/ai_reading_order.md`、
+  `docs/field_notes_lite_v0_1_design.md`、関連するselective-recall Field Notes、
+  必要なら`decision_os/companion/field_notes_reconnect.py`や対応testを確認します。
+  `Little Compactor`については
+  `docs/research_candidates/agents_md_reconnectable_compactor.md`を確認し、
+  research candidateと公開実装済み機能を混同しません。
+- `CONTINUE`:
+  `AGENTS.md`のV12 / V13 / handoff rules、`docs/handoff_command.md`、
+  `docs/context_compression.md`、`field_notes/022_v12_to_v13_mapping.md`、
+  `field_notes/099_handoff_responsibility_transfer.md`など、現在の質問に必要な
+  rulesと例だけを確認します。
+
+他のQuestも同じ原則で、まず実在する最小surfaceを特定し、そのQuestの説明に
+必要な範囲だけ読みます。選択されたQuestと無関係なruntime、Canon、trajectory、
+research frontierへ広げません。
+
+## Availability boundary
+
+Quest名が存在することは、完全なimplementationがpublic repositoryに含まれる
+証拠ではありません。確認できるのが概念、boundary、research candidate、test、
+または一部のpublic implementationだけなら、その粒度を維持します。
+
+特に現在のpublic surfaceで`Little Compactor`として確認できるのは、Quest上の
+entry conceptとreconnectable compactorのresearch-candidate文書です。別の実装本体
+や非公開artifactの詳細は、このrepositoryから確認できたものとして説明しません。
+
+確認できない時は、次のように明示します。
+
+```text
+このrepositoryから確認できるのは概念・boundary・evidenceのこの範囲です。
+実装詳細はここからは確認できません。
+```
+
+Forkしても、public repositoryに存在しないprivate repository、separate unpublished
+implementation、Shin固有のprivate memory、public `main`にないupstream internal
+trajectoryが自動的に見えるようになるとは説明しません。
+
+## 🔓 Full Experience — Forkして体感する
+
+これはfirst responseやQuest選択直後の自動CTAではありません。public repositoryを
+根拠にQuestの説明または小さなtrialを受けた後、ユーザーが自分用に育てたいと
+興味を示した時にだけ、`🔓 Full Experience — Forkして体感する`の見出しを保って
+次のsecondary CTAを提示できます。
+
+ここまでは公開repositoryをAIに読ませたShowroomです。
+
+自分のExternal Intelligenceとして実際に育ててみたくなったら、このrepositoryを
+Fork / cloneしてCodexまたはClaude Codeでrepository rootを開いてください。
+そうすると`AGENTS.md`、notes、handoff、docs等を実際のworkspaceとして使いながら、
+自分のExternal Intelligenceを育てられます。
+
+気に入らなければ採用を続ける必要はありません。Forkは理解するための前提ではなく、
+体感して育てるための次段階です。得られるのはpublic repositoryに含まれるExternal
+Intelligence surfaceと、その人がそこから育てる新しい状態です。
+
+Fork後はrepository rootのtiny routerがこのページへ案内します。通常taskでは
+tutorialを読み込みません。Fork、clone、setup、file変更はユーザーの明示した
+次段階として扱い、CTAを見せたこと自体を実行authorityにしません。
 
 ## Graduationの境界
 
@@ -177,7 +264,9 @@ repositoryから、次のうち判断に必要なことだけを確認します�
 upstream canonical repositoryにShinと書かれていることだけを理由に、
 第三者のForkへ同じOwnerを継承しません。
 
-最初の案内では、`README.md`はExternal Intelligence入口までで止めます。
+最初の案内では、必須の5 surfaceでrepositoryのbroad mapを確認します。
+`README.md`ではpublic purpose、External Intelligence入口、claimとForkの境界を
+確認し、無関係な後続sectionを全て読み込む必要はありません。
 upstreamの`docs/current_signal.md`、`handoff/current_codex_handoff.md`、
 `docs/trajectory/V13_TRAJECTORY.md`、`validation/`は第三者Forkの現在状態では
 ありません。upstream自体を再開・評価する依頼がある時だけ読みます。

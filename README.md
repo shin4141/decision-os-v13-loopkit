@@ -52,25 +52,54 @@ real work -> observation -> external memory -> reusable candidate
 ### まず試してみる — Fork不要
 
 Fresh ChatGPT / Claude / Codexの新しいチャットへ、次のblockをそのまま
-copy-pasteしてください。repositoryを開いたり、Forkやsetupをしたりする前に、
-External Intelligenceで何ができるかをQuest Boardで見られます。
+copy-pasteしてください。AIはまずpublic repositoryの実ファイルを確認し、
+確認できた範囲を明示してから、repository根拠の案内とQuest Boardを返します。
+Fork、clone、setupはまだ必要ありません。
 
 ```text
-外部知能を使ってみたい。何から始めればいい？
+この公開repositoryを実際に読んでから、
+External Intelligenceを案内してください。
 
-次の公開ページを読んで、最初に
+https://github.com/shin4141/decision-os-v13-loopkit
+
+最初に最低限、次を確認してください。
+
+- README.md
+- AGENTS.md
+- docs/external_intelligence_onboarding.md
+- docs/ai_reading_order.md
+- docs/field_note_lifecycle.md
+
+そのうえで、最初に短く2点だけ教えてください。
+
+1. このrepositoryが実際に持っているExternal Intelligenceの仕組みは何か。
+   repositoryで確認できた内容だけを使って説明してください。
+
+2. あなたが今の環境から実際に確認できた範囲と、
+   確認できなかった範囲を明示してください。
+   見えていない実装や仕組みを推測で補わないでください。
+
+その後、
+docs/external_intelligence_onboarding.md の
 「日本語first-contact — External Intelligence Quest Board」
-の全文を省略せず表示してください。
-私がQuestを選ぶまでは、Fork、clone、repository接続、setup、file変更、
-特定Questの推薦を始めないでください。
+を全文表示してください。
 
-https://raw.githubusercontent.com/shin4141/decision-os-v13-loopkit/main/docs/external_intelligence_onboarding.md
+私がQuestを選ぶまでは、
+Fork、clone、setup、file変更、特定Questの推薦を始めないでください。
+
+Questを選んだ後は、
+そのQuestを支えているrepository内の実ファイル・rules・docs・Field Notesを
+必要な範囲だけ先に確認してから説明してください。
+
+確認できない部分があれば、
+分かったふりをせず、その境界を明示してください。
 ```
 
-最初の体験は、`MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT /
-GRADUATE`を含むfull Quest Boardを見て、続けるか、質問するか、何もしないかを
-自分で決めるところまでです。見ることや選ぶことは、setupやfile変更を自動的に
-許可しません。
+最初のresponseは長い監査報告ではありません。短いrepo-grounded orientationと、
+確認できたsurface／確認できなかったsurface／そこから説明できる境界を数行で
+示し、その後に`MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT /
+GRADUATE`を含むfull Quest Boardを表示します。全Field Notesや全実装をfirst
+contactで読むのではなく、選択後に関係するevidenceだけを追加で読みます。
 
 Do not adopt the whole repository at once. First explore the available
 External Intelligence Quests, then choose one structure that interests you or
@@ -84,19 +113,26 @@ read upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
 fork's current state. Read them only when the user explicitly asks to resume
 or evaluate upstream work.
 
-### Questを見て「自分用に育てたい」と決めた後
+### 🔓 Full Experience — Forkして体感する
 
-Fork / clone / repository-root接続はsecondary stepです。Quest Boardを見て、
-一つを選ぶか、試したいと明示した後にだけ進みます。
+ここまでは、公開repositoryをAIに読ませたShowroomです。Questの説明や小さな
+trialを受けた後、自分のExternal Intelligenceとして実際に育てたいとユーザーが
+興味を示した時にだけ、AIは`🔓 Full Experience — Forkして体感する`の見出しを
+保ってこのsecondary CTAを案内します。Questの選択だけでForkへ進めません。
 
 1. Fork or clone this repository.
 2. Open the repository root in Codex or Claude Code.
 3. Ask: `外部知能を使ってみたい。何から始めればいい？`
 
-The tiny `AGENTS.md` router opens the Quest Board on demand. Unrelated tasks do
-not load the tutorial. The Quest Board also lets the user keep the tutorial,
-make it manual, remove tutorial-only surfaces, or do nothing without deleting
-their External Intelligence.
+そうすると、public repositoryに含まれる`AGENTS.md`、notes、handoff、docs等を
+実際のworkspaceとして使いながら、自分のExternal Intelligenceを育てられます。
+気に入らなければ採用を続ける必要はありません。
+
+Forkで得られるのは、このpublic repositoryに含まれるsurfaceと、その人がそこから
+育てる新しい状態です。private repository、separate unpublished implementation、
+Shin固有のprivate memory、public `main`に存在しないupstream internal trajectoryが
+自動的に使えるようになるわけではありません。The tiny `AGENTS.md` router opens
+the Quest Board on demand; unrelated tasks do not load the tutorial.
 
 ## Optional Companion: your coding agent asks once. The next Run remembers.
 

@@ -8,7 +8,7 @@ onboarding.
 
 ## First-contact onboarding rule
 
-If the user asks for onboarding, do not summarize this repo first.
+If the user asks for onboarding, do not rely on the onboarding page alone.
 
 In this repository, a natural request such as
 `外部知能を使ってみたいんだけど、何から始めればいい？` refers to the
@@ -16,9 +16,14 @@ repository-memory External Intelligence tutorial unless the user explicitly
 asks to delegate to another model. Do not route that phrase to ChatGPT
 delegation, plugin setup, or a single prescribed exercise.
 
-Read `docs/external_intelligence_onboarding.md`.
+First inspect `README.md`, `AGENTS.md`,
+`docs/external_intelligence_onboarding.md`, `docs/ai_reading_order.md`, and
+`docs/field_note_lifecycle.md`. Briefly explain only the External Intelligence
+mechanisms those repository surfaces support, then disclose what was and was
+not inspectable. Do not infer missing implementation.
 
-Read `docs/codex_tutorial_guide.md`.
+Read `docs/codex_tutorial_guide.md` only when the requested explanation needs
+the wider on-demand framework map.
 
 Follow the `First Response Contract` section. For Japanese first contact, show
 the External Intelligence Quest Board before asking diagnostic questions or
@@ -35,8 +40,10 @@ authorize setup or file changes.
 
 The public Quest Board is a no-fork showroom. Do not require a Fork, clone,
 repository attachment, Codex project, setup, or file change before showing it.
-Offer environment attachment only after the user selects a Quest or says they
-want to try one.
+After selection, inspect only the actual rules, docs, relevant Field Notes, and
+public implementation needed for that Quest before explaining it. Offer the
+`🔓 Full Experience — Forkして体感する` CTA only after that explanation or a
+small trial when the user expresses interest in growing their own workspace.
 
 After the map, use the conversation and repository to recognize what the user
 already has. Ask only about missing facts that change the recommendation. Do
@@ -46,6 +53,12 @@ Recommend at most one currently useful starting structure only when the user
 asks what fits, or help with the Quest they selected. Do not explain V12, V13,
 Field Notes, promotion, handoff, and every Gate together unless the user asks
 for the full framework.
+
+A Quest name is not proof that its complete implementation is public. Little
+Compactor is represented here by an entry concept and a research-candidate
+document; do not invent a shipped public implementation. Forking does not
+expose private repositories, unpublished separate artifacts, private memory,
+or upstream internal trajectory absent from public `main`.
 
 Treat the guided exchange as one bounded onboarding task. Do not append the
 full canonical completion report to every in-progress conversational turn;
@@ -66,22 +79,10 @@ operation.
 
 ## Recommended onboarding prompt
 
-```text
-Read docs/external_intelligence_onboarding.md and
-docs/codex_tutorial_guide.md, then onboard me to this LoopKit repo.
-
-Follow the First Response Contract.
-
-First show the External Intelligence Skill Tree / Quest Board. Wait for me to
-choose, explore, or ask what fits. Do not prescribe a starting structure before
-showing the map.
-
-After I choose, use what you can already observe about my workflow. Ask only
-for information that would change the next step. Help me use at most one
-selected structure, then leave a restart point.
-
-Do not edit files.
-```
+Use the single primary copy block under `まず試してみる — Fork不要` in
+`README.md`. It binds the fresh AI to the public repository, the five minimum
+first-contact files, compact access disclosure, the full Quest Board, and the
+post-selection deep-read boundary.
 
 ## 1. Generate an adaptive tutorial
 
@@ -98,9 +99,11 @@ Focus on:
 - one concrete use of that structure
 - the condition that would justify adding another structure later
 
-Read README.md, AGENTS.md, and docs/external_intelligence_onboarding.md first.
+Read README.md, AGENTS.md, docs/external_intelligence_onboarding.md,
+docs/ai_reading_order.md, and docs/field_note_lifecycle.md first.
 Use other docs and examples only when the current choice requires them.
-Show the Quest Board before choosing or recommending a starting structure.
+State what you could and could not inspect, then show the Quest Board before
+choosing or recommending a starting structure.
 Wait for my selection before setup or file changes.
 Do not invent features that are not in the repo.
 Do not treat a recorded observation as a promoted Rule.

@@ -8,12 +8,18 @@ Before generating or changing files, preserve the purpose of this repository:
 
 If the user asks about External Intelligence, this repository's tutorial,
 what this system can do, how to start using it, or graduating from the
-tutorial, read `docs/external_intelligence_onboarding.md` and show the Quest
-Board first.
+tutorial, first inspect `README.md`, this file,
+`docs/external_intelligence_onboarding.md`, `docs/ai_reading_order.md`, and
+`docs/field_note_lifecycle.md`. Briefly state the repository-grounded mechanism,
+what was and was not inspectable, and the supported evidence boundary; then
+show the full Quest Board.
 
-Do not prescribe a starting feature, modify files, or begin setup until the
-user chooses a path. For unrelated tasks, do not load or explain the
-onboarding tutorial.
+Do not read all Field Notes, prescribe a starting feature, modify files, or
+begin setup before the user chooses a path. After selection, read only the
+actual repository surfaces needed for that Quest and distinguish public
+evidence from unavailable or separate implementation. Offer Fork / clone only
+after the user expresses interest in the post-explanation full experience.
+For unrelated tasks, do not load or explain the onboarding tutorial.
 
 ## 1. Decision Owner and Authority
 

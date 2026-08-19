@@ -1,30 +1,147 @@
 # AI Reading Order
 
-Use this when a user wants to see the External Intelligence choices before
-selecting the smallest useful V13 surface.
+Use this when a fresh AI must ground External Intelligence onboarding in the
+actual public repository before showing the choice map.
 
-Ask the user's AI to read the minimum entry files, show the Quest Board, and
-wait. After the user chooses or asks what fits, inspect the target repository,
-then retrieve additional evidence only for the current friction.
+```text
+Broad repository map
+  -> compact access disclosure
+  -> short repo-grounded orientation
+  -> full Quest Board
+  -> user selection
+  -> Quest-specific deep read
+```
+
+Fork, clone, setup, and file changes are not prerequisites for this read-only
+showroom.
 
 ## Read In This Order
 
 1. `README.md`
 
-   Read the opening and External Intelligence entry, then stop at the next
-   unrelated top-level section. Understand the smallest first-use path.
+   Establish the public purpose, External Intelligence claim boundary,
+   no-Fork primary route, and secondary Full Experience boundary. Do not use
+   the README alone as implementation evidence.
 
 2. `AGENTS.md`
 
-   Read the always-on operating and authority boundary. Do not copy the whole
-   file into the target repository.
+   Establish the actual always-on router, operating rules, authority boundary,
+   V12/V13 distinction, handoff routing, and conditional deep-read rules.
 
 3. `docs/external_intelligence_onboarding.md`
 
-   Follow the map-first first-response and post-selection one-structure rule.
+   Follow the repo-first response order, full participant-facing Quest Board,
+   post-selection evidence rule, availability boundary, and post-interest
+   Fork CTA.
 
-Then inspect the user's current repository or described workflow. Do not read
-another V13 surface until the current choice depends on it.
+4. `docs/ai_reading_order.md`
+
+   Preserve the broad-map-first / deep-evidence-after-selection boundary. Do
+   not expand first contact into a full repository audit.
+
+5. `docs/field_note_lifecycle.md`
+
+   Establish that Field Notes have explicit lifecycle states and that a saved
+   observation is not automatically an active or Canon-promoted Rule.
+
+If any of these files cannot be accessed, say which file was unavailable. Do
+not replace it with guessed behavior or silently claim that the full first-read
+set was inspected.
+
+## First Response
+
+Before the Quest Board, return only:
+
+1. a short explanation of the External Intelligence mechanisms actually
+   supported by the inspected repository surfaces; and
+2. a compact access disclosure, for example:
+
+```text
+確認できたもの:
+README / AGENTS / onboarding / reading order / Field Note lifecycle
+
+現在確認できないもの:
+<none in the first-contact set, or exact unavailable surfaces>
+
+したがって、この案内では
+<supported repository-evidence boundary>まで説明できます。
+```
+
+Keep this to a few lines rather than producing a long audit report. Then show
+the entire `日本語first-contact — External Intelligence Quest Board` participant
+screen and wait. Do not recommend a Quest, request setup, or read all Field
+Notes before the user selects.
+
+## Quest-Specific Deep Read
+
+After selection, identify and inspect the smallest actual public surfaces that
+support the selected Quest. Explain from those files, not from the onboarding
+copy alone.
+
+### LIGHTEN
+
+Start with:
+
+- the conditional-routing and context boundaries in `AGENTS.md`;
+- `docs/ai_reading_order.md`;
+- `docs/field_notes_lite_v0_1_design.md`;
+- only the directly relevant selective-recall notes, such as
+  `field_notes/048_lane_memory_event_triggered_recall.md` and
+  `field_notes/051_lane_recall_mini_protocol.md`;
+- `decision_os/companion/field_notes_reconnect.py` and its matching tests only
+  when the user asks about public implementation behavior; and
+- `docs/research_candidates/agents_md_reconnectable_compactor.md` when the
+  user asks about Little Compactor.
+
+The Little Compactor document is a research candidate, not evidence that a
+complete public Compactor product or separate implementation is shipped here.
+State that boundary explicitly.
+
+### CONTINUE
+
+Start with:
+
+- V12 Completion Before V13 Gate, handoff, and base-report rules in
+  `AGENTS.md`;
+- `docs/handoff_command.md`;
+- `docs/context_compression.md`;
+- `field_notes/022_v12_to_v13_mapping.md`; and
+- `field_notes/099_handoff_responsibility_transfer.md`.
+
+Read an example or implementation file only if the user's question depends on
+it. Ground the explanation in the actual `PASS / DELAY / BLOCK / UNKNOWN` and
+`GO / HOLD / CAP / BLOCK` rules. Do not infer continuation authority from a
+Quest label or a prior `PASS`.
+
+### Other Quests
+
+Use the same method: locate the actual rule, doc, relevant Field Note, example,
+or public implementation; inspect only what the current explanation needs;
+and identify anything the public repository does not establish. Do not expand
+into unrelated runtime, Canon, trajectory, or research-frontier material.
+
+## Availability Boundary
+
+A Quest name is an entry point, not proof of full implementation. Distinguish:
+
+- concept or tutorial copy;
+- operating rule or boundary;
+- research candidate;
+- public code and tests actually inspected; and
+- private, separate, unpublished, or otherwise unavailable surfaces.
+
+When implementation details are not visible, say:
+
+```text
+このrepositoryから確認できるのは概念・boundary・evidenceのこの範囲です。
+実装詳細はここからは確認できません。
+```
+
+Forking exposes only the External Intelligence surfaces present in the public
+repository and the new state the fork owner creates from them. It does not
+expose private repositories, a separate unpublished Compactor implementation,
+Shin-specific private memory, or upstream internal trajectory absent from
+public `main`.
 
 ## Read Only When Triggered
 
@@ -39,8 +156,8 @@ another V13 surface until the current choice depends on it.
   example.
 - Full framework requested -> `docs/codex_tutorial_guide.md`.
 
-Do not read all Field Notes. Do not make pluginization, routing, automation, or
-the full Gate system part of first contact unless the current need requires it.
+Do not read all Field Notes. Do not make pluginization, automation, or the full
+Gate system part of first contact unless the selected Quest requires it.
 
 In a third-party fork, upstream `docs/current_signal.md`,
 `handoff/current_codex_handoff.md`, `docs/trajectory/V13_TRAJECTORY.md`, and

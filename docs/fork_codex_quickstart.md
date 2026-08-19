@@ -5,7 +5,8 @@ This guide is for someone who forks this repo and wants to ask Codex to use V13 
 This is a post-interest setup guide, not the first showroom. Before forking,
 the user can explore the public [External Intelligence Quest Board](external_intelligence_onboarding.md)
 with no clone, Codex project attachment, setup, or file change. Use this guide
-only after the user selects a Quest or says they want to try one.
+only after the user receives a repository-grounded Quest explanation or trial
+and says they want the Full Experience in their own workspace.
 
 If your goal is to build a growing external intelligence surface for your own
 AI after that choice, continue here.
@@ -31,10 +32,18 @@ trajectory, and validation records describe upstream work, not the fork
 user's current state. Do not read them during first contact unless the user is
 specifically resuming or evaluating that upstream work.
 
-Codex should show the Quest Board first and wait. After the user chooses or
-asks what fits, it should use the current conversation and repository before
-asking questions, ask only for missing facts that would change the next step,
-and avoid repeating concepts the user already operates.
+Codex should first inspect `README.md`, `AGENTS.md`,
+`docs/external_intelligence_onboarding.md`, `docs/ai_reading_order.md`, and
+`docs/field_note_lifecycle.md`; briefly state the repository-grounded mechanism
+and access boundary; then show the full Quest Board and wait. After the user
+chooses or asks what fits, it should inspect the actual repository evidence for
+that Quest before explaining it, ask only for missing facts that would change
+the next step, and avoid repeating concepts the user already operates.
+
+The Fork contains only the public External Intelligence surfaces and the new
+state its owner creates. It does not unlock private repositories, separate
+unpublished implementations, Shin-specific private memory, or upstream
+internal trajectory absent from public `main`.
 
 In a fork, the Decision Owner is the fork's actual owner or maintainer, not
 automatically Shin from the upstream canonical repository. Do not attach a
