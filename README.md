@@ -35,9 +35,9 @@ Check](copy-paste/next-action-confidence-check.md), then consider the
 
 ## Build external intelligence for your own AI
 
-A fork can also become an external intelligence surface: selected task memory,
-reusable lessons, operating boundaries, and restart points live outside one
-chat so a later AI can retrieve them when they matter.
+External intelligence keeps selected task memory, reusable lessons, operating
+boundaries, and restart points outside one chat so a later AI can retrieve
+them when they matter.
 
 This is not model self-training. The model weights do not update, one
 observation does not become a rule automatically, and more stored material is
@@ -49,10 +49,33 @@ real work -> observation -> external memory -> reusable candidate
           -> later selective retrieval -> a changed downstream decision
 ```
 
+### まず試してみる — Fork不要
+
+Fresh ChatGPT / Claude / Codexの新しいチャットへ、次のblockをそのまま
+copy-pasteしてください。repositoryを開いたり、Forkやsetupをしたりする前に、
+External Intelligenceで何ができるかをQuest Boardで見られます。
+
+```text
+外部知能を使ってみたい。何から始めればいい？
+
+次の公開ページを読んで、最初に
+「日本語first-contact — External Intelligence Quest Board」
+の全文を省略せず表示してください。
+私がQuestを選ぶまでは、Fork、clone、repository接続、setup、file変更、
+特定Questの推薦を始めないでください。
+
+https://raw.githubusercontent.com/shin4141/decision-os-v13-loopkit/main/docs/external_intelligence_onboarding.md
+```
+
+最初の体験は、`MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT /
+GRADUATE`を含むfull Quest Boardを見て、続けるか、質問するか、何もしないかを
+自分で決めるところまでです。見ることや選ぶことは、setupやfile変更を自動的に
+許可しません。
+
 Do not adopt the whole repository at once. First explore the available
 External Intelligence Quests, then choose one structure that interests you or
-ask the AI what may fit. A choice does not automatically authorize setup or a
-file change. Add another structure only when actual use exposes the need.
+ask the AI what may fit. Add another structure only when actual use exposes
+the need.
 
 First-contact read boundary: after this section, follow the linked onboarding
 instead of continuing through the whole README. In a third-party fork, do not
@@ -61,12 +84,10 @@ read upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
 fork's current state. Read them only when the user explicitly asks to resume
 or evaluate upstream work.
 
-[Explore the no-fork External Intelligence Quest Board](docs/external_intelligence_onboarding.md).
-No clone, Codex project, setup, or file change is required to see the showroom.
-Explore `MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT / GRADUATE`
-first.
+### Questを見て「自分用に育てたい」と決めた後
 
-Only after you select a Quest or say you want to try one:
+Fork / clone / repository-root接続はsecondary stepです。Quest Boardを見て、
+一つを選ぶか、試したいと明示した後にだけ進みます。
 
 1. Fork or clone this repository.
 2. Open the repository root in Codex or Claude Code.
