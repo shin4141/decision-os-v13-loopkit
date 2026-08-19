@@ -4,6 +4,17 @@ Before generating or changing files, preserve the purpose of this repository:
 
 > This repository exists to convert completed work into governed next-loop decisions.
 
+## External Intelligence onboarding router
+
+If the user asks about External Intelligence, this repository's tutorial,
+what this system can do, how to start using it, or graduating from the
+tutorial, read `docs/external_intelligence_onboarding.md` and show the Quest
+Board first.
+
+Do not prescribe a starting feature, modify files, or begin setup until the
+user chooses a path. For unrelated tasks, do not load or explain the
+onboarding tutorial.
+
 ## 1. Decision Owner and Authority
 
 The human Decision Owner holds the final Seat.

@@ -2,47 +2,54 @@
 
 This guide is for someone who forks this repo and wants to ask Codex to use V13 without guessing what to read first.
 
-For an interactive first-run walkthrough, ask Codex to read [Codex Tutorial Guide](codex_tutorial_guide.md).
+This is a post-interest setup guide, not the first showroom. Before forking,
+the user can explore the public [External Intelligence Quest Board](external_intelligence_onboarding.md)
+with no clone, Codex project attachment, setup, or file change. Use this guide
+only after the user selects a Quest or says they want to try one.
 
-## Ask Codex to read these first
+If your goal is to build a growing external intelligence surface for your own
+AI after that choice, continue here.
+The broader [Codex Tutorial Guide](codex_tutorial_guide.md) is an on-demand map,
+not a required first lesson.
 
-1. `AGENTS.md`
-2. `docs/ai_reading_order.md`
-3. `examples/README.md`
-4. `examples/cap.v12_handoff_review.json`
+## Open the repository and ask naturally
 
-## Copy-paste request for Codex
+1. Fork or clone this repository.
+2. Open the repository root in Codex or Claude Code.
+3. Ask:
 
 ```text
-Read the following files first:
-
-- AGENTS.md
-- docs/ai_reading_order.md
-- examples/README.md
-- examples/cap.v12_handoff_review.json
-
-Then explain, in simple terms:
-
-1. What V13 can help me decide
-2. When to use GO / HOLD / CAP / BLOCK
-3. What you must not edit without authorization
-4. What output format I should expect after a task
-5. How the start example shows completed AI-assisted work -> V12 PASS -> V13 CAP -> bounded next-loop decision
-
-Do not modify files yet.
-Do not edit README.md, AGENTS.md, examples, docs, schemas, prompts, or external repos unless I explicitly authorize it.
-
-After reading, return:
-
-- What you understood
-- What V13 can help with
-- What files you would ask to inspect for my task
-- What must not be touched
-- V12 State
-- V13 Next Loop Gate
-- Signals
-- Stop condition
+外部知能を使ってみたい。何から始めればいい？
 ```
+
+The tiny `AGENTS.md` router sends that request to the External Intelligence
+Quest Board. `CLAUDE.md` already sends Claude Code to `AGENTS.md`. No long
+copy-paste prompt or first-file instruction is required.
+
+The upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
+trajectory, and validation records describe upstream work, not the fork
+user's current state. Do not read them during first contact unless the user is
+specifically resuming or evaluating that upstream work.
+
+Codex should show the Quest Board first and wait. After the user chooses or
+asks what fits, it should use the current conversation and repository before
+asking questions, ask only for missing facts that would change the next step,
+and avoid repeating concepts the user already operates.
+
+In a fork, the Decision Owner is the fork's actual owner or maintainer, not
+automatically Shin from the upstream canonical repository. Do not attach a
+full completion footer to each in-progress tutorial question; close the
+bounded onboarding once after the selected use and restart point.
+
+The first onboarding is complete when that one structure has been tried once
+and a restart point remains. It is not measured by how many V13 concepts were
+introduced.
+
+When the user wants to graduate from the tutorial, present
+`KEEP / MANUAL / REMOVE / NOT NOW`. Never remove the router or tutorial-only
+surfaces automatically. `MANUAL` and `REMOVE` require an explicit file-change
+approval and must preserve memory, notes, handoff, reusable intelligence,
+rules, and V12/V13 operation.
 
 ## What V13 can help with
 
@@ -52,6 +59,9 @@ V13 helps after an AI-assisted task or loop, when the question is not only "is i
 * should it be capped?
 * should it be held until more evidence exists?
 * should it be blocked because it may create debt, broaden scope, or damage the repo?
+
+These concepts do not all need to be introduced at first contact. For example,
+if the current friction is only session restart, a small handoff may be enough.
 
 ## Attach LoopKit to external goals
 
@@ -127,6 +137,10 @@ Useful residue may include:
 
 This helps the next session restart without rereading the full history.
 
+A task summary is not automatically reusable intelligence. Preserve it as a
+candidate or current restart state until repeated or independent evidence and
+the required promotion authority exist.
+
 ## Where to record things
 
 Before or after a task, decide where the residue belongs:
@@ -147,6 +161,8 @@ Do not read every surface for every task. Use the smallest surface that matches 
 
 * `AGENTS.md`: read as the always-on rule surface before repo work.
 * `README.md`: read when you need the public entrypoint or project positioning.
+* `docs/external_intelligence_onboarding.md`: read when a user wants their own
+  AI memory or a capacity-aware first use.
 * `docs/fork_codex_quickstart.md`: read when onboarding a fork user or choosing where residue should go.
 * `docs/codex_tutorial_guide.md`: read when the user wants an interactive first-run walkthrough.
 * `handoff/current_codex_handoff.md`: read when resuming prior work or checking the current restart anchor.
@@ -154,6 +170,20 @@ Do not read every surface for every task. Use the smallest surface that matches 
 * `field_notes/`: read only when investigating a related failure, observation, or non-canonical lesson.
 
 If the current task is tiny, reversible, and has no reusable residue, no extra memory surface is required.
+
+## When to add one more structure
+
+Add another structure only when current use exposes a real need: the current
+surface cannot resolve the friction, a failure repeats, restart or retrieval
+cost becomes material, multiple observations make a rule candidate worth
+reviewing, or externalization requires another Gate.
+
+Otherwise stop and leave a return condition, for example:
+
+```text
+今はhandoffだけ使います。新しいsessionで同じ説明を繰り返す負担がまだ
+残るなら、その時にmemory構造を一つ追加で検討します。
+```
 
 ## When residue is detected
 

@@ -33,6 +33,50 @@ If it helps, use the full [Next-Action Confidence
 Check](copy-paste/next-action-confidence-check.md), then consider the
 [Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
 
+## Build external intelligence for your own AI
+
+A fork can also become an external intelligence surface: selected task memory,
+reusable lessons, operating boundaries, and restart points live outside one
+chat so a later AI can retrieve them when they matter.
+
+This is not model self-training. The model weights do not update, one
+observation does not become a rule automatically, and more stored material is
+not automatically better. The supported path is bounded:
+
+```text
+real work -> observation -> external memory -> reusable candidate
+          -> verification or repeated evidence -> bounded promotion
+          -> later selective retrieval -> a changed downstream decision
+```
+
+Do not adopt the whole repository at once. First explore the available
+External Intelligence Quests, then choose one structure that interests you or
+ask the AI what may fit. A choice does not automatically authorize setup or a
+file change. Add another structure only when actual use exposes the need.
+
+First-contact read boundary: after this section, follow the linked onboarding
+instead of continuing through the whole README. In a third-party fork, do not
+read upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
+`docs/trajectory/V13_TRAJECTORY.md`, or `validation/` as evidence of the
+fork's current state. Read them only when the user explicitly asks to resume
+or evaluate upstream work.
+
+[Explore the no-fork External Intelligence Quest Board](docs/external_intelligence_onboarding.md).
+No clone, Codex project, setup, or file change is required to see the showroom.
+Explore `MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT / GRADUATE`
+first.
+
+Only after you select a Quest or say you want to try one:
+
+1. Fork or clone this repository.
+2. Open the repository root in Codex or Claude Code.
+3. Ask: `外部知能を使ってみたい。何から始めればいい？`
+
+The tiny `AGENTS.md` router opens the Quest Board on demand. Unrelated tasks do
+not load the tutorial. The Quest Board also lets the user keep the tutorial,
+make it manual, remove tutorial-only surfaces, or do nothing without deleting
+their External Intelligence.
+
 ## Optional Companion: your coding agent asks once. The next Run remembers.
 
 1. The agent asks whether it may modify a file.

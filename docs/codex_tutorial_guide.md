@@ -4,6 +4,10 @@ Use this guide to onboard a fork user to LoopKit like a first-run tutorial.
 
 This is not a theory document, README rewrite, or AGENTS rule. It is an instruction guide for Codex.
 
+For a user who wants to build external intelligence for their own AI, start
+with [`docs/external_intelligence_onboarding.md`](external_intelligence_onboarding.md).
+This guide supplies an on-demand framework map; it is not a required sequence.
+
 ## Aspire-First Pre-Tutorial
 
 For the current Aspire-First experience for an external Vibe coding beginner, share only:
@@ -18,11 +22,26 @@ This guide remains the current LoopKit onboarding guide. Its menu and first-resp
 
 Before explaining, read:
 
-1. `README.md`
+1. the opening and External Intelligence entry in `README.md`; stop at the
+   next unrelated top-level section
 2. `AGENTS.md`
-3. `docs/fork_codex_quickstart.md`
-4. `examples/README.md`
-5. `examples/cap.v12_handoff_review.json`
+3. `docs/external_intelligence_onboarding.md`
+
+Then read only the surface needed for the selected first structure:
+
+- restart friction -> `docs/fork_codex_quickstart.md` and the current target
+  repository's restart surface
+- repeated failure -> one relevant failure record or Field Note, not the
+  corpus
+- instruction bloat -> the target repository's instruction files
+- completion/continuation confusion -> the Lite Footer in `README.md`
+- worked example requested -> `examples/README.md` and one matching example
+
+For third-party fork onboarding, do not read the upstream
+`docs/current_signal.md`, `handoff/current_codex_handoff.md`,
+`docs/trajectory/V13_TRAJECTORY.md`, or `validation/` merely to establish the
+fork user's current state. Read one of those only when the user asks about the
+upstream repository itself or is resuming work whose authority depends on it.
 
 ## What do I get?
 
@@ -111,42 +130,84 @@ Keep file paths, command-like labels, and gate names unchanged:
 
 If the user asks in Japanese, present the tutorial menu and explanations in Japanese, while preserving the original English file names and gate labels.
 
-## Exact First Response
+## First Response Contract
 
-When the user asks for the LoopKit tutorial, onboarding, or first walkthrough, start by printing this exact menu before explaining anything else:
+When the user asks for the LoopKit tutorial, onboarding, or first walkthrough,
+respond in the user's language and establish these points briefly:
 
-```md
-## LoopKit Tutorial
+A natural Japanese request such as
+`外部知能を使ってみたいんだけど、何から始めればいい？` is an External
+Intelligence onboarding trigger in this repository. Unless the user explicitly
+asks for model delegation, do not reinterpret it as a request to consult
+ChatGPT or install a plugin.
 
-Basic Tutorial:
+1. External intelligence here means governed repository memory and selective
+   reuse, not automatic model-weight training.
+2. The user does not need to adopt the whole system.
+3. Show the capability map before asking diagnostic questions, choosing a
+   starting structure, or recommending one. For Japanese first contact, use
+   `日本語first-contact — External Intelligence Quest Board` in
+   `docs/external_intelligence_onboarding.md`.
+4. Do not require a Fork, clone, repository attachment, Codex project, setup,
+   or file change to view the Quest Board. Environment attachment comes only
+   after the user selects a Quest or says they want to try one.
+5. Wait for the user to choose, explore, ask to see everything, say what they
+   already use, or request a recommendation. Viewing or choosing does not
+   authorize setup or file changes.
+6. After that choice, use the current conversation and repository to recognize
+   existing instructions, memory, handoff, Git, Codex practice, interests, and
+   current friction. Ask only for missing facts that would change the next
+   step. Do not use a quiz or capability ranking.
+7. Recommend at most one starting structure only after the map when the user
+   asks what fits, or help use the one they selected. Leave a restart point and
+   stop.
+8. Treat the exchange as one bounded onboarding task. Do not attach the full
+   completion report to every in-progress question; use the canonical report
+   when the selected exercise closes or a real blocker ends the task.
+9. In a third-party fork, establish the fork's own Decision Owner. Do not
+   inherit Shin merely because the upstream canonical repository names him.
 
-1. LoopKitとは？
-2. 何の問題を解決するの？
-3. V12とV13はどう動くの？
-4. GO / HOLD / CAP / BLOCK とは？
-5. notes・failures・handoff・examples はどこに記録するの？
-6. 最初の小さなタスクはどう実行するの？
-7. AGENTS.md を肥大化させないには？
-8. 次のループを走らせるべきかどう判断するの？
+For Japanese first contact, do not replace the Quest Board with a preference
+question, a handoff exercise, or another preselected structure. Preserve the
+seven visible areas `MEMORY / GROW / LIGHTEN / CONTINUE / PROTECT / CONNECT /
+GRADUATE`, the `Little OSI` and `Little Compactor` entry names, the multi-AI
+`External Intelligence候補があります` idea, the free-choice examples, and the
+statement that viewing or choosing does not automatically install anything.
+Render the participant-facing Quest Board from
+`docs/external_intelligence_onboarding.md`; do not replace it with an
+abbreviated six-category summary. Then wait.
 
-Power Concepts:
+The order is:
 
-- 🚦 Signals
-- 🌱 Growth OS
-- 💊 Setup Pill
-
-番号か項目名で選んでください。
-おすすめは 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 の順です。
-最初に全体像だけ掴みたいなら 1 から始めましょう。
+```text
+Show the map first. Recommend second.
 ```
 
-After the menu, wait for the user to choose a number or item. Do not explain the full tutorial all at once unless the user asks for the full walkthrough.
+Do not call the user a beginner without evidence. Observe existing capability
+from the conversation after the map. Personal memory such as money, time,
+family, priorities, non-negotiables, and decision reasons is as eligible for
+External Intelligence candidacy as reusable coding structure.
+
+Before the user selects a Quest, do not modify files, create a handoff, save a
+Note, promote a Rule, or begin setup.
+
+If the user asks to graduate from the tutorial, present
+`KEEP / MANUAL / REMOVE / NOT NOW`. Graduation is always the user's choice.
+Before `MANUAL` or `REMOVE`, show the tutorial-only file changes and obtain
+explicit approval. Never delete memory, notes, handoff, reusable intelligence,
+rules, or V12/V13 operation as part of tutorial graduation.
+
+Do not treat an unanswered preference question as a repository `HOLD` unless
+the missing answer actually blocks a safe read-only next step.
 
 Keep this as an on-demand docs surface. Do not promote it to `AGENTS.md`.
 
-## Start With This Menu
+## On-Demand Topic Map
 
-Show the user this menu:
+This framework-topic map is separate from the first-contact External
+Intelligence Quest Board. Show it only after the Quest Board when the user asks
+to see everything or requests the full LoopKit tutorial. Do not present it as
+a required order.
 
 Basic Tutorial:
 
@@ -168,20 +229,28 @@ Power Concepts / Advanced Concepts:
 Tell the user they can:
 
 - ask for one topic
-- follow the recommended order
 - run a tiny guided task
 - choose `🚦 Signals`, `🌱 Growth OS`, or `💊 Setup Pill` as optional but valuable follow-up modules
 
-## Recommended First-Run Order
+The initial Quest Board may also expose Little OSI and Little Compactor as
+lightweight entry concepts. Do not turn those names into new products,
+runtime behavior, schemas, or performance claims.
 
-1. Explain the problem in plain language.
-2. Explain the repo surfaces.
-3. Explain V12 completion reporting.
-4. Explain V13 next-loop gating.
-5. Explain where to record residue.
-6. Run one tiny task.
-7. Produce a completion report.
-8. Decide the next loop gate.
+## First-Run Loop
+
+1. Show the External Intelligence Quest Board.
+2. Wait for the user's choice, exploration, or request for a recommendation.
+3. Observe the user's current goal, friction, and existing system.
+4. Explain only the minimum mental model needed for the choice.
+5. Select at most one useful structure or follow the selected Quest.
+6. Run one tiny, authorized use of that structure.
+7. Leave the restart point and the condition for returning.
+
+Do not introduce another structure merely because it appears next in this
+guide.
+
+The tutorial remains in progress between these steps. Close it once, rather
+than emitting a full V12/V13 report after each question.
 
 ## Power Concepts / Advanced Concepts
 
@@ -255,6 +324,10 @@ Before starting a non-trivial task, state the expected record target:
 none / field_note / handoff / example / AGENTS_candidate_HOLD
 ```
 
+This map is not a requirement to create a record. One observation remains an
+observation. Promote it only after the evidence and approval conditions in
+`docs/field_note_lifecycle.md` are met.
+
 ## Tutorial Boundaries
 
 Do not edit files during the tutorial unless the user explicitly asks.
@@ -273,8 +346,10 @@ If PreGOAL is mentioned, explain it as an intermediate checkpoint, not a gate ou
 
 ```text
 Read `docs/codex_tutorial_guide.md` and onboard me to this LoopKit repo.
-Start by showing me the menu.
-Then recommend the best first path for a fork user.
+Follow the First Response Contract.
+First show the External Intelligence Quest Board and wait for my choice.
+After I choose, recognize what I already operate. If I ask what fits,
+recommend at most one useful starting structure and help me use it once.
 Do not edit files unless I explicitly approve.
 ```
 
