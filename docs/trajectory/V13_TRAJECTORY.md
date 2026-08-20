@@ -1057,3 +1057,485 @@ long-context law or optimal context-window setting has been established.
 After this trajectory append is committed and pushed, return to GPT 13-40 to
 create the responsibility-bearing Handoff referencing the fixed trajectory.
 Do not create that Handoff inside this fixation task.
+
+## 18. Router distortion moved retrieval away from title-first routing
+
+**AS-OF**
+
+2026-08-18 JST, after 13-177 closed.
+
+**FRONTIER**
+
+13-176 had demonstrated bounded selective Field Note reuse, but title-routed
+candidate generation still carried an unresolved recall boundary. 13-177
+tested one frozen Minimal Field Note Router rather than treating the earlier
+property PASS as validation of that routing layer.
+
+**CAUSAL DELTA**
+
+Observation: 13-177 closed as
+`FAIL — ROUTER INTRODUCES MATERIAL RETRIEVAL DISTORTION`. The Router omitted
+materially stronger notes in three positive cases, produced direct false
+positives, reached the eight-candidate ceiling for every positive case, and
+increased source-body reading cost on the reused scenarios. Useful final
+selections and a disciplined `NONE` did not cure those routing failures.
+
+Why the frontier moved: neither reading all Field Notes nor letting title-first
+metadata define the candidate set was an adequate next architecture. The
+working direction became current-As-of candidate generation first, followed
+by retrieval and admission of only the memory relevant to those candidates.
+Router v0.2 was not started automatically from the failure.
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-176-selective-field-note-retrieval/FINAL_REPORT.md`
+  (SHA-256
+  `51439f9adb38d3f65fb95cbb2dea549403e04d33d61a37099b3235a788459666`).
+- `/Users/sn/Documents/v13/13-177-minimal-field-note-router/FINAL_REPORT.md`
+  (SHA-256
+  `b5e666bee08c1e47fc1afe5bedf24f46b5fab1bb928bdf8f141ed05469ae9397`).
+- `/Users/sn/Documents/v13/13-177-minimal-field-note-router/PASS_FAIL_UNKNOWN_MATRIX.md`
+  and `/Users/sn/Documents/v13/13-177-minimal-field-note-router/COST_COMPARISON.md`.
+
+**GATE**
+
+`HOLD — ROUTER v0.2 NOT STARTED / CANDIDATE-FIRST DIRECTION UNVALIDATED`.
+
+**COMPLETION LINE**
+
+`FAIL — ROUTER INTRODUCES MATERIAL RETRIEVAL DISTORTION`; the failure is fixed
+without converting it into repair or successor-experiment authority.
+
+**MISSING CLOSURE**
+
+No qualified evidence yet showed that candidate-first, candidate-specific
+memory retrieval could preserve recall, precision, cost, and authority
+boundaries in an actual Entry comparison.
+
+**RE-ENTRY**
+
+Re-enter only from a fresh Decision Owner direction or independently arising
+evidence. Do not start Router v0.2, bulk-read the corpus, or promote a retrieval
+layer from this failure.
+
+## 19. Historical qualification failed to prove residue-adjusted direction and parked the architecture
+
+**AS-OF**
+
+2026-08-18 JST, after 13-180 and 13-181 closed.
+
+**FRONTIER**
+
+Candidate-First / Residue-Second was a working specification for inheriting
+useful state without inheriting direction. It still needed evidence that a
+current non-STOP candidate survived admissibility before historical residue
+materially changed the comparison.
+
+**CAUSAL DELTA**
+
+13-180 replayed frozen historical packs and returned
+`HOLD — PARTIAL SUPPORT / MATERIAL UNKNOWN`. The packs supported non-injection,
+authority retirement, and STOP discipline, but they produced STOP-only
+candidate sets and did not exercise a positive residue-adjusted action
+comparison. 13-181 then searched attributable history and found no qualified
+historical residue-adjusted non-STOP winner witness. Its strongest
+near-witness, 13-173, was rejected because residue preceded the candidate
+freeze.
+
+Why the frontier stopped: V13 did not create a new experiment to manufacture
+the missing chronology. The architecture remained useful as a working model,
+but unvalidated and not Canon:
+
+```text
+State may be inherited.
+Direction still has to win again.
+```
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-145-bridge-readiness/field_notes/139_candidate_first_entry_selection_residue_second_reuse.md`.
+- `/Users/sn/Documents/v13/13-180-fn139-historical-replay/FINAL_REPORT.md`
+  (SHA-256
+  `827d785653a60290d1b269387b23ec9e5022cb630dfaef553cf6fb00bbff61dd`).
+- `/Users/sn/Documents/v13/13-181-historical-residue-witness-search/FINAL_REPORT.md`
+  (SHA-256
+  `37f2760eff782f5f1f8b8a9e94a7379cd837bc2beba4bc0dc3e77161a3c2b113`).
+
+**GATE**
+
+`HOLD — WORKING ARCHITECTURE PARKED / NOT CANON / NO EXPERIMENT AUTHORIZED`.
+
+**COMPLETION LINE**
+
+`UNKNOWN — NO QUALIFIED HISTORICAL RESIDUE-ADJUSTED WINNER WITNESS FOUND`.
+
+**MISSING CLOSURE**
+
+A naturally occurring, attributable record with current candidates plus STOP,
+pre-residue admissibility, candidate-specific residue, a same-candidate
+before/after delta, and an adjusted comparison remained missing.
+
+**RE-ENTRY**
+
+Re-enter only when such a natural witness exists or the Decision Owner gives a
+new direction. Do not reconstruct a favorable candidate chronology or create
+an experiment merely to prove the parked architecture.
+
+## 20. Advisory memory required its own admission joint
+
+**AS-OF**
+
+2026-08-18 JST, after 13-182 closed.
+
+**FRONTIER**
+
+Candidate-specific retrieval still compressed two different questions: what
+historical structure was found, and what that exact claim was legitimate to do
+in the current comparison.
+
+**CAUSAL DELTA**
+
+13-182 demonstrated a bounded four-outcome present-use structure:
+
+- `CURRENT-EVIDENCE-ELIGIBLE`;
+- `REVALIDATION-REQUIRED`;
+- `ADVISORY-ONLY`; and
+- `EXCLUDED`.
+
+Observation: a retrieved source can contain a current bounded fact, a stale
+causal explanation, a reusable guard, an expired Gate, and no surviving
+execution authority at the same time. Admission therefore attaches to an
+exact claim, intended current use, current candidate, and current As-of—not
+permanently to the whole Note.
+
+Why the frontier moved: retrieval and directional authority could not remain
+one joint. A distinct advisory-memory admission decision had to occur before
+retrieved residue affected adjusted comparison:
+
+```text
+current candidate -> retrieve -> admit -> apply legitimate residue
+                  -> compare with STOP -> select direction
+```
+
+**EVIDENCE ANCHOR**
+
+- `/Users/sn/Documents/v13/13-182-advisory-memory-admission-qualification/FINAL_REPORT.md`
+  (SHA-256
+  `92c063b1656ec3e3eb255cb965ca3ac6906eeab96e16475bc121488958fcafa1`).
+- The immediate qualification chain and adversarial cases enumerated in that
+  report, including 13-177, 13-173, 13-175, F-01/VM, and Field Notes 113, 124,
+  125, 126, 138, and 139.
+
+**GATE**
+
+`HOLD — CONCEPTUAL ADMISSION JOINT ONLY / NO CANON OR RUNTIME IMPLEMENTATION`.
+
+**COMPLETION LINE**
+
+`PASS — BOUNDED ADVISORY-MEMORY ADMISSION STRUCTURE DEMONSTRATED`.
+
+**MISSING CLOSURE**
+
+The four outcomes were not proven universally complete, no automated
+classifier or Router was qualified, and Candidate-First / Residue-Second
+directional effectiveness remained unvalidated.
+
+**RE-ENTRY**
+
+Use the structure only as bounded advisory architecture until new evidence or
+Decision Owner direction warrants reconsideration. Do not implement it in
+Canon, runtime, Field Notes, or onboarding from 13-182 alone.
+
+## 21. A real third-party desire re-entered V13 as External Intelligence onboarding
+
+**AS-OF**
+
+2026-08-19 JST, when a natural third-party desire became a current onboarding
+responsibility.
+
+**FRONTIER**
+
+The V13 research frontier was parked. The new trigger was not another
+internally selected architecture question, but a third party saying:
+
+> 自分のAIにも、使うほど育つ外部知能を作ってみたい
+
+**CAUSAL DELTA**
+
+The trigger did not restart V13 research. It changed the current question to:
+can a third party understand, selectively adopt, and grow the accumulated
+Decision-OS/V13 external intelligence without first mastering the whole
+system?
+
+Why the frontier moved: that question created the 13-183 / 13-184 onboarding
+responsibility. The whole corpus could not be dumped into always-on
+instructions; `AGENTS.md` had to remain a small index/router; the tutorial body
+had to remain on demand; and increased capability could not be described as
+infinite cognitive capacity.
+
+**EVIDENCE ANCHOR**
+
+- Decision Owner 13-41 trajectory-fixation instruction for the exact natural
+  desire and the boundary that it did not restart the research frontier.
+- `/Users/sn/Documents/v13/13-143/validation/13_183_external_intelligence_onboarding.md`
+  (SHA-256
+  `ab94106cee86c34b7bc68f3e9291595aecb215f25f24d3d438e0c180351430c4`).
+- Public onboarding publication commit
+  `cc5500fdc4f05df93fc3a9ebabb406246fdba730`
+  (`docs: publish 13-184 onboarding UX`).
+
+**GATE**
+
+`CAP — THIRD-PARTY ONBOARDING ONLY / V13 RESEARCH FRONTIER REMAINS PARKED`.
+
+**COMPLETION LINE**
+
+The third-party desire is fixed as External Intelligence onboarding
+responsibility rather than as evidence for another research loop.
+
+**MISSING CLOSURE**
+
+The first-contact order, human orientation cost, repository-entry friction,
+and independent third-party comprehension were not yet closed.
+
+**RE-ENTRY**
+
+Re-enter from actual human first-contact evidence. Keep the always-on router
+small, load tutorial and evidence on demand, and do not turn capability into a
+claim of unlimited context or cognition.
+
+## 22. Human first-contact testing reversed onboarding from Setup→Value to Value→Setup
+
+**AS-OF**
+
+2026-08-20 JST, through the 13-188 copy-first public entry commit.
+
+**FRONTIER**
+
+The first onboarding surface still prescribed a starting action too early,
+including handoff-first or setup-first routes, before the user had enough
+orientation to choose.
+
+**CAUSAL DELTA**
+
+Human first-contact testing returned
+`FAIL — PREMATURE PRESCRIPTION BEFORE USER ORIENTATION`. The first repair was:
+
+```text
+Show the map first.
+Recommend second.
+```
+
+Further human testing exposed project-root friction: if the user had to attach
+or enter a repository before seeing value, they could abandon before learning
+what the system offered. The onboarding order therefore became:
+
+```text
+no-fork showroom
+-> interest / Quest selection
+-> Fork or clone
+-> repository-root Full Experience
+```
+
+13-188 reduced that friction again to a public copy-paste prompt usable in a
+fresh ChatGPT, Claude, or Codex, with the Quest Board shown before any Fork.
+Why the frontier moved: minimal information could not be achieved by removing
+the user's ability to orient and choose.
+
+```text
+Minimal information ≠ minimal agency.
+```
+
+**EVIDENCE ANCHOR**
+
+- Decision Owner 13-41 trajectory-fixation instruction for the human failure
+  sequence and the project-root abandonment risk.
+- Publication commit `cc5500fdc4f05df93fc3a9ebabb406246fdba730`,
+  especially `README.md`, `AGENTS.md`, and
+  `docs/external_intelligence_onboarding.md`.
+- Copy-first commit `29dde9e2af09e30efbe132ddde0be5120da77bf6`
+  (`docs: make external intelligence onboarding copy-first`), especially the
+  no-fork README entry and post-interest Fork boundary.
+
+**GATE**
+
+`CAP — VALUE-BEFORE-SETUP FIRST CONTACT / FORK ONLY AFTER PERCEIVED VALUE`.
+
+**COMPLETION LINE**
+
+Fork, clone, repository attachment, and setup no longer function as
+first-contact requirements; the user sees the map and retains agency before a
+setup recommendation.
+
+**MISSING CLOSURE**
+
+A copy-first showroom could still produce a guide that repeated onboarding
+concepts without understanding enough repository evidence to teach them.
+
+**RE-ENTRY**
+
+Re-enter from evidence of first-use understanding, not from imagined setup
+improvements. Do not move Fork back ahead of perceived value.
+
+## 23. Repo-grounded onboarding replaced a thin showroom with evidence-bearing first use
+
+**AS-OF**
+
+2026-08-20 JST, after the bounded public-first-use repair at
+`be5286b332c37182d686bcc2dc9068fd22f902ed`.
+
+**FRONTIER**
+
+A fresh Claude test showed that onboarding copy alone produced a thin guide:
+it could name the concepts, but did not understand enough of the repository to
+teach them reliably.
+
+**CAUSAL DELTA**
+
+Copy-first entry was preserved, but the AI now had to inspect real repository
+evidence before teaching. The first-contact minimum became:
+
+- `README.md`;
+- `AGENTS.md`;
+- `docs/external_intelligence_onboarding.md`;
+- `docs/ai_reading_order.md`; and
+- `docs/field_note_lifecycle.md`.
+
+The response order became a short access disclosure, repository-grounded
+orientation, full Quest Board, and Quest-specific deep reading only after
+selection. Commit `2066b60e76ce7bc99a17062368d689e9afadcf5f` published that
+13-189 contract and its focused tests.
+
+The eight published entry phrases were then tested in isolated fresh
+contexts. Initial results were `5 PASS / 2 FAIL / 1 PARTIAL`. The common defect
+was `Repository evidence is not user evidence`: Cases 2-3 inferred user
+capability or friction from repository/audit metadata, while Case 4 exposed
+weak disambiguation between Little OSI and the separate OSI surface. Only
+those defects were repaired; affected Cases 2-4 then retested `PASS`.
+
+Why the frontier moved: public first use now carried enough repository evidence
+to teach without inventing user evidence. The repair did not start 13-190, a
+new Quest, Canon/runtime work, a Field Note, or a trajectory expansion of its
+own. The announcement block was removed only after the affected retest passed.
+
+**EVIDENCE ANCHOR**
+
+- Repo-grounding publication commit
+  `2066b60e76ce7bc99a17062368d689e9afadcf5f`, including
+  `validation/external_intelligence_onboarding_13_189.md` and
+  `tests/test_external_intelligence_onboarding.py`.
+- Minimal public repair commit
+  `be5286b332c37182d686bcc2dc9068fd22f902ed`, limited to
+  `docs/ai_reading_order.md`, `docs/external_intelligence_onboarding.md`, and
+  `tests/test_external_intelligence_onboarding.py`.
+- Decision Owner 13-41 trajectory-fixation instruction for the isolated
+  eight-phrase matrix, affected-case retest, and announcement unblock.
+
+**GATE**
+
+`CAP — BOUNDED PUBLIC ANNOUNCEMENT ONLY / NO 13-190 OR ADDITIONAL REPAIR`.
+
+**COMPLETION LINE**
+
+The public entry is copy-first and repo-grounded; the observed user-evidence
+and OSI-routing defects were minimally repaired and the affected cases passed
+fresh retest.
+
+**MISSING CLOSURE**
+
+Actual external use, comprehension, friction, and downstream value remained
+unobserved; repository-grounded first-use PASS did not establish adoption.
+
+**RE-ENTRY**
+
+Proceed only to the already bounded public announcement. Do not create a new
+Quest, 13-190, onboarding program, Canon/runtime change, Field Note, or further
+repair without actual external evidence or separate direction.
+
+## 24. Public announcement moved V13 from internal onboarding dogfood to external observation
+
+**AS-OF**
+
+2026-08-20 JST, after public announcement and the Decision Owner's stated
+early-signal observation.
+
+**FRONTIER**
+
+Human acceptance and bounded public-first-use testing were complete. The
+remaining frontier was whether the entry would leave internal dogfood and
+produce real external use or explanation evidence.
+
+**CAUSAL DELTA**
+
+At 07:58 JST the External Intelligence entry was publicly announced. The post
+embedded the full copy-paste repository prompt so a person could begin in a
+fresh ChatGPT, Claude, or Codex without first visiting GitHub, Forking,
+installing, or setting up. Eleven previously interested people were mentioned
+separately, while the entry remained explicitly open to people who were not
+mentioned.
+
+At this As-of, the Decision Owner reported these early observations only:
+
+- a repository Star increase during the day;
+- Fork count reaching `6` in the later observation;
+- social-post bookmarks reaching approximately `260`; and
+- at least one external practitioner independently describing the system as
+  several steps beyond the route they were already pursuing and expressing
+  strong excitement.
+
+These are Operator-reported As-of signals, not causal adoption proof, PMF,
+conversion rate, general user preference, or V13 superiority.
+
+Why the frontier moved: the next useful information source became real
+external use and explanation, not another internally invented onboarding
+improvement. A public explanatory article is the next planned responsibility,
+but it is not written. Candidate surfaces discussed for that article include:
+
+- AI Tutorial Capsule;
+- Personal Decision Memory;
+- Field Notes and multi-AI Note candidate signaling;
+- Selective Recall and Little Compactor;
+- Little OSI and Handoff;
+- V12 Completion and V13 Loop Gate;
+- CONNECT across ChatGPT, Claude, and Codex; and
+- Decision-OS V4-V14 lineage as research background.
+
+These are candidate article surfaces, not completed headings or completed
+work.
+
+**EVIDENCE ANCHOR**
+
+- Public announcement:
+  `https://x.com/DecisionOS/status/2090211923212333139`; the visible post
+  confirms the 2026-08-20 07:58 JST timestamp, embedded repository prompt,
+  no-Fork first contact, later-Fork option, and open invitation.
+- Public repository:
+  `https://github.com/shin4141/decision-os-v13-loopkit` at public `main`
+  commit `be5286b332c37182d686bcc2dc9068fd22f902ed` for the announcement's
+  repo-grounded entry surface.
+- Decision Owner 13-41 trajectory-fixation instruction for the exact count of
+  separately mentioned people, the stated As-of Star/Fork/bookmark signals,
+  the external-practitioner observation, and the planned article boundary.
+
+**GATE**
+
+`CAP — EXTERNALIZATION COMPLETE / OBSERVATION ACTIVE`.
+
+**COMPLETION LINE**
+
+The repo-grounded, value-before-setup External Intelligence entry has moved
+from internal dogfood into public observation without upgrading early signals
+into adoption or superiority claims.
+
+**MISSING CLOSURE**
+
+External-user friction, actual sustained use, comprehension, downstream value,
+and any causal adoption claim remain unestablished. The public explanatory
+article has not been written.
+
+**RE-ENTRY**
+
+Re-enter only from actual external-user friction, actual usage observation,
+article-writing responsibility, or separate Decision Owner direction. Do not
+authorize another onboarding repair merely because further improvements can be
+imagined.
