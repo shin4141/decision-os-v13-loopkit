@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 import json
+import multiprocessing
+import os
 from pathlib import Path
 import subprocess
 import tempfile
+from threading import BrokenBarrierError
+import time
 import unittest
 
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import (
     DecisionType,
+    GENESIS_EVENT_HASH,
     ScopeError,
     derive_decision_identity,
     normalize_scope,
@@ -28,7 +34,189 @@ def create_repository(parent: Path, name: str = "repo") -> Path:
     return repository
 
 
+def append_in_process(
+    repository_raw: str,
+    run_id: str,
+    start_barrier: object | None = None,
+    stale_read_barrier: object | None = None,
+    bypass_event_lock: bool = False,
+) -> None:
+    """Append one deterministic event from an independent process."""
+
+    repository = Path(repository_raw)
+    store = AccelerationStore(
+        repository,
+        clock=lambda: "2026-08-20T00:00:00Z",
+        event_id_factory=lambda: f"event-{run_id}",
+    )
+    identity = derive_decision_identity(
+        repository,
+        DecisionType.CREATE_FILE,
+        "new.txt",
+    )
+    if bypass_event_lock:
+        store.state_dir.mkdir(parents=True, exist_ok=True)
+        store._locked_event_chain = nullcontext  # type: ignore[method-assign]
+    if stale_read_barrier is not None:
+        original_read_events = store.read_events
+
+        def coordinated_stale_read() -> list[dict[str, object]]:
+            events = original_read_events()
+            try:
+                stale_read_barrier.wait(timeout=3)  # type: ignore[attr-defined]
+            except BrokenBarrierError:
+                pass
+            return events
+
+        store.read_events = coordinated_stale_read  # type: ignore[method-assign]
+    if start_barrier is not None:
+        start_barrier.wait(timeout=10)  # type: ignore[attr-defined]
+    store.append(
+        "DECISION_CHECK",
+        identity,
+        run_id=run_id,
+        iteration=1,
+        adapter="test",
+        adapter_version="1",
+        status="CHECKED",
+    )
+
+
+def exit_while_holding_event_lock(
+    repository_raw: str,
+    acquired: object,
+) -> None:
+    store = AccelerationStore(Path(repository_raw))
+    with store._locked_event_chain():
+        acquired.set()  # type: ignore[attr-defined]
+        os._exit(17)
+
+
 class AccelerationStoreTest(unittest.TestCase):
+    process_context = multiprocessing.get_context("spawn")
+
+    def assert_processes_complete(
+        self,
+        processes: list[multiprocessing.Process],
+        *,
+        timeout: float = 15,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        for process in processes:
+            process.join(max(0, deadline - time.monotonic()))
+        stuck = [process for process in processes if process.is_alive()]
+        for process in stuck:
+            process.terminate()
+            process.join()
+        self.assertEqual([], stuck, "child process did not complete")
+        self.assertEqual([0] * len(processes), [p.exitcode for p in processes])
+
+    def test_unlocked_append_reproduces_sibling_event_race(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            stale_read_barrier = self.process_context.Barrier(2)
+            processes = [
+                self.process_context.Process(
+                    target=append_in_process,
+                    args=(
+                        str(repository),
+                        f"old-race-{index}",
+                        None,
+                        stale_read_barrier,
+                        True,
+                    ),
+                )
+                for index in range(2)
+            ]
+
+            for process in processes:
+                process.start()
+            self.assert_processes_complete(processes)
+
+            store = AccelerationStore(repository)
+            physical_events = [
+                json.loads(line)
+                for line in store.events_path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(2, len(physical_events))
+            self.assertEqual(
+                {GENESIS_EVENT_HASH},
+                {event["prev_event_hash"] for event in physical_events},
+            )
+            with self.assertRaises(StateIntegrityError):
+                store.read_events()
+
+    def test_two_process_appends_are_serialized_into_valid_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            start_barrier = self.process_context.Barrier(2)
+            stale_read_barrier = self.process_context.Barrier(2)
+            processes = [
+                self.process_context.Process(
+                    target=append_in_process,
+                    args=(
+                        str(repository),
+                        f"repaired-race-{index}",
+                        start_barrier,
+                        stale_read_barrier,
+                    ),
+                )
+                for index in range(2)
+            ]
+
+            for process in processes:
+                process.start()
+            self.assert_processes_complete(processes)
+
+            events = AccelerationStore(repository).read_events()
+            self.assertEqual(2, len(events))
+            self.assertEqual(
+                {"repaired-race-0", "repaired-race-1"},
+                {event["run_id"] for event in events},
+            )
+            self.assertEqual(events[0]["event_hash"], events[1]["prev_event_hash"])
+
+    def test_event_lock_is_repository_local(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            first_repository = create_repository(parent, "first")
+            second_repository = create_repository(parent, "second")
+            first_store = AccelerationStore(first_repository)
+
+            with first_store._locked_event_chain():
+                process = self.process_context.Process(
+                    target=append_in_process,
+                    args=(str(second_repository), "unrelated-repository"),
+                )
+                process.start()
+                self.assert_processes_complete([process], timeout=5)
+
+            events = AccelerationStore(second_repository).read_events()
+            self.assertEqual(["unrelated-repository"], [e["run_id"] for e in events])
+
+    def test_process_exit_releases_event_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            acquired = self.process_context.Event()
+            process = self.process_context.Process(
+                target=exit_while_holding_event_lock,
+                args=(str(repository), acquired),
+            )
+            process.start()
+            try:
+                self.assertTrue(acquired.wait(timeout=10))
+                process.join(timeout=10)
+            finally:
+                if process.is_alive():
+                    process.terminate()
+                    process.join()
+            self.assertEqual(17, process.exitcode)
+
+            append_in_process(str(repository), "after-crash")
+
+            events = AccelerationStore(repository).read_events()
+            self.assertEqual(["after-crash"], [event["run_id"] for event in events])
+
     def test_state_lives_under_git_common_dir_and_chain_is_reproducible(
         self,
     ) -> None:

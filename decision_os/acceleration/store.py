@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import fcntl
 import json
 import math
+import os
 from pathlib import Path
 import uuid
-from typing import Any
+from typing import Any, Iterator
 
 from .model import (
     EVENT_FIELDS,
@@ -76,7 +79,7 @@ def _new_event_id() -> str:
 
 
 class AccelerationStore:
-    """Single-writer local state under the target repository Git common dir."""
+    """Process-serialized state under the target repository Git common dir."""
 
     def __init__(
         self,
@@ -96,9 +99,31 @@ class AccelerationStore:
             self.git_common_dir / "decision-os" / "acceleration" / "v0.1"
         )
         self.events_path = self.state_dir / "events.jsonl"
+        self.events_lock_path = self.state_dir / "events.lock"
         self.config_path = self.state_dir / "config.json"
         self._clock = clock
         self._event_id_factory = event_id_factory
+
+    @contextmanager
+    def _locked_event_chain(self) -> Iterator[None]:
+        """Hold this store's process-level event writer lock."""
+
+        try:
+            self.state_dir.mkdir(parents=True, exist_ok=True)
+            lock_stream = self.events_lock_path.open("a+b")
+        except OSError as exc:
+            raise StateIntegrityError("Event append lock failed.") from exc
+        try:
+            try:
+                fcntl.flock(lock_stream.fileno(), fcntl.LOCK_EX)
+            except OSError as exc:
+                raise StateIntegrityError("Event append lock failed.") from exc
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_stream.close()
 
     def read_events(self) -> list[dict[str, Any]]:
         """Read and verify the complete append-only chain."""
@@ -190,41 +215,44 @@ class AccelerationStore:
             raise ValueError(f"Unsupported event type: {event_type}")
         if not run_id or iteration < 1:
             raise ValueError("run_id and positive iteration are required.")
-        events = self.read_events()
-        previous = (
-            events[-1]["event_hash"] if events else GENESIS_EVENT_HASH
-        )
-        event: dict[str, Any] = {
-            "adapter": adapter,
-            "adapter_version": adapter_version,
-            "checkpoint_id": checkpoint_id,
-            "decision_key": identity.decision_key,
-            "decision_type": identity.decision_type.value,
-            "default_created_run_id": default_created_run_id,
-            "default_rule_hash": default_rule_hash,
-            "event_id": self._event_id_factory(),
-            "event_type": event_type,
-            "interrupt_skipped": bool(interrupt_skipped),
-            "iteration": iteration,
-            "matched_rule_hash": matched_rule_hash,
-            "normalized_scope": identity.normalized_scope,
-            "prev_event_hash": previous,
-            "protocol_version": PROTOCOL_VERSION,
-            "repository_id": identity.repository_id,
-            "run_id": run_id,
-            "source_interrupt_id": source_interrupt_id,
-            "status": status,
-            "timestamp": self._clock(),
-        }
-        event["event_hash"] = hash_payload(event)
-        self.state_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            with self.events_path.open("a", encoding="utf-8", newline="\n") as stream:
-                stream.write(canonical_json(event))
-                stream.write("\n")
-        except OSError as exc:
-            raise StateIntegrityError("Event append failed.") from exc
-        return event
+        with self._locked_event_chain():
+            events = self.read_events()
+            previous = (
+                events[-1]["event_hash"] if events else GENESIS_EVENT_HASH
+            )
+            event: dict[str, Any] = {
+                "adapter": adapter,
+                "adapter_version": adapter_version,
+                "checkpoint_id": checkpoint_id,
+                "decision_key": identity.decision_key,
+                "decision_type": identity.decision_type.value,
+                "default_created_run_id": default_created_run_id,
+                "default_rule_hash": default_rule_hash,
+                "event_id": self._event_id_factory(),
+                "event_type": event_type,
+                "interrupt_skipped": bool(interrupt_skipped),
+                "iteration": iteration,
+                "matched_rule_hash": matched_rule_hash,
+                "normalized_scope": identity.normalized_scope,
+                "prev_event_hash": previous,
+                "protocol_version": PROTOCOL_VERSION,
+                "repository_id": identity.repository_id,
+                "run_id": run_id,
+                "source_interrupt_id": source_interrupt_id,
+                "status": status,
+                "timestamp": self._clock(),
+            }
+            event["event_hash"] = hash_payload(event)
+            try:
+                with self.events_path.open(
+                    "a", encoding="utf-8", newline="\n"
+                ) as stream:
+                    stream.write(f"{canonical_json(event)}\n")
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except OSError as exc:
+                raise StateIntegrityError("Event append failed.") from exc
+            return event
 
     def read_settings(self) -> ReceiptSettings:
         """Read estimate settings without changing verified state."""
