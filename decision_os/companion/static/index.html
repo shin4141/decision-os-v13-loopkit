@@ -609,8 +609,9 @@
         </div>
       </div>
       <p class="boundary">
-        Each entry is limited to this repository, one action, and one exact
-        path. It is never broad repository access.
+        Each entry permits one action on one exact path in this repository in
+        future Runs. It does not bind future content to the diff that created
+        it or grant broader repository access.
       </p>
       <div id="defaults" class="defaults-list"></div>
     </section>
@@ -1045,15 +1046,17 @@
           <button data-choice="allow_once" class="primary" type="button">
             Allow this change once
           </button>
-          <p>Allows only the exact action and path shown for this Run.</p>
+          <p>Allows only this request in the current Run.</p>
         </div>
         <div class="approval-option">
           <button data-choice="repository" class="secondary" type="button">
-            Save this exact permission
+            Use for this repository
           </button>
           <p>
-            Allows the same exact action and path in this repository in later
-            Runs.
+            Saves permission for this repository, action, and exact path in
+            later Runs. Future proposed content may differ, and a later Run
+            may reuse it without showing this diff again. This diff is not the
+            only allowed future diff.
           </p>
         </div>
         <div class="approval-option">

@@ -2917,7 +2917,22 @@ class CodexAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("newly-saved", first.file_actions[0].access)
             self.assertEqual("reused", second.file_actions[0].access)
             self.assertEqual((1, 1), engine.store.counters())
-            self.assertEqual(1, output.getvalue().count("Selection:"))
+            prompt = output.getvalue()
+            self.assertEqual(1, prompt.count("Selection:"))
+            self.assertIn(
+                "[1] Allow once — only this request in this Run",
+                prompt,
+            )
+            self.assertIn(
+                "save permission for this repository, action, and exact path "
+                "in future Runs",
+                prompt,
+            )
+            self.assertIn("Future proposed content may differ", prompt)
+            self.assertIn(
+                "without showing the same diff again",
+                prompt,
+            )
             events = engine.store.read_events()
             checks = [
                 event

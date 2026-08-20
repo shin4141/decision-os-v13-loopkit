@@ -1577,14 +1577,19 @@ class CompanionServerTest(unittest.TestCase):
             self.assertIn(f'id="{element_id}"', text)
         for exact_copy in (
             "Allow this change once",
-            "Allows only the exact action and path shown for this Run.",
-            "Save this exact permission",
-            "Allows the same exact action and path in this repository in later",
+            "Allows only this request in the current Run.",
+            "Use for this repository",
+            "Saves permission for this repository, action, and exact path in",
+            "Future proposed content may differ",
+            "may reuse it without showing this diff again",
+            "This diff is not the",
+            "only allowed future diff.",
+            "It does not bind future content to the diff that created",
             "Deny and stop this Run",
             "No requested file change will be approved.",
         ):
             self.assertIn(exact_copy, text)
-        self.assertNotIn("Use for this repository", text)
+        self.assertNotIn("Save this exact permission", text)
 
         status, _headers, javascript = self.request(
             "GET", "/app.js", cookie=cookie
@@ -3972,7 +3977,7 @@ class CompanionClientBehaviorTest(unittest.TestCase):
                     document.querySelector('[data-choice="allow_once"]').textContent.trim() ===
                       "Allow this change once" &&
                     document.querySelector('[data-choice="repository"]').textContent.trim() ===
-                      "Save this exact permission" &&
+                      "Use for this repository" &&
                     document.querySelector('[data-choice="deny"]').textContent.trim() ===
                       "Deny and stop this Run" &&
                     approvalFocusBefore === 1 &&

@@ -171,7 +171,22 @@ class ClaudeAdapterTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((1, 1), engine.store.counters())
             self.assertEqual(2, len(permissions))
             self.assertTrue(all(item.behavior == "allow" for item in permissions))
-            self.assertEqual(1, output.getvalue().count("Selection:"))
+            prompt = output.getvalue()
+            self.assertEqual(1, prompt.count("Selection:"))
+            self.assertIn(
+                "[1] Allow once — only this request in this Run",
+                prompt,
+            )
+            self.assertIn(
+                "save permission for this repository, action, and exact path "
+                "in future Runs",
+                prompt,
+            )
+            self.assertIn("Future proposed content may differ", prompt)
+            self.assertIn(
+                "without showing the same diff again",
+                prompt,
+            )
 
     async def test_control_stream_stays_open_through_gated_edit_and_result(
         self,
