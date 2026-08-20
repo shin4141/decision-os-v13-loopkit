@@ -42,6 +42,13 @@ class FakeContext:
     tool_use_id: str = "tool-use-1"
 
 
+@dataclass(frozen=True)
+class FakePermissionRequest:
+    tool_name: str
+    input_data: dict[str, object]
+    tool_use_id: str
+
+
 class FakeOptions:
     def __init__(self, **values: object) -> None:
         self.__dict__.update(values)
@@ -66,6 +73,7 @@ def fake_sdk(
     result: FakeResult | None = None,
     callback_results: list[object] | None = None,
     lifecycle_events: list[str] | None = None,
+    permission_requests: tuple[FakePermissionRequest, ...] | None = None,
 ) -> SimpleNamespace:
     observed = callback_results if callback_results is not None else []
     events = lifecycle_events if lifecycle_events is not None else []
@@ -101,18 +109,26 @@ def fake_sdk(
         async def receive_response(self):
             if not self.connected or self.prompt is None:
                 raise AssertionError("response requires an open control stream")
-            events.append("permission_requested")
-            permission = await self.options.can_use_tool(
-                tool_name,
-                {"file_path": path},
-                FakeContext(),
+            requests = permission_requests or (
+                FakePermissionRequest(
+                    tool_name,
+                    {"file_path": path},
+                    FakeContext().tool_use_id,
+                ),
             )
-            if not self.connected:
-                raise AssertionError(
-                    "control stream closed before permission completed"
+            for request in requests:
+                events.append("permission_requested")
+                permission = await self.options.can_use_tool(
+                    request.tool_name,
+                    request.input_data,
+                    FakeContext(tool_use_id=request.tool_use_id),
                 )
-            observed.append(permission)
-            events.append("permission_completed")
+                if not self.connected:
+                    raise AssertionError(
+                        "control stream closed before permission completed"
+                    )
+                observed.append(permission)
+                events.append("permission_completed")
             events.append("terminal_result_received")
             yield result or FakeResult()
 
@@ -178,6 +194,7 @@ class ClaudeAdapterTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertTrue(result.normal_terminal)
             self.assertEqual(1, len(permissions))
+            self.assertEqual("allow", permissions[0].behavior)
             self.assertEqual(
                 [
                     "control_stream_opened",
@@ -188,6 +205,230 @@ class ClaudeAdapterTest(unittest.IsolatedAsyncioTestCase):
                     "control_stream_closed",
                 ],
                 lifecycle,
+            )
+
+    async def test_exact_callback_replay_does_not_create_second_authority(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            engine = AccelerationEngine(repository)
+            permissions: list[object] = []
+            first_input = {
+                "file_path": "target.txt",
+                "old_string": "one",
+                "new_string": "two",
+            }
+            replay_input = {
+                "new_string": "two",
+                "old_string": "one",
+                "file_path": "target.txt",
+            }
+            requests = (
+                FakePermissionRequest("Edit", first_input, "tool-use-1"),
+                FakePermissionRequest("Edit", replay_input, "tool-use-1"),
+            )
+            adapter = ClaudeAdapter(
+                engine,
+                input_func=lambda: "1",
+                stdout=io.StringIO(),
+                sdk_module=fake_sdk(
+                    callback_results=permissions,
+                    permission_requests=requests,
+                ),
+            )
+
+            result = await adapter.run("replayed callback")
+
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(["allow", "allow"], [p.behavior for p in permissions])
+            self.assertEqual(1, adapter._iteration)
+            self.assertEqual(
+                ["DECISION_CHECK"],
+                [event["event_type"] for event in engine.store.read_events()],
+            )
+
+    async def test_distinct_second_same_path_and_type_is_denied(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            engine = AccelerationEngine(repository)
+            permissions: list[object] = []
+            edit_input = {
+                "file_path": "target.txt",
+                "old_string": "one",
+                "new_string": "two",
+            }
+            requests = (
+                FakePermissionRequest("Edit", edit_input, "tool-use-1"),
+                FakePermissionRequest("Edit", edit_input, "tool-use-2"),
+            )
+            adapter = ClaudeAdapter(
+                engine,
+                input_func=lambda: "1",
+                stdout=io.StringIO(),
+                sdk_module=fake_sdk(
+                    callback_results=permissions,
+                    permission_requests=requests,
+                ),
+            )
+
+            result = await adapter.run("two edit callbacks")
+
+            self.assertEqual("DENIED", result.status)
+            self.assertEqual(["allow", "deny"], [p.behavior for p in permissions])
+            self.assertEqual(1, adapter._iteration)
+            self.assertEqual(
+                ["DECISION_CHECK"],
+                [event["event_type"] for event in engine.store.read_events()],
+            )
+
+    async def test_distinct_second_payload_is_denied(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            engine = AccelerationEngine(repository)
+            permissions: list[object] = []
+            requests = (
+                FakePermissionRequest(
+                    "Edit",
+                    {
+                        "file_path": "target.txt",
+                        "old_string": "one",
+                        "new_string": "two",
+                    },
+                    "tool-use-1",
+                ),
+                FakePermissionRequest(
+                    "Edit",
+                    {
+                        "file_path": "target.txt",
+                        "old_string": "two",
+                        "new_string": "three",
+                    },
+                    "tool-use-1",
+                ),
+            )
+            adapter = ClaudeAdapter(
+                engine,
+                input_func=lambda: "1",
+                stdout=io.StringIO(),
+                sdk_module=fake_sdk(
+                    callback_results=permissions,
+                    permission_requests=requests,
+                ),
+            )
+
+            result = await adapter.run("two edit payloads")
+
+            self.assertEqual("DENIED", result.status)
+            self.assertEqual(["allow", "deny"], [p.behavior for p in permissions])
+            self.assertEqual(1, adapter._iteration)
+
+    async def test_distinct_second_tool_or_path_is_denied(self) -> None:
+        first_input = {
+            "file_path": "target.txt",
+            "old_string": "one",
+            "new_string": "two",
+        }
+        cases = (
+            (
+                "tool name",
+                FakePermissionRequest("Write", first_input, "tool-use-1"),
+            ),
+            (
+                "normalized path",
+                FakePermissionRequest(
+                    "Edit",
+                    {
+                        "file_path": "other.txt",
+                        "old_string": "one",
+                        "new_string": "two",
+                    },
+                    "tool-use-1",
+                ),
+            ),
+        )
+        for label, second_request in cases:
+            with self.subTest(field=label):
+                with tempfile.TemporaryDirectory() as directory:
+                    repository = create_repository(Path(directory))
+                    engine = AccelerationEngine(repository)
+                    permissions: list[object] = []
+                    requests = (
+                        FakePermissionRequest(
+                            "Edit", first_input, "tool-use-1"
+                        ),
+                        second_request,
+                    )
+                    adapter = ClaudeAdapter(
+                        engine,
+                        input_func=lambda: "1",
+                        stdout=io.StringIO(),
+                        sdk_module=fake_sdk(
+                            callback_results=permissions,
+                            permission_requests=requests,
+                        ),
+                    )
+
+                    result = await adapter.run("distinct callback")
+
+                    self.assertEqual("DENIED", result.status)
+                    self.assertEqual(
+                        ["allow", "deny"],
+                        [permission.behavior for permission in permissions],
+                    )
+                    self.assertEqual(1, adapter._iteration)
+
+    async def test_repository_default_reuse_cannot_allow_second_mutation(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            engine = AccelerationEngine(
+                repository,
+                adapter="claude-agent-sdk",
+                adapter_version=CLAUDE_AGENT_SDK_VERSION,
+            )
+            output = io.StringIO()
+            first = ClaudeAdapter(
+                engine,
+                input_func=lambda: "2",
+                stdout=output,
+                sdk_module=fake_sdk(),
+            )
+            await first.run("create default")
+            permissions: list[object] = []
+            edit_input = {
+                "file_path": "target.txt",
+                "old_string": "one",
+                "new_string": "two",
+            }
+            requests = (
+                FakePermissionRequest("Edit", edit_input, "tool-use-2"),
+                FakePermissionRequest("Edit", edit_input, "tool-use-3"),
+            )
+            second = ClaudeAdapter(
+                engine,
+                input_func=lambda: self.fail("saved default must skip prompt"),
+                stdout=output,
+                sdk_module=fake_sdk(
+                    callback_results=permissions,
+                    permission_requests=requests,
+                ),
+            )
+
+            result = await second.run("reuse default twice")
+
+            self.assertTrue(result.normal_terminal)
+            self.assertEqual(["allow", "deny"], [p.behavior for p in permissions])
+            self.assertEqual(1, second._iteration)
+            self.assertEqual(1, output.getvalue().count("Selection:"))
+            self.assertEqual(
+                1,
+                sum(
+                    event["event_type"] == "DECISION_CHECK"
+                    and event["run_id"] == result.run_id
+                    for event in engine.store.read_events()
+                ),
             )
 
     async def test_error_result_leaves_cross_run_candidate_pending(self) -> None:
