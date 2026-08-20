@@ -1434,6 +1434,9 @@ class CompanionController:
                     )
                     expected_task_sha256 = automatic_task.get("task_sha256")
                 allowed_paths = tuple(request.allowed_mutation_paths)
+                mechanically_protected_paths = tuple(
+                    request.mechanically_protected_paths
+                )
                 if (
                     identity.repository_id
                     != AccelerationStore(repository).repository_id
@@ -1443,6 +1446,12 @@ class CompanionController:
                         for path in allowed_paths
                     )
                     != allowed_paths
+                    or tuple(
+                        normalize_scope(repository, path)
+                        for path in mechanically_protected_paths
+                    )
+                    != mechanically_protected_paths
+                    or set(allowed_paths) & set(mechanically_protected_paths)
                     or self._compound_allowed_mutation_paths != allowed_paths
                     or continuation.get("source_run_id")
                     != expected_source_run_id
@@ -1464,7 +1473,11 @@ class CompanionController:
                 ValueError,
             ):
                 return False
-            return identity.normalized_scope in allowed_paths
+            return (
+                identity.normalized_scope in allowed_paths
+                and identity.normalized_scope
+                not in mechanically_protected_paths
+            )
 
     def submit_approval(self, choice: str) -> dict[str, Any]:
         choices = {
@@ -1821,9 +1834,14 @@ class CompanionController:
                     normalize_scope(repository, path)
                     for path in request.allowed_mutation_paths
                 )
+                normalized_protected_paths = tuple(
+                    normalize_scope(repository, path)
+                    for path in request.mechanically_protected_paths
+                )
                 normalized_request = replace(
                     request,
                     allowed_mutation_paths=normalized_paths,
+                    mechanically_protected_paths=normalized_protected_paths,
                 )
                 repository_identity = AccelerationStore(
                     repository
@@ -2186,6 +2204,10 @@ class CompanionController:
                     normalize_scope(repository, path)
                     for path in request.allowed_mutation_paths
                 )
+                normalized_protected_paths = tuple(
+                    normalize_scope(repository, path)
+                    for path in request.mechanically_protected_paths
+                )
                 normalized_requirements = tuple(
                     replace(
                         requirement,
@@ -2200,6 +2222,7 @@ class CompanionController:
                     request,
                     completion_requirements=normalized_requirements,
                     allowed_mutation_paths=normalized_paths,
+                    mechanically_protected_paths=normalized_protected_paths,
                 )
                 repository_identity = AccelerationStore(
                     repository

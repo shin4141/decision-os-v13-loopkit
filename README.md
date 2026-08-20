@@ -137,9 +137,13 @@ the Quest Board on demand; unrelated tasks do not load the tutorial.
 ## Optional Companion: your coding agent asks once. The next Run remembers.
 
 1. The agent asks whether it may modify a file.
-2. You choose **Use for this repository**.
-3. A fresh later Run skips the repeated interrupt, records a Verified Save,
-   and emits a local Acceleration Receipt.
+2. You choose **Use for this repository**. This saves permission for this
+   repository, action, and exact path for future Runs.
+3. A fresh later Run may reuse that permission without showing the same diff
+   again. Future proposed content may differ; the saved Default does not bind
+   future reuse to the current diff or content.
+4. After the later Run passes its checkpoint, it records a Verified Save and
+   emits a local Acceleration Receipt.
 
 In the creator-owned human live proof for the first Claude Agent SDK adapter,
 the human explicitly selected option 2 in Run 1. A separate, fresh Run 2 showed

@@ -45,6 +45,7 @@ _REQUEST_FIELDS = frozenset(
         "authority_evidence_refs",
         "allowed_mutation_paths",
         "protected_objects",
+        "mechanically_protected_paths",
         "completed_runs_before",
         "max_runs",
         "goal_complete_after_run_1",
@@ -156,9 +157,30 @@ def _bounded_strings(
     return tuple(normalized)
 
 
+def _validate_mechanical_path_boundary(
+    allowed_mutation_paths: tuple[str, ...],
+    mechanically_protected_paths: tuple[str, ...],
+) -> None:
+    """Reject an exact path identity granted both mutation and protection."""
+
+    conflicts = sorted(
+        set(allowed_mutation_paths) & set(mechanically_protected_paths)
+    )
+    if conflicts:
+        raise ValueError(
+            "Allowed mutation paths conflict with mechanically protected "
+            f"path identities: {', '.join(conflicts)}."
+        )
+
+
 @dataclass(frozen=True)
 class StageBContinuationRequest:
-    """One pre-Run authority envelope for exactly one possible continuation."""
+    """One pre-Run authority envelope for exactly one possible continuation.
+
+    ``protected_objects`` is semantic description. Only exact
+    repository-relative identities in ``mechanically_protected_paths`` constrain
+    mutation preflight.
+    """
 
     goal: str
     run_1_task: str
@@ -182,6 +204,7 @@ class StageBContinuationRequest:
     protected_object_and_ownership_unchanged: ContractFact
     no_authoritative_conflict: ContractFact
     no_truly_unanswered_human_question: ContractFact
+    mechanically_protected_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for label, value, maximum in (
@@ -207,7 +230,7 @@ class StageBContinuationRequest:
             self.authority_evidence_refs,
             "Authority evidence references",
         )
-        _bounded_strings(
+        allowed_mutation_paths = _bounded_strings(
             self.allowed_mutation_paths,
             "Allowed mutation paths",
             maximum=1,
@@ -216,6 +239,16 @@ class StageBContinuationRequest:
             self.protected_objects,
             "Protected Objects",
             maximum=8,
+        )
+        mechanically_protected_paths = _bounded_strings(
+            self.mechanically_protected_paths,
+            "Mechanically protected path identities",
+            minimum=0,
+            maximum=8,
+        )
+        _validate_mechanical_path_boundary(
+            allowed_mutation_paths,
+            mechanically_protected_paths,
         )
         if (
             not isinstance(self.completed_runs_before, int)
@@ -284,6 +317,9 @@ class StageBContinuationRequest:
             "authority_evidence_refs": list(self.authority_evidence_refs),
             "allowed_mutation_paths": list(self.allowed_mutation_paths),
             "protected_objects": list(self.protected_objects),
+            "mechanically_protected_paths": list(
+                self.mechanically_protected_paths
+            ),
             "completed_runs_before": self.completed_runs_before,
             "max_runs": self.max_runs,
         }
@@ -304,6 +340,7 @@ class StageBContinuationRequest:
                 "authority_evidence_refs",
                 "allowed_mutation_paths",
                 "protected_objects",
+                "mechanically_protected_paths",
             )
         ):
             raise ContinuationIntegrityError(
@@ -342,6 +379,9 @@ class StageBContinuationRequest:
                 ),
                 allowed_mutation_paths=tuple(value["allowed_mutation_paths"]),
                 protected_objects=tuple(value["protected_objects"]),
+                mechanically_protected_paths=tuple(
+                    value["mechanically_protected_paths"]
+                ),
                 completed_runs_before=value["completed_runs_before"],
                 max_runs=value["max_runs"],
                 **facts,
@@ -519,8 +559,14 @@ def automatic_task_from_persisted_run(record: Mapping[str, Any]) -> dict[str, st
             "Allowed mutation path (no expansion):",
             request.allowed_mutation_paths[0],
             "",
-            "Protected Objects / ownership boundaries (unchanged):",
+            (
+                "Semantic Protected Objects / ownership descriptions "
+                "(not path enforcement; unchanged):"
+            ),
             canonical_json(list(request.protected_objects)),
+            "",
+            "Mechanically protected repository-relative path identities:",
+            canonical_json(list(request.mechanically_protected_paths)),
             "",
             (
                 "Preserve the same Goal, authority, evidence continuity, blast "

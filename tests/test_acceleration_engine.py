@@ -62,6 +62,41 @@ class AccelerationEngineTest(unittest.TestCase):
             self.assertTrue(third.allowed)
             self.assertEqual((1, 2), engine.store.counters())
 
+    def test_same_repository_action_path_reuses_after_content_changes(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = create_repository(Path(directory))
+            engine = self.make_engine(repository)
+
+            created = engine.evaluate(
+                run_id="run-1",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="current-content",
+                choice_provider=lambda _identity: "2",
+            )
+            (repository / "target.txt").write_text(
+                "different future content\n",
+                encoding="utf-8",
+            )
+            reused = engine.evaluate(
+                run_id="run-2",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="different-content",
+                choice_provider=lambda _identity: self.fail(
+                    "content changes must not widen the saved authority key"
+                ),
+            )
+
+            self.assertEqual("HUMAN_DEFAULT_CREATED", created.status)
+            self.assertEqual("DEFAULT_MATCHED", reused.status)
+            self.assertTrue(reused.allowed)
+            self.assertEqual(created.identity, reused.identity)
+
     def test_mutation_authority_preflight_precedes_matching_default(self) -> None:
         cases = (
             (DecisionType.MODIFY_FILE, "target.txt"),

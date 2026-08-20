@@ -89,6 +89,21 @@ The rule hash uses canonical JSON containing only:
 Prompt text, model identity, display questions, timestamps, and Run IDs never
 enter the rule hash.
 
+## Repository Default Authority Boundary
+
+`Allow once` permits only the current request in the current Run. It does not
+create a Repository Default.
+
+`Use for this repository` saves permission for the repository identity,
+mechanically derived decision type/action, and normalized exact path in future
+Runs. A matching later Run may reuse that permission without showing the same
+diff again before reuse, and its proposed content may differ.
+
+The saved Default does not persist or bind the exact diff, proposed content,
+future preimage, prompt, task identity, purpose, or tool-use identity. In
+particular, it does not mean that the currently proposed diff is the only diff
+allowed on that path in a later Run.
+
 ## Human Choice
 
 Edit and Write are not auto-approved. The SDK callback displays:
@@ -98,8 +113,11 @@ Your coding agent needs one default.
 
 May it <create|modify> <normalized scope>?
 
-[1] Allow once
-[2] Use for this repository
+[1] Allow once — only this request in this Run
+[2] Use for this repository — save permission for this repository, action,
+    and exact path in future Runs
+    Future proposed content may differ; a later Run may reuse this permission
+    without showing the same diff again.
 [3] Deny
 ```
 

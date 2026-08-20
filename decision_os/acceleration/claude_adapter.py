@@ -10,7 +10,7 @@ import subprocess
 from typing import Any, TextIO
 
 from .engine import AccelerationEngine, CheckpointOutcome, DecisionOutcome
-from .model import DecisionType, ScopeError, normalize_scope
+from .model import DecisionType, ScopeError, canonical_json, normalize_scope
 
 
 CLAUDE_AGENT_SDK_VERSION = "0.2.123"
@@ -40,6 +40,16 @@ class ClaudeRunResult:
     checkpoint_outcomes: tuple[CheckpointOutcome, ...]
 
 
+@dataclass(frozen=True)
+class _MutationCallbackIdentity:
+    """Exact SDK callback identity eligible for same-Run replay."""
+
+    tool_use_id: str
+    tool_name: str
+    normalized_path: str
+    canonical_input: str
+
+
 class ClaudeAdapter:
     """Map exact Claude Edit/Write callbacks into fixed protocol decisions."""
 
@@ -59,6 +69,8 @@ class ClaudeAdapter:
         self._iteration = 0
         self._pending: dict[str, DecisionOutcome] = {}
         self._seen: dict[str, DecisionOutcome] = {}
+        self._mutation_allowed = False
+        self._allowed_callback: _MutationCallbackIdentity | None = None
         self._permission_denied = False
 
     def _load_sdk(self) -> Any:
@@ -138,8 +150,11 @@ class ClaudeAdapter:
         self.stdout.write(
             "\nYour coding agent needs one default.\n\n"
             f"May it {action} {identity.normalized_scope}?\n\n"
-            "[1] Allow once\n"
-            "[2] Use for this repository\n"
+            "[1] Allow once — only this request in this Run\n"
+            "[2] Use for this repository — save permission for this "
+            "repository, action, and exact path in future Runs\n"
+            "    Future proposed content may differ; a later Run may reuse "
+            "this permission without showing the same diff again.\n"
             "[3] Deny\n\n"
             "Selection: "
         )
@@ -159,10 +174,43 @@ class ClaudeAdapter:
         try:
             decision_type, raw_path = self._map_tool(tool_name, input_data)
             normalized = normalize_scope(self.engine.repository, raw_path)
+            canonical_input = canonical_json(input_data)
         except (ClaudeAdapterFailure, ScopeError) as exc:
             self._permission_denied = True
             return sdk_module.PermissionResultDeny(
                 message=f"Verified Save denied: {type(exc).__name__}",
+                interrupt=False,
+            )
+        except (TypeError, ValueError):
+            self._permission_denied = True
+            return sdk_module.PermissionResultDeny(
+                message="Verified Save denied: invalid canonical tool input",
+                interrupt=False,
+            )
+
+        raw_tool_use_id = getattr(context, "tool_use_id", None)
+        callback_identity = (
+            _MutationCallbackIdentity(
+                tool_use_id=raw_tool_use_id,
+                tool_name=tool_name,
+                normalized_path=normalized,
+                canonical_input=canonical_input,
+            )
+            if isinstance(raw_tool_use_id, str) and raw_tool_use_id
+            else None
+        )
+        if self._mutation_allowed:
+            if (
+                callback_identity is not None
+                and callback_identity == self._allowed_callback
+            ):
+                return sdk_module.PermissionResultAllow()
+            self._permission_denied = True
+            return sdk_module.PermissionResultDeny(
+                message=(
+                    "Verified Save denied: one distinct mutation is allowed "
+                    "per Run."
+                ),
                 interrupt=False,
             )
 
@@ -180,19 +228,22 @@ class ClaudeAdapter:
             )
 
         self._iteration += 1
-        tool_use_id = getattr(context, "tool_use_id", None)
         outcome = self.engine.evaluate(
             run_id=self._run_id,
             iteration=self._iteration,
             decision_type=decision_type,
             requested_scope=raw_path,
-            source_interrupt_id=tool_use_id,
+            source_interrupt_id=(
+                raw_tool_use_id if isinstance(raw_tool_use_id, str) else None
+            ),
             choice_provider=self._human_choice,
         )
         self._seen[key] = outcome
         if outcome.pending_cross_run_checkpoint:
             self._pending[outcome.identity.decision_key] = outcome
         if outcome.allowed:
+            self._mutation_allowed = True
+            self._allowed_callback = callback_identity
             return sdk_module.PermissionResultAllow()
         self._permission_denied = True
         return sdk_module.PermissionResultDeny(
@@ -247,6 +298,8 @@ class ClaudeAdapter:
         self._iteration = 0
         self._pending = {}
         self._seen = {}
+        self._mutation_allowed = False
+        self._allowed_callback = None
         self._permission_denied = False
         options = self._options(sdk, demo=demo)
         result_message: Any | None = None

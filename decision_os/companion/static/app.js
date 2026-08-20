@@ -1003,7 +1003,7 @@ function renderDefaults(defaults) {
     revoke.disabled = !connected;
     revoke.addEventListener("click", async () => {
       const confirmed = window.confirm(
-        "Revoke this exact saved repository access? Historical proof remains.",
+        "Revoke this repository/action/path permission? Historical proof remains.",
       );
       if (confirmed) {
         await postJSON("/api/default/revoke", { handle: item.handle });

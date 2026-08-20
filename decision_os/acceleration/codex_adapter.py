@@ -1678,8 +1678,11 @@ class CodexAdapter:
         self.stdout.write(
             "\nYour coding agent needs one default.\n\n"
             f"May it {action} {identity.normalized_scope}?\n\n"
-            "[1] Allow once\n"
-            "[2] Use for this repository\n"
+            "[1] Allow once — only this request in this Run\n"
+            "[2] Use for this repository — save permission for this "
+            "repository, action, and exact path in future Runs\n"
+            "    Future proposed content may differ; a later Run may reuse "
+            "this permission without showing the same diff again.\n"
             "[3] Deny\n\n"
             "Selection: "
         )
