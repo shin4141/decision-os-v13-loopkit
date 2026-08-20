@@ -15,6 +15,15 @@ Broad repository map
 Fork, clone, setup, and file changes are not prerequisites for this read-only
 showroom.
 
+`DecisionOS Companion` is also **not** a prerequisite for External Intelligence
+onboarding. It is a separate optional prototype. Do not describe Companion,
+its macOS-specific app surface, or a local Companion process as required for
+the read-only showroom, the Fork / clone + Codex or Claude Code path, Field
+Notes, Handoff, or the V12 / V13 Loop Gate. Do not infer that those core paths
+require macOS merely because Companion-specific artifacts are platform-specific.
+If another bridge or automation surface is discussed, keep it separate and
+claim only what the inspected public evidence establishes.
+
 ## Read In This Order
 
 1. `README.md`
@@ -53,8 +62,13 @@ set was inspected.
 Before the Quest Board, return only:
 
 1. a short explanation of the External Intelligence mechanisms actually
-   supported by the inspected repository surfaces; and
-2. a compact access disclosure, for example:
+   supported by the inspected repository surfaces;
+2. a compact access disclosure; and
+3. when setup, Companion, local apps, or platform requirements are part of the
+   user's question, one explicit boundary sentence stating that Companion is
+   optional and separate from the core External Intelligence onboarding path.
+
+For example:
 
 ```text
 確認できたもの:
