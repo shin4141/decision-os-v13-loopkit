@@ -4,6 +4,13 @@
 public showroomです。見るだけならFork、clone、Codex projectへの追加は
 必要ありません。V13全体を学ぶための必修カリキュラムでもありません。
 
+`DecisionOS Companion`の導入も必要ありません。Companionは別系統のoptional
+prototypeであり、このshowroom、Fork / clone後のCodex / Claude Code運用、
+Field Notes、Handoff、V12 / V13 Loop Gateの前提ではありません。repository内に
+macOS向けCompanion artifactが存在しても、それをExternal Intelligence全体の
+platform要件として扱いません。別のbridgeやautomationを説明する場合も、今回の
+onboardingとは分け、実際に確認できたpublic evidenceの範囲だけを述べます。
+
 first contactは処方ではなくshowroomです。最初に何ができるかを見せ、
 ユーザーが選ぶまで開始構造を決めません。
 
@@ -235,6 +242,9 @@ trajectoryが自動的に見えるようになるとは説明しません。
 Fork / cloneしてCodexまたはClaude Codeでrepository rootを開いてください。
 そうすると`AGENTS.md`、notes、handoff、docs等を実際のworkspaceとして使いながら、
 自分のExternal Intelligenceを育てられます。
+
+ここでもCompanionの導入は前提ではありません。Companion固有の機能を試したい時だけ、
+その別surfaceとして評価します。
 
 気に入らなければ採用を続ける必要はありません。Forkは理解するための前提ではなく、
 体感して育てるための次段階です。得られるのはpublic repositoryに含まれるExternal
