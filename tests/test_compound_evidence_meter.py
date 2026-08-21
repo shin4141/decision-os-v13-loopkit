@@ -274,150 +274,38 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         self.assertEqual("PASS", payload["v12_state"])
         self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Stop at the remote publication Human Seat boundary",
+            "None. Stop.",
             payload["next_authorized_action"],
         )
+        current_blocks = []
         for relative_path in (
             "docs/current_signal.md",
             "handoff/current_codex_handoff.md",
         ):
             with self.subTest(relative_path=relative_path):
-                current = (REPO_ROOT / relative_path).read_text(
-                    encoding="utf-8"
-                ).split(
-                    "Everything below this boundary is preserved historical",
+                current = (REPO_ROOT / relative_path).read_text(encoding="utf-8").split(
+                    "<!-- current-state-history-boundary:13-198 -->",
                     maxsplit=1,
                 )[0]
+                current_blocks.append(current.split("```text\n", 1)[1].split("```", 1)[0])
                 self.assertIn(
-                    "V13 — Completion Integrity / Same-Run Temporal Evidence "
-                    "Integration",
+                    "V13 — Completion Integrity / Current-State Authority / "
+                    "Reconnectability",
                     current,
                 )
                 self.assertIn(
-                    "13-124 Blank-Slate Highest-EV Round 2:\nPASS",
+                    "13-197 Git Authority Isolation:\nINTEGRATED on main by PR #146",
                     current,
                 )
                 self.assertIn(
-                    "Selected capability:\nSame-Run approved-Modify "
-                    "completion-evidence invalidation",
+                    "13-198 Current-State Admission Repair:\nCOMPLETE when this "
+                    "exact first block is observed on fetched origin/main",
                     current,
                 )
-                self.assertIn(
-                    "Classification:\nCONTROL",
-                    current,
-                )
-                self.assertIn(
-                    "13-125:\nINTEGRATED locally pending remote "
-                    "canonicalization",
-                    current,
-                )
-                self.assertIn(
-                    "same-Run matching completion read + approved exact-path "
-                    "Modify cannot establish\ncurrent completion support.",
-                    current,
-                )
-                self.assertIn(
-                    "read_run <= modify_run invalidates.\n"
-                    "read_run > last_invalidation re-establishes support.",
-                    current,
-                )
-                self.assertIn(
-                    "The persisted matching read remains present as historical "
-                    "evidence. Only its\neligibility as current completion "
-                    "support changes",
-                    current,
-                )
-                self.assertIn(
-                    "Within-Run post-Modify reread cannot presently be proved "
-                    "from authoritative,\nrestart-verifiable event ordering.",
-                    current,
-                )
-                self.assertIn(
-                    "Pre-1.01 false-COMPLETE records fail closed as "
-                    "BLOCKED_CORRUPT / BLOCK.",
-                    current,
-                )
-                self.assertIn(
-                    "No\nsilent migration, retrospective rewriting, or "
-                    "fabricated within-Run order is\nadded.",
-                    current,
-                )
-                self.assertIn(
-                    "V13 no longer accepts a same-Run completion-matching read "
-                    "as current support\nwhen that Run also contains an "
-                    "approved Modify of the exact same evidence path.",
-                    current,
-                )
-                self.assertIn(
-                    "This prevents unsupported COMPLETE when post-mutation "
-                    "current identity is not\nproved.",
-                    current,
-                )
-                self.assertIn(
-                    "This does not establish within-Run event ordering, generic "
-                    "freshness, semantic\nequivalence, post-mutation content "
-                    "identity, transaction history, generic\nmutation "
-                    "dependency analysis, or full temporal reasoning.",
-                    current,
-                )
-                self.assertIn(
-                    "Compound Authority Preflight:\nINTEGRATED",
-                    current,
-                )
-                self.assertIn(
-                    "V11 Selective Reconnect:\nINTEGRATED",
-                    current,
-                )
-                self.assertIn(
-                    "V6 Safety Non-Dilution:\nINTEGRATED",
-                    current,
-                )
-                self.assertIn(
-                    "V8 Cross-Run Temporal Evidence Invalidation:\nINTEGRATED",
-                    current,
-                )
-                self.assertIn(
-                    "Zero-Declared-Progress Stop:\nINTEGRATED",
-                    current,
-                )
-                self.assertIn(
-                    "V10 Protective Rescale:\n"
-                    "HOLD — Carrier observability missing",
-                    current,
-                )
-                self.assertIn(
-                    "Genesis Selection:\n"
-                    "HOLD — typed present-Goal comparison missing",
-                    current,
-                )
-                self.assertIn(
-                    "13-108:\nNONCANONICAL",
-                    current,
-                )
-                self.assertIn(
-                    "Capability Commit:\n"
-                    "5d937fb3f1a123efc6a5d04727547d9c137c63e3",
-                    current,
-                )
-                self.assertIn(
-                    "Canonical Starting Main:\n"
-                    "72219407008abd1aa9131cf79ec9f7c46ff1368a",
-                    current,
-                )
-                self.assertIn(
-                    "Active Branch:\n"
-                    "codex/13-126-same-run-invalidation-integration",
-                    current,
-                )
-                self.assertIn(
-                    "Field Note 132:\nVerification pending",
-                    current,
-                )
-                self.assertIn(
-                    "Compound Evidence Meter:\nunchanged",
-                    current,
-                )
-                self.assertIn("HOLD — NO NEXT AUTHORITY", current)
+                self.assertNotIn("codex/13-126-same-run-invalidation-integration", current)
+                self.assertNotIn("HOLD — NO NEXT AUTHORITY", current)
+
+        self.assertEqual(current_blocks[0], current_blocks[1])
 
     def test_historical_surface_tails_are_byte_for_byte_preserved(self) -> None:
         cases = (

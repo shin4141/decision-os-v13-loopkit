@@ -1,3 +1,103 @@
+# Current Signal — Canonical Current-State Admission Joint Repair
+
+## Canonical Current State — V13 13-198 Post-Admission Steady State
+
+```text
+Canonical Reconstruction Base:
+fb89a07e31ebbf947f4f95d2bafdb1153dc08d29
+
+Current Layer:
+V13 — Completion Integrity / Current-State Authority / Reconnectability
+
+V12 State:
+PASS — the canonical capability and repair lineage through 13-197 is complete on main
+
+Completed Canonical Frontier:
+13-125, F-04, External Intelligence onboarding, 13-192 through 13-195, and 13-197
+
+Same-Run Completion Evidence Invalidation:
+INTEGRATED on main by PR #140; it is completed lineage, not the current frontier
+
+F-04 Authority Witness Repair:
+INTEGRATED on main by PR #141 with negative and noncanonical witnesses failing closed
+
+External Intelligence Onboarding:
+INTEGRATED through repository-grounded routing, evidence boundaries, and Companion separation
+
+Companion Security Repair Lineage:
+INTEGRATED on main by PR #145 for the reproduced 13-192 through 13-195 P1/P2 defects
+
+Prompt-Injection Qualification:
+UNCHANGED — separately bounded as P3 by existing controls; no repair is claimed here
+
+13-197 Git Authority Isolation:
+INTEGRATED on main by PR #146 at fb89a07e31ebbf947f4f95d2bafdb1153dc08d29
+
+13-198 Current-State Admission Repair:
+COMPLETE when this exact first block is observed on fetched origin/main; otherwise CANDIDATE only
+
+Canonical Current Capability:
+Current-state restart authority covers the public repaired lineage through 13-198 when this block is on fetched origin/main
+
+Current Restart Point:
+this exact matched first block as read from fetched origin/main; branch and Draft PR copies are candidates only
+
+Active Branch:
+none — the post-admission steady state grants no branch execution authority
+
+Current Gate:
+HOLD — post-admission steady state; no automatic next loop
+
+V13 Self-Repair:
+HOLD — any further repair requires a fresh bounded selection and authority
+
+Article / Public Explanatory Work:
+HOLD
+
+New Research Expansion:
+HOLD — no automatic expansion; a later bounded task requires fresh explicit authority
+
+Unrelated Security Hardening:
+BLOCK in 13-198
+
+Completion Line:
+PASS when this exact matched block is observed on fetched origin/main; that observation admits 13-198
+
+Missing Closure:
+none when read from fetched origin/main; a branch or Draft PR copy remains an admission candidate only
+
+Next Authorized Action:
+None. Stop. Further V13 self-repair or research requires a fresh bounded selection and authority
+
+Not Authorized:
+Automatic self-repair or research; article work; unrelated security, portability, CI, ledger, or variant cleanup
+
+Decision Owner:
+Shin
+
+Admission Joint:
+reader verifies this exact matched first block on fetched origin/main; other copies have no canonical authority
+
+Admission Evidence:
+presence of this exact first block on fetched origin/main; a branch or Draft PR copy is CANDIDATE only
+
+Remote Read-Back:
+sender closure requires fetched origin/main confirmation; future readers verify current location independently
+
+13-198 P3 Status:
+CLOSED when this exact first block is observed on fetched origin/main; candidate copies cannot assert closure
+
+Older Material Below:
+HISTORICAL ONLY — older Gate, Next Authorized Action, branch, capability, and Completion Line grant no current authority
+```
+
+Everything below this boundary is preserved historical material from the
+pre-13-198 surfaces. In particular, its older `Next Authorized Action`,
+`Current Gate`, branch, capability, and `Completion Line` values cannot be
+inherited as current authority.
+
+<!-- current-state-history-boundary:13-198 -->
+
 # Current Signal — Same-Run Completion Evidence Invalidation Integration
 
 ## Canonical Current State — V13 Post Same-Run Temporal Evidence Integration

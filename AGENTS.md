@@ -227,6 +227,38 @@ When raw history becomes inefficient or unsafe, follow:
 
 Compress history without compressing restartability.
 
+### Current-State Admission Joint
+
+A material current-state change is any change to the Current Gate, Next
+Authorized Action, Completion Line, active authority or operating boundary,
+current canonical capability, or current restart point.
+
+Such a change is not operationally `COMPLETE` merely because its implementation
+or evidence exists elsewhere in the repository. Before `COMPLETE`:
+
+1. prepend one new canonical current-state block to both
+   `docs/current_signal.md` and `handoff/current_codex_handoff.md`;
+2. keep the two first fenced blocks byte-identical, including Current Canonical
+   Main, Current Layer, completed work, Current Gate, Completion Line, Missing
+   Closure, Next Authorized Action, Not Authorized, Decision Owner, and the
+   historical-only boundary;
+3. preserve all older material below the new boundary as history rather than
+   rewriting it;
+4. run `python -m unittest discover -s tests -p
+   'test_current_state_admission.py'` and the relevant existing handoff or
+   reconnect tests; and
+5. after canonicalization, fetch `origin/main`, read back both canonical
+   surfaces from that remote ref, and verify the expected commit relationship
+   before claiming operational `COMPLETE` or restart authority.
+
+A pushed repair branch or Draft PR proves remote delivery, not canonical
+admission. If merge or remote-main read-back is still pending, report the state
+as an admission candidate and keep that Missing Closure explicit.
+
+Only the admitted first current-state block may be inherited as restart
+authority. Older `Current Gate`, `Next Authorized Action`, branch, capability,
+or Completion Line values below its historical boundary are evidence only.
+
 ## 6. Conditional Routing
 
 Read the relevant reference when the current judgment depends on it.
