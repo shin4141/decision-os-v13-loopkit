@@ -10,6 +10,7 @@ import tempfile
 from threading import BrokenBarrierError
 import time
 import unittest
+from unittest.mock import patch
 
 from decision_os.acceleration.engine import AccelerationEngine
 from decision_os.acceleration.model import (
@@ -17,6 +18,7 @@ from decision_os.acceleration.model import (
     GENESIS_EVENT_HASH,
     ScopeError,
     derive_decision_identity,
+    git_output,
     normalize_scope,
     repository_id,
 )
@@ -364,6 +366,193 @@ class AccelerationStoreTest(unittest.TestCase):
             self.assertNotIn("secret", identity)
             self.assertNotIn("private", identity)
             self.assertNotIn("github", identity)
+
+    def test_ambient_git_control_plane_cannot_split_repository_authority(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            repository_a = create_repository(parent, "repository-a")
+            repository_b = create_repository(parent, "repository-b")
+            origin_a = "https://example.test/owner/repository-a.git"
+            origin_b = "https://example.test/owner/repository-b.git"
+            for repository, origin in (
+                (repository_a, origin_a),
+                (repository_b, origin_b),
+            ):
+                subprocess.run(
+                    (
+                        "git",
+                        "-C",
+                        str(repository),
+                        "remote",
+                        "add",
+                        "origin",
+                        origin,
+                    ),
+                    check=True,
+                    capture_output=True,
+                )
+
+            expected_a_id = repository_id(repository_a)
+            expected_b_id = repository_id(repository_b)
+            global_config = parent / "hostile-global-config"
+            system_config = parent / "hostile-system-config"
+            config_text = (
+                '[remote "origin"]\n'
+                f"\turl = {origin_b}\n"
+            )
+            global_config.write_text(config_text, encoding="utf-8")
+            system_config.write_text(config_text, encoding="utf-8")
+            hostile_environment = {
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES": str(
+                    repository_b / ".git" / "objects"
+                ),
+                "GIT_COMMON_DIR": str(repository_b / ".git"),
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_CONFIG_GLOBAL": str(global_config),
+                "GIT_CONFIG_KEY_0": "remote.origin.url",
+                "GIT_CONFIG_NOSYSTEM": "0",
+                "GIT_CONFIG_SYSTEM": str(system_config),
+                "GIT_CONFIG_VALUE_0": origin_b,
+                "GIT_DIR": str(repository_b / ".git"),
+                "GIT_INDEX_FILE": str(repository_b / ".git" / "index"),
+                "GIT_OBJECT_DIRECTORY": str(
+                    repository_b / ".git" / "objects"
+                ),
+                "GIT_WORK_TREE": str(repository_a),
+            }
+
+            with patch.dict(os.environ, hostile_environment, clear=False):
+                observed_root = Path(
+                    git_output(repository_a, "rev-parse", "--show-toplevel")
+                ).resolve(strict=True)
+                git_dir = Path(
+                    git_output(repository_a, "rev-parse", "--git-dir")
+                )
+                common_dir = Path(
+                    git_output(repository_a, "rev-parse", "--git-common-dir")
+                )
+                observed_origin = git_output(
+                    repository_a,
+                    "remote",
+                    "get-url",
+                    "origin",
+                )
+                store = AccelerationStore(repository_a)
+
+            if not git_dir.is_absolute():
+                git_dir = repository_a / git_dir
+            if not common_dir.is_absolute():
+                common_dir = repository_a / common_dir
+            expected_git_dir = (repository_a / ".git").resolve(strict=True)
+            self.assertEqual(repository_a.resolve(strict=True), observed_root)
+            self.assertEqual(expected_git_dir, git_dir.resolve(strict=True))
+            self.assertEqual(expected_git_dir, common_dir.resolve(strict=True))
+            self.assertEqual(origin_a, observed_origin)
+            self.assertEqual(expected_a_id, store.repository_id)
+            self.assertNotEqual(expected_b_id, store.repository_id)
+            self.assertEqual(expected_git_dir, store.git_common_dir)
+            self.assertEqual(
+                expected_git_dir
+                / "decision-os"
+                / "acceleration"
+                / "v0.1",
+                store.state_dir,
+            )
+
+    def test_repository_default_cannot_cross_repositories_under_poisoned_git(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            repository_a = create_repository(parent, "repository-a")
+            repository_b = create_repository(parent, "repository-b")
+            for repository, origin in (
+                (repository_a, "https://example.test/owner/a.git"),
+                (repository_b, "https://example.test/owner/b.git"),
+            ):
+                (repository / "target.txt").write_text("one\n", encoding="utf-8")
+                subprocess.run(
+                    (
+                        "git",
+                        "-C",
+                        str(repository),
+                        "remote",
+                        "add",
+                        "origin",
+                        origin,
+                    ),
+                    check=True,
+                    capture_output=True,
+                )
+
+            engine_b = AccelerationEngine(repository_b)
+            default_b = engine_b.evaluate(
+                run_id="repository-b-default",
+                iteration=1,
+                decision_type=DecisionType.MODIFY_FILE,
+                requested_scope="target.txt",
+                source_interrupt_id="repository-b-default",
+                choice_provider=lambda _identity: "2",
+            )
+            b_events_before = engine_b.store.events_path.read_bytes()
+            choices_in_a: list[str] = []
+            hostile_environment = {
+                "GIT_COMMON_DIR": str(repository_b / ".git"),
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_CONFIG_KEY_0": "remote.origin.url",
+                "GIT_CONFIG_VALUE_0": "https://example.test/owner/b.git",
+                "GIT_DIR": str(repository_b / ".git"),
+                "GIT_INDEX_FILE": str(repository_b / ".git" / "index"),
+                "GIT_OBJECT_DIRECTORY": str(
+                    repository_b / ".git" / "objects"
+                ),
+                "GIT_WORK_TREE": str(repository_a),
+            }
+
+            with patch.dict(os.environ, hostile_environment, clear=False):
+                engine_a = AccelerationEngine(repository_a)
+                denied_without_a_authority = engine_a.evaluate(
+                    run_id="repository-a-denied",
+                    iteration=1,
+                    decision_type=DecisionType.MODIFY_FILE,
+                    requested_scope="target.txt",
+                    source_interrupt_id="repository-a-denied",
+                    choice_provider=lambda _identity: (
+                        choices_in_a.append("asked") or None
+                    ),
+                )
+                created_in_a = engine_a.evaluate(
+                    run_id="repository-a-default",
+                    iteration=1,
+                    decision_type=DecisionType.MODIFY_FILE,
+                    requested_scope="target.txt",
+                    source_interrupt_id="repository-a-default",
+                    choice_provider=lambda _identity: "2",
+                )
+
+            self.assertEqual("HUMAN_DEFAULT_CREATED", default_b.status)
+            self.assertEqual("DENIED", denied_without_a_authority.status)
+            self.assertFalse(denied_without_a_authority.allowed)
+            self.assertEqual(["asked"], choices_in_a)
+            self.assertEqual("HUMAN_DEFAULT_CREATED", created_in_a.status)
+            self.assertEqual(
+                repository_id(repository_a),
+                engine_a.store.repository_id,
+            )
+            self.assertNotEqual(
+                default_b.identity.repository_id,
+                engine_a.store.repository_id,
+            )
+            self.assertEqual(
+                (repository_a / ".git").resolve(strict=True),
+                engine_a.store.git_common_dir,
+            )
+            self.assertEqual(
+                b_events_before,
+                engine_b.store.events_path.read_bytes(),
+            )
 
     def test_settings_are_validated_and_do_not_add_events(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

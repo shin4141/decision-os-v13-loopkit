@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -60,6 +61,7 @@ _GLOB_CHARACTERS = frozenset("*?[]{}")
 _SCP_REMOTE = re.compile(
     r"^(?:(?P<user>[^@/:]+)@)?(?P<host>[^/:]+):(?P<path>.+)$"
 )
+_GIT_IDENTITY_TIMEOUT_SECONDS = 10
 
 
 class AccelerationError(RuntimeError):
@@ -123,15 +125,58 @@ def hash_payload(payload: dict[str, Any]) -> str:
     return sha256_text(canonical_json(payload))
 
 
+def _isolated_git_environment() -> dict[str, str]:
+    """Build an environment with no ambient Git authority inputs."""
+
+    # Identity reads operate only on the explicitly supplied local repository;
+    # inherited Git context is unnecessary and can redirect that authority.
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_SYSTEM": os.devnull,
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+            "LANG": "C",
+            "LC_ALL": "C",
+        }
+    )
+    return environment
+
+
 def git_output(repository: Path, *arguments: str) -> str:
     """Run one read-only Git identity command."""
 
-    completed = subprocess.run(
-        ("git", "-C", str(repository), *arguments),
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    try:
+        completed = subprocess.run(
+            (
+                "git",
+                "--no-replace-objects",
+                "-c",
+                "core.useReplaceRefs=false",
+                "-C",
+                str(repository),
+                *arguments,
+            ),
+            capture_output=True,
+            check=False,
+            env=_isolated_git_environment(),
+            stdin=subprocess.DEVNULL,
+            text=True,
+            timeout=_GIT_IDENTITY_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RepositoryIdentityError(
+            "Git repository identity is unavailable."
+        ) from exc
     if completed.returncode != 0:
         raise RepositoryIdentityError(
             completed.stderr.strip() or "Git repository identity is unavailable."
@@ -189,17 +234,12 @@ def repository_id(repository: Path) -> str:
     """Derive a hashed repository identity without storing its raw name."""
 
     root = git_root(repository)
-    completed = subprocess.run(
-        ("git", "-C", str(root), "remote", "get-url", "origin"),
-        capture_output=True,
-        check=False,
-        text=True,
-    )
-    normalized_remote = (
-        _credential_free_remote(completed.stdout)
-        if completed.returncode == 0
-        else None
-    )
+    try:
+        remote = git_output(root, "remote", "get-url", "origin")
+    except RepositoryIdentityError:
+        normalized_remote = None
+    else:
+        normalized_remote = _credential_free_remote(remote)
     identity = normalized_remote or f"local:{root.as_posix()}"
     return f"repo:v1:{sha256_text(identity)}"
 
