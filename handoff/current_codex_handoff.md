@@ -1,10 +1,10 @@
 # Current Codex Handoff — Canonical Current-State Admission Joint Repair
 
-## Canonical Current State — V13 13-198 Admission Candidate
+## Canonical Current State — V13 13-198 Post-Admission Steady State
 
 ```text
-Current Canonical Main:
-origin/main at fb89a07e31ebbf947f4f95d2bafdb1153dc08d29 when 13-198 was reconstructed
+Canonical Reconstruction Base:
+fb89a07e31ebbf947f4f95d2bafdb1153dc08d29
 
 Current Layer:
 V13 — Completion Integrity / Current-State Authority / Reconnectability
@@ -34,58 +34,58 @@ UNCHANGED — separately bounded as P3 by existing controls; no repair is claime
 INTEGRATED on main by PR #146 at fb89a07e31ebbf947f4f95d2bafdb1153dc08d29
 
 13-198 Current-State Admission Repair:
-IMPLEMENTED in this delta; canonical only after presence on origin/main and remote read-back
+COMPLETE when this exact first block is observed on fetched origin/main; otherwise CANDIDATE only
 
 Canonical Current Capability:
-Current-state restart authority covers the public repaired lineage through 13-197 plus this admission joint once admitted
+Current-state restart authority covers the public repaired lineage through 13-198 when this block is on fetched origin/main
 
 Current Restart Point:
-This first matched block after canonical admission; before admission the Draft PR is review evidence only
+this exact matched first block as read from fetched origin/main; branch and Draft PR copies are candidates only
 
 Active Branch:
-none on canonical main; codex/13-198-canonical-current-state-admission is a bounded delivery branch only
+none — the post-admission steady state grants no branch execution authority
 
 Current Gate:
-CAP — canonicalize and read back this one bounded 13-198 repair, then stop
+HOLD — post-admission steady state; no automatic next loop
 
 V13 Self-Repair:
-CAP — only remaining admission, review, merge, and remote read-back closure
+HOLD — any further repair requires a fresh bounded selection and authority
 
 Article / Public Explanatory Work:
 HOLD
 
 New Research Expansion:
-CAP — no automatic next loop; any later bounded task requires new explicit authority
+HOLD — no automatic expansion; a later bounded task requires fresh explicit authority
 
 Unrelated Security Hardening:
 BLOCK in 13-198
 
 Completion Line:
-13-198 is operationally COMPLETE only when this matched block is on origin/main and that remote state is read back
+PASS when this exact matched block is observed on fetched origin/main; that observation admits 13-198
 
 Missing Closure:
-Before admission: Shin-authorized merge and remote-main read-back; after that condition: none for 13-198
+none when read from fetched origin/main; a branch or Draft PR copy remains an admission candidate only
 
 Next Authorized Action:
-Review the Draft PR; merge only with Shin approval, then fetch and read back origin/main and stop
+None. Stop. Further V13 self-repair or research requires a fresh bounded selection and authority
 
 Not Authorized:
-Unapproved merge; another research loop; article work; unrelated security, portability, CI, ledger, or variant cleanup
+Automatic self-repair or research; article work; unrelated security, portability, CI, ledger, or variant cleanup
 
 Decision Owner:
 Shin
 
 Admission Joint:
-matched first blocks, focused consistency test, canonicalization, and remote-main read-back before COMPLETE
+reader verifies this exact matched first block on fetched origin/main; other copies have no canonical authority
 
-Expected Canonicalization Identity:
-the 13-198 enclosing commit and eventual merge commit containing this exact matched block
+Admission Evidence:
+presence of this exact first block on fetched origin/main; a branch or Draft PR copy is CANDIDATE only
 
 Remote Read-Back:
-REQUIRED after canonicalization; repair-branch read-back alone is not canonical admission
+sender closure requires fetched origin/main confirmation; future readers verify current location independently
 
 13-198 P3 Status:
-CLOSED only after the canonicalization condition; otherwise OPEN as an admission candidate
+CLOSED when this exact first block is observed on fetched origin/main; candidate copies cannot assert closure
 
 Older Material Below:
 HISTORICAL ONLY — older Gate, Next Authorized Action, branch, capability, and Completion Line grant no current authority

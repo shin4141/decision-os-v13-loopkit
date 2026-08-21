@@ -272,9 +272,9 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
         payload, exit_code = inspect_repository(REPO_ROOT)
         self.assertEqual(EXIT_OK, exit_code)
         self.assertEqual("PASS", payload["v12_state"])
-        self.assertEqual("CAP", payload["v13_gate"])
+        self.assertEqual("HOLD", payload["v13_gate"])
         self.assertIn(
-            "Review the Draft PR",
+            "None. Stop.",
             payload["next_authorized_action"],
         )
         current_blocks = []
@@ -298,8 +298,8 @@ class CompoundEvidenceMeterCanonicalSurfaceTests(unittest.TestCase):
                     current,
                 )
                 self.assertIn(
-                    "13-198 Current-State Admission Repair:\nIMPLEMENTED in this "
-                    "delta; canonical only after presence on origin/main",
+                    "13-198 Current-State Admission Repair:\nCOMPLETE when this "
+                    "exact first block is observed on fetched origin/main",
                     current,
                 )
                 self.assertNotIn("codex/13-126-same-run-invalidation-integration", current)
