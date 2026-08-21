@@ -1,3 +1,103 @@
+# Current Signal — Canonical Current-State Admission Joint Repair
+
+## Canonical Current State — V13 13-198 Admission Candidate
+
+```text
+Current Canonical Main:
+origin/main at fb89a07e31ebbf947f4f95d2bafdb1153dc08d29 when 13-198 was reconstructed
+
+Current Layer:
+V13 — Completion Integrity / Current-State Authority / Reconnectability
+
+V12 State:
+PASS — the canonical capability and repair lineage through 13-197 is complete on main
+
+Completed Canonical Frontier:
+13-125, F-04, External Intelligence onboarding, 13-192 through 13-195, and 13-197
+
+Same-Run Completion Evidence Invalidation:
+INTEGRATED on main by PR #140; it is completed lineage, not the current frontier
+
+F-04 Authority Witness Repair:
+INTEGRATED on main by PR #141 with negative and noncanonical witnesses failing closed
+
+External Intelligence Onboarding:
+INTEGRATED through repository-grounded routing, evidence boundaries, and Companion separation
+
+Companion Security Repair Lineage:
+INTEGRATED on main by PR #145 for the reproduced 13-192 through 13-195 P1/P2 defects
+
+Prompt-Injection Qualification:
+UNCHANGED — separately bounded as P3 by existing controls; no repair is claimed here
+
+13-197 Git Authority Isolation:
+INTEGRATED on main by PR #146 at fb89a07e31ebbf947f4f95d2bafdb1153dc08d29
+
+13-198 Current-State Admission Repair:
+IMPLEMENTED in this delta; canonical only after presence on origin/main and remote read-back
+
+Canonical Current Capability:
+Current-state restart authority covers the public repaired lineage through 13-197 plus this admission joint once admitted
+
+Current Restart Point:
+This first matched block after canonical admission; before admission the Draft PR is review evidence only
+
+Active Branch:
+none on canonical main; codex/13-198-canonical-current-state-admission is a bounded delivery branch only
+
+Current Gate:
+CAP — canonicalize and read back this one bounded 13-198 repair, then stop
+
+V13 Self-Repair:
+CAP — only remaining admission, review, merge, and remote read-back closure
+
+Article / Public Explanatory Work:
+HOLD
+
+New Research Expansion:
+CAP — no automatic next loop; any later bounded task requires new explicit authority
+
+Unrelated Security Hardening:
+BLOCK in 13-198
+
+Completion Line:
+13-198 is operationally COMPLETE only when this matched block is on origin/main and that remote state is read back
+
+Missing Closure:
+Before admission: Shin-authorized merge and remote-main read-back; after that condition: none for 13-198
+
+Next Authorized Action:
+Review the Draft PR; merge only with Shin approval, then fetch and read back origin/main and stop
+
+Not Authorized:
+Unapproved merge; another research loop; article work; unrelated security, portability, CI, ledger, or variant cleanup
+
+Decision Owner:
+Shin
+
+Admission Joint:
+matched first blocks, focused consistency test, canonicalization, and remote-main read-back before COMPLETE
+
+Expected Canonicalization Identity:
+the 13-198 enclosing commit and eventual merge commit containing this exact matched block
+
+Remote Read-Back:
+REQUIRED after canonicalization; repair-branch read-back alone is not canonical admission
+
+13-198 P3 Status:
+CLOSED only after the canonicalization condition; otherwise OPEN as an admission candidate
+
+Older Material Below:
+HISTORICAL ONLY — older Gate, Next Authorized Action, branch, capability, and Completion Line grant no current authority
+```
+
+Everything below this boundary is preserved historical material from the
+pre-13-198 surfaces. In particular, its older `Next Authorized Action`,
+`Current Gate`, branch, capability, and `Completion Line` values cannot be
+inherited as current authority.
+
+<!-- current-state-history-boundary:13-198 -->
+
 # Current Signal — Same-Run Completion Evidence Invalidation Integration
 
 ## Canonical Current State — V13 Post Same-Run Temporal Evidence Integration
