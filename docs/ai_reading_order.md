@@ -75,15 +75,19 @@ Before the Quest Board, return only:
 For example:
 
 ```text
-Inspected / 確認できたもの:
+Inspected:
 README / AGENTS / onboarding / reading order / Field Note lifecycle
 
-Not accessible or not inspected / 現在確認できないもの:
+Not accessible or not inspected:
 <none in the first-contact set, or exact unavailable surfaces>
 
-Therefore this orientation can explain / したがって、この案内では:
-<supported repository-evidence boundary>まで説明できます。
+Supported repository-evidence boundary:
+<what the inspected public surfaces establish>
 ```
+
+For Japanese first contact, use the equivalent Japanese disclosure template in
+`docs/external_intelligence_onboarding.md` rather than mixing both languages in
+one participant-facing response.
 
 Keep this to a few lines rather than producing a long audit report. Then show
 the entire participant screen named `English first-contact — External
