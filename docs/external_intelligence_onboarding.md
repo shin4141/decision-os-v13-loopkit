@@ -1,5 +1,159 @@
 # External Intelligence Onboarding
 
+This is a public showroom for seeing what kind of external intelligence an AI
+can use. Viewing it does not require a fork, clone, Codex project attachment,
+setup, file change, or understanding the whole V13 system.
+
+[Start in English](#english-first-contact--external-intelligence-quest-board)
+or [日本語で始める](#日本語first-contact--external-intelligence-quest-board).
+
+`DecisionOS Companion` is a separate optional prototype, not a prerequisite
+for this showroom, the later fork/clone path, Field Notes, Handoff, or V12/V13
+gates. Do not turn a Companion-specific platform limit into a requirement for
+External Intelligence as a whole.
+
+First contact is a showroom, not a prescription:
+
+```text
+Read the repository first. Show the map. Deep-read after selection.
+```
+
+## English first-contact — External Intelligence Quest Board
+
+For English onboarding, first inspect these minimum public surfaces:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/external_intelligence_onboarding.md`
+- `docs/ai_reading_order.md`
+- `docs/field_note_lifecycle.md`
+
+Use only that inspected evidence to explain the repository briefly. Center the
+problem, then the mechanism: selected past decisions, failure boundaries,
+reusable knowledge, and restart context remain outside one chat so a later AI
+can retrieve only what matters and improve a downstream decision. This is not
+model self-training, everything-memory, or a context-compactor product.
+
+Before the board, give a compact access disclosure:
+
+```text
+Inspected:
+README / AGENTS / onboarding / reading order / Field Note lifecycle / <other surfaces actually inspected>
+
+Not accessible or not inspected:
+<exact surfaces, or "none within the first-contact set">
+
+Therefore this orientation can explain:
+<the boundary supported by the inspected repository evidence>
+```
+
+Do not fill inaccessible files, private or separate artifacts, or uninspected
+implementation with guesses. After that short orientation and disclosure,
+show the following participant-facing board in full.
+
+---
+
+# 🧠 External Intelligence — English Quest Board
+
+## Preserve what can change the next decision
+
+External Intelligence preserves selected memories, decisions, failure
+boundaries, reusable knowledge, and restart context outside one chat. ChatGPT,
+Claude, Codex, or another later AI reconnects only the relevant structure when
+it is needed.
+
+It does not automatically retrain the model, turn every observation into a
+permanent rule, or require you to understand or adopt the whole repository.
+
+### 🧠 MEMORY — Remember
+
+- Hand the next AI the state needed to continue — Handoff / Task Memory.
+- Preserve personal decision memory such as time, money, priorities, and
+  non-negotiable conditions.
+- Preserve why a decision was made — Decision Context.
+
+### 🌱 GROW — Develop reusable knowledge
+
+- Save a learning or failure as a Note; it does not begin as a universal Rule.
+- Let ChatGPT, Claude, or Codex surface at most one timely `External
+  Intelligence candidate` that may change a future decision.
+- Promote repeated or independently supported observations only through the
+  repository's evidence and approval boundaries.
+
+### 🪶 LIGHTEN — Retrieve selectively
+
+- Read only the past that matters — Selective Recall.
+- Keep always-loaded instructions small; move non-current knowledge behind
+  routes that are read only when triggered.
+- Explore Little Compactor only if instruction bloat is the selected problem.
+  It is an entry concept with a public research-candidate document, not the
+  core meaning or evidence of a complete shipped Compactor product.
+
+### 🔁 CONTINUE — Resume safely
+
+- Leave the minimum restart state a later AI needs — Little OSI.
+- Separate actual completion from “done” language — V12 Completion Integrity.
+- Decide whether another cycle is justified — V13 Loop Gate:
+  `GO / HOLD / CAP / BLOCK`.
+- A completed task does not automatically start the next loop.
+
+### 🛡️ PROTECT — Keep boundaries visible
+
+- Strengthen gates only when risk requires it: publication, APIs, external
+  repositories, money, credentials, or irreversible action.
+- Preserve time, attention, trust, and a restartable state instead of forcing
+  every visible next step.
+- Re-evaluate old success when current direction or conditions have changed.
+
+### 🔗 CONNECT — Reuse across AIs
+
+- Let ChatGPT, Claude, and Codex use the same external repository memory.
+- Return a candidate discovered by any AI to the user's own External
+  Intelligence surface.
+- Preserve source, evidence status, and authority instead of flattening them
+  into one unqualified memory store.
+
+### 🎓 GRADUATE — Choose the tutorial's future
+
+- **KEEP** — keep the tutorial entrance.
+- **MANUAL** — keep the tutorial but remove its always-on router.
+- **REMOVE** — remove only the approved tutorial entrance or tutorial-only
+  surfaces, not the memory, Notes, Handoff, Rules, or V12/V13 operation.
+- **NOT NOW** — change nothing.
+
+Graduation is the user's choice and does not happen automatically.
+
+## 🎮 Choose Your Quest
+
+Choose one area, browse without adopting anything, or ask freely:
+
+- “Give me a quick tour.”
+- “I already do some of this.”
+- “Which one might fit my current workflow?”
+- “What is Little OSI?”
+- “Show me Little Compactor.”
+- “I want my AI to remember decision criteria that matter to me.”
+- “I want ChatGPT and Codex to use the same external memory.”
+- “I want to graduate from the tutorial.”
+
+Viewing or choosing a Quest does not install or change anything.
+
+---
+
+Until the user selects, do not recommend a specific Quest, fork or clone the
+repository, begin setup, modify files, create a Handoff, save a Note, or promote
+a Rule. After selection, inspect only the actual public rules, docs, relevant
+Field Notes, and implementation needed for that Quest before explaining it.
+
+A Quest label is not proof of complete public implementation. State whether
+the inspected evidence is a concept, operating boundary, research candidate,
+public code/test, or unavailable/private surface. Offer the Full Experience
+fork/clone path only after a repository-grounded explanation or small trial and
+the user's explicit interest in growing these structures in their own
+workspace.
+
+## 日本語first-contact — External Intelligence Quest Board
+
 このページは、自分のAIにどんな外部知能を持たせられるかを見るための
 public showroomです。見るだけならFork、clone、Codex projectへの追加は
 必要ありません。V13全体を学ぶための必修カリキュラムでもありません。
@@ -13,12 +167,6 @@ onboardingとは分け、実際に確認できたpublic evidenceの範囲だけ�
 
 first contactは処方ではなくshowroomです。最初に何ができるかを見せ、
 ユーザーが選ぶまで開始構造を決めません。
-
-```text
-Read the repository first. Show the map. Deep-read after selection.
-```
-
-## 日本語first-contact — External Intelligence Quest Board
 
 日本語でExternal Intelligenceのtutorialや始め方を求められたら、まず同じ
 public repositoryにある次の最小surfaceを実際に確認します。

@@ -5,9 +5,10 @@ actual public repository before showing the choice map.
 
 ```text
 Broad repository map
+  -> recognizable problem
+  -> External Intelligence core change
   -> compact access disclosure
-  -> short repo-grounded orientation
-  -> full Quest Board
+  -> matching English or Japanese Quest Board
   -> user selection
   -> Quest-specific deep read
 ```
@@ -39,9 +40,9 @@ claim only what the inspected public evidence establishes.
 
 3. `docs/external_intelligence_onboarding.md`
 
-   Follow the repo-first response order, full participant-facing Quest Board,
-   post-selection evidence rule, availability boundary, and post-interest
-   Fork CTA.
+   Follow the repo-first response order, the participant-facing English or
+   Japanese Quest Board that matches the user's language, post-selection
+   evidence rule, availability boundary, and post-interest Fork CTA.
 
 4. `docs/ai_reading_order.md`
 
@@ -61,30 +62,38 @@ set was inspected.
 
 Before the Quest Board, return only:
 
-1. a short explanation of the External Intelligence mechanisms actually
-   supported by the inspected repository surfaces;
-2. a compact access disclosure; and
-3. when setup, Companion, local apps, or platform requirements are part of the
+1. a short statement of the recognizable problem;
+2. an explanation of the External Intelligence mechanisms actually supported
+   by the inspected repository surfaces, centered on selected past decisions,
+   failure boundaries, reusable knowledge, restart context, selective
+   retrieval, and changed downstream judgment;
+3. a compact access disclosure; and
+4. when setup, Companion, local apps, or platform requirements are part of the
    user's question, one explicit boundary sentence stating that Companion is
    optional and separate from the core External Intelligence onboarding path.
 
 For example:
 
 ```text
-確認できたもの:
+Inspected / 確認できたもの:
 README / AGENTS / onboarding / reading order / Field Note lifecycle
 
-現在確認できないもの:
+Not accessible or not inspected / 現在確認できないもの:
 <none in the first-contact set, or exact unavailable surfaces>
 
-したがって、この案内では
+Therefore this orientation can explain / したがって、この案内では:
 <supported repository-evidence boundary>まで説明できます。
 ```
 
 Keep this to a few lines rather than producing a long audit report. Then show
-the entire `日本語first-contact — External Intelligence Quest Board` participant
-screen and wait. Do not recommend a Quest, request setup, or read all Field
-Notes before the user selects.
+the entire participant screen named `English first-contact — External
+Intelligence Quest Board` or `日本語first-contact — External Intelligence Quest
+Board`, matching the user's language, and wait. Do not recommend a Quest,
+request setup, or read all Field Notes before the user selects.
+
+Do not introduce the repository as a context compactor, completion checker,
+Handoff tool, or Gate system. Those remain available Quest-specific structures,
+but none replaces the External Intelligence core during first contact.
 
 ## User Evidence Gate
 
@@ -96,10 +105,13 @@ adoption.
 - If the user says `これはもうやっている` and the referent is not already
   clear from user-side evidence, ask one question that only identifies the
   referent. Do not deep-read a guessed Quest first.
+- Apply the same rule when an English-speaking user says `I already do some of
+  this` without identifying what `this` means.
 - If the user asks `自分なら何が合いそう？` and the current friction or
   existing user workflow is still unknown, ask one minimal question whose
   answer can change the recommendation. Do not prescribe `CONTINUE`, handoff,
   or another Quest from repository or audit metadata.
+- Apply the same evidence gate to `Which one might fit my current workflow?`.
 
 ## Quest-Specific Deep Read
 

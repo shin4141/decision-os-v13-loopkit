@@ -6,48 +6,46 @@
 ![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
 ![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
-## Stop after “done” long enough to decide what happens next
+## External intelligence for decisions that survive the chat
 
-Decision-OS V13 LoopKit is a no-install exit gate for AI coding work. It makes
-the agent separate two decisions that are easy to blur together:
+### The problem
 
-1. Is the current task actually complete and restartable?
-2. Should the next loop `GO`, `HOLD`, run under a `CAP`, or `BLOCK`?
+AI keeps rereading context. Old mistakes repeat. Previous decisions disappear.
+One agent says “done,” but the next cannot safely continue.
 
-Try it after your next AI-assisted task:
+### What External Intelligence changes
 
-```text
-Before starting another task, report:
-
-- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
-- Should the next loop run? GO / HOLD / CAP / BLOCK
-- Why?
-- What is the one allowed next action?
-- What must not happen next?
-
-Do not start the next task automatically. Stop after the report.
-```
-
-That is the smallest trial: no install, fork, or repository change required.
-If it helps, use the full [Next-Action Confidence
-Check](copy-paste/next-action-confidence-check.md), then consider the
-[Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
-
-## Build external intelligence for your own AI
-
-External intelligence keeps selected task memory, reusable lessons, operating
-boundaries, and restart points outside one chat so a later AI can retrieve
-them when they matter.
+External Intelligence preserves selected past decisions, failure boundaries,
+reusable knowledge, and restart context outside one chat. A later AI retrieves
+only the prior structure that matters so it can make a better downstream
+decision—not merely store or summarize more text.
 
 This is not model self-training. The model weights do not update, one
 observation does not become a rule automatically, and more stored material is
-not automatically better. The supported path is bounded:
+not automatically better. It is also not an everything-memory system, and a
+context compactor is not the interpretation anchor for this repository.
+
+### What this repository supports
+
+The public repository documents a bounded path from real work to later
+selective retrieval:
 
 ```text
 real work -> observation -> external memory -> reusable candidate
           -> verification or repeated evidence -> bounded promotion
           -> later selective retrieval -> a changed downstream decision
 ```
+
+Claims stay within the public files that were actually inspected. Creator-owned
+observations are not third-party certification, and this repository does not
+claim that External Intelligence caused cache or quota behavior.
+
+### Try it in English — no fork required
+
+[Open and copy the English first-contact prompt](copy-paste/external-intelligence-first-contact.md),
+then paste it into a fresh ChatGPT, Claude, or Codex conversation. It tells the
+AI to inspect the actual public repository, disclose what it could access, and
+show the English Quest Board before recommending or changing anything.
 
 ### まず試してみる — Fork不要
 
@@ -133,6 +131,33 @@ Forkで得られるのは、このpublic repositoryに含まれるsurfaceと、�
 Shin固有のprivate memory、public `main`に存在しないupstream internal trajectoryが
 自動的に使えるようになるわけではありません。The tiny `AGENTS.md` router opens
 the Quest Board on demand; unrelated tasks do not load the tutorial.
+
+## Next, if you need completion and loop gates
+
+Decision-OS V13 LoopKit can also act as a no-install exit gate for AI coding
+work. It makes the agent separate two decisions that are easy to blur together:
+
+1. Is the current task actually complete and restartable?
+2. Should the next loop `GO`, `HOLD`, run under a `CAP`, or `BLOCK`?
+
+Try it after your next AI-assisted task:
+
+```text
+Before starting another task, report:
+
+- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
+- Should the next loop run? GO / HOLD / CAP / BLOCK
+- Why?
+- What is the one allowed next action?
+- What must not happen next?
+
+Do not start the next task automatically. Stop after the report.
+```
+
+That trial also requires no install, fork, or repository change. If it helps,
+use the full [Next-Action Confidence
+Check](copy-paste/next-action-confidence-check.md), then consider the
+[Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
 
 ## Optional Companion: your coding agent asks once. The next Run remembers.
 

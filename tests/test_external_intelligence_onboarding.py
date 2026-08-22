@@ -10,6 +10,122 @@ def read(path: str) -> str:
 
 
 class RepoGroundedExternalIntelligenceOnboardingTests(unittest.TestCase):
+    def test_00_readme_first_contact_order_centers_external_intelligence(self) -> None:
+        readme = read("README.md")
+        markers = (
+            "### The problem",
+            "### What External Intelligence changes",
+            "### What this repository supports",
+            "### Try it in English — no fork required",
+            "### まず試してみる — Fork不要",
+            "## Next, if you need completion and loop gates",
+        )
+        positions = [readme.index(marker) for marker in markers]
+
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn(
+            "selected past decisions, failure boundaries,\n"
+            "reusable knowledge, and restart context outside one chat",
+            readme,
+        )
+        self.assertIn("later AI retrieves\nonly the prior structure that matters", readme)
+        self.assertLess(
+            readme.index("### What External Intelligence changes"),
+            readme.index("context compactor"),
+        )
+        prompt_path = "copy-paste/external-intelligence-first-contact.md"
+        self.assertIn(f"]({prompt_path})", readme)
+        self.assertTrue((ROOT / prompt_path).is_file())
+
+    def test_01_english_prompt_is_repo_first_read_only_and_no_fork(self) -> None:
+        prompt = read("copy-paste/external-intelligence-first-contact.md")
+        tutorial = read("docs/codex_tutorial_guide.md")
+
+        self.assertEqual(prompt.count("```text"), 1)
+        self.assertIn(
+            "https://github.com/shin4141/decision-os-v13-loopkit", prompt
+        )
+        for path in (
+            "README.md",
+            "AGENTS.md",
+            "docs/external_intelligence_onboarding.md",
+            "docs/ai_reading_order.md",
+            "docs/field_note_lifecycle.md",
+        ):
+            self.assertIn(f"- {path}", prompt)
+            self.assertTrue((ROOT / path).is_file())
+
+        for instruction in (
+            "Inspect the actual public repository",
+            "files you actually inspected",
+            "could access and which\n   you could not access",
+            "Do not infer unseen code, private implementation",
+            '"English first-contact — External Intelligence Quest Board"',
+            "do not fork or clone the repository",
+            "modify files",
+            "Until I select a Quest",
+        ):
+            self.assertIn(instruction, prompt)
+
+        self.assertIn(
+            "`English\n   first-contact — External Intelligence Quest Board`",
+            tutorial,
+        )
+        self.assertIn(
+            "Do not replace it with the completion checker, Handoff, Compactor, or\n"
+            "Gate system as the repository's primary interpretation.",
+            tutorial,
+        )
+
+    def test_02_english_and_japanese_boards_preserve_the_same_quest_boundaries(
+        self,
+    ) -> None:
+        onboarding = read("docs/external_intelligence_onboarding.md")
+        english = onboarding.split(
+            "## English first-contact — External Intelligence Quest Board", 1
+        )[1].split("## 日本語first-contact — External Intelligence Quest Board", 1)[0]
+        japanese = onboarding.split(
+            "## 日本語first-contact — External Intelligence Quest Board", 1
+        )[1]
+
+        english_markers = (
+            "### 🧠 MEMORY — Remember",
+            "### 🌱 GROW — Develop reusable knowledge",
+            "### 🪶 LIGHTEN — Retrieve selectively",
+            "### 🔁 CONTINUE — Resume safely",
+            "### 🛡️ PROTECT — Keep boundaries visible",
+            "### 🔗 CONNECT — Reuse across AIs",
+            "### 🎓 GRADUATE — Choose the tutorial's future",
+            "## 🎮 Choose Your Quest",
+        )
+        japanese_markers = (
+            "### 🧠 MEMORY — 覚える",
+            "### 🌱 GROW — 育てる",
+            "### 🪶 LIGHTEN — 軽くする",
+            "### 🔁 CONTINUE — 続ける・再開する",
+            "### 🛡️ PROTECT — 守る",
+            "### 🔗 CONNECT — AIをつなぐ",
+            "### 🎓 GRADUATE — Tutorialを卒業する",
+            "## 🎮 Choose Your Quest",
+        )
+
+        for board, markers in (
+            (english, english_markers),
+            (japanese, japanese_markers),
+        ):
+            positions = [board.index(marker) for marker in markers]
+            self.assertEqual(positions, sorted(positions))
+            for boundary in ("Fork", "clone", "file", "Handoff", "Note", "Rule"):
+                self.assertIn(boundary.lower(), board.lower())
+
+        english_lighten = english.split(
+            "### 🪶 LIGHTEN — Retrieve selectively", 1
+        )[1].split("### 🔁 CONTINUE — Resume safely", 1)[0]
+        self.assertIn("Little Compactor", english_lighten)
+        self.assertIn("not the\n  core meaning", english_lighten)
+        self.assertIn("not proof of complete public implementation", english)
+        self.assertIn("完全なimplementation", japanese)
+
     def test_a_primary_prompt_requires_repo_read_disclosure_and_full_board(self) -> None:
         readme = read("README.md")
         primary = readme.split("### まず試してみる — Fork不要", 1)[1].split(
@@ -43,6 +159,9 @@ class RepoGroundedExternalIntelligenceOnboardingTests(unittest.TestCase):
             self.assertIn(instruction, primary)
 
         onboarding = read("docs/external_intelligence_onboarding.md")
+        japanese_board = onboarding.split(
+            "## 日本語first-contact — External Intelligence Quest Board", 1
+        )[1]
         markers = (
             "# 🧠 External Intelligence",
             "### 🧠 MEMORY — 覚える",
@@ -54,7 +173,7 @@ class RepoGroundedExternalIntelligenceOnboardingTests(unittest.TestCase):
             "### 🎓 GRADUATE — Tutorialを卒業する",
             "## 🎮 Choose Your Quest",
         )
-        positions = [onboarding.index(marker) for marker in markers]
+        positions = [japanese_board.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("確認できたもの:", onboarding)
         self.assertIn("現在確認できないもの:", onboarding)
