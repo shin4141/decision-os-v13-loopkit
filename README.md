@@ -20,10 +20,14 @@ reusable knowledge, and restart context outside one chat. A later AI retrieves
 only the prior structure that matters so it can make a better downstream
 decision—not merely store or summarize more text.
 
-This is not model self-training. The model weights do not update, one
-observation does not become a rule automatically, and more stored material is
-not automatically better. It is also not an everything-memory system, and a
-context compactor is not the interpretation anchor for this repository.
+This is not model self-training. The model weights do not update, and more
+stored material is not automatically better. It is also not an
+everything-memory system, and a context compactor is not the interpretation
+anchor for this repository.
+
+A saved observation is not automatically an active Rule. It remains
+[lifecycle-bounded](docs/field_note_lifecycle.md) and requires verification or
+repeated evidence before bounded promotion.
 
 ### What this repository supports
 
@@ -42,10 +46,56 @@ claim that External Intelligence caused cache or quota behavior.
 
 ### Try it in English — no fork required
 
-[Open and copy the English first-contact prompt](copy-paste/external-intelligence-first-contact.md),
-then paste it into a fresh ChatGPT, Claude, or Codex conversation. It tells the
-AI to inspect the actual public repository, disclose what it could access, and
-show the English Quest Board before recommending or changing anything.
+The source of truth is the [canonical English first-contact
+prompt](copy-paste/external-intelligence-first-contact.md). Copy the same prompt
+directly from here into a fresh ChatGPT, Claude, or Codex conversation:
+
+```text
+Inspect the actual public repository before explaining External Intelligence:
+
+https://github.com/shin4141/decision-os-v13-loopkit
+
+At minimum, inspect these public files:
+
+- README.md
+- AGENTS.md
+- docs/external_intelligence_onboarding.md
+- docs/ai_reading_order.md
+- docs/field_note_lifecycle.md
+
+Then respond in this order:
+
+1. Briefly state the recognizable problem this repository addresses and what
+   External Intelligence changes. Explain only mechanisms supported by the
+   repository files you actually inspected. Center selected past decisions,
+   failure boundaries, reusable knowledge, restart context, selective
+   retrieval, and changed downstream judgment—not context compaction.
+
+2. State exactly which requested files or surfaces you could access and which
+   you could not access. Do not infer unseen code, private implementation, or
+   unavailable behavior. Do not present creator-owned observations as
+   third-party certification, and do not claim cache or quota causality.
+
+3. Show the complete participant-facing section named
+   "English first-contact — External Intelligence Quest Board" from
+   docs/external_intelligence_onboarding.md.
+
+Until I select a Quest, do not fork or clone the repository, begin setup,
+modify files, create a handoff, save a Note, promote a Rule, recommend a
+specific Quest, or make External Intelligence depend on an optional Companion.
+
+After I select a Quest, inspect only the actual public files, rules, docs,
+relevant Field Notes, and implementation needed to explain that Quest. State
+any remaining evidence or availability boundary instead of guessing.
+```
+
+If the model cannot inspect GitHub, open the repository-relative [English
+Quest Board](docs/external_intelligence_onboarding.md#english-first-contact--external-intelligence-quest-board)
+and provide that section directly. Treat this as a fallback, not as evidence
+that the model inspected files it could not access.
+
+<details>
+<summary><strong>日本語のfirst-contact promptを開く — Fork不要</strong></summary>
 
 ### まず試してみる — Fork不要
 
@@ -99,6 +149,8 @@ Questを選んだ後は、
 GRADUATE`を含むfull Quest Boardを表示します。全Field Notesや全実装をfirst
 contactで読むのではなく、選択後に関係するevidenceだけを追加で読みます。
 
+</details>
+
 Do not adopt the whole repository at once. First explore the available
 External Intelligence Quests, then choose one structure that interests you or
 ask the AI what may fit. Add another structure only when actual use exposes
@@ -110,6 +162,13 @@ read upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
 `docs/trajectory/V13_TRAJECTORY.md`, or `validation/` as evidence of the
 fork's current state. Read them only when the user explicitly asks to resume
 or evaluate upstream work.
+
+## Beyond first contact — optional and deeper surfaces
+
+Everything below is optional depth. It may include the Full Experience
+fork/clone path, Completion and Loop Gate, Companion, the repository scanner,
+incident tooling, Audit surfaces, and other V13 structures. These surfaces have
+different maturity levels, and none is required to try External Intelligence.
 
 ### 🔓 Full Experience — Forkして体感する
 
