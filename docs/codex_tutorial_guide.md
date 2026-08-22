@@ -154,8 +154,9 @@ ChatGPT or install a plugin.
    evidence boundary. Do not infer missing implementation.
 3. The user does not need to adopt the whole system.
 4. Show the capability map before asking diagnostic questions, choosing a
-   starting structure, or recommending one. For Japanese first contact, use
-   `日本語first-contact — External Intelligence Quest Board` in
+   starting structure, or recommending one. Use the matching `English
+   first-contact — External Intelligence Quest Board` or `日本語first-contact —
+   External Intelligence Quest Board` in
    `docs/external_intelligence_onboarding.md`.
 5. Do not require a Fork, clone, repository attachment, Codex project, setup,
    or file change to view the Quest Board. Environment attachment comes only
@@ -178,6 +179,12 @@ ChatGPT or install a plugin.
    when the selected exercise closes or a real blocker ends the task.
 10. In a third-party fork, establish the fork's own Decision Owner. Do not
    inherit Shin merely because the upstream canonical repository names him.
+
+For English first contact, preserve the same seven visible areas, the Little
+OSI and Little Compactor entry names, evidence and availability boundaries,
+free-choice examples, and no-automatic-install statement in the English Quest
+Board. Do not replace it with the completion checker, Handoff, Compactor, or
+Gate system as the repository's primary interpretation.
 
 For Japanese first contact, do not replace the Quest Board with a preference
 question, a handoff exercise, or another preselected structure. Preserve the

@@ -6,48 +6,96 @@
 ![Local read-only scan](https://img.shields.io/badge/scan-local%20read--only-blue)
 ![Human approval for changes](https://img.shields.io/badge/changes-human%20approval%20required-orange)
 
-## Stop after “done” long enough to decide what happens next
+## External intelligence for decisions that survive the chat
 
-Decision-OS V13 LoopKit is a no-install exit gate for AI coding work. It makes
-the agent separate two decisions that are easy to blur together:
+### The problem
 
-1. Is the current task actually complete and restartable?
-2. Should the next loop `GO`, `HOLD`, run under a `CAP`, or `BLOCK`?
+AI keeps rereading context. Old mistakes repeat. Previous decisions disappear.
+One agent says “done,” but the next cannot safely continue.
 
-Try it after your next AI-assisted task:
+### What External Intelligence changes
 
-```text
-Before starting another task, report:
+External Intelligence preserves selected past decisions, failure boundaries,
+reusable knowledge, and restart context outside one chat. A later AI retrieves
+only the prior structure that matters so it can make a better downstream
+decision—not merely store or summarize more text.
 
-- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
-- Should the next loop run? GO / HOLD / CAP / BLOCK
-- Why?
-- What is the one allowed next action?
-- What must not happen next?
+This is not model self-training. The model weights do not update, and more
+stored material is not automatically better. It is also not an
+everything-memory system, and a context compactor is not the interpretation
+anchor for this repository.
 
-Do not start the next task automatically. Stop after the report.
-```
+A saved observation is not automatically an active Rule. It remains
+[lifecycle-bounded](docs/field_note_lifecycle.md) and requires verification or
+repeated evidence before bounded promotion.
 
-That is the smallest trial: no install, fork, or repository change required.
-If it helps, use the full [Next-Action Confidence
-Check](copy-paste/next-action-confidence-check.md), then consider the
-[Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
+### What this repository supports
 
-## Build external intelligence for your own AI
-
-External intelligence keeps selected task memory, reusable lessons, operating
-boundaries, and restart points outside one chat so a later AI can retrieve
-them when they matter.
-
-This is not model self-training. The model weights do not update, one
-observation does not become a rule automatically, and more stored material is
-not automatically better. The supported path is bounded:
+The public repository documents a bounded path from real work to later
+selective retrieval:
 
 ```text
 real work -> observation -> external memory -> reusable candidate
           -> verification or repeated evidence -> bounded promotion
           -> later selective retrieval -> a changed downstream decision
 ```
+
+Claims stay within the public files that were actually inspected. Creator-owned
+observations are not third-party certification, and this repository does not
+claim that External Intelligence caused cache or quota behavior.
+
+### Try it in English — no fork required
+
+The source of truth is the [canonical English first-contact
+prompt](copy-paste/external-intelligence-first-contact.md). Copy the same prompt
+directly from here into a fresh ChatGPT, Claude, or Codex conversation:
+
+```text
+Inspect the actual public repository before explaining External Intelligence:
+
+https://github.com/shin4141/decision-os-v13-loopkit
+
+At minimum, inspect these public files:
+
+- README.md
+- AGENTS.md
+- docs/external_intelligence_onboarding.md
+- docs/ai_reading_order.md
+- docs/field_note_lifecycle.md
+
+Then respond in this order:
+
+1. Briefly state the recognizable problem this repository addresses and what
+   External Intelligence changes. Explain only mechanisms supported by the
+   repository files you actually inspected. Center selected past decisions,
+   failure boundaries, reusable knowledge, restart context, selective
+   retrieval, and changed downstream judgment—not context compaction.
+
+2. State exactly which requested files or surfaces you could access and which
+   you could not access. Do not infer unseen code, private implementation, or
+   unavailable behavior. Do not present creator-owned observations as
+   third-party certification, and do not claim cache or quota causality.
+
+3. Show the complete participant-facing section named
+   "English first-contact — External Intelligence Quest Board" from
+   docs/external_intelligence_onboarding.md.
+
+Until I select a Quest, do not fork or clone the repository, begin setup,
+modify files, create a handoff, save a Note, promote a Rule, recommend a
+specific Quest, or make External Intelligence depend on an optional Companion.
+
+After I select a Quest, inspect only the actual public files, rules, docs,
+relevant Field Notes, and implementation needed to explain that Quest. State
+any remaining evidence or availability boundary instead of guessing.
+```
+
+If the model cannot inspect GitHub, open the repository-relative [English
+Quest Board](docs/external_intelligence_onboarding.md#english-first-contact--external-intelligence-quest-board)
+and provide that section directly. Treat this as a fallback, not as evidence
+that the model inspected files it could not access.
+
+<details>
+<summary><strong>日本語のfirst-contact promptを開く — Fork不要</strong></summary>
 
 ### まず試してみる — Fork不要
 
@@ -101,6 +149,8 @@ Questを選んだ後は、
 GRADUATE`を含むfull Quest Boardを表示します。全Field Notesや全実装をfirst
 contactで読むのではなく、選択後に関係するevidenceだけを追加で読みます。
 
+</details>
+
 Do not adopt the whole repository at once. First explore the available
 External Intelligence Quests, then choose one structure that interests you or
 ask the AI what may fit. Add another structure only when actual use exposes
@@ -112,6 +162,13 @@ read upstream `docs/current_signal.md`, `handoff/current_codex_handoff.md`,
 `docs/trajectory/V13_TRAJECTORY.md`, or `validation/` as evidence of the
 fork's current state. Read them only when the user explicitly asks to resume
 or evaluate upstream work.
+
+## Beyond first contact — optional and deeper surfaces
+
+Everything below is optional depth. It may include the Full Experience
+fork/clone path, Completion and Loop Gate, Companion, the repository scanner,
+incident tooling, Audit surfaces, and other V13 structures. These surfaces have
+different maturity levels, and none is required to try External Intelligence.
 
 ### 🔓 Full Experience — Forkして体感する
 
@@ -133,6 +190,33 @@ Forkで得られるのは、このpublic repositoryに含まれるsurfaceと、�
 Shin固有のprivate memory、public `main`に存在しないupstream internal trajectoryが
 自動的に使えるようになるわけではありません。The tiny `AGENTS.md` router opens
 the Quest Board on demand; unrelated tasks do not load the tutorial.
+
+## Next, if you need completion and loop gates
+
+Decision-OS V13 LoopKit can also act as a no-install exit gate for AI coding
+work. It makes the agent separate two decisions that are easy to blur together:
+
+1. Is the current task actually complete and restartable?
+2. Should the next loop `GO`, `HOLD`, run under a `CAP`, or `BLOCK`?
+
+Try it after your next AI-assisted task:
+
+```text
+Before starting another task, report:
+
+- Is the current task complete? PASS / DELAY / BLOCK / UNKNOWN
+- Should the next loop run? GO / HOLD / CAP / BLOCK
+- Why?
+- What is the one allowed next action?
+- What must not happen next?
+
+Do not start the next task automatically. Stop after the report.
+```
+
+That trial also requires no install, fork, or repository change. If it helps,
+use the full [Next-Action Confidence
+Check](copy-paste/next-action-confidence-check.md), then consider the
+[Fork + Codex Quickstart](docs/fork_codex_quickstart.md).
 
 ## Optional Companion: your coding agent asks once. The next Run remembers.
 
