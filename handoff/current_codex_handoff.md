@@ -1,3 +1,181 @@
+# Current Codex Handoff — V13 13-42 Closure and 13-43 Transfer
+
+## Canonical Current State — 13-42 Closure Admission Candidate
+
+```text
+Canonical Reconstruction Base:
+5be89c84d1816a2b185cc2f6e85869a9f1e73d11
+
+Current Canonical Main:
+5be89c84d1816a2b185cc2f6e85869a9f1e73d11 at closure authorization; the admitted canonical main is the fetched merge descendant containing this exact block
+
+Current Layer:
+V13
+
+V12 State:
+PASS — 13-42 implementation, repair, measurement, canonical merge, trajectory reconstruction, and bounded handoff content are complete
+
+13-42 Closure:
+ADMITTED when this exact block is read from fetched origin/main; CANDIDATE on a branch or PR
+
+Completed Work:
+blindly reproduced P1/P2 security-authority repairs, Git authority isolation, current-state admission repair, and evidence-preserving Compact Test Output are integrated on canonical main
+
+Canonical Current Capability:
+the repaired V13 lineage through Compact Test Output is current; 13-42 adds closure and ownership transfer only
+
+Current Restart Point:
+validation/v13_13_42_closure_trajectory.md plus the 13-43 responsibility transfer in handoff/current_codex_handoff.md, read from fetched origin/main
+
+Active Branch:
+codex/13-42-closure-13-43-handoff before admission; none after this exact block is read from fetched origin/main
+
+Current Gate:
+HOLD — no automatic next loop and no invented GO for 13-43
+
+V13 Self-Repair / Research:
+HOLD — requires a fresh bounded selection and authority
+
+Article / Publication:
+BLOCK — preserve the admitted Compact current-state boundary and do not restart article work
+
+Value Port:
+EXTERNAL OWNERSHIP — Value-Locked side owns any later port; V13 and 13-43 must not run a parallel port
+
+Known Baseline Boundary:
+44 pre-existing creator-live fixed-identity errors remain unchanged and are not repair authority
+
+What 13-43 Now Owns:
+current V13 canonical state after admitted 13-42 closure, preservation of completed repair lineage and Gates, and only future V13 selection work that receives fresh bounded authority
+
+What Remains Parked:
+V13 self-repair and research, article/publication, Compact expansion, the 44-error repair, unrelated security work, and all Value-port execution
+
+What Must Not Be Inferred:
+handoff does not create GO, accept noncanonical branch state, authorize Value work, reopen article work, or start a new repair or research branch
+
+First One Action:
+13-43 fetches origin/main and reads the exact closure trajectory and handoff; if this block is absent or mismatched, HOLD and do not start work
+
+Do Not Continue Boundary:
+do not start 13-43 implementation, repair, research, Compact expansion, Value work, article work, or publication without a later fresh bounded selection
+
+Operational Cleanup:
+the executing closure AI owns validation, Git delivery, and post-authorized-merge read-back; routine cleanup must not be returned to Shin or 13-43
+
+Handoff Responsibility Transfer:
+Handoff is not complete until the receiving AI knows what it now owns.
+
+Completion Line:
+PASS when the trajectory and handoff are remotely reconstructable from fetched origin/main, the paired first blocks match, and 13-43 has the exact restart point
+
+Missing Closure:
+none when this exact block is read from fetched origin/main; on the candidate branch, commit, push, Human Seat merge, and remote read-back remain
+
+Next Authorized Action:
+candidate branch: complete closure delivery to the Human Seat boundary; fetched origin/main: 13-43 may accept the handoff by verifying the restart point, but no new work starts without fresh authority
+
+Next Actor:
+13-43 Receiving AI after canonical admission
+
+Not Authorized:
+automatic next loop; Value scan or port; article restart; Compact expansion; 44-error repair; unrelated security work; external publication
+
+Decision Owner:
+Shin
+
+Admission Joint:
+reader verifies this exact matched first block on fetched origin/main; branch and PR copies have no canonical restart authority
+
+Admission Evidence:
+presence of this exact first block on fetched origin/main plus the passing admission and handoff regressions
+
+Remote Read-Back:
+after Human Seat merge, the executing closure AI fetches origin/main and verifies both first blocks and commit ancestry before operational COMPLETE
+
+Older Material Below:
+HISTORICAL ONLY — older Gate, Next Authorized Action, branch, capability, and Completion Line grant no current authority
+```
+
+## 13-43 Responsibility Transfer
+
+```text
+Target Layer:
+V13
+
+Repo Root:
+shin4141/decision-os-v13-loopkit
+
+Current State:
+13-42 repair and Compact Test Output work are integrated through canonical main
+5be89c84; this closure and handoff become current only after their matched first
+blocks are read from fetched origin/main
+
+Current Gate:
+HOLD — no automatic next loop
+
+Active Branch:
+none after canonical admission
+
+Next Authorized Action:
+verify fetched origin/main, read validation/v13_13_42_closure_trajectory.md and
+this responsibility transfer, then remain on HOLD unless a fresh bounded V13
+selection is supplied
+
+Completion Line:
+13-42 trajectory and handoff are remotely reconstructable and 13-43 has a clear
+restart point without the 13-42 conversation
+
+Missing Closure:
+none after canonical admission; before admission, merge and remote read-back
+
+Next Owner:
+13-43 Receiving AI
+
+What the Receiving AI Now Owns:
+the current V13 canonical state, preservation of completed repair lineage and
+Gates, and later V13 self-repair or research only after fresh bounded selection
+
+First One Action:
+fetch origin/main and verify the exact restart point; HOLD on any mismatch
+
+Do Not Continue Boundary:
+do not begin implementation, repair, research, Value work, article work,
+Compact expansion, 44-error repair, or publication from this handoff
+
+What must not be inferred:
+handoff does not create GO, approve Value work, reopen the article, or make a
+branch or PR canonical
+
+Work already completed:
+blind reproduction and confirmed P1/P2 repairs; Git authority isolation;
+current-state admission repair; Compact Test Output implementation,
+measurement, and PR #150 canonical merge
+
+Work remaining parked:
+future V13 self-repair/research; article/publication; Compact expansion;
+44-error repair; unrelated security work; all Value port work
+
+Value port:
+owned by the Value-Locked side, not 13-43; no parallel V13 port
+
+Article:
+BLOCK — do not silently restart
+
+Operational cleanup that must not be returned to Shin:
+routine repository verification, branch cleanup, and future bounded execution
+cleanup belong to the executing AI; only genuine Human Seat decisions return
+to Shin
+
+Handoff is not complete until the receiving AI knows what it now owns.
+```
+
+Everything below this boundary is preserved historical material. Its older
+`Current Gate`, `Next Authorized Action`, branch, capability, and `Completion
+Line` values cannot be inherited as current authority.
+
+<!-- current-state-history-boundary:v13-13-42-closure -->
+
 # Current Codex Handoff — V13 Compact Test Output Reference Implementation
 
 ## Canonical Current State — V13 Compact Test Output Admission Candidate
