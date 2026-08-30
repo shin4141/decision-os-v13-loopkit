@@ -17,22 +17,22 @@ SURFACES = (
 )
 HISTORY_HEADERS = {
     "docs/current_signal.md": (
-        b"# Current Signal \xe2\x80\x94 Same-Run Completion Evidence Invalidation Integration\n"
+        b"# Current Signal \xe2\x80\x94 Canonical Current-State Admission Joint Repair\n"
     ),
     "handoff/current_codex_handoff.md": (
-        b"# Current Codex Handoff \xe2\x80\x94 Same-Run Completion Evidence "
-        b"Invalidation Integration\n"
+        b"# Current Codex Handoff \xe2\x80\x94 Canonical Current-State Admission "
+        b"Joint Repair\n"
     ),
 }
-PRE_13_198_SHA256 = {
+PRE_COMPACT_OUTPUT_SHA256 = {
     "docs/current_signal.md": (
-        "8b4049f14d3d74f255ee0ebde522eac293d5a6bf241f79bf61bc8a3d83a47548"
+        "ad1ecf79d33391242a3c74188a1ea6e84538394d0767d47d0e180aa167c8ed58"
     ),
     "handoff/current_codex_handoff.md": (
-        "8a362d1261d13f4f43bfcf5b8f88047590062f1c7cc28f0ca4490adede78679d"
+        "cfc6d8e95cf5e6653a75ae67d1e004d394f2f1228fd386a863eacf1d0d12c0a1"
     ),
 }
-RECONSTRUCTED_MAIN = "fb89a07e31ebbf947f4f95d2bafdb1153dc08d29"
+RECONSTRUCTED_MAIN = "78e24aafc036e8af3148a33a1ac18e7e5e703e42"
 
 
 def current_block(relative_path: str) -> str:
@@ -60,13 +60,17 @@ class CurrentStateAdmissionTests(unittest.TestCase):
         fields = parse_fields(signal_block)
         required_fields = {
             "canonical_reconstruction_base",
+            "current_canonical_main",
             "current_layer",
             "v12_state",
-            "completed_canonical_frontier",
+            "completed_work",
+            "known_baseline_boundary",
             "canonical_current_capability",
             "current_restart_point",
             "active_branch",
             "current_gate",
+            "value_port",
+            "framework_expansion",
             "completion_line",
             "missing_closure",
             "next_authorized_action",
@@ -75,25 +79,20 @@ class CurrentStateAdmissionTests(unittest.TestCase):
             "admission_joint",
             "admission_evidence",
             "remote_read_back",
-            "13_198_p3_status",
             "older_material_below",
         }
         self.assertEqual(set(), required_fields.difference(fields))
-        self.assertNotIn("current_canonical_main", fields)
         self.assertEqual(
             RECONSTRUCTED_MAIN,
             fields["canonical_reconstruction_base"][0],
         )
         self.assertTrue(fields["current_gate"][0].startswith("HOLD"))
-        self.assertTrue(fields["next_authorized_action"][0].startswith("None. Stop."))
-        self.assertTrue(fields["13_198_p3_status"][0].startswith("CLOSED"))
+        self.assertIn("Human Seat merge decision", fields["next_authorized_action"][0])
+        self.assertTrue(fields["value_port"][0].startswith("BLOCK"))
         self.assertEqual("Shin", fields["decision_owner"][0])
-        self.assertIn("13-197", signal_block)
-        self.assertIn("PR #146", signal_block)
-        self.assertIn("13-198 Current-State Admission Repair", signal_block)
-        self.assertNotIn("5d937fb3f1a123efc6a5d04727547d9c137c63e3", signal_block)
-        self.assertNotIn("codex/13-126-same-run-invalidation-integration", signal_block)
-        self.assertNotIn("HOLD \xe2\x80\x94 NO NEXT AUTHORITY", signal_block)
+        self.assertIn("44 pre-existing creator-live fixed-identity errors", signal_block)
+        self.assertIn("codex/v13-compact-test-output-reference", signal_block)
+        self.assertIn("Value port", signal_block)
 
     def test_repository_check_reads_only_the_new_current_authority(self) -> None:
         payload, exit_code = inspect_repository(REPO_ROOT)
@@ -116,7 +115,7 @@ class CurrentStateAdmissionTests(unittest.TestCase):
             check=True,
             text=True,
         ).stdout.strip()
-        self.assertIn("13-197-git-authority-isolation-repair", title)
+        self.assertIn("Hidden Variable Time-Tube", title)
 
     def test_post_merge_reader_on_origin_main_recovers_steady_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -157,37 +156,40 @@ class CurrentStateAdmissionTests(unittest.TestCase):
         self.assertEqual(observed_blocks[0], observed_blocks[1])
         self.assertNotEqual(RECONSTRUCTED_MAIN, observed_head)
         fields = parse_fields(observed_blocks[0] or "")
-        self.assertNotIn("current_canonical_main", fields)
+        self.assertIn("current_canonical_main", fields)
         self.assertEqual(
             RECONSTRUCTED_MAIN,
             fields["canonical_reconstruction_base"][0],
         )
         self.assertTrue(fields["current_gate"][0].startswith("HOLD"))
-        self.assertTrue(fields["13_198_current_state_admission_repair"][0].startswith("COMPLETE"))
-        self.assertTrue(fields["13_198_p3_status"][0].startswith("CLOSED"))
-        self.assertNotIn("pending", fields["13_198_p3_status"][0].casefold())
+        self.assertTrue(
+            fields["canonical_current_capability"][0].startswith(
+                "V13 compact test output"
+            )
+        )
+        self.assertIn("fetched merge descendant", fields["current_canonical_main"][0])
         self.assertTrue(fields["missing_closure"][0].startswith("none"))
-        self.assertNotIn("merge", fields["missing_closure"][0].casefold())
-        self.assertNotIn("read-back", fields["missing_closure"][0].casefold())
-        self.assertNotIn("Draft PR", fields["next_authorized_action"][0])
-        self.assertNotIn("merge", fields["next_authorized_action"][0].casefold())
-        self.assertNotIn("read-back", fields["next_authorized_action"][0].casefold())
+        self.assertIn("fetched origin/main: None. Stop", fields["next_authorized_action"][0])
+        self.assertTrue(fields["completion_line"][0].startswith("PASS when"))
 
-    def test_pre_13_198_surfaces_remain_byte_preserved_history(self) -> None:
+    def test_pre_compact_output_surfaces_remain_byte_preserved_history(self) -> None:
         for relative_path in SURFACES:
             with self.subTest(relative_path=relative_path):
                 contents = (REPO_ROOT / relative_path).read_bytes()
-                boundary = b"<!-- current-state-history-boundary:13-198 -->\n"
+                boundary = (
+                    b"<!-- current-state-history-boundary:"
+                    b"v13-compact-test-output -->\n"
+                )
                 self.assertEqual(1, contents.count(boundary))
                 history_offset = contents.index(HISTORY_HEADERS[relative_path])
                 history = contents[history_offset:]
                 self.assertEqual(
-                    PRE_13_198_SHA256[relative_path],
+                    PRE_COMPACT_OUTPUT_SHA256[relative_path],
                     hashlib.sha256(history).hexdigest(),
                 )
                 disclaimer = contents[:history_offset]
                 self.assertIn(
-                    b"cannot be\ninherited as current authority",
+                    b"cannot be inherited as current authority",
                     disclaimer,
                 )
                 self.assertIn(b"Next Authorized Action:", history)

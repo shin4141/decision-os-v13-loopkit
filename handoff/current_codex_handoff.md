@@ -1,3 +1,81 @@
+# Current Codex Handoff — V13 Compact Test Output Reference Implementation
+
+## Canonical Current State — V13 Compact Test Output Admission Candidate
+
+```text
+Canonical Reconstruction Base:
+78e24aafc036e8af3148a33a1ac18e7e5e703e42
+
+Current Canonical Main:
+78e24aafc036e8af3148a33a1ac18e7e5e703e42 at authorization; the admitted canonical main is the fetched merge descendant containing this exact block
+
+Current Layer:
+V13 — Development Efficiency / Evidence-Preserving Test Output
+
+V12 State:
+PASS — bounded implementation, focused validation, same-state A/B comparison, and controlled PASS/FAIL proofs are complete
+
+Completed Work:
+minimal repository-local unittest output wrapper, four bounded regression tests, measured validation record, and Value-port contract
+
+Known Baseline Boundary:
+the unchanged representative suite has 44 pre-existing creator-live fixed-identity errors on both A and B; the wrapper preserves exit 1 and every reported count
+
+Canonical Current Capability:
+V13 compact test output is admitted only when this exact block is read from fetched origin/main; branch and PR copies remain admission candidates
+
+Current Restart Point:
+validation/v13_compact_test_output_reference_implementation.md plus this exact matched first block as read from fetched origin/main
+
+Active Branch:
+codex/v13-compact-test-output-reference before admission; none after this exact block is read from fetched origin/main
+
+Current Gate:
+HOLD — no automatic next loop; candidate branch requires Human Seat merge, while admitted origin/main requires stop
+
+Value Port:
+BLOCK — separate Shin authority required
+
+Framework Expansion:
+BLOCK
+
+Article / Publication:
+BLOCK
+
+Completion Line:
+PASS when this exact matched block is observed on fetched origin/main; otherwise CONDITIONAL as an admission candidate
+
+Missing Closure:
+none when read from fetched origin/main; on the candidate branch, Human Seat merge and post-merge remote read-back remain
+
+Next Authorized Action:
+candidate branch: Human Seat merge decision; fetched origin/main: None. Stop.
+
+Not Authorized:
+automatic next loop; Value port; shared framework; article/publication; repair of the unrelated fixed-identity baseline
+
+Decision Owner:
+Shin
+
+Admission Joint:
+reader verifies this exact matched first block on fetched origin/main; other copies have no canonical restart authority
+
+Admission Evidence:
+presence of this exact first block on fetched origin/main plus the passing admission regression; a branch or PR copy is CANDIDATE only
+
+Remote Read-Back:
+executing AI fetches origin/main after Human Seat merge and verifies both first blocks and commit ancestry before operational COMPLETE
+
+Older Material Below:
+HISTORICAL ONLY — older Gate, Next Authorized Action, branch, capability, and Completion Line grant no current authority
+```
+
+Everything below this boundary is preserved historical material. Its older
+`Current Gate`, `Next Authorized Action`, branch, capability, and `Completion
+Line` values cannot be inherited as current authority.
+
+<!-- current-state-history-boundary:v13-compact-test-output -->
+
 # Current Codex Handoff — Canonical Current-State Admission Joint Repair
 
 ## Canonical Current State — V13 13-198 Post-Admission Steady State
