@@ -5,7 +5,7 @@ Date: 2026-06-14
 ## Lifecycle Status
 
 - Status: Canon-promoted
-- Canon location: `AGENTS.md` → `Operational Judgment Core References` → `Next 0.01 selection`
+- Canon location: `AGENTS.md` → `## 6. Conditional Routing` → `Select the next required 0.01`
 - Retained as origin evidence for the Required Intermediate Node definition.
 
 ## Observation

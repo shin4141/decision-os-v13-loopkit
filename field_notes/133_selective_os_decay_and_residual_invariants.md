@@ -4,8 +4,9 @@ Date: 2026-08-28
 
 ## Lifecycle Status
 
-- Status: Research candidate on branch; not canonical main state
-- Branch: `research/selective-os-decay-2026-08-28`
+- Status: Verification pending
+- Canonical location: `field_notes/133_selective_os_decay_and_residual_invariants.md` on fetched `origin/main`
+- Origin branch: `research/selective-os-decay-2026-08-28` (historical provenance only)
 - Decision Owner / Human Seat: Shin
 - Current main authority remains whatever is recorded on fetched `origin/main`
 - This note is forward-only. It does not rewrite published Decision-OS papers or older Field Notes.

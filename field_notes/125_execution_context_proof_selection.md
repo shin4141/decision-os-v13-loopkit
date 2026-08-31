@@ -8,7 +8,7 @@ Date: 2026-07-13
 - Original status: Candidate / verification pending
 - Learning direction: Forward-only operational learning
 - Operational validation: complete — [validation record](../validation/field_note_125_operational_validation.md)
-- Canon location: [`AGENTS.md` — Continuation Proof Selection](../AGENTS.md#continuation-proof-selection)
+- Canon location: [`AGENTS.md` — Evidence and Continuation Boundaries](../AGENTS.md#2-evidence-and-continuation-boundaries), with conditional routing in `AGENTS.md` §6
 - Runtime implementation: not implemented
 - Automation: HOLD
 - Publication: HOLD

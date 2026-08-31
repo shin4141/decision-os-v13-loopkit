@@ -210,7 +210,7 @@ This may later be promoted into:
 * a MISTAKEN.md entry if repeated
 * a repo-specific public surface audit requirement
 
-For now, keep it as a Field Note.
+This rule is now Canon-promoted into `templates/v13_build_capsule_minimum_contract.md`, section `Public Surface Rule`; this Field Note remains its origin record.
 
 ## Completion Line
 
