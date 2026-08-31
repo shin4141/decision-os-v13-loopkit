@@ -1,5 +1,13 @@
 # Session Size as Context Risk
 
+## Lifecycle
+
+Status: Folded
+
+This note is preserved as origin and trajectory evidence. It has no independent
+execution or Gate authority. Current context-health and compression rules are
+controlled by `AGENTS.md` and `docs/context_compression.md`.
+
 ## Classification
 
 - Artifact type: V13 field note

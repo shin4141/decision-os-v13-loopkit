@@ -238,22 +238,38 @@ or evidence exists elsewhere in the repository. Before `COMPLETE`:
 
 1. prepend one new canonical current-state block to both
    `docs/current_signal.md` and `handoff/current_codex_handoff.md`;
-2. keep the two first fenced blocks byte-identical, including Current Canonical
-   Main, Current Layer, completed work, Current Gate, Completion Line, Missing
-   Closure, Next Authorized Action, Not Authorized, Decision Owner, and the
-   historical-only boundary;
+2. keep the two first fenced blocks byte-identical and include the stable
+   admission fields: Canonical Reconstruction Base, Current Canonical Main,
+   Current Layer, V12 State, Completed Work, Canonical Current Capability,
+   Current Restart Point, Active Branch, Current Gate, Completion Line, Missing
+   Closure, Next Authorized Action, Not Authorized, Decision Owner, Admission
+   Joint, Admission Evidence, Remote Read-Back, and Older Material Below;
 3. preserve all older material below the new boundary as history rather than
    rewriting it;
 4. run `python -m unittest discover -s tests -p
-   'test_current_state_admission.py'` and the relevant existing handoff or
-   reconnect tests; and
-5. after canonicalization, fetch `origin/main`, read back both canonical
-   surfaces from that remote ref, and verify the expected commit relationship
-   before claiming operational `COMPLETE` or restart authority.
+   'test_current_state_admission.py'`, the separately named historical
+   current-state regressions, and the relevant existing handoff or reconnect
+   tests; and
+5. after canonicalization, fetch `origin/main`, read the exact paired candidate
+   blocks back from that remote ref, and verify that their declared Canonical
+   Reconstruction Base is an ancestor of fetched `origin/main` before claiming
+   operational `COMPLETE` or restart authority.
 
-A pushed repair branch or Draft PR proves remote delivery, not canonical
-admission. If merge or remote-main read-back is still pending, report the state
-as an admission candidate and keep that Missing Closure explicit.
+Task-specific fields may be added to a new current block, but they do not become
+universal admission fields. A future bounded task advances the frontier by
+prepending a new block that satisfies the stable fields and preserves every
+older block below the historical boundary; it must not rewrite, delete, or
+rebaseline historical regression evidence.
+
+A branch, commit, pushed artifact, or PR proves delivery or review availability,
+but does not by itself prove canonical admission. Canonical admission requires
+the exact admitted change on fetched `origin/main`, paired-surface read-back,
+and the ancestry relationship above. Until then, report an admission candidate
+and keep the Missing Closure explicit.
+
+In a required current-state or handoff field, `UNKNOWN` remains valid when the
+evidence is genuinely unavailable, but it must include a concise reason why it
+is unknown.
 
 Only the admitted first current-state block may be inherited as restart
 authority. Older `Current Gate`, `Next Authorized Action`, branch, capability,
@@ -263,6 +279,12 @@ or Completion Line values below its historical boundary are evidence only.
 
 Read the relevant reference when the current judgment depends on it.
 
+`AGENTS.md` is the controlling repository instruction surface. A document
+explicitly routed to below is binding only within the scope delegated to it: it
+may add required detail in that scope, but it does not override `AGENTS.md`, and
+a shorter summary here does not waive fields or checks required by that routed
+document.
+
 | Judgment or operation | Required reference |
 |---|---|
 | Select the next required 0.01 | `field_notes/021_required_intermediate_node.md` |
@@ -270,8 +292,6 @@ Read the relevant reference when the current judgment depends on it.
 | Select a CAP axis and limit | `field_notes/023_cap_axis_limit_selection.md` |
 | Judge Aspire, Carrier, or re-entry impact | `field_notes/024_aspire_carrier_reentry_operational_definitions.md` |
 | Select reporting extensions | `field_notes/025_footer_axis_consolidation.md` |
-| Separate active signals from parked horizons | `field_notes/060_v13_active_and_parked_lines_status_review.md` |
-| Judge context-health risk | `field_notes/100_session_size_context_risk.md` |
 | Select continuation proof | `field_notes/125_execution_context_proof_selection.md` |
 | Create or accept a handoff | `docs/handoff_command.md` |
 | Compress or restart from long context | `docs/context_compression.md` |
@@ -285,6 +305,16 @@ do not output `GO`.
 
 Use `HOLD` or a bounded `CAP` until the reference or missing evidence is
 recovered.
+
+For current active/parked judgment, `active` means eligible for evidence work
+only inside present bounded authority; `parked` means do not spend another loop
+until its stated trigger appears. Neither label creates execution authority or
+selects a Gate.
+
+For current context-health judgment, use the Context Health and Context
+Compression rules in this file and `docs/context_compression.md`. Field Notes
+060 and 100 remain folded origin evidence; they are not routed Canon authority
+and cannot independently require, forbid, or block current execution.
 
 ## 7. Concept and Field Note Promotion
 
@@ -356,7 +386,8 @@ Rules:
 - Set `Decision Packet Required: yes` for irreversible, public, monetary,
   credential-related, release-related, ownership-sensitive, or
   authority-changing actions.
-- Use `UNKNOWN` when a required field cannot be established.
+- Use `UNKNOWN` when a required field cannot be established, and state a
+  concise reason why it is unknown.
 - Omission or fluent prose must not imply completion, permission, authority, or
   acceptance.
 - If no next loop is authorized, say so.
@@ -380,8 +411,8 @@ Add only the extension whose trigger applies:
   synchronization, file changes, or completion.
 - `Branch Authority`: when active or parked branch authority changes, or before
   another execution action.
-- `0.01 Update Check`: only for a `+0.01 candidate`, a `0.99 risk`, or a
-  carryover that affects the next loop.
+- `0.01 Update Check`: only for a `+0.01 candidate`, a material regression
+  risk, or a carryover that affects the next loop.
 
 For Context Health:
 
