@@ -2,6 +2,12 @@
 
 Date: 2026-06-14
 
+## Lifecycle Status
+
+- Status: Canon-promoted
+- Canon location: `AGENTS.md` → `## 3. V12 Completion Before V13 Gate` → the GO prerequisites for exit condition, evidence, scope/touch surface, rollback, and debt risk
+- Retained as the promotion-chain origin record for the Execution Loop Gate.
+
 ## Purpose
 
 This note records that the Execution Loop Gate completed the path from field note to confirmed fixed point to compact AGENTS.md trigger, then passed a read-only routing check with KEEP.

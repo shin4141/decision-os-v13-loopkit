@@ -5,7 +5,7 @@ Date: 2026-06-14
 ## Lifecycle Status
 
 - Status: Canon-promoted
-- Canon location: `AGENTS.md` → `Operational Judgment Core References` → `CAP axis and limit selection`, and `CAP Rule`
+- Canon location: `AGENTS.md` → `## 3. V12 Completion Before V13 Gate`, and `## 6. Conditional Routing` → `Select a CAP axis and limit`
 - Retained as origin evidence for concrete CAP-axis and limit selection.
 
 ## Observation
