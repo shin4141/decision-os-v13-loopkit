@@ -1082,6 +1082,12 @@ A Compound Loop improves the condition from which the next loop begins.
 - CAP: valid only under fixed exposure limits
 - BLOCK: damages Aspire, Carrier, or re-entry capacity
 
+These are public-facing outcome dimensions, not standalone execution criteria.
+For executable decisions, `AGENTS.md` §3 (`V12 Completion Before V13 Gate`) is
+the controlling operational definition. `GO` is permitted only when evidence,
+scope, exit condition, touch surface, rollback, and debt risk are clear and
+bounded; `PASS` does not automatically mean `GO`.
+
 ## Practical Use
 
 - Start with [`USE_CASES.md`](USE_CASES.md) for common loop-governance scenarios.
