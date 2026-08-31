@@ -113,15 +113,32 @@ Required before closure:
 - `git diff --check`;
 - pushed branch read-back from the remote.
 
+Observed:
+
+- focused regression: 335/336 passed initially; the only failure was the
+  protected v0.3 roadmap SHA after a pointer edit;
+- repair: restored `docs/companion_product_roadmap_v0_3.md` byte-for-byte and
+  the exact failing proof passed 1/1;
+- archived v0.2 body Git blob equals baseline:
+  `63fb33b89ef0d3a3fffa72343d567bfa7cf2260b`;
+- repository check: V12 PASS / V13 HOLD / no missing closure;
+- paired current first blocks: equal and unchanged;
+- exact-path caller scan: no caller remains for either deleted audit record;
+- `git diff --check`: PASS;
+- cleanup commit `356a6f58c7acc692690d87da359b7750a0422b44`:
+  pushed and read back exactly from
+  `origin/codex/security-audit-deadweight-cleanup`.
+
 ## Closure
 
 ```text
 V12 State:
-PASS when the required verification and remote branch read-back pass
+PASS — local cleanup, verification, pushed branch, and remote read-back complete
 
 V13 Gate:
 HOLD after this bounded cleanup; no automatic next loop
 
 Missing Closure:
-tests, commit, push, and remote branch read-back until completed
+none for the authorized cleanup branch; canonical-main merge remains outside
+this Gate at the Human Seat boundary
 ```
