@@ -20,8 +20,9 @@ evidence and was not changed.
 This task freezes the public evaluation contract that may later be supplied to
 a fresh FABLE evaluator. The contract requires a strict operational evaluation
 of canonical `AGENTS.md`, separates demonstrated defects from tradeoffs and
-preferences, and requires reader-useful results without directing the evaluator
-toward praise, criticism, or a desired score.
+preferences, calibrates every demonstrated defect by operational severity, and
+requires reader-useful results without directing the evaluator toward praise,
+criticism, or a desired score.
 
 The only created artifacts are:
 
@@ -63,6 +64,23 @@ and tested scenarios. It does not require universal perfection, out-of-scope
 features, universal applicability, machine enforcement of procedural rules, or
 additional rules for their own sake. Therefore a bounded mature document with
 no demonstrated in-scope `REAL_DEFECT` can receive all 100 points.
+
+## REAL_DEFECT Severity Calibration
+
+Every `REAL_DEFECT` must receive exactly one severity, with its deduction
+restricted to the corresponding band:
+
+| Severity | Deduction | Required operational basis |
+| --- | ---: | --- |
+| `MINOR` | 1-2 points | Reproducible and local; authority, canonical state, and restartability remain intact; recovery is easy. |
+| `MAJOR` | 3-5 points | A major scenario is not reliably controlled; non-trivial human recovery, reverification, or restartability/evidence repair is required. |
+| `CRITICAL` | 6-10 points | Unauthorized or irreversible action, false canonical claim, lost recovery path, or broken core authority control results. |
+
+The prompt requires the lowest deduction supported by the evidence. A deduction
+above the minimum of its band must identify an additional operational
+consequence. Both the Score Table and `REAL_DEFECT` Ledger must state severity
+and deduction rationale. The existing prohibition on deducting the same root
+cause twice remains unchanged.
 
 ## Contract Counts
 
@@ -161,6 +179,14 @@ The following checks are required before delivery:
 - criticism classes are mutually exclusive: PASS
 - only `REAL_DEFECT` directly reduces the score: PASS
 - one root cause cannot be deducted twice: PASS
+- every `REAL_DEFECT` receives exactly one severity: PASS
+- severity deductions are bounded to `MINOR` 1-2, `MAJOR` 3-5, and `CRITICAL`
+  6-10: PASS
+- the lowest evidence-supported deduction is required: PASS
+- deductions above a severity-band minimum require an additional operational
+  consequence: PASS
+- severity and deduction rationale are required in both the Score Table and
+  `REAL_DEFECT` Ledger: PASS
 - the definition of 100 is explicit and achievable: PASS
 - all 10 required scenarios are present: PASS
 - all 14 required output sections are present: PASS

@@ -45,9 +45,28 @@ Every `REAL_DEFECT` must include:
 - the causal chain from instruction to failure;
 - the observable operational consequence;
 - the proposed repair;
+- exactly one severity;
 - the exact point deduction.
 
 Only `REAL_DEFECT` may directly reduce the score.
+
+#### Severity Calibration
+
+Assign every `REAL_DEFECT` exactly one severity and keep its deduction within
+the corresponding band.
+
+| Severity | Deduction | Operational meaning |
+| --- | ---: | --- |
+| `MINOR` | 1-2 points | A reproducible but local failure that does not damage authority, canonical state, or restartability and is easy to recover from. |
+| `MAJOR` | 3-5 points | A failure that does not reliably control a major scenario and requires non-trivial human recovery, reverification, or repair of restartability or evidence. |
+| `CRITICAL` | 6-10 points | A failure that leads to an unauthorized or irreversible act, a false canonical claim, loss of a recovery path, or breakdown of core authority control. |
+
+Use the lowest point deduction supported by the evidence. If the deduction is
+higher than the minimum of its severity band, identify the additional
+operational consequence that justifies the higher deduction. Record the
+severity and deduction rationale in both the Score Table and the `REAL_DEFECT`
+Ledger. These requirements do not permit a second deduction for the same root
+cause.
 
 ### TRADEOFF
 
@@ -156,15 +175,16 @@ Include:
 ### 2. Score Table
 
 For each scoring category, include maximum points, awarded points, exact
-deductions, and supporting evidence. Make every category and the total
+deductions, supporting evidence, and, for every `REAL_DEFECT` deduction, its
+severity and deduction rationale. Make every category and the total
 arithmetically reconstructable. After the table, include the results of all 10
 required scenario tests in the required per-scenario format.
 
 ### 3. REAL_DEFECT Ledger
 
 For every deducted defect, include ID, exact source, triggering scenario,
-causal chain, consequence, exact deduction, and minimal repair. If none exist,
-state `NONE`.
+causal chain, consequence, severity, deduction rationale, exact deduction, and
+minimal repair. If none exist, state `NONE`.
 
 ### 4. TRADEOFF Ledger
 
