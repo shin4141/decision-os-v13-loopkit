@@ -2,6 +2,14 @@
 
 Date: 2026-06-15
 
+## Lifecycle
+
+Status: Folded
+
+This note is preserved as origin and trajectory evidence. It has no independent
+execution or Gate authority. Current active/parked rules are controlled by
+`AGENTS.md`.
+
 ## Purpose
 
 This note reviews the current V13 active and parked lines after Field Notes 048-059.
