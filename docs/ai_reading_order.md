@@ -276,3 +276,16 @@ Do not force `AGENTS.md` replacement.
 Do not build plugin implementation, plugin scaffolding, comparison tooling, automation, marketing workflows, posting workflows, MCP, hooks, skills, CLI, server, package setup, schema changes, release files, V1 draft, or new features.
 
 The purpose is only to help the user's AI compare V13 against the target repo and choose the smallest safe adoption path.
+
+## Forward-only research reconnection — 2026-10-13
+
+This optional research pointer applies when the task concerns evidence changes
+during execution, maintaining versus switching strategy, conditional policy,
+or expired approval:
+
+- [Field Note 147 — State Repricing vs. Strategy Switching](../field_notes/147_state_repricing_vs_strategy_switching.md):
+  Verification pending; recording GO / Canon adoption HOLD. Read its known
+  overlap and R1–R5 verification gaps before claiming a distinct new rule.
+
+This is an index append only. It adds no first-contact required read,
+operating rule, Canon promotion, validation run, or execution authority.
