@@ -289,3 +289,7 @@ or expired approval:
 
 This is an index append only. It adds no first-contact required read,
 operating rule, Canon promotion, validation run, or execution authority.
+
+## Forward-only research reconnection — 2026-10-15
+
+For pre-launch commitments, tail payouts, outcome-conditioned customer participation, and competitive imitation of payout terms, consult [Tail Cascade × Endogenous Exposure × Design-Time Capacity](../field_notes/2026_10_15_tail_cascade_endogenous_exposure_design_time_capacity.md). Research hypothesis only; Canon adoption HOLD. Separate this design-time question from FN147 runtime repricing. No operating permission or required onboarding read is added.
